@@ -25,9 +25,10 @@ export function cardComercio(comercio) {
     </div>
 
     <a href="tel:${comercio.telefono}" 
-       class="inline-block w-full text-white font-semibold bg-red-600 rounded-full px-4 py-1 mb-2 shadow hover:bg-red-700 transition text-sm">
-      <i class="fa-solid fa-phone mr-1"></i>${comercio.telefono}
-    </a>
+   class="inline-flex items-center justify-center gap-2 text-white font-semibold bg-red-600 
+          rounded-full px-6 py-1.5 mb-2 shadow hover:bg-red-700 transition text-sm mx-auto">
+        <i class="fa-solid fa-phone"></i> ${comercio.telefono}
+      </a>
 
     <div class="flex justify-center items-center gap-1 ${comercio.abierto ? 'text-green-600' : 'text-red-600'} font-medium mb-1 text-sm">
       <i class="fas fa-clock"></i> ${comercio.abierto ? 'Abierto Ahora' : 'Cerrado Ahora'}
@@ -37,9 +38,10 @@ export function cardComercio(comercio) {
       <i class="fas fa-map-marker-alt"></i> ${comercio.pueblo}
     </div>
 
-    <div class="flex justify-center items-center gap-1 text-gray-500 font-medium text-sm">
+    <div class="flex justify-center items-center gap-1 text-gray-500 font-medium text-sm mb-4">
       <i class="fas fa-car"></i> ${comercio.tiempoVehiculo}
     </div>
+
   </div>
 `;
 
