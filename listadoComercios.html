@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inicio - EnPe Erre</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-800">
+        <style>
+          body {font-family: 'Kanit', sans-serif;}
+        </style>
+
+  <!-- Header -->
+  <div id="headerContainer"></div>
+
+  <script>
+    fetch("header.html")
+      .then(res => res.text())
+      .then(html => document.getElementById("headerContainer").innerHTML = html);
+  </script>
+
+
+
+  <!-- Título y buscador -->
+  <section class="p-4">
+    <h1 class="text-center text-2xl font-bold mb-4">Restaurantes</h1>
+
+    <div class="rounded-xl border border-gray-300 p-3 flex flex-col gap-2 bg-white">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-utensils text-blue-500"></i>
+        <input type="text" placeholder="Buscar en Restaurantes" class="flex-1 px-3 py-2 border rounded-full text-sm" />
+        <i class="fas fa-search text-gray-400"></i>
+      </div>
+      <div class="flex gap-2 text-sm">
+        <select class="border rounded px-2 py-1 flex-1">
+          <option>Ponce</option>
+        </select>
+        <select class="border rounded px-2 py-1 flex-1">
+          <option>Tipo de Comida</option>
+        </select>
+        <select class="border rounded px-2 py-1 flex-1">
+          <option>Mi Ubicación</option>
+        </select>
+      </div>
+    </div>
+
+
+
+    
+
+  <!-- Lista de comercios (include) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body {
+      font-family: 'Kanit', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+
+  <main class="px-[5%] md:px-[10%] py-6">
+    <div id="app" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+      <!-- Comercios cargan aquí -->
+    </div>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+
+
+
+
+
+<!-- Footer -->
+<div id="footerContainer"></div>
+
+<script>
+  fetch("footer.html")
+    .then(res => res.text())
+    .then(html => document.getElementById("footerContainer").innerHTML = html);
+</script>
+
+
+
+<script>
+  fetch('listadoCards.html')
+    .then(response => response.text())
+    .then(data => {
+      document.getElementById('contenedor-listado-comercios').innerHTML = data;
+    })
+    .catch(error => console.error('Error cargando listado de comercios:', error));
+</script>
+</body>
+</html>
