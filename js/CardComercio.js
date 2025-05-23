@@ -17,9 +17,9 @@ export function cardComercio(comercio) {
 
       <div class="relative h-12 w-full">
         <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
-          <h3 class="font-medium text-xl text-[#424242] leading-tight line-clamp-2 mt-5">
-            ${comercio.nombre}
-          </h3>
+          <h3 class="${comercio.nombre.length > 25 ? 'text-lg' : 'text-xl'} font-medium text-[#424242] z-20 mt-2 text-center leading-tight">
+  ${comercio.nombre}
+</h3>
         </div>
       </div>
     </div>
