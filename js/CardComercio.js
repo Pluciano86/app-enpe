@@ -26,7 +26,7 @@ export function cardComercio(comercio) {
 
     <a href="tel:${comercio.telefono}" 
    class="inline-flex items-center justify-center gap-2 text-lg text-white font-normal bg-red-600 
-          rounded-full px-2 py-1 mb-2 shadow hover:bg-red-700 transition mx-auto mt-2">
+          rounded-full px-3 py-.3 mb-2 shadow hover:bg-red-700 transition mx-auto mt-2">
         <i class="fa-solid fa-phone text-lg font-normal "></i> ${comercio.telefono}
       </a>
 
