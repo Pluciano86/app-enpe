@@ -13,7 +13,7 @@ export function cardComercio(comercio) {
         class="w-full h-20 object-cover" />
 
       <!-- Logo y nombre -->
-      <div class="relative w-full flex flex-col items-center pt-7 mt-6">
+      <div class="relative w-full flex flex-col items-center pt-9 mt-6">
         <!-- Logo centrado y superpuesto -->
         <img src="${comercio.logo}" alt="Logo de ${comercio.nombre}"
           class="w-24 h-24 rounded-full absolute left-1/2 -top-10 transform -translate-x-1/2 
