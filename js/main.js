@@ -7,9 +7,10 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 const baseImageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios'
 const diaActual = new Date().getDay()
+let comercios = [] // Lista global para poder aplicar filtros luego
 
 async function cargarComercios() {
-  const { data: comercios, error } = await supabase
+  const { data, error } = await supabase
     .from('Comercios')
     .select('*')
     .eq('activo', true)
@@ -19,10 +20,15 @@ async function cargarComercios() {
     return
   }
 
+  comercios = data // Guardamos para filtros
+  renderComercios(comercios)
+}
+
+async function renderComercios(lista) {
   const contenedor = document.getElementById('app')
   contenedor.innerHTML = ''
 
-  for (const comercio of comercios) {
+  for (const comercio of lista) {
     const { data: portada } = await supabase
       .from('imagenesComercios')
       .select('imagen')
@@ -68,3 +74,73 @@ async function cargarComercios() {
 }
 
 cargarComercios()
+
+// FILTROS LISTA DE COMERCIOS
+
+const filtrosActivos = {
+  textoBusqueda: '',
+  municipio: '',
+  subcategoria: '',
+  orden: '',
+  abiertoAhora: false,
+  favoritos: false,
+  activos: false
+};
+
+// Listeners para filtros
+
+// MUNICIPIO
+const selectMunicipio = document.getElementById('selectMunicipio')
+if (selectMunicipio) {
+  selectMunicipio.addEventListener('change', (e) => {
+    filtrosActivos.municipio = e.target.value;
+    aplicarFiltrosYRedibujar();
+  });
+}
+
+// SUBCATEGORÍA
+const selectSubcategoria = document.getElementById('selectSubcategoria')
+if (selectSubcategoria) {
+  selectSubcategoria.addEventListener('change', (e) => {
+    filtrosActivos.subcategoria = e.target.value;
+    aplicarFiltrosYRedibujar();
+  });
+}
+
+// ORDEN
+const selectOrden = document.getElementById('selectOrden')
+if (selectOrden) {
+  selectOrden.addEventListener('change', (e) => {
+    filtrosActivos.orden = e.target.value;
+    aplicarFiltrosYRedibujar();
+  });
+}
+
+// CHECKS
+['chkAbierto', 'chkFavorito', 'chkActivo'].forEach(id => {
+  const el = document.getElementById(id)
+  if (el) {
+    el.addEventListener('change', (e) => {
+      filtrosActivos[id === 'chkAbierto' ? 'abiertoAhora' : id === 'chkFavorito' ? 'favoritos' : 'activos'] = e.target.checked;
+      aplicarFiltrosYRedibujar();
+    });
+  }
+})
+
+// BÚSQUEDA POR NOMBRE (revisado para esperar DOM cargado)
+document.addEventListener("DOMContentLoaded", () => {
+  const inputNombre = document.getElementById("filtro-nombre")
+
+  if (!inputNombre) {
+    console.warn("No se encontró el input filtro-nombre")
+    return
+  }
+
+  inputNombre.addEventListener("input", () => {
+    const texto = inputNombre.value.toLowerCase().trim();
+    const filtrados = comercios.filter(c =>
+      c.nombre.toLowerCase().includes(texto)
+    );
+    renderComercios(filtrados);
+  });
+})
