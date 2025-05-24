@@ -162,12 +162,30 @@ navigator.geolocation.getCurrentPosition(
   (pos) => {
     latUsuario = pos.coords.latitude;
     lonUsuario = pos.coords.longitude;
-    cargarComercios();
+    cargarComerciosConOrden(); // ✅ usamos la nueva función que incluye sort
   },
   (err) => {
     console.warn("No se pudo obtener ubicación del usuario:", err);
-    cargarComercios();
+    cargarComerciosConOrden(); // incluso sin ubicación, seguimos
   }
 );
 
 cargarNombreCategoria();
+
+// ✅ Nueva función con el orden por cercanía integrado
+async function cargarComerciosConOrden() {
+  await cargarComercios();
+
+  if (filtrosActivos.orden === 'ubicacion') {
+    listaOriginal.sort((a, b) => {
+      if (a.distanciaKm == null) return 1;
+      if (b.distanciaKm == null) return -1;
+      return a.distanciaKm - b.distanciaKm;
+    });
+  }
+
+  console.log("Lista ordenada por distancia:");
+  listaOriginal.forEach(c => console.log(`${c.nombre}: ${c.distanciaKm?.toFixed(2)} km`));
+
+  aplicarFiltrosYRedibujar();
+}
