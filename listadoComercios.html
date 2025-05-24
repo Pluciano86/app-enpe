@@ -42,7 +42,7 @@
   </section>
 
   <!-- Listado de Comercios -->
-  <section id="contenedor-listado-comercios" class="px-4 py-6"></section>
+ <section id="app" class="px-4 py-6 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-6"></section>
 
   <!-- Footer -->
   <div id="footerContainer"></div>
@@ -52,15 +52,14 @@
       .then(html => document.getElementById("footerContainer").innerHTML = html);
   </script>
 
-  <!-- Cargar listado desde archivo externo -->
-  <script>
-    fetch("listadoCards.html")
-      .then(response => response.text())
-      .then(data => {
-        document.getElementById("contenedor-listado-comercios").innerHTML = data;
-      })
-      .catch(error => console.error('Error cargando listado de comercios:', error));
-  </script>
+  <!-- <script>
+  fetch("listadoCards.html")
+    .then(response => response.text())
+    .then(data => {
+      document.getElementById("contenedor-listado-comercios").innerHTML = data;
+    })
+    .catch(error => console.error('Error cargando listado de comercios:', error));
+</script> -->
 
   <!-- Código dinámico (JS) -->
   <script type="module" src="js/main.js"></script>

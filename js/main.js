@@ -1,33 +1,21 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
 
-// ✅ Leer idCategoria desde la URL si fue pasadax
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
   return params.get('idCategoria') || null;
 }
 
 const supabaseUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'; // tu llave está bien
 const supabase = createClient(supabaseUrl, supabaseKey);
 const baseImageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
 const diaActual = new Date().getDay();
-const idCategoriaDesdeURL = obtenerIdCategoriaDesdeURL(); // ✅ capturar si viene
+const idCategoriaDesdeURL = obtenerIdCategoriaDesdeURL();
 
 let listaOriginal = [];
-
-const filtrosActivos = {
-  textoBusqueda: '',
-  municipio: '',
-  subcategoria: '',
-  orden: '',
-  abiertoAhora: false,
-  favoritos: false,
-  activos: false
-};
-
-
-async function cargarNombreCategoria() {
+let latUsuario = null;
+let lonUsuario = null;async function cargarNombreCategoria() {
   if (!idCategoriaDesdeURL) return;
 
   const { data, error } = await supabase
@@ -47,16 +35,21 @@ async function cargarNombreCategoria() {
   }
 }
 
-
-
-
-
-
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 6371 * c; // km
+}
 
 async function cargarComercios() {
   let query = supabase.from('Comercios').select('*').eq('activo', true);
 
-  // ✅ Filtrar por idCategoria si viene en la URL
   if (idCategoriaDesdeURL) {
     query = query.eq('idCategoria', parseInt(idCategoriaDesdeURL));
   }
@@ -64,13 +57,17 @@ async function cargarComercios() {
   const { data: comercios, error } = await query;
 
   if (error) {
-    console.error('Error cargando comercios:', error);
+    console.error('❌ Error cargando comercios:', error);
     return;
   }
+
+  console.log('✅ Comercios obtenidos:', comercios);
 
   listaOriginal = [];
 
   for (const comercio of comercios) {
+    console.log(`🔍 Procesando comercio: ${comercio.nombre}`);
+
     const { data: portada } = await supabase
       .from('imagenesComercios')
       .select('imagen')
@@ -99,20 +96,43 @@ async function cargarComercios() {
       abierto = horaActual >= horario.apertura && horaActual <= horario.cierre;
     }
 
+    // Validar coordenadas
+    let distancia = null;
+    if (latUsuario && lonUsuario && comercio.latitud && comercio.longitud) {
+      distancia = calcularDistancia(latUsuario, lonUsuario, comercio.latitud, comercio.longitud);
+    } else {
+      console.warn(`⚠️ Coordenadas faltantes en ${comercio.nombre}`);
+    }
+
     listaOriginal.push({
       nombre: comercio.nombre,
       telefono: comercio.telefono,
       googleMap: comercio.googleMap,
       pueblo: comercio.municipio,
-      tiempoVehiculo: "8 min",
       abierto: abierto,
+      tiempoVehiculo: distancia ? `${Math.round(distancia * 2)} min` : null,
       imagenPortada: portada ? `${baseImageUrl}/${portada.imagen}` : '',
-      logo: logo ? `${baseImageUrl}/${logo.imagen}` : ''
+      logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
+      distanciaKm: distancia
     });
   }
 
+  console.log("✅ Comercios procesados para renderizar:", listaOriginal);
   aplicarFiltrosYRedibujar();
 }
+
+const filtrosActivos = {
+  textoBusqueda: '',
+  municipio: '',
+  subcategoria: '',
+  orden: 'ubicacion', // puedes cambiar esto por defecto a 'ubicacion', 'az', 'recientes'
+  abiertoAhora: false,
+  favoritos: false,
+  activos: false
+};
+
+
+
 
 function aplicarFiltrosYRedibujar() {
   const contenedor = document.getElementById('app');
@@ -131,11 +151,23 @@ function aplicarFiltrosYRedibujar() {
   }
 }
 
-// --- Listeners activos ---
+// Listeners
 document.getElementById('filtro-nombre')?.addEventListener('input', (e) => {
   filtrosActivos.textoBusqueda = e.target.value;
   aplicarFiltrosYRedibujar();
 });
 
-cargarComercios();
+// Geolocalización y carga
+navigator.geolocation.getCurrentPosition(
+  (pos) => {
+    latUsuario = pos.coords.latitude;
+    lonUsuario = pos.coords.longitude;
+    cargarComercios();
+  },
+  (err) => {
+    console.warn("No se pudo obtener ubicación del usuario:", err);
+    cargarComercios();
+  }
+);
+
 cargarNombreCategoria();
