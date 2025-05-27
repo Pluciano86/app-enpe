@@ -380,7 +380,8 @@ crearBtn.addEventListener('click', async () => {
     idCategoria,
     idSubcategoria: isNaN(idSubcategoria) ? null : idSubcategoria,
     idArea,
-    activo: true
+    activo: true,
+    destacadosPrimero: true,
   }).select().single();
 
   if (comercioError) {

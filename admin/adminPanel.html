@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Administración</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+  <!-- Header y Sidebar -->
+  <div id="headerContainer"></div>
+  <script>
+  fetch("adminHeader.html")
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById("headerContainer").innerHTML = html;
+
+      // Activar funcionalidad del sidebar
+      const toggleBtn = document.getElementById("menuToggle");
+      const sidebar = document.getElementById("adminSidebar");
+      const overlay = document.getElementById("sidebarOverlay");
+
+      if (toggleBtn && sidebar && overlay) {
+        toggleBtn.addEventListener("click", () => {
+          const visible = sidebar.classList.contains("-translate-x-full");
+          sidebar.classList.toggle("-translate-x-full");
+          overlay.classList.toggle("hidden", !visible);
+        });
+
+        overlay.addEventListener("click", () => {
+          sidebar.classList.add("-translate-x-full");
+          overlay.classList.add("hidden");
+        });
+      }
+    });
+</script>
+
+
+
+    <!-- Contenido principal -->
+    <main class="flex-1 p-4 overflow-x-auto">
+      <h1 class="text-2xl font-semibold text-blue-700 mb-4">Dashboard</h1>
+      <div class="bg-white p-4 rounded shadow-md">
+        <p>Bienvenido al panel de administración. Aquí podrás gestionar tus datos de forma segura.</p>
+      </div>
+    </main>
+
+  </div>
+
+</body>
+</html>

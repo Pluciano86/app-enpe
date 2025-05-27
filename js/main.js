@@ -49,19 +49,33 @@ function actualizarEtiquetaSubcategoria(nombreCategoria) {
 
 async function cargarNombreCategoria() {
   if (!idCategoriaDesdeURL) return;
+
   const { data, error } = await supabase
     .from('Categorias')
-    .select('nombre')
+    .select('nombre, icono') // 👈 aseguramos que viene el icono
     .eq('id', parseInt(idCategoriaDesdeURL))
     .single();
-  if (error) {
-    console.error('Error cargando nombre de categoría:', error);
+
+  if (error || !data) {
+    console.error('Error cargando categoría:', error);
     return;
   }
+
   const titulo = document.getElementById('tituloCategoria');
+  const icono = document.getElementById('iconoCategoria');
+  const input = document.getElementById('filtro-nombre');
+
   if (titulo) {
     titulo.textContent = data.nombre;
     actualizarEtiquetaSubcategoria(data.nombre);
+  }
+
+  if (icono && data.icono) {
+    icono.innerHTML = data.icono;
+  }
+
+  if (input) {
+    input.placeholder = `Buscar en ${data.nombre}`;
   }
 }
 
