@@ -171,19 +171,77 @@ function aplicarFiltrosYRedibujar() {
 
   let filtrados = listaOriginal;
 
-  if (filtrosActivos.textoBusqueda.trim()) {
-  const texto = normalizarTexto(filtrosActivos.textoBusqueda);
-  filtrados = filtrados.filter(c => normalizarTexto(c.nombre).includes(texto));
-}
-  if (filtrosActivos.municipio) filtrados = filtrados.filter(c => c.pueblo === filtrosActivos.municipio);
-  if (filtrosActivos.categoria) filtrados = filtrados.filter(c => c.idCategoria == filtrosActivos.categoria);
-  if (filtrosActivos.subcategoria) filtrados = filtrados.filter(c => c.idSubcategoria === parseInt(filtrosActivos.subcategoria));
-  if (filtrosActivos.abiertoAhora) filtrados = filtrados.filter(c => c.abierto === true);
+  const texto = normalizarTexto(filtrosActivos.textoBusqueda.trim());
+  if (texto) {
+    filtrados = filtrados.filter(c =>
+      normalizarTexto(c.nombre).includes(texto)
+    );
+  }
+
+  if (filtrosActivos.municipio) {
+    filtrados = filtrados.filter(c => c.pueblo === filtrosActivos.municipio);
+  }
+  if (filtrosActivos.categoria) {
+    filtrados = filtrados.filter(c => c.idCategoria == filtrosActivos.categoria);
+  }
+  if (filtrosActivos.subcategoria) {
+    filtrados = filtrados.filter(c => c.idSubcategoria === parseInt(filtrosActivos.subcategoria));
+  }
+  if (filtrosActivos.abiertoAhora) {
+    filtrados = filtrados.filter(c => c.abierto === true);
+  }
+
+  // Mostrar filtros activos
+  const filtrosDiv = document.getElementById('filtros-activos');
+  filtrosDiv.innerHTML = '';
+
+  const categoriaCruda = document.getElementById('tituloCategoria')?.textContent || 'Resultados';
+  const categoriaNombre = categoriaCruda
+  .split(' ')
+  .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+  .join(' ');
+  const total = filtrados.length;
+  const labelTotal = document.createElement('span');
+  labelTotal.textContent = `${total} ${categoriaNombre}`;
+  labelTotal.className = 'font-medium';
+  filtrosDiv.appendChild(labelTotal);
+
+  // Subcategoría activa
+  if (filtrosActivos.subcategoria) {
+    const opcion = document.querySelector(`#filtro-subcategoria option[value="${filtrosActivos.subcategoria}"]`);
+    if (opcion) {
+      const tag = crearTagFiltro(opcion.textContent, () => {
+        filtrosActivos.subcategoria = '';
+        document.getElementById('filtro-subcategoria').value = '';
+        aplicarFiltrosYRedibujar();
+      });
+      filtrosDiv.appendChild(tag);
+    }
+  }
+
+  // Municipio activo
+  if (filtrosActivos.municipio) {
+    const tag = crearTagFiltro(`en ${filtrosActivos.municipio}`, () => {
+      filtrosActivos.municipio = '';
+      document.getElementById('filtro-municipio').value = '';
+      aplicarFiltrosYRedibujar();
+    });
+    filtrosDiv.appendChild(tag);
+  }
 
   for (const comercio of filtrados) {
     const card = cardComercio(comercio);
     contenedor.appendChild(card);
   }
+}
+
+// Utilidad para tags de filtro
+function crearTagFiltro(texto, onClick) {
+  const span = document.createElement('span');
+  span.className = 'bg-gray-100 text-gray-800 px-2 py-1 rounded flex items-center gap-1';
+  span.innerHTML = `${texto} <button class="text-gray-500 hover:text-red-500 font-bold">×</button>`;
+  span.querySelector('button').onclick = onClick;
+  return span;
 }
 
 // 🧩 Listeners
@@ -291,4 +349,50 @@ async function cargarSubcategorias(categoriaId) {
   });
 }
 
-console.log("idCategoriaDesdeURL:", idCategoriaDesdeURL);
+function actualizarResumenFiltros() {
+  const contenedor = document.getElementById('resumen-filtros');
+  if (!contenedor) return;
+
+  let partes = [];
+  const total = listaOriginal.filter(c => {
+    // Aplicar los mismos filtros que en aplicarFiltrosYRedibujar
+    if (filtrosActivos.textoBusqueda && !normalizarTexto(c.nombre).includes(normalizarTexto(filtrosActivos.textoBusqueda))) return false;
+    if (filtrosActivos.municipio && c.pueblo !== filtrosActivos.municipio) return false;
+    if (filtrosActivos.subcategoria && c.idSubcategoria !== parseInt(filtrosActivos.subcategoria)) return false;
+    if (filtrosActivos.abiertoAhora && !c.abierto) return false;
+    return true;
+  });
+
+  partes.push(`<strong>${total.length}</strong> resultado${total.length !== 1 ? 's' : ''}`);
+
+  if (filtrosActivos.categoria) partes.push(`de <span class="bg-gray-100 rounded px-2 py-1 inline-flex items-center gap-1">
+    ${document.getElementById('tituloCategoria')?.textContent || 'categoría'} 
+  </span>`);
+  
+  if (filtrosActivos.subcategoria) {
+    const subcat = document.querySelector(`#filtro-subcategoria option[value="${filtrosActivos.subcategoria}"]`)?.textContent;
+    if (subcat) partes.push(`<span class="bg-gray-100 rounded px-2 py-1 inline-flex items-center gap-1">
+      ${subcat} 
+      <button onclick="borrarFiltro('subcategoria')" class="text-gray-500 hover:text-red-500">&times;</button>
+    </span>`);
+  }
+
+  if (filtrosActivos.municipio) {
+    partes.push(`<span class="bg-gray-100 rounded px-2 py-1 inline-flex items-center gap-1">
+      en ${filtrosActivos.municipio}
+      <button onclick="borrarFiltro('municipio')" class="text-gray-500 hover:text-red-500">&times;</button>
+    </span>`);
+  }
+
+  contenedor.innerHTML = partes.join(' ');
+}
+function borrarFiltro(tipo) {
+  if (tipo === 'municipio') {
+    filtrosActivos.municipio = '';
+    document.getElementById('filtro-municipio').value = '';
+  } else if (tipo === 'subcategoria') {
+    filtrosActivos.subcategoria = '';
+    document.getElementById('filtro-subcategoria').value = '';
+  }
+  aplicarFiltrosYRedibujar();
+}
