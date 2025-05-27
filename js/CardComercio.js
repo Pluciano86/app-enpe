@@ -1,10 +1,10 @@
 export function cardComercio(comercio) {
   const div = document.createElement('div');
   div.className = `
-  bg-white rounded-2xl shadow-md overflow-hidden 
-  text-center transition-transform duration-300 hover:scale-[1.02]
-  w-full max-w-[180px] sm:max-w-[200px] mx-auto
-`;
+    bg-white rounded-2xl shadow-md overflow-hidden 
+    text-center transition-transform duration-300 hover:scale-[1.02]
+    w-full max-w-[180px] sm:max-w-[200px] mx-auto
+  `;
 
   div.innerHTML = `
     <div class="relative">

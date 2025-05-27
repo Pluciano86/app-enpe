@@ -34,10 +34,65 @@
         <i class="fas fa-search text-gray-400"></i>
       </div>
       <div class="flex gap-2 text-sm">
-        <select class="border rounded px-2 py-1 flex-1"><option>Ponce</option></select>
-        <select class="border rounded px-2 py-1 flex-1"><option>Tipo de Comida</option></select>
-        <select class="border rounded px-2 py-1 flex-1"><option>Mi Ubicación</option></select>
-      </div>
+
+  <div class="flex flex-col flex-1">
+    <label for="filtro-municipio" class="text-xs font-semibold text-gray-500 mb-1">Municipios:</label>
+    <select id="filtro-municipio" class="border rounded px-2 py-1 w-full text-sm">
+      <option value="">Municipios</option>
+    </select>
+  </div>
+
+  <div class="flex flex-col flex-1">
+  <label for="filtro-subcategoria" class="text-xs font-semibold text-gray-500 mb-1">Tipo de Comida</label>
+  <select id="filtro-subcategoria" class="border rounded px-2 py-1 w-full text-sm">
+    <option value="">Todas</option>
+  </select>
+</div>
+
+  <div class="flex flex-col flex-1">
+    <label for="filtro-orden" class="text-xs font-semibold text-gray-500 mb-1">Ordenar por:</label>
+    <select id="filtro-orden" class="border rounded px-2 py-1 w-full text-sm">
+      <option value="ubicacion">Cercanía</option>
+      <option value="az">Orden Alfabético</option>
+      <option value="recientes">Más Recientes</option>
+    </select>
+  </div>
+
+</div>
+
+<!-- Switches de filtros -->
+<div class="flex flex-wrap gap-4 text-sm mt-4">
+  <!-- Abierto Ahora -->
+  <label class="relative inline-flex items-center cursor-pointer">
+  <input type="checkbox" id="filtro-abierto" class="sr-only peer">
+  <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 
+              transition-colors duration-300"></div>
+  <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full 
+              transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+  <span class="ml-3 text-sm font-medium text-gray-700">Abierto ahora</span>
+</label>
+
+  <!-- Favoritos -->
+  <label class="relative inline-flex items-center cursor-pointer">
+  <input type="checkbox" id="filtro-favoritos" class="sr-only peer">
+  <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-pink-500 
+              transition-colors duration-300"></div>
+  <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full 
+              transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+  <span class="ml-3 text-sm font-medium text-gray-700">Mis Favoritos</span>
+</label>
+
+  <!-- Activos en PeErre -->
+ <label class="relative inline-flex items-center cursor-pointer">
+  <input type="checkbox" id="filtro-destacados" class="sr-only peer" checked>
+  <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-yellow-400 
+              transition-colors duration-300"></div>
+  <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full 
+              transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+  <span class="ml-3 text-sm font-medium text-gray-700">Destacados</span>
+</label>
+</div>
+
     </div>
   </section>
 
