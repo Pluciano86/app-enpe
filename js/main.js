@@ -4,7 +4,9 @@ import { cardComercio } from './CardComercio.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
-  return params.get('idCategoria') || null;
+  const raw = params.get('idCategoria');
+  if (!raw) return null;
+  return parseInt(raw); // <-- esto es lo importante
 }
 
 const supabaseUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co';
@@ -98,7 +100,7 @@ async function cargarComercios() {
   // 1. Traer todos los comercios activos
   let query = supabase.from('Comercios').select('*');
   if (idCategoriaDesdeURL) {
-    query = query.eq('idCategoria', parseInt(idCategoriaDesdeURL));
+    query = query.overlaps('idCategoria', [idCategoriaDesdeURL]);
   }
 
   const { data: comercios, error: errorComercios } = await query;
@@ -166,8 +168,10 @@ async function cargarComercios() {
       imagenPortada: portada ? `${baseImageUrl}/${portada.imagen}` : '',
       logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
       distanciaKm: distancia,
-      idCategoria: comercio.idCategoria,
-      idSubcategoria: parseInt(comercio.idSubcategoria),
+      idCategoria: comercio.idCategoria, // ← puede seguir igual si es único o array
+      idSubcategoria: Array.isArray(comercio.idSubcategoria)
+      ? comercio.idSubcategoria
+      : [parseInt(comercio.idSubcategoria)],
      activoEnPeErre: comercio.activo === true,
       favorito: comercio.favorito || false
     };
@@ -199,8 +203,11 @@ function aplicarFiltrosYRedibujar() {
     filtrados = filtrados.filter(c => c.idCategoria == filtrosActivos.categoria);
   }
   if (filtrosActivos.subcategoria) {
-    filtrados = filtrados.filter(c => c.idSubcategoria === parseInt(filtrosActivos.subcategoria));
-  }
+  filtrados = filtrados.filter(c =>
+    Array.isArray(c.idSubcategoria) &&
+    c.idSubcategoria.includes(parseInt(filtrosActivos.subcategoria))
+  );
+}
   if (filtrosActivos.abiertoAhora) {
     filtrados = filtrados.filter(c => c.abierto === true);
   }

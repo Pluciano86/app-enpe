@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editar Comercio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+
+<div id="headerContainer"></div>
+<script>
+fetch("adminHeader.html")
+  .then(res => res.text())
+  .then(html => {
+    document.getElementById("headerContainer").innerHTML = html;
+    const toggleBtn = document.getElementById("menuToggle");
+    const sidebar = document.getElementById("adminSidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    if (toggleBtn && sidebar && overlay) {
+      toggleBtn.addEventListener("click", () => {
+        const visible = sidebar.classList.contains("-translate-x-full");
+        sidebar.classList.toggle("-translate-x-full");
+        overlay.classList.toggle("hidden", !visible);
+      });
+      overlay.addEventListener("click", () => {
+        sidebar.classList.add("-translate-x-full");
+        overlay.classList.add("hidden");
+      });
+    }
+  });
+</script>
+
+<main class="px-4 py-6">
+  <div class="max-w-5xl mx-auto">
+    <h2 class="text-2xl text-center font-medium mb-4">Editar Comercio</h2>
+    <form id="formComercio" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div><label for="nombre">Nombre</label><input id="nombre" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="telefono">Teléfono</label><input id="telefono" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="direccion">Dirección</label><input id="direccion" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="municipio">Municipio</label><select id="municipio" class="w-full border rounded px-3 py-2 text-sm"></select></div>
+      <div><label for="latitud">Latitud</label><input id="latitud" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="longitud">Longitud</label><input id="longitud" class="w-full border rounded px-3 py-2 text-sm" /></div>
+
+      <div class="md:col-span-2">
+        <label for="categoria">Categorías</label>
+        <div id="opcionesCategorias" class="grid grid-cols-2 gap-2 bg-white border p-4 rounded shadow"></div>
+        <div id="categoriasSeleccionadas" class="flex flex-wrap mt-2"></div>
+      </div>
+
+      <div class="md:col-span-2">
+        <label for="subcategoria">Subcategorías</label>
+        <div id="opcionesSubcategorias" class="grid grid-cols-2 gap-2 bg-white border p-4 rounded shadow"></div>
+        <div id="subcategoriasSeleccionadas" class="flex flex-wrap mt-2"></div>
+      </div>
+
+      <div><label for="whatsapp">Whatsapp</label><input id="whatsapp" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="facebook">Facebook</label><input id="facebook" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="instagram">Instagram</label><input id="instagram" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="tiktok">TikTok</label><input id="tiktok" class="w-full border rounded px-3 py-2 text-sm" /></div>
+      <div><label for="webpage">Webpage</label><input id="webpage" class="w-full border rounded px-3 py-2 text-sm" /></div>
+
+      <div class="md:col-span-2">
+        <label for="descripcion">Descripción</label>
+        <textarea id="descripcion" rows="4" class="w-full border rounded px-3 py-2 text-sm"></textarea>
+      </div>
+    </form>
+
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold">Logo del Comercio</h3>
+      <img id="logoPreview" class="w-32 h-32 object-contain rounded border mt-2" />
+    </div>
+    <div class="mt-2 flex gap-4 items-center">
+  <input type="file" id="nuevoLogo" accept="image/*" class="text-sm" />
+  <button id="eliminarLogo" class="bg-red-600 text-white px-3 py-1 rounded">Eliminar Logo</button>
+</div>
+
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold">Imagen de Portada</h3>
+      <img id="portadaPreview" class="w-full h-48 object-cover rounded border mt-2" />
+      <button id="eliminarPortada" class="mt-2 text-sm text-red-600">Eliminar Portada</button>
+    </div>
+
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold">Galería de Imágenes</h3>
+      <div id="galeriaPreview" class="flex flex-wrap gap-2 mt-2"></div>
+      <input type="file" id="galeriaInput" accept="image/*" multiple class="mt-2" />
+    </div>
+
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold">Horarios</h3>
+      <div id="horariosContainer" class="space-y-2"></div>
+    </div>
+
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold mb-2">Feriados</h3>
+      <div id="feriadosContainer" class="space-y-4"></div>
+      <button id="agregarFeriado" type="button" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700">Añadir Feriado</button>
+    </div>
+
+    <div class="mt-8">
+      <h3 class="text-lg font-semibold">Amenidades</h3>
+      <div id="amenidadesContainer" class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2"></div>
+      <button id="nuevaAmenidadBtn" class="mt-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Añadir nueva amenidad</button>
+      <div id="nuevaAmenidadForm" class="mt-4 hidden">
+        <input type="text" id="nuevoNombreAmenidad" placeholder="Nombre de la amenidad" class="border px-2 py-1 rounded w-full mb-2">
+        <input type="text" id="nuevoIconoAmenidad" placeholder="Clase de ícono (ej: fa-solid fa-star)" class="border px-2 py-1 rounded w-full mb-2">
+        <button id="guardarAmenidadBtn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Guardar Amenidad</button>
+      </div>
+    </div>
+
+    <div class="mt-8 grid grid-cols-2 gap-4">
+      <div>
+        <label for="colorPrimario">Color Primario</label>
+        <input type="color" id="colorPrimario" class="w-full h-10 rounded border border-gray-300" />
+      </div>
+      <div>
+        <label for="colorSecundario">Color Secundario</label>
+        <input type="color" id="colorSecundario" class="w-full h-10 rounded border border-gray-300" />
+      </div>
+    </div>
+
+    <button id="btnGuardar" class="bg-blue-600 text-white px-4 py-2 rounded">Guardar Cambios</button>
+  </div>
+</main>
+
+
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+  const supabase = createClient(
+    'https://zgjaxanqfkweslkxtayt.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
+  );
+
+  const idComercio = new URLSearchParams(window.location.search).get('id');
+  const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  let categorias = [], subcategorias = [];
+  let categoriasSeleccionadas = [], subcategoriasSeleccionadas = [];
+
+  async function cargarDatosComercio() {
+    const { data, error } = await supabase.from('Comercios').select('*').eq('id', idComercio).single();
+    if (error) return alert('Error cargando comercio');
+
+    for (const key in data) {
+      const el = document.getElementById(key);
+      if (el) {
+        if (key.includes("color") && (!data[key] || !/^#[0-9A-Fa-f]{6}$/.test(data[key]))) {
+          el.value = '#000000';
+        } else {
+          el.value = data[key] || '';
+        }
+      }
+    }
+
+    if (data.idMunicipio) document.getElementById('municipio').value = String(data.idMunicipio);
+    categoriasSeleccionadas = data.idCategoria || [];
+    subcategoriasSeleccionadas = data.idSubcategoria || [];
+  }
+
+  async function cargarMunicipios() {
+    const { data } = await supabase.from('Municipios').select('id, nombre').order('nombre');
+    const select = document.getElementById('municipio');
+    select.innerHTML = '<option value="">Selecciona Municipio</option>';
+    data.forEach(m => {
+      const option = document.createElement('option');
+      option.value = m.id;
+      option.textContent = m.nombre;
+      select.appendChild(option);
+    });
+  }
+
+  async function cargarCategorias() {
+    const { data } = await supabase.from('Categorias').select('id, nombre').order('nombre');
+    categorias = data;
+    const contenedor = document.getElementById('opcionesCategorias');
+    contenedor.innerHTML = '';
+    data.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-2';
+      div.innerHTML = `
+        <input type="checkbox" value="${c.id}" id="cat_${c.id}" ${categoriasSeleccionadas.includes(c.id) ? 'checked' : ''}>
+        <label for="cat_${c.id}">${c.nombre}</label>
+      `;
+      contenedor.appendChild(div);
+    });
+
+    contenedor.querySelectorAll('input[type="checkbox"]').forEach(input => {
+      input.addEventListener('change', () => {
+        const id = parseInt(input.value);
+        if (input.checked) {
+          if (!categoriasSeleccionadas.includes(id)) categoriasSeleccionadas.push(id);
+        } else {
+          categoriasSeleccionadas = categoriasSeleccionadas.filter(c => c !== id);
+        }
+        mostrarSeleccionadas('categoriasSeleccionadas', categoriasSeleccionadas, categorias, 'removerCategoria');
+        cargarSubcategorias();
+      });
+    });
+
+    mostrarSeleccionadas('categoriasSeleccionadas', categoriasSeleccionadas, categorias, 'removerCategoria');
+  }
+
+  async function cargarSubcategorias() {
+    const { data } = await supabase.from('subCategoria').select('id, nombre, idCategoria').order('nombre');
+    subcategorias = data;
+    const contenedor = document.getElementById('opcionesSubcategorias');
+    contenedor.innerHTML = '';
+    const subcatsFiltradas = subcategorias.filter(sc => categoriasSeleccionadas.includes(sc.idCategoria));
+    subcatsFiltradas.forEach(sub => {
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-2';
+      div.innerHTML = `
+        <input type="checkbox" value="${sub.id}" id="sub_${sub.id}" ${subcategoriasSeleccionadas.includes(sub.id) ? 'checked' : ''}>
+        <label for="sub_${sub.id}">${sub.nombre}</label>
+      `;
+      contenedor.appendChild(div);
+    });
+
+    contenedor.querySelectorAll('input[type="checkbox"]').forEach(input => {
+      input.addEventListener('change', () => {
+        const id = parseInt(input.value);
+        if (input.checked) {
+          if (!subcategoriasSeleccionadas.includes(id)) subcategoriasSeleccionadas.push(id);
+        } else {
+          subcategoriasSeleccionadas = subcategoriasSeleccionadas.filter(s => s !== id);
+        }
+        mostrarSeleccionadas('subcategoriasSeleccionadas', subcategoriasSeleccionadas, subcategorias, 'removerSubcategoria');
+      });
+    });
+
+    mostrarSeleccionadas('subcategoriasSeleccionadas', subcategoriasSeleccionadas, subcategorias, 'removerSubcategoria');
+  }
+
+  function mostrarSeleccionadas(wrapperId, array, listaReferencia, fnName) {
+    const wrapper = document.getElementById(wrapperId);
+    wrapper.innerHTML = '';
+    array.forEach(id => {
+      const nombre = (listaReferencia.find(x => x.id === id) || {}).nombre || id;
+      const chip = document.createElement('span');
+      chip.className = 'inline-flex items-center bg-blue-200 text-blue-800 rounded-full px-3 py-1 text-sm m-1';
+      chip.innerHTML = `${nombre} <button onclick="${fnName}(${id})" class="ml-2 text-red-500 font-bold">×</button>`;
+      wrapper.appendChild(chip);
+    });
+  }
+
+  window.removerCategoria = function(id) {
+    categoriasSeleccionadas = categoriasSeleccionadas.filter(c => c !== id);
+    const checkbox = document.getElementById(`cat_${id}`);
+    if (checkbox) checkbox.checked = false;
+    mostrarSeleccionadas('categoriasSeleccionadas', categoriasSeleccionadas, categorias, 'removerCategoria');
+    cargarSubcategorias();
+  };
+
+  window.removerSubcategoria = function(id) {
+    subcategoriasSeleccionadas = subcategoriasSeleccionadas.filter(s => s !== id);
+    const checkbox = document.getElementById(`sub_${id}`);
+    if (checkbox) checkbox.checked = false;
+    mostrarSeleccionadas('subcategoriasSeleccionadas', subcategoriasSeleccionadas, subcategorias, 'removerSubcategoria');
+  };
+
+
+
+  async function cargarImagenes() {
+    const { data, error } = await supabase.from('imagenesComercios').select('*').eq('idComercio', idComercio);
+    if (error) {
+      console.error('Error cargando imágenes', error);
+      return;
+    }
+
+    const logo = data.find(i => i.logo);
+    const portada = data.find(i => i.portada);
+    const galeria = data.filter(i => !i.logo && !i.portada);
+
+    if (logo) document.getElementById('logoPreview').src = supabase.storage.from('galeriacomercios').getPublicUrl(logo.imagen).data.publicUrl;
+    if (portada) document.getElementById('portadaPreview').src = supabase.storage.from('galeriacomercios').getPublicUrl(portada.imagen).data.publicUrl;
+
+    const galeriaDiv = document.getElementById('galeriaPreview');
+    galeriaDiv.innerHTML = '';
+    galeria.forEach(img => {
+      const url = supabase.storage.from('galeriacomercios').getPublicUrl(img.imagen).data.publicUrl;
+      const contenedor = document.createElement('div');
+      contenedor.className = 'relative w-24 h-24';
+      contenedor.innerHTML = `
+        <img src="${url}" class="w-full h-full object-cover rounded border">
+        <button onclick="eliminarImagen(${img.id})" class="absolute top-1 right-1 bg-red-500 text-white rounded-full px-2">×</button>
+        <button onclick="marcarComoPortada(${img.id})" class="absolute bottom-1 left-1 bg-blue-600 text-white text-xs rounded px-1">Portada</button>
+      `;
+      galeriaDiv.appendChild(contenedor);
+    });
+  }
+
+  window.eliminarImagen = async function(idImagen) {
+    const { error } = await supabase.from('imagenesComercios').delete().eq('id', idImagen);
+    if (error) return alert('Error eliminando imagen');
+    cargarImagenes();
+  }
+
+  window.marcarComoPortada = async function(idImagen) {
+    // Primero desmarcar todas las portadas del comercio
+    const { error: desmarcarError } = await supabase
+      .from('imagenesComercios')
+      .update({ portada: false })
+      .eq('idComercio', idComercio);
+
+    if (desmarcarError) return alert('Error desmarcando portada');
+
+    // Luego marcar la nueva imagen como portada
+    const { error: marcarError } = await supabase
+      .from('imagenesComercios')
+      .update({ portada: true })
+      .eq('id', idImagen);
+
+    if (marcarError) return alert('Error marcando nueva portada');
+
+    alert('Portada actualizada');
+    cargarImagenes();
+  }
+
+  async function cargarHorarios() {
+    const { data } = await supabase.from('Horarios').select('*').eq('idComercio', idComercio);
+    const container = document.getElementById('horariosContainer');
+    container.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+      const dia = dias[i];
+      const h = data.find(d => d.diaSemana === i);
+      const div = document.createElement('div');
+      div.className = 'p-4 border rounded bg-white mb-4';
+      div.innerHTML = `
+        <h4 class="font-bold mb-2">${dia}</h4>
+        <div class="grid grid-cols-2 gap-2">
+          <input type="time" id="apertura_${i}" value="${h?.apertura || ''}" class="border rounded px-2 py-1">
+          <input type="time" id="cierre_${i}" value="${h?.cierre || ''}" class="border rounded px-2 py-1">
+        </div>
+        <label class="mt-2 inline-flex items-center">
+          <input type="checkbox" id="cerrado_${i}" ${h?.cerrado ? 'checked' : ''}>
+          <span class="ml-2 font-semibold">Cerrado</span>
+        </label>
+      `;
+      container.appendChild(div);
+    }
+  }
+
+  async function cargarAmenidades() {
+    const { data: amenidades } = await supabase.from('Amenidades').select('*');
+    const { data: asignadas } = await supabase.from('comercioAmenidades').select('idAmenidad').eq('idComercio', idComercio);
+    const container = document.getElementById('amenidadesContainer');
+    container.innerHTML = '';
+    amenidades.forEach(a => {
+      const checked = asignadas.some(x => x.idAmenidad === a.id);
+      const label = document.createElement('label');
+      label.className = 'flex items-center gap-2';
+      label.innerHTML = `
+        <input type="checkbox" value="${a.id}" ${checked ? 'checked' : ''}>
+        <i class="${a.icono} text-gray-600"></i> ${a.nombre}
+      `;
+      container.appendChild(label);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await cargarMunicipios();
+    await cargarDatosComercio();
+    await cargarCategorias();
+    await cargarSubcategorias();
+    await cargarImagenes();
+    await cargarHorarios();
+    await cargarAmenidades();
+  });
+
+  // Eliminar logo
+document.getElementById('eliminarLogo').addEventListener('click', async () => {
+  const { data: imagenes } = await supabase.from('imagenesComercios').select('*').eq('idComercio', idComercio).eq('logo', true).single();
+  if (imagenes) {
+    await supabase.storage.from('galeriacomercios').remove([imagenes.imagen]);
+    await supabase.from('imagenesComercios').delete().eq('id', imagenes.id);
+    document.getElementById('logoPreview').src = '';
+    alert('Logo eliminado');
+  }
+});
+
+// Subir nuevo logo
+document.getElementById('nuevoLogo').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const extension = file.name.split('.').pop();
+  const filePath = `Restaurantes/Ponce/${idComercio}/logo.${extension}`;
+
+  // Elimina logo anterior si existe
+  const { data: anterior } = await supabase.from('imagenesComercios').select('*').eq('idComercio', idComercio).eq('logo', true).single();
+  if (anterior) {
+    await supabase.storage.from('galeriacomercios').remove([anterior.imagen]);
+    await supabase.from('imagenesComercios').delete().eq('id', anterior.id);
+  }
+
+  // Subir nuevo logo
+  const { error: uploadError } = await supabase.storage.from('galeriacomercios').upload(filePath, file);
+  if (uploadError) return alert('Error subiendo logo');
+
+  await supabase.from('imagenesComercios').insert({
+    idComercio,
+    imagen: filePath,
+    logo: true,
+    portada: false,
+    orden: 0,
+  });
+
+  const url = supabase.storage.from('galeriacomercios').getPublicUrl(filePath).data.publicUrl;
+  document.getElementById('logoPreview').src = url;
+  alert('Logo actualizado');
+});
+
+  document.getElementById('btnGuardar').addEventListener('click', async () => {
+    const payload = {
+      nombre: document.getElementById('nombre')?.value || '',
+      direccion: document.getElementById('direccion')?.value || '',
+      telefono: document.getElementById('telefono')?.value || '',
+      descripcion: document.getElementById('descripcion')?.value || '',
+      whatsapp: document.getElementById('whatsapp')?.value || '',
+      facebook: document.getElementById('facebook')?.value || '',
+      instagram: document.getElementById('instagram')?.value || '',
+      tiktok: document.getElementById('tiktok')?.value || '',
+      webpage: document.getElementById('webpage')?.value || '',
+      colorPrimario: document.getElementById('colorPrimario')?.value || '',
+      colorSecundario: document.getElementById('colorSecundario')?.value || '',
+      idMunicipio: parseInt(document.getElementById('municipio')?.value) || null,
+      idCategoria: categoriasSeleccionadas,
+      idSubcategoria: subcategoriasSeleccionadas,
+    };
+
+    const { error } = await supabase
+      .from('Comercios')
+      .update(payload)
+      .eq('id', idComercio);
+
+    if (error) {
+      alert('Error actualizando comercio');
+      console.error(error);
+    } else {
+      alert('Cambios guardados correctamente');
+    }
+  });
+</script>
+
+</body>
+</html>

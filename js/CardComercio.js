@@ -12,8 +12,8 @@ export function cardComercio(comercio) {
       <img src="${comercio.imagenPortada}" alt="Portada de ${comercio.nombre}" 
         class="w-full h-20 object-cover" />
 
-      <!-- Logo y nombre -->
-      <div class="relative w-full flex flex-col items-center pt-9 mt-6">
+      <!-- Logo y nombre con enlace -->
+      <a href="perfilComercio.html?id=${comercio.id}" class="relative w-full flex flex-col items-center pt-9 mt-6 no-underline">
         <!-- Logo centrado y superpuesto -->
         <img src="${comercio.logo}" alt="Logo de ${comercio.nombre}"
           class="w-24 h-24 rounded-full absolute left-1/2 -top-10 transform -translate-x-1/2 
@@ -29,31 +29,31 @@ export function cardComercio(comercio) {
             </h3>
           </div>
         </div>
+      </a>
 
-        <!-- Botón de llamada -->
-        <a href="tel:${comercio.telefono}" 
-          class="inline-flex items-center justify-center gap-2 text-[15px] text-white font-medium 
-                 bg-red-600 rounded-full px-4 py-[6px] mb-2 shadow hover:bg-red-700 transition 
-                 mx-auto mt-2 max-w-[100%]">
-          <i class="fa-solid fa-phone text-base"></i> ${comercio.telefono}
-        </a>
+      <!-- Botón de llamada -->
+      <a href="tel:${comercio.telefono}" 
+        class="inline-flex items-center justify-center gap-2 text-[15px] text-white font-medium 
+               bg-red-600 rounded-full px-4 py-[6px] mb-2 shadow hover:bg-red-700 transition 
+               mx-auto mt-2 max-w-[100%]">
+        <i class="fa-solid fa-phone text-base"></i> ${comercio.telefono}
+      </a>
 
-        <!-- Estado de apertura -->
-        <div class="flex justify-center items-center gap-1 
-                    ${comercio.abierto ? 'text-green-600' : 'text-red-600'} 
-                    font-medium mb-1 text-base">
-          <i class="far fa-clock"></i> ${comercio.abierto ? 'Abierto Ahora' : 'Cerrado Ahora'}
-        </div>
+      <!-- Estado de apertura -->
+      <div class="flex justify-center items-center gap-1 
+                  ${comercio.abierto ? 'text-green-600' : 'text-red-600'} 
+                  font-medium mb-1 text-base">
+        <i class="far fa-clock"></i> ${comercio.abierto ? 'Abierto Ahora' : 'Cerrado Ahora'}
+      </div>
 
-        <!-- Pueblo -->
-        <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#23b4e9]">
-          <i class="fas fa-map-pin text-[#23b4e9]"></i> ${comercio.pueblo}
-        </div>
+      <!-- Pueblo -->
+      <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#23b4e9]">
+        <i class="fas fa-map-pin text-[#23b4e9]"></i> ${comercio.pueblo}
+      </div>
 
-        <!-- Tiempo en vehículo -->
-        <div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-4">
-          <i class="fas fa-car"></i> ${comercio.tiempoVehiculo}
-        </div>
+      <!-- Tiempo en vehículo -->
+      <div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-4">
+        <i class="fas fa-car"></i> ${comercio.tiempoVehiculo}
       </div>
     </div>
   `;

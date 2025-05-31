@@ -12,9 +12,40 @@
     body { font-family: 'Kanit', sans-serif; }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 px-4 py-6">
+<body class="bg-gray-50">
+
+  <!-- Header y Sidebar -->
+  <div id="headerContainer"></div>
+
+  <script>
+  fetch("adminHeader.html")
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById("headerContainer").innerHTML = html;
+
+      // Activar funcionalidad del sidebar
+      const toggleBtn = document.getElementById("menuToggle");
+      const sidebar = document.getElementById("adminSidebar");
+      const overlay = document.getElementById("sidebarOverlay");
+
+      if (toggleBtn && sidebar && overlay) {
+        toggleBtn.addEventListener("click", () => {
+          const visible = sidebar.classList.contains("-translate-x-full");
+          sidebar.classList.toggle("-translate-x-full");
+          overlay.classList.toggle("hidden", !visible);
+        });
+
+        overlay.addEventListener("click", () => {
+          sidebar.classList.add("-translate-x-full");
+          overlay.classList.add("hidden");
+        });
+      }
+    });
+</script>
+
+<main class="px-4 py-6">
   <div class="max-w-5xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">Crear Nuevo Comercio</h1>
+    <h2 class="text-2xl text-center font-medium mb-4">Nuevo Comercio</h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <input type="text" id="nombre" placeholder="Nombre del Comercio" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
@@ -157,6 +188,7 @@
       Crear Comercio
     </button>
   </div>
+    </main>
 
 
 
@@ -164,10 +196,10 @@
 
 
   <!-- Funciones JS -->
-
+    
 
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
     const supabase = createClient(
       'https://zgjaxanqfkweslkxtayt.supabase.co',

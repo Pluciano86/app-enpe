@@ -1,3 +1,4 @@
+// main.js corregido para listar comercios sin hacer JOIN directos a arrays
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 const supabase = createClient(
@@ -9,29 +10,25 @@ const baseImageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object
 
 let todosLosComercios = [];
 let logos = [];
+let categorias = [];
+let municipios = [];
 
 async function cargarComercios() {
-  const { data: comercios, error } = await supabase
-    .from('Comercios')
-    .select(`
-      id, nombre, activo, created_at, idCategoria, idMunicipio, idArea,
-      Categorias: idCategoria (nombre),
-      Municipios: idMunicipio (nombre),
-      Areas: idArea (nombre)
-    `);
-
-  const { data: imagenes } = await supabase
-    .from('imagenesComercios')
-    .select('idComercio, imagen, logo')
-    .eq('logo', true);
+  const { data: comercios, error } = await supabase.from('Comercios').select('*');
+  const { data: imagenes } = await supabase.from('imagenesComercios').select('idComercio, imagen, logo').eq('logo', true);
+  const { data: catData } = await supabase.from('Categorias').select('id, nombre');
+  const { data: muniData } = await supabase.from('Municipios').select('id, nombre');
 
   if (error) {
     console.error('Error cargando comercios:', error);
+    alert('Error cargando comercios');
     return;
   }
 
   todosLosComercios = comercios;
   logos = imagenes;
+  categorias = catData;
+  municipios = muniData;
 
   filtrarYMostrarComercios();
 }
@@ -42,9 +39,11 @@ function filtrarYMostrarComercios() {
   const filtroMunicipio = document.getElementById('search-municipio').value;
   const filtroOrden = document.getElementById('search-orden').value;
 
+  const normalizar = txt => txt.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
   let lista = todosLosComercios.filter(c => {
-    if (filtroNombre && !c.nombre.toLowerCase().includes(filtroNombre)) return false;
-    if (filtroCategoria && c.idCategoria != filtroCategoria) return false;
+    if (filtroNombre && !normalizar(c.nombre).includes(normalizar(filtroNombre))) return false;
+    if (filtroCategoria && !c.idCategoria?.includes(parseInt(filtroCategoria))) return false;
     if (filtroMunicipio && c.idMunicipio != filtroMunicipio) return false;
     return true;
   });
@@ -57,6 +56,9 @@ function filtrarYMostrarComercios() {
 
   const tabla = document.getElementById('tabla-comercios');
   const tablaMobile = document.getElementById('tabla-mobile');
+  const contador = document.getElementById('contador-comercios');
+  contador.textContent = `Mostrando ${lista.length} comercio${lista.length !== 1 ? 's' : ''}`;
+
   tabla.innerHTML = '';
   tablaMobile.innerHTML = '';
 
@@ -64,52 +66,77 @@ function filtrarYMostrarComercios() {
     const logo = logos.find(img => img.idComercio === c.id);
     const logoUrl = logo ? `${baseImageUrl}/${logo.imagen}` : '';
 
-    // 🖥 Desktop
+    const nombreCategoria = categorias.find(cat => c.idCategoria?.includes(cat.id))?.nombre || '-';
+    const nombreMunicipio = municipios.find(m => m.id === c.idMunicipio)?.nombre || '-';
+
+    // Desktop
     const fila = document.createElement('tr');
     fila.innerHTML = `
       <td class="px-4 py-2 font-medium flex items-center gap-2">
         <img src="${logoUrl}" class="w-8 h-8 object-contain border rounded" />
         ${c.nombre}
       </td>
-      <td class="px-4 py-2">${c.Categorias?.nombre || '-'}</td>
-      <td class="px-4 py-2">${c.Municipios?.nombre || '-'}</td>
-      <td class="px-4 py-2">${c.Areas?.nombre || '-'}</td>
+      <td class="px-4 py-2">${nombreCategoria}</td>
+      <td class="px-4 py-2">${nombreMunicipio}</td>
+      <td class="px-4 py-2">-</td>
       <td class="px-4 py-2 text-center">
         <input type="checkbox" ${c.activo ? 'checked' : ''} disabled>
       </td>
       <td class="px-4 py-2 text-xs">${new Date(c.created_at).toLocaleDateString()}</td>
       <td class="px-4 py-2 text-center">
-        <button class="text-orange-500"><i class="fas fa-edit"></i></button>
-        <button class="text-red-500 ml-2"><i class="fas fa-trash-alt"></i></button>
+        <button class="text-orange-500 btn-editar" data-id="${c.id}"><i class="fas fa-edit"></i></button>
+        <button class="text-red-500 ml-2 btn-eliminar" data-id="${c.id}"><i class="fas fa-trash-alt"></i></button>
       </td>
     `;
     tabla.appendChild(fila);
 
-    // 📱 Mobile
+    // Mobile
     const card = document.createElement('div');
     card.className = 'bg-white rounded-lg shadow p-4 flex flex-col gap-2';
     card.innerHTML = `
       <div class="flex gap-4 items-start">
         <div class="flex gap-3 flex-1">
-          <img src="${logoUrl}" class="w-12 h-12 object-contain border rounded bg-white"/>
+          <img src="${logoUrl}" class="w-24 h-24 object-contain shadow rounded-full bg-white"/>
           <div>
-            <div class="text-base font-bold text-gray-800">${c.nombre}</div>
-            <div class="text-sm text-gray-600">Categoría: <strong>${c.Categorias?.nombre}</strong></div>
-            <div class="text-sm text-gray-600">Municipio: <strong>${c.Municipios?.nombre}</strong> Área: <strong>${c.Areas?.nombre}</strong></div>
+            <div class="text-xl font-bold text-gray-800">${c.nombre}</div>
+            <div class="text-sm text-gray-600">Categoría: <strong>${nombreCategoria}</strong></div>
+            <div class="text-sm text-gray-600">Municipio: <strong>${nombreMunicipio}</strong></div>
             <span class="text-xs text-gray-500">Desde: ${new Date(c.created_at).toLocaleDateString()}</span>
           </div>
         </div>
         <div class="flex flex-col items-center gap-3 text-xl">
-          <button class="text-orange-500"><i class="fas fa-edit"></i></button>
+          <button class="text-orange-500 btn-editar" data-id="${c.id}"><i class="fas fa-edit"></i></button>
           <label class="flex flex-col items-center text-xs text-gray-600">
             <input type="checkbox" ${c.activo ? 'checked' : ''} disabled>
             <span class="mt-1">Activo</span>
           </label>
-          <button class="text-red-500"><i class="fas fa-times-circle"></i></button>
+          <button class="text-red-500 btn-eliminar" data-id="${c.id}"><i class="fas fa-times-circle"></i></button>
         </div>
       </div>
     `;
     tablaMobile.appendChild(card);
+  });
+
+  document.querySelectorAll('.btn-editar').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.id;
+      window.location.href = `editarComercio.html?id=${id}`;
+    });
+  });
+
+  document.querySelectorAll('.btn-eliminar').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.currentTarget.dataset.id;
+      if (confirm("¿Seguro que deseas eliminar este comercio?")) {
+        const { error } = await supabase.from('Comercios').delete().eq('id', id);
+        if (error) {
+          alert("Error al eliminar.");
+        } else {
+          alert("Comercio eliminado exitosamente.");
+          cargarComercios();
+        }
+      }
+    });
   });
 }
 
