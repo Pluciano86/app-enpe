@@ -17,7 +17,10 @@ async function cargarPerfilComercio() {
   const logo = document.getElementById('logoComercio');
 
   if (nombre) nombre.textContent = data.nombre;
-  if (telefono) telefono.textContent = data.telefono;
+  if (telefono) {
+  telefono.href = `tel:${data.telefono}`;
+  telefono.innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${data.telefono}`;
+}   
   if (direccion) direccion.textContent = data.direccion;
 
   // redes sociales
