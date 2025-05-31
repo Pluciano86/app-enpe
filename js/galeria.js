@@ -111,3 +111,42 @@ document.getElementById('nextModal')?.addEventListener('click', () => {
 });
 
 cargarGaleria();
+
+// Variables para swipe
+let startX = 0;
+let isDragging = false;
+const slider = document.getElementById('sliderModal');
+
+// Versión para touch (mobile)
+slider?.addEventListener('touchstart', (e) => {
+  startX = e.touches[0].clientX;
+});
+
+slider?.addEventListener('touchend', (e) => {
+  const endX = e.changedTouches[0].clientX;
+  handleSwipe(endX - startX);
+});
+
+// Versión para mouse (desktop)
+slider?.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  startX = e.clientX;
+});
+
+slider?.addEventListener('mouseup', (e) => {
+  if (!isDragging) return;
+  isDragging = false;
+  const endX = e.clientX;
+  handleSwipe(endX - startX);
+});
+
+function handleSwipe(diff) {
+  const threshold = 50; // mínima distancia para contar como swipe
+  if (diff > threshold && imagenActual > 0) {
+    imagenActual--;
+  } else if (diff < -threshold && imagenActual < imagenesGaleria.length - 1) {
+    imagenActual++;
+  }
+
+  slider.style.transform = `translateX(-${imagenActual * 100}%)`;
+}
