@@ -65,17 +65,22 @@ function abrirModal(index) {
   const slider = document.getElementById('sliderModal');
   if (!modal || !slider) return;
 
-  slider.innerHTML = '';
+  slider.innerHTML = ''; // limpiar slider
   imagenActual = index;
 
   imagenesGaleria.forEach((url) => {
     const slide = document.createElement('img');
     slide.src = url;
-    slide.className = 'w-full object-contain min-w-full snap-center';
+    slide.className = 'w-full object-contain flex-shrink-0';
+    slide.style.maxHeight = '90vh';
     slider.appendChild(slide);
   });
 
-  slider.scrollTo({ left: slider.clientWidth * imagenActual, behavior: 'auto' });
+  // Aplica el estilo para mostrar la imagen correcta
+  slider.style.display = 'flex';
+  slider.style.transition = 'transform 0.5s ease';
+  slider.style.transform = `translateX(-${imagenActual * 100}%)`;
+
   modal.classList.remove('hidden');
 }
 
