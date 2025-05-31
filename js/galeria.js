@@ -2,10 +2,11 @@ import { supabase } from './supabaseClient.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 const galeriaContenedor = document.getElementById('galeriaImagenes');
+const modal = document.getElementById('modalGaleria');
+const slider = document.getElementById('sliderModal');
 
 let imagenesGaleria = [];
 let imagenActual = 0;
-let modalSlider; // referencia global para usar en swipe
 
 async function cargarGaleria() {
   const { data, error } = await supabase
@@ -62,72 +63,83 @@ function iniciarAutoSlide() {
 }
 
 function abrirModal(index) {
-  const modal = document.getElementById('modalGaleria');
-  modalSlider = document.getElementById('sliderModal');
-  if (!modal || !modalSlider) return;
+  if (!modal || !slider) return;
 
-  modalSlider.innerHTML = '';
-  imagenActual = index;
+  slider.innerHTML = '';
+  imagenActual = 0;
 
-  // Establecer el ancho total del slider
-  modalSlider.style.display = 'flex';
-  modalSlider.style.transition = 'transform 0.5s ease';
-  modalSlider.style.width = `${imagenesGaleria.length * 100}%`;
+  slider.style.display = 'flex';
+  slider.style.transition = 'transform 0.5s ease';
+  slider.style.width = `${imagenesGaleria.length * 100}%`;
 
-  imagenesGaleria.forEach((url) => {
-    const slide = document.createElement('img');
-    slide.src = url;
-    slide.className = 'object-contain flex-shrink-0';
-    slide.style.maxHeight = '90vh';
-    slide.style.width = `${100 / imagenesGaleria.length}%`; // Ajusta para que todas entren en línea
-    modalSlider.appendChild(slide);
-  });
+  // Crea imágenes en orden comenzando desde la seleccionada
+  for (let i = 0; i < imagenesGaleria.length; i++) {
+    const url = imagenesGaleria[(index + i) % imagenesGaleria.length];
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'object-contain flex-shrink-0';
+    img.style.width = `${100 / imagenesGaleria.length}%`;
+    img.style.maxHeight = '90vh';
+    slider.appendChild(img);
+  }
 
-  modalSlider.style.transform = `translateX(-${imagenActual * (100 / imagenesGaleria.length)}%)`;
+  imagenActual = 0;
+  updateTransform();
   modal.classList.remove('hidden');
 }
 
-document.getElementById('modalGaleria')?.addEventListener('click', (e) => {
+function updateTransform() {
+  if (slider) {
+    slider.style.transform = `translateX(-${imagenActual * (100 / imagenesGaleria.length)}%)`;
+  }
+}
+
+// Cerrar con fondo
+modal?.addEventListener('click', (e) => {
   if (e.target.id === 'modalGaleria') {
-    document.getElementById('modalGaleria')?.classList.add('hidden');
+    modal.classList.add('hidden');
   }
 });
 
+// Cerrar con X
 document.getElementById('cerrarModal')?.addEventListener('click', () => {
-  document.getElementById('modalGaleria')?.classList.add('hidden');
+  modal?.classList.add('hidden');
+});
+
+// Botones navegación
+document.getElementById('nextModal')?.addEventListener('click', () => {
+  if (imagenActual < imagenesGaleria.length - 1) {
+    imagenActual++;
+    updateTransform();
+  }
 });
 
 document.getElementById('prevModal')?.addEventListener('click', () => {
-  if (!modalSlider) return;
-  if (imagenActual > 0) imagenActual--;
-  else imagenActual = imagenesGaleria.length - 1;
-  modalSlider.style.transform = `translateX(-${imagenActual * 100}%)`;
+  if (imagenActual > 0) {
+    imagenActual--;
+    updateTransform();
+  }
 });
 
-document.getElementById('nextModal')?.addEventListener('click', () => {
-  if (!modalSlider) return;
-  if (imagenActual < imagenesGaleria.length - 1) imagenActual++;
-  else imagenActual = 0;
-  modalSlider.style.transform = `translateX(-${imagenActual * 100}%)`;
-});
-
-// SWIPE - TOUCH
+// Swipe - touch
 let startX = 0;
-document.getElementById('sliderModal')?.addEventListener('touchstart', (e) => {
+slider?.addEventListener('touchstart', (e) => {
   startX = e.touches[0].clientX;
 });
-document.getElementById('sliderModal')?.addEventListener('touchend', (e) => {
+
+slider?.addEventListener('touchend', (e) => {
   const diff = e.changedTouches[0].clientX - startX;
   handleSwipe(diff);
 });
 
-// SWIPE - MOUSE
+// Swipe - mouse
 let isDragging = false;
-document.getElementById('sliderModal')?.addEventListener('mousedown', (e) => {
+slider?.addEventListener('mousedown', (e) => {
   isDragging = true;
   startX = e.clientX;
 });
-document.getElementById('sliderModal')?.addEventListener('mouseup', (e) => {
+
+slider?.addEventListener('mouseup', (e) => {
   if (!isDragging) return;
   isDragging = false;
   const diff = e.clientX - startX;
@@ -141,9 +153,7 @@ function handleSwipe(diff) {
   } else if (diff < -threshold && imagenActual < imagenesGaleria.length - 1) {
     imagenActual++;
   }
-  if (modalSlider) {
-    modalSlider.style.transform = `translateX(-${imagenActual * 100}%)`;
-  }
+  updateTransform();
 }
 
 cargarGaleria();
