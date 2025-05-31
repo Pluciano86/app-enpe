@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
@@ -63,9 +64,6 @@ function iniciarAutoSlide() {
 }
 
 function abrirModal(index) {
-  const modal = document.getElementById('modalGaleria');
-  const slider = document.getElementById('sliderModal');
-  const bodyPrincipal = document.getElementById('bodyPrincipal');
   if (!modal || !slider) return;
 
   slider.innerHTML = '';
@@ -75,7 +73,6 @@ function abrirModal(index) {
   slider.style.transition = 'transform 0.5s ease';
   slider.style.width = `${imagenesGaleria.length * 100}%`;
 
-  // Crea las imágenes en orden rotado (desde la seleccionada)
   for (let i = 0; i < imagenesGaleria.length; i++) {
     const url = imagenesGaleria[(index + i) % imagenesGaleria.length];
     const img = document.createElement('img');
@@ -89,62 +86,51 @@ function abrirModal(index) {
   imagenActual = 0;
   updateTransform();
   modal.classList.remove('hidden');
-  bodyPrincipal?.classList.add('overflow-hidden'); // 🔒 bloquea scroll
+  document.getElementById('bodyPrincipal')?.classList.add('overflow-hidden');
 }
 
 function updateTransform() {
-  const slider = document.getElementById('sliderModal');
-  if (slider && imagenesGaleria.length > 0) {
+  if (slider) {
     slider.style.transform = `translateX(-${imagenActual * (100 / imagenesGaleria.length)}%)`;
   }
 }
 
-// Cerrar modal al hacer click en fondo
-document.getElementById('modalGaleria')?.addEventListener('click', (e) => {
-  if (e.target.id === 'modalGaleria') cerrarModal();
+modal?.addEventListener('click', (e) => {
+  if (e.target.id === 'modalGaleria') {
+    modal.classList.add('hidden');
+    document.getElementById('bodyPrincipal')?.classList.remove('overflow-hidden');
+  }
 });
 
-// Cerrar con botón X
-document.getElementById('cerrarModal')?.addEventListener('click', cerrarModal);
-
-function cerrarModal() {
-  document.getElementById('modalGaleria')?.classList.add('hidden');
-  document.getElementById('bodyPrincipal')?.classList.remove('overflow-hidden'); // 🔓 desbloquea scroll
-}
-
-// Botones navegación
-document.getElementById('nextModal')?.addEventListener('click', () => {
-  if (imagenActual < imagenesGaleria.length - 1) {
-    imagenActual++;
-    updateTransform();
-  }
+document.getElementById('cerrarModal')?.addEventListener('click', () => {
+  modal?.classList.add('hidden');
+  document.getElementById('bodyPrincipal')?.classList.remove('overflow-hidden');
 });
 
 document.getElementById('prevModal')?.addEventListener('click', () => {
-  if (imagenActual > 0) {
-    imagenActual--;
-    updateTransform();
-  }
+  if (imagenActual > 0) imagenActual--;
+  updateTransform();
 });
 
-// Swipe - touch
+document.getElementById('nextModal')?.addEventListener('click', () => {
+  if (imagenActual < imagenesGaleria.length - 1) imagenActual++;
+  updateTransform();
+});
+
 let startX = 0;
+let isDragging = false;
+
 slider?.addEventListener('touchstart', (e) => {
   startX = e.touches[0].clientX;
 });
-
 slider?.addEventListener('touchend', (e) => {
   const diff = e.changedTouches[0].clientX - startX;
   handleSwipe(diff);
 });
-
-// Swipe - mouse
-let isDragging = false;
 slider?.addEventListener('mousedown', (e) => {
   isDragging = true;
   startX = e.clientX;
 });
-
 slider?.addEventListener('mouseup', (e) => {
   if (!isDragging) return;
   isDragging = false;
