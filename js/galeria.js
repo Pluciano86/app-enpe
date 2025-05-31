@@ -32,7 +32,6 @@ async function cargarGaleria() {
     galeriaContenedor.appendChild(img);
   });
 
-  // ✅ Clonar la primera imagen para loop suave
   if (imagenesGaleria.length > 0) {
     const clone = galeriaContenedor.children[0].cloneNode(true);
     galeriaContenedor.appendChild(clone);
@@ -54,17 +53,12 @@ function iniciarAutoSlide() {
 
     if (currentIndex === total - 1) {
       setTimeout(() => {
-        galeriaContenedor.scrollTo({
-          left: 0,
-          behavior: 'auto'
-        });
+        galeriaContenedor.scrollTo({ left: 0, behavior: 'auto' });
         currentIndex = 0;
-      }, 500); // esperar a que termine la animación
+      }, 100);
     }
-  }, 4000);
+  }, 3000); // acelerado para que el salto sea menos perceptible
 }
-
-// 🔍 MODAL
 
 function abrirModal(index) {
   const modal = document.getElementById('modalGaleria');
@@ -77,37 +71,38 @@ function abrirModal(index) {
   imagenesGaleria.forEach((url) => {
     const slide = document.createElement('img');
     slide.src = url;
-    slide.className = 'w-full object-contain';
+    slide.className = 'w-full object-contain min-w-full snap-center';
     slider.appendChild(slide);
   });
 
-  slider.style.transform = `translateX(-${imagenActual * 100}%)`;
+  slider.scrollTo({ left: slider.clientWidth * imagenActual, behavior: 'auto' });
   modal.classList.remove('hidden');
 }
 
-// ❌ cerrar al dar clic fuera
 document.getElementById('modalGaleria')?.addEventListener('click', (e) => {
   if (e.target.id === 'modalGaleria') {
     document.getElementById('modalGaleria')?.classList.add('hidden');
   }
 });
 
-// ❌ cerrar con X
 document.getElementById('cerrarModal')?.addEventListener('click', () => {
   document.getElementById('modalGaleria')?.classList.add('hidden');
 });
 
-// ⬅️➡️ navegación dentro del modal
 document.getElementById('prevModal')?.addEventListener('click', () => {
+  const slider = document.getElementById('sliderModal');
+  if (!slider) return;
   if (imagenActual > 0) imagenActual--;
   else imagenActual = imagenesGaleria.length - 1;
-  document.getElementById('sliderModal').style.transform = `translateX(-${imagenActual * 100}%)`;
+  slider.scrollTo({ left: slider.clientWidth * imagenActual, behavior: 'smooth' });
 });
 
 document.getElementById('nextModal')?.addEventListener('click', () => {
+  const slider = document.getElementById('sliderModal');
+  if (!slider) return;
   if (imagenActual < imagenesGaleria.length - 1) imagenActual++;
   else imagenActual = 0;
-  document.getElementById('sliderModal').style.transform = `translateX(-${imagenActual * 100}%)`;
+  slider.scrollTo({ left: slider.clientWidth * imagenActual, behavior: 'smooth' });
 });
 
 cargarGaleria();
