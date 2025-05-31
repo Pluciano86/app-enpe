@@ -2,8 +2,7 @@ import { supabase } from './supabaseClient.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 const galeriaContenedor = document.getElementById('galeriaImagenes');
-const modal = document.getElementById('modalGaleria');
-const slider = document.getElementById('sliderModal');
+const bodyPrincipal = document.getElementById('bodyPrincipal');
 
 let imagenesGaleria = [];
 let imagenActual = 0;
@@ -63,66 +62,58 @@ function iniciarAutoSlide() {
 }
 
 function abrirModal(index) {
+  const modal = document.getElementById('modalGaleria');
+  const slider = document.getElementById('sliderModal');
   if (!modal || !slider) return;
 
   slider.innerHTML = '';
-  imagenActual = 0;
+  imagenActual = index;
 
-  slider.style.display = 'flex';
-  slider.style.transition = 'transform 0.5s ease';
-  slider.style.width = `${imagenesGaleria.length * 100}%`;
+  imagenesGaleria.forEach((url) => {
+    const slide = document.createElement('img');
+    slide.src = url;
+    slide.className = 'w-full object-contain flex-shrink-0';
+    slide.style.maxHeight = '90vh';
+    slider.appendChild(slide);
+  });
 
-  // Crea imágenes en orden comenzando desde la seleccionada
-  for (let i = 0; i < imagenesGaleria.length; i++) {
-    const url = imagenesGaleria[(index + i) % imagenesGaleria.length];
-    const img = document.createElement('img');
-    img.src = url;
-    img.className = 'object-contain flex-shrink-0';
-    img.style.width = `${100 / imagenesGaleria.length}%`;
-    img.style.maxHeight = '90vh';
-    slider.appendChild(img);
-  }
-
-  imagenActual = 0;
-  updateTransform();
+  slider.style.transform = `translateX(-${imagenActual * 100}%)`;
   modal.classList.remove('hidden');
+  bodyPrincipal?.classList.add('overflow-hidden'); // 🔒 bloquea scroll
 }
 
-function updateTransform() {
-  if (slider) {
-    slider.style.transform = `translateX(-${imagenActual * (100 / imagenesGaleria.length)}%)`;
-  }
+function cerrarModal() {
+  const modal = document.getElementById('modalGaleria');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  bodyPrincipal?.classList.remove('overflow-hidden'); // 🔓 desbloquea scroll
 }
 
-// Cerrar con fondo
-modal?.addEventListener('click', (e) => {
-  if (e.target.id === 'modalGaleria') {
-    modal.classList.add('hidden');
-  }
+document.getElementById('modalGaleria')?.addEventListener('click', (e) => {
+  if (e.target.id === 'modalGaleria') cerrarModal();
 });
 
-// Cerrar con X
-document.getElementById('cerrarModal')?.addEventListener('click', () => {
-  modal?.classList.add('hidden');
-});
-
-// Botones navegación
-document.getElementById('nextModal')?.addEventListener('click', () => {
-  if (imagenActual < imagenesGaleria.length - 1) {
-    imagenActual++;
-    updateTransform();
-  }
-});
+document.getElementById('cerrarModal')?.addEventListener('click', cerrarModal);
 
 document.getElementById('prevModal')?.addEventListener('click', () => {
-  if (imagenActual > 0) {
-    imagenActual--;
-    updateTransform();
-  }
+  const slider = document.getElementById('sliderModal');
+  if (!slider) return;
+  if (imagenActual > 0) imagenActual--;
+  slider.style.transform = `translateX(-${imagenActual * 100}%)`;
 });
 
-// Swipe - touch
+document.getElementById('nextModal')?.addEventListener('click', () => {
+  const slider = document.getElementById('sliderModal');
+  if (!slider) return;
+  if (imagenActual < imagenesGaleria.length - 1) imagenActual++;
+  slider.style.transform = `translateX(-${imagenActual * 100}%)`;
+});
+
+// Swipe
 let startX = 0;
+let isDragging = false;
+const slider = document.getElementById('sliderModal');
+
 slider?.addEventListener('touchstart', (e) => {
   startX = e.touches[0].clientX;
 });
@@ -132,13 +123,10 @@ slider?.addEventListener('touchend', (e) => {
   handleSwipe(diff);
 });
 
-// Swipe - mouse
-let isDragging = false;
 slider?.addEventListener('mousedown', (e) => {
   isDragging = true;
   startX = e.clientX;
 });
-
 slider?.addEventListener('mouseup', (e) => {
   if (!isDragging) return;
   isDragging = false;
@@ -153,7 +141,7 @@ function handleSwipe(diff) {
   } else if (diff < -threshold && imagenActual < imagenesGaleria.length - 1) {
     imagenActual++;
   }
-  updateTransform();
+  slider.style.transform = `translateX(-${imagenActual * 100}%)`;
 }
 
 cargarGaleria();
