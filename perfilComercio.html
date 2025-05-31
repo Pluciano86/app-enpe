@@ -77,7 +77,7 @@
       <i class="fas fa-phone text-2x1"></i> 787-000-0000
     </a>
 
-    <p id="tiempoVehiculo" class="text-[#9c9c9c] font-light text-lx mb-4">
+    <p id="tiempoVehiculo" class="text-[#9c9c9c] font-light text-3x1 mb-4">
   <i class="fas fa-car"></i> Cargando distancia...
 </p>
 
@@ -111,6 +111,28 @@
     <button class="bg-orange-500 text-white font-semibold text-lg px-6 py-2 rounded-full">Ver Menú</button>
   </section>
 
+    <section class="px-6 md:px-10 mt-6">
+  <div class="bg-white rounded-lg shadow-sm p-5">
+    <p id="descripcionTexto" class="text-sm text-justify overflow-hidden line-clamp-5 transition-all duration-500 ease-in-out"></p>
+    <div class="text-center mt-3">
+      <button id="toggleDescripcion" class="text-gray-500 text-base font-medium underline">
+        Ver toda la información
+      </button>
+    </div>
+  </div>
+</section>
+
+
+<section class="px-6 md:px-10 mt-6">
+  <div class="bg-white rounded-lg shadow-sm p-6">
+    <h2 id="tituloHorario" class="text-center text-xl font-semibold mb-1 text-[#424242]">Horario de Nombre</h2>
+    <p id="estadoHorario" class="text-center text-3x1 font-medium mb-4 text-green-600">Abierto Ahora</p>
+
+    <div class="w-full" id="tablaHorarios">
+      <!-- Horarios aquí -->
+    </div>
+  </div>
+</section>
 
   <!-- Scripts principales -->
 <script type="module" src="./js/ubicacion.js"></script>
