@@ -103,9 +103,15 @@ async function cargarComercios() {
     query = query.overlaps('idCategoria', [idCategoriaDesdeURL]);
   }
 
-  const { data: comercios, error: errorComercios } = await query;
-  if (errorComercios) {
-    console.error('❌ Error cargando comercios:', errorComercios);
+  const { data: comercios, error } = await query;
+
+  if (error) {
+    console.error('❌ Error cargando comercios:', error);
+    return;
+  }
+
+  if (!comercios?.length) {
+    console.warn('⚠️ No se encontraron comercios en la base de datos.');
     return;
   }
 
@@ -132,14 +138,10 @@ async function cargarComercios() {
 
   // 4. Procesar la lista
   listaOriginal = comercios.map(comercio => {
-    // Buscar portada y logo en la lista ya traída
     const portada = imagenesAll.find(img => img.idComercio === comercio.id && img.portada);
     const logo = imagenesAll.find(img => img.idComercio === comercio.id && img.logo);
-
-    // Buscar horario del día actual
     const horario = horariosAll.find(h => h.idComercio === comercio.id);
 
-    // Calcular si está abierto
     const ahora = new Date();
     const horaActual = ahora.toTimeString().slice(0, 5);
     let abierto = false;
@@ -149,7 +151,6 @@ async function cargarComercios() {
       abierto = horaActual >= apertura && horaActual <= cierre;
     }
 
-    // Calcular distancia
     let distancia = null;
     if (latUsuario && lonUsuario && comercio.latitud && comercio.longitud) {
       distancia = calcularDistancia(latUsuario, lonUsuario, comercio.latitud, comercio.longitud);
@@ -168,11 +169,11 @@ async function cargarComercios() {
       imagenPortada: portada ? `${baseImageUrl}/${portada.imagen}` : '',
       logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
       distanciaKm: distancia,
-      idCategoria: comercio.idCategoria, // ← puede seguir igual si es único o array
+      idCategoria: comercio.idCategoria,
       idSubcategoria: Array.isArray(comercio.idSubcategoria)
-      ? comercio.idSubcategoria
-      : [parseInt(comercio.idSubcategoria)],
-     activoEnPeErre: comercio.activo === true,
+        ? comercio.idSubcategoria
+        : [parseInt(comercio.idSubcategoria)],
+      activoEnPeErre: comercio.activo === true,
       favorito: comercio.favorito || false
     };
   });

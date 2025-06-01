@@ -65,36 +65,36 @@
 </div>
 
 <!-- Switches de filtros -->
-<div class="flex flex-wrap gap-4 text-sm mt-4">
+<div class="flex flex-wrap gap-4 text-sm mt-4 text-center w-full">
   <!-- Abierto Ahora -->
-  <label class="relative inline-flex items-center cursor-pointer">
-  <input type="checkbox" id="filtro-abierto" class="sr-only peer">
-  <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 
-              transition-colors duration-300"></div>
-  <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full 
-              transition-transform duration-300 transform peer-checked:translate-x-5"></div>
-  <span class="ml-3 text-sm font-medium text-gray-700">Abierto ahora</span>
-</label>
+  <div class="flex-1">
+    <div class="mb-1 text-gray-700 font-medium">Abierto ahora</div>
+    <label class="relative inline-flex items-center cursor-pointer">
+      <input type="checkbox" id="filtro-abierto" class="sr-only peer">
+      <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition-colors duration-300"></div>
+      <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+    </label>
+  </div>
 
-  <!-- Favoritos -->
-  <label class="relative inline-flex items-center cursor-pointer">
-  <input type="checkbox" id="filtro-favoritos" class="sr-only peer">
-  <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-pink-500 
-              transition-colors duration-300"></div>
-  <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full 
-              transition-transform duration-300 transform peer-checked:translate-x-5"></div>
-  <span class="ml-3 text-sm font-medium text-gray-700">Mis Favoritos</span>
-</label>
+  <!-- Mis Favoritos -->
+  <div class="flex-1">
+    <div class="mb-1 text-gray-700 font-medium">Mis Favoritos</div>
+    <label class="relative inline-flex items-center cursor-pointer">
+      <input type="checkbox" id="filtro-favoritos" class="sr-only peer">
+      <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-pink-500 transition-colors duration-300"></div>
+      <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+    </label>
+  </div>
 
-  <!-- Activos en PeErre -->
- <label class="relative inline-flex items-center cursor-pointer">
-  <input type="checkbox" id="filtro-destacados" class="sr-only peer" checked>
-  <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-yellow-400 
-              transition-colors duration-300"></div>
-  <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full 
-              transition-transform duration-300 transform peer-checked:translate-x-5"></div>
-  <span class="ml-3 text-sm font-medium text-gray-700">Destacados</span>
-</label>
+  <!-- Destacados -->
+  <div class="flex-1">
+    <div class="mb-1 text-gray-700 font-medium">Destacados</div>
+    <label class="relative inline-flex items-center cursor-pointer">
+      <input type="checkbox" id="filtro-destacados" class="sr-only peer" checked>
+      <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-yellow-400 transition-colors duration-300"></div>
+      <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+    </label>
+  </div>
 </div>
 
     </div>

@@ -1,174 +1,79 @@
-// main.js corregido para listar comercios sin hacer JOIN directos a arrays
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+// adminLogoComercio.js
+import { supabase } from './supabaseClient.js';
 
-const supabase = createClient(
-  'https://zgjaxanqfkweslkxtayt.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
-);
-
-const baseImageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
-
-let todosLosComercios = [];
-let logos = [];
-let categorias = [];
-let municipios = [];
-
-async function cargarComercios() {
-  const { data: comercios, error } = await supabase.from('Comercios').select('*');
-  const { data: imagenes } = await supabase.from('imagenesComercios').select('idComercio, imagen, logo').eq('logo', true);
-  const { data: catData } = await supabase.from('Categorias').select('id, nombre');
-  const { data: muniData } = await supabase.from('Municipios').select('id, nombre');
-
-  if (error) {
-    console.error('Error cargando comercios:', error);
-    alert('Error cargando comercios');
+export async function guardarLogoSiAplica() {
+  const input = document.getElementById('nuevo-logo');
+  if (!input || !input.files || input.files.length === 0) {
+    console.log('📁 No hay nuevo logo para subir');
     return;
   }
 
-  todosLosComercios = comercios;
-  logos = imagenes;
-  categorias = catData;
-  municipios = muniData;
+  const file = input.files[0];
+  const idComercio = new URLSearchParams(window.location.search).get('id');
 
-  filtrarYMostrarComercios();
-}
+  const nombre = document.getElementById('nombre')?.value.trim();
+  const municipio = document.getElementById('municipio')?.value;
 
-function filtrarYMostrarComercios() {
-  const filtroNombre = document.getElementById('search-nombre').value.toLowerCase();
-  const filtroCategoria = document.getElementById('search-categoria').value;
-  const filtroMunicipio = document.getElementById('search-municipio').value;
-  const filtroOrden = document.getElementById('search-orden').value;
-
-  const normalizar = txt => txt.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-
-  let lista = todosLosComercios.filter(c => {
-    if (filtroNombre && !normalizar(c.nombre).includes(normalizar(filtroNombre))) return false;
-    if (filtroCategoria && !c.idCategoria?.includes(parseInt(filtroCategoria))) return false;
-    if (filtroMunicipio && c.idMunicipio != filtroMunicipio) return false;
-    return true;
-  });
-
-  if (filtroOrden === 'az') {
-    lista.sort((a, b) => a.nombre.localeCompare(b.nombre));
-  } else {
-    lista.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  if (!nombre || !municipio || !file) {
+    alert('Faltan datos para subir el logo');
+    return;
   }
 
-  const tabla = document.getElementById('tabla-comercios');
-  const tablaMobile = document.getElementById('tabla-mobile');
-  const contador = document.getElementById('contador-comercios');
-  contador.textContent = `Mostrando ${lista.length} comercio${lista.length !== 1 ? 's' : ''}`;
+  // 🧽 Limpiar el nombre para usarlo como carpeta
+  const nombreFolder = limpiarTexto(nombre.split(' ')[0].toUpperCase());
+  const municipioNombre = await obtenerNombreMunicipio(municipio);
+  const categoriaID = window.categoriasSeleccionadas?.[0];
 
-  tabla.innerHTML = '';
-  tablaMobile.innerHTML = '';
+  const categoriaNombre = await obtenerNombreCategoria(categoriaID);
+  const path = `${categoriaNombre}/${municipioNombre}/${nombreFolder}/logo_${Date.now()}.jpg`;
 
-  lista.forEach(c => {
-    const logo = logos.find(img => img.idComercio === c.id);
-    const logoUrl = logo ? `${baseImageUrl}/${logo.imagen}` : '';
+  console.log('🛣️ Ruta del logo:', path);
 
-    const nombreCategoria = categorias.find(cat => c.idCategoria?.includes(cat.id))?.nombre || '-';
-    const nombreMunicipio = municipios.find(m => m.id === c.idMunicipio)?.nombre || '-';
+  const { error: uploadError } = await supabase.storage
+    .from('galeriacomercios')
+    .upload(path, file, { upsert: true });
 
-    // Desktop
-    const fila = document.createElement('tr');
-    fila.innerHTML = `
-      <td class="px-4 py-2 font-medium flex items-center gap-2">
-        <img src="${logoUrl}" class="w-8 h-8 object-contain border rounded" />
-        ${c.nombre}
-      </td>
-      <td class="px-4 py-2">${nombreCategoria}</td>
-      <td class="px-4 py-2">${nombreMunicipio}</td>
-      <td class="px-4 py-2">-</td>
-      <td class="px-4 py-2 text-center">
-        <input type="checkbox" ${c.activo ? 'checked' : ''} disabled>
-      </td>
-      <td class="px-4 py-2 text-xs">${new Date(c.created_at).toLocaleDateString()}</td>
-      <td class="px-4 py-2 text-center">
-        <button class="text-orange-500 btn-editar" data-id="${c.id}"><i class="fas fa-edit"></i></button>
-        <button class="text-red-500 ml-2 btn-eliminar" data-id="${c.id}"><i class="fas fa-trash-alt"></i></button>
-      </td>
-    `;
-    tabla.appendChild(fila);
+  if (uploadError) {
+    console.error('❌ Error subiendo logo:', uploadError);
+    alert('Error al subir el logo');
+    return;
+  }
 
-    // Mobile
-    const card = document.createElement('div');
-    card.className = 'bg-white rounded-lg shadow p-4 flex flex-col gap-2';
-    card.innerHTML = `
-      <div class="flex gap-4 items-start">
-        <div class="flex gap-3 flex-1">
-          <img src="${logoUrl}" class="w-24 h-24 object-contain shadow rounded-full bg-white"/>
-          <div>
-            <div class="text-xl font-bold text-gray-800">${c.nombre}</div>
-            <div class="text-sm text-gray-600">Categoría: <strong>${nombreCategoria}</strong></div>
-            <div class="text-sm text-gray-600">Municipio: <strong>${nombreMunicipio}</strong></div>
-            <span class="text-xs text-gray-500">Desde: ${new Date(c.created_at).toLocaleDateString()}</span>
-          </div>
-        </div>
-        <div class="flex flex-col items-center gap-3 text-xl">
-          <button class="text-orange-500 btn-editar" data-id="${c.id}"><i class="fas fa-edit"></i></button>
-          <label class="flex flex-col items-center text-xs text-gray-600">
-            <input type="checkbox" ${c.activo ? 'checked' : ''} disabled>
-            <span class="mt-1">Activo</span>
-          </label>
-          <button class="text-red-500 btn-eliminar" data-id="${c.id}"><i class="fas fa-times-circle"></i></button>
-        </div>
-      </div>
-    `;
-    tablaMobile.appendChild(card);
-  });
+  // Actualizar en tabla imagenesComercios
+  await supabase.from('imagenesComercios')
+    .delete()
+    .eq('idComercio', idComercio)
+    .eq('logo', true);
 
-  document.querySelectorAll('.btn-editar').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const id = e.currentTarget.dataset.id;
-      window.location.href = `editarComercio.html?id=${id}`;
-    });
-  });
+  await supabase.from('imagenesComercios').insert([{
+    idComercio,
+    imagen: path,
+    logo: true,
+    portada: false,
+    orden: 0
+  }]);
 
-  document.querySelectorAll('.btn-eliminar').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const id = e.currentTarget.dataset.id;
-      if (confirm("¿Seguro que deseas eliminar este comercio?")) {
-        const { error } = await supabase.from('Comercios').delete().eq('id', id);
-        if (error) {
-          alert("Error al eliminar.");
-        } else {
-          alert("Comercio eliminado exitosamente.");
-          cargarComercios();
-        }
-      }
-    });
-  });
+  console.log('✅ Logo actualizado en DB');
 }
 
-async function cargarCategorias() {
-  const { data } = await supabase.from('Categorias').select('id, nombre');
-  const select = document.getElementById('search-categoria');
-  data.forEach(cat => {
-    const option = document.createElement('option');
-    option.value = cat.id;
-    option.textContent = cat.nombre;
-    select.appendChild(option);
-  });
+// Limpia texto para usar en rutas
+function limpiarTexto(texto) {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .toUpperCase();
 }
 
-async function cargarMunicipios() {
-  const { data } = await supabase.from('Municipios').select('id, nombre');
-  const select = document.getElementById('search-municipio');
-  data.forEach(m => {
-    const option = document.createElement('option');
-    option.value = m.id;
-    option.textContent = m.nombre;
-    select.appendChild(option);
-  });
+// Obtiene el nombre del municipio por ID
+async function obtenerNombreMunicipio(id) {
+  const { data } = await supabase.from('Municipios').select('nombre').eq('id', id).maybeSingle();
+  return limpiarTexto(data?.nombre || 'DESCONOCIDO');
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await cargarCategorias();
-  await cargarMunicipios();
-  await cargarComercios();
-
-  ['search-nombre', 'search-categoria', 'search-municipio', 'search-orden'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', filtrarYMostrarComercios);
-  });
-});
+// Obtiene el nombre de la categoría por ID
+async function obtenerNombreCategoria(id) {
+  const { data } = await supabase.from('Categorias').select('nombre').eq('id', id).maybeSingle();
+  return limpiarTexto(data?.nombre || 'CATEGORIA');
+}
