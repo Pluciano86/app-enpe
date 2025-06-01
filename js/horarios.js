@@ -60,11 +60,9 @@ async function cargarHorarios() {
       const peso = esHoy ? 'font-[500]' : 'font-[400]';
 
       return `
-  <div class="flex justify-center">
-    <div class="grid grid-cols-2 gap-2 text-[18px] ${color} ${peso} mb-2 w-full max-w-sm">
-      <div class="text-right w-32">${dia}:</div>
-      <div class="text-left">${cierre === '--:--' ? 'Cerrado' : `${apertura} – ${cierre}`}</div>
-    </div>
+  <div class="flex justify-center text-[18px] ${color} ${peso} mb-2">
+    <div class="w-28 text-left pr-2">${dia}:</div>
+    <div class="text-left">${cierre === '--:--' ? 'Cerrado' : `${apertura} – ${cierre}`}</div>
   </div>
 `;
     })
