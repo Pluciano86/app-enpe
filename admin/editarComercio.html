@@ -74,21 +74,17 @@ fetch("adminHeader.html")
       </div>
     </form>
 
-    <!-- Logo -->
-      <!-- Mostrar logo actual -->
-<div id="logo-actual" class="mb-4">
-  <label class="block mb-1 font-medium">Logo actual:</label>
-  <img id="preview-logo" class="w-32 h-32 object-contain border rounded bg-white p-1 shadow" />
-  <button type="button" id="btn-eliminar-logo" class="text-red-500 text-sm mt-2 block">Eliminar logo</button>
-</div>
+    <div id="logo-actual" class="mb-4">
+      <label class="block mb-1 font-medium">Logo actual:</label>
+      <img id="preview-logo" class="w-32 h-32 object-contain border rounded bg-white p-1 shadow" />
+      <button type="button" id="btn-eliminar-logo" class="text-red-500 text-sm mt-2 block">Eliminar logo</button>
+    </div>
 
-<!-- Subir nuevo logo -->
-<div class="mb-4">
-  <label for="nuevo-logo" class="block mb-1 font-medium">Nuevo logo:</label>
-  <input type="file" id="nuevo-logo" accept="image/*" />
-</div>
+    <div class="mb-4">
+      <label for="nuevo-logo" class="block mb-1 font-medium">Nuevo logo:</label>
+      <input type="file" id="nuevo-logo" accept="image/*" />
+    </div>
 
-    <!-- Portada y Galería -->
     <div class="mt-8">
       <h3 class="text-lg font-semibold">Imagen de Portada</h3>
       <img id="portadaPreview" class="w-full h-48 object-cover rounded border mt-2" />
@@ -96,28 +92,23 @@ fetch("adminHeader.html")
     </div>
     <div id="galeria-comercio" class="grid grid-cols-2 md:grid-cols-4 gap-4 my-4"></div>
 
-<div class="my-4">
-  <label class="block mb-1 font-medium">Subir nueva imagen:</label>
-  <input type="file" id="nueva-imagen-galeria" accept="image/*" />
-  <button id="btn-subir-imagen" class="mt-2 px-4 py-1 bg-green-600 text-white rounded">Subir Imagen</button>
-</div>
+    <div class="my-4">
+      <label class="block mb-1 font-medium">Subir nueva imagen:</label>
+      <input type="file" id="nueva-imagen-galeria" accept="image/*" multiple />
+      <button id="btn-subir-imagen" class="mt-2 px-4 py-1 bg-green-600 text-white rounded">Subir Imagen</button>
+    </div>
 
-    <!-- Horarios -->
     <div class="mt-8">
       <h3 class="text-lg font-semibold">Horarios</h3>
       <div id="horariosContainer" class="space-y-2"></div>
     </div>
 
-    <!-- Feriados -->
     <div class="mt-6">
-  <h3 class="text-lg font-semibold mb-2">Feriados</h3>
-  <div id="feriadosContainer" class="flex flex-col gap-2"></div>
-  <button id="btn-añadir-feriado" class="mt-2 bg-blue-600 text-white px-4 py-1 rounded">
-    Añadir Feriado
-  </button>
-</div>
+      <h3 class="text-lg font-semibold mb-2">Feriados</h3>
+      <div id="feriadosContainer" class="flex flex-col gap-2"></div>
+      <button id="btn-añadir-feriado" class="mt-2 bg-blue-600 text-white px-4 py-1 rounded">Añadir Feriado</button>
+    </div>
 
-    <!-- Amenidades -->
     <div class="mt-8">
       <h3 class="text-lg font-semibold">Amenidades</h3>
       <div id="amenidadesContainer" class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2"></div>
@@ -129,7 +120,6 @@ fetch("adminHeader.html")
       </div>
     </div>
 
-    <!-- Colores y botón final -->
     <div class="mt-8 grid grid-cols-2 gap-4">
       <div>
         <label for="colorPrimario">Color Primario</label>
@@ -144,7 +134,6 @@ fetch("adminHeader.html")
   </div>
 </main>
 
-
 <script type="module" src="/admin/js/supabaseClient.js"></script>
 <script type="module" src="/admin/js/mainAdmin.js"></script>
 <script type="module" src="/admin/js/adminLogoComercio.js"></script>
@@ -158,9 +147,24 @@ fetch("adminHeader.html")
 
 
 
+<!-- ✅ Script: Muestra la imagen de portada del comercio -->
+<script type="module">
+  import { supabase } from './js/supabaseClient.js';
+  const idComercio = new URLSearchParams(window.location.search).get('id');
 
+  const { data, error } = await supabase
+    .from('imagenesComercios')
+    .select('imagen')
+    .eq('idComercio', idComercio)
+    .eq('logo', true)
+    .maybeSingle();
 
-
+  if (!error && data?.imagen) {
+    const url = supabase.storage.from('galeriacomercios').getPublicUrl(data.imagen).data.publicUrl;
+    const preview = document.getElementById('preview-logo');
+    if (preview) preview.src = url;
+  }
+</script>
 
 <!-- ✅ Script: Muestra la imagen de portada del comercio -->
 <script type="module">
@@ -179,6 +183,45 @@ fetch("adminHeader.html")
     const preview = document.getElementById('portadaPreview');
     if (preview) preview.src = url;
   }
+</script>
+
+<script type="module">
+  // mainAdmin.js extendido para editarComercio.html y adminComercios.html
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+export const supabase = createClient(
+  'https://zgjaxanqfkweslkxtayt.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
+);
+
+export const baseImageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
+
+let todosLosComercios = [];
+let logos = [];
+let categorias = [];
+let municipios = [];
+
+export const idComercio = new URLSearchParams(window.location.search).get('id');
+
+export async function cargarDatosComercio() {
+  const { data, error } = await supabase.from('Comercios').select('*').eq('id', idComercio).single();
+  if (error) return alert('Error cargando comercio');
+
+  for (const key in data) {
+    const el = document.getElementById(key);
+    if (el) {
+      if (key.includes("color") && (!data[key] || !/^#[0-9A-Fa-f]{6}$/.test(data[key]))) {
+        el.value = '#000000';
+      } else {
+        el.value = data[key] || '';
+      }
+    }
+  }
+
+  if (data.idMunicipio) document.getElementById('municipio').value = String(data.idMunicipio);
+  window.categoriasSeleccionadas = data.idCategoria || [];
+  window.subcategoriasSeleccionadas = data.idSubcategoria || [];
+}
 </script>
 
 <!-- ✅ Script: Carga los horarios del comercio por día de la semana -->

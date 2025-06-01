@@ -109,12 +109,11 @@ export async function subirImagenGaleria(file, categoria, municipio, nombre) {
   }
 
   const { error: dbError } = await supabase.from('imagenesComercios').insert({
-    idComercio,
-    imagen: fileName,
-    logo: false,
-    portada: false,
-    orden: 0
-  });
+  idComercio,
+  imagen: fileName,
+  logo: false,
+  portada: false
+});
 
   if (dbError) {
     console.error('Error guardando en la base de datos:', dbError);
@@ -150,4 +149,42 @@ export async function mostrarPortadaEnPreview() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   await cargarGaleriaComercio();
+
+  // ✅ Subir imagen al presionar botón
+  document.getElementById('btn-subir-imagen')?.addEventListener('click', async () => {
+  const input = document.getElementById('nueva-imagen-galeria');
+  const files = input?.files;
+
+  if (!files || files.length === 0) {
+    return alert('Selecciona una o más imágenes');
+  }
+
+  const categoriaID = window.categoriasSeleccionadas?.[0];
+  const municipioID = document.getElementById('municipio')?.value;
+  const nombre = document.getElementById('nombre')?.value;
+
+  const { data: categoria } = await supabase
+    .from('Categorias')
+    .select('nombre')
+    .eq('id', categoriaID)
+    .maybeSingle();
+
+  const { data: municipio } = await supabase
+    .from('Municipios')
+    .select('nombre')
+    .eq('id', municipioID)
+    .maybeSingle();
+
+  if (!categoria || !municipio || !nombre) {
+    alert('Faltan datos para subir las imágenes');
+    return;
+  }
+
+  // Subir todas las imágenes en serie (una por una)
+  for (const file of files) {
+    await subirImagenGaleria(file, categoria.nombre, municipio.nombre, nombre);
+  }
+
+  alert(`${files.length} imagen${files.length > 1 ? 'es' : ''} subida${files.length > 1 ? 's' : ''} correctamente`);
+});
 });

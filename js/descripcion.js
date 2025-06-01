@@ -19,7 +19,11 @@ async function cargarDescripcion() {
 
   if (!descripcionEl || !toggleBtn) return;
 
-  descripcionEl.innerHTML = `<strong>${data.nombre}</strong> ${data.descripcion || ''}`;
+  const descripcion = (data.descripcion || '').replace(/\n/g, '<br>');
+descripcionEl.innerHTML = `<span class="font-semibold">${data.nombre}</span> ${descripcion}`;
+
+  // Mostrar todo como un solo párrafo con el nombre en bold
+  descripcionEl.innerHTML = `<span class="font-semibold">${data.nombre}</span> ${descripcion}`;
 
   let expandido = false;
 
