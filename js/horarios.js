@@ -61,7 +61,7 @@ async function cargarHorarios() {
 
       return `
   <div class="flex justify-center">
-    <div class="grid grid-cols-2 gap-2 text-[19px] ${color} ${peso} mb-2 w-full max-w-sm">
+    <div class="grid grid-cols-2 gap-2 text-[18px] ${color} ${peso} mb-2 w-full max-w-sm">
       <div class="text-right w-32">${dia}:</div>
       <div class="text-left">${cierre === '--:--' ? 'Cerrado' : `${apertura} – ${cierre}`}</div>
     </div>
