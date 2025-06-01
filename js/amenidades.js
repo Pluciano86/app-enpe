@@ -48,8 +48,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   amenidades.forEach(amenidad => {
   const div = document.createElement('div');
   div.innerHTML = `
-    <div class="flex flex-col items-center gap-2 text-sm">
-      <i class="${amenidad.icono} text-lg md:text-xl" style="color: #23b4e9;"></i>
+    <div class="flex flex-col items-center gap-2 text-medium">
+      <i class="${amenidad.icono} text-xl md:text-xl" style="color: #23b4e9;"></i>
       <span>${amenidad.nombre}</span>
     </div>
   `;

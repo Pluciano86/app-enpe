@@ -23,7 +23,12 @@ async function cargarDescripcion() {
 descripcionEl.innerHTML = `<span class="font-semibold">${data.nombre}</span> ${descripcion}`;
 
   // Mostrar todo como un solo párrafo con el nombre en bold
-  descripcionEl.innerHTML = `<span class="font-semibold">${data.nombre}</span> ${descripcion}`;
+  descripcionEl.innerHTML = `
+  <span class="text-base leading-relaxed">
+    <span class="font-semibold">${data.nombre}</span>
+    <span class="font-light"> ${descripcion}</span>
+  </span>
+`;
 
   let expandido = false;
 
