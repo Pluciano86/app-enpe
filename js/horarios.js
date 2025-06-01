@@ -39,7 +39,7 @@ async function cargarHorarios() {
   }
 
   estadoHorario.textContent = abierto ? 'Abierto Ahora' : 'Cerrado Ahora';
-  estadoHorario.className = `text-center text-xl font-medium mb-4 ${abierto ? 'text-green-600' : 'text-red-600'}`;
+  estadoHorario.className = `text-center text-xl font-semibold mb-4 ${abierto ? 'text-green-600' : 'text-red-600'}`;
 
   tablaHorarios.innerHTML = horarios
     .filter(h => h.diaSemana !== null && h.diaSemana !== undefined)
