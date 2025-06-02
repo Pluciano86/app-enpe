@@ -104,7 +104,10 @@
       
     </div>
 
-    <button class="bg-orange-500 text-white font-semibold text-lg px-6 py-2 rounded-full">Ver Menú</button>
+   <a id="btnVerMenu" class="bg-orange-500 text-white font-semibold text-lg px-6 py-2 rounded-full">
+  Ver Menú
+</a>
+
   </section>
 
     <section class="px-6 md:px-10 mt-6">
@@ -166,6 +169,15 @@
     animation: spin 6s linear infinite;
   }
 </style>
+
+<script type="module">
+  const idComercio = new URLSearchParams(window.location.search).get('id');
+
+const btnVerMenu = document.getElementById('btnVerMenu');
+if (btnVerMenu && idComercio) {
+  btnVerMenu.href = `menu/menuComercio.html?id=${idComercio}`;
+}
+</script>
 
 
 <footer class="fixed bottom-0 w-full h-[60px] bg-[#231F20] text-white flex justify-around items-center shadow-inner z-50">

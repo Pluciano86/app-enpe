@@ -18,6 +18,20 @@ function formato12Horas(horaStr) {
   return `${hora12}:${minutos.toString().padStart(2, '0')} ${ampm}`;
 }
 
+function obtenerProximoDiaAbierto(horarios, diaActual) {
+  for (let i = 1; i <= 7; i++) {
+    const diaSiguiente = (diaActual + i) % 7;
+    const diaHorario = horarios.find(h => h.diaSemana === diaSiguiente);
+    if (diaHorario && !diaHorario.cerrado) {
+      return {
+        nombre: diasSemana[diaSiguiente],
+        apertura: formato12Horas(diaHorario.apertura?.slice(0, 5))
+      };
+    }
+  }
+  return null;
+}
+
 async function cargarHorarios() {
   const { data: comercio } = await supabase.from('Comercios').select('nombre').eq('id', idComercio).maybeSingle();
   const { data: horarios, error } = await supabase
@@ -32,14 +46,27 @@ async function cargarHorarios() {
 
   const hoyHorario = horarios.find(h => h.diaSemana === diaActual);
   let abierto = false;
+  let aperturaHoy = null;
+  let cierreHoy = null;
+
   if (hoyHorario && !hoyHorario.cerrado) {
-    const apertura = hoyHorario.apertura.slice(0, 5);
-    const cierre = hoyHorario.cierre.slice(0, 5);
-    abierto = horaActual >= apertura && horaActual <= cierre;
+    aperturaHoy = hoyHorario.apertura.slice(0, 5);
+    cierreHoy = hoyHorario.cierre.slice(0, 5);
+    abierto = horaActual >= aperturaHoy && horaActual <= cierreHoy;
   }
 
-  estadoHorario.textContent = abierto ? 'Abierto Ahora' : 'Cerrado Ahora';
-  estadoHorario.className = `text-center text-xl font-semibold mb-4 ${abierto ? 'text-green-600' : 'text-red-600'}`;
+  const proximo = !abierto ? obtenerProximoDiaAbierto(horarios, diaActual) : null;
+  const cierreEnMenosDe2Horas = abierto && cierreHoy && ((parseInt(cierreHoy.slice(0, 2)) * 60 + parseInt(cierreHoy.slice(3, 5))) - (parseInt(horaActual.slice(0, 2)) * 60 + parseInt(horaActual.slice(3, 5))) <= 120);
+
+  estadoHorario.innerHTML = `
+    <p class="font-semibold text-2x1 ${abierto ? 'text-green-600' : 'text-red-600'}">
+      ${abierto ? 'Abierto Ahora' : 'Cerrado Ahora'}
+    </p>
+    <p class="text-sm font-normal text-gray-600">
+      ${!abierto && proximo ? `Abre ${proximo.nombre} a las ${proximo.apertura}` : ''}
+      ${cierreEnMenosDe2Horas ? `Cierra a las ${formato12Horas(cierreHoy)}` : ''}
+    </p>
+  `;
 
   tablaHorarios.innerHTML = horarios
     .filter(h => h.diaSemana !== null && h.diaSemana !== undefined)
@@ -50,21 +77,22 @@ async function cargarHorarios() {
       const cierre = formato12Horas(h.cierre?.slice(0, 5));
       const cerrado = h.cerrado;
 
-      // ✅ Ajuste aquí
-      const color = cerrado
-        ? 'text-red-600'
-        : esHoy
-          ? (abierto ? 'text-green-600' : 'text-red-600')
-          : 'text-gray-700';
-
+      const color = esHoy ? (cerrado ? 'text-white bg-red-500' : (abierto ? 'text-white bg-green-500' : 'text-white bg-red-500')) : 'text-gray-700';
       const peso = esHoy ? 'font-[500]' : 'font-[400]';
 
       return `
-  <div class="flex justify-center text-[18px] ${color} ${peso} mb-2">
-    <div class="w-28 text-left pr-2">${dia}:</div>
-    <div class="text-left">${cierre === '--:--' ? 'Cerrado' : `${apertura} – ${cierre}`}</div>
-  </div>
-`;
+        <div class="grid grid-cols-4 items-center text-[18px] ${color} ${peso} mb-2 rounded px-2 py-1">
+          <div class="text-left">${dia}:</div>
+          ${cerrado
+            ? `<div class="col-span-3 text-center">Cerrado</div>`
+            : `
+              <div class="text-right">${apertura}</div>
+              <div class="text-center">–</div>
+              <div class="text-left">${cierre}</div>
+            `
+          }
+        </div>
+      `;
     })
     .join('');
 }

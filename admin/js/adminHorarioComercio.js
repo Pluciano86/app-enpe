@@ -2,7 +2,8 @@
 import { supabase } from './supabaseClient.js';
 import { idComercio } from './mainAdmin.js';
 
-const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+// Reordenado para que i = 0 sea Lunes y i = 6 sea Domingo
+const diasSemana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 
 export async function cargarHorariosComercio() {
   const container = document.getElementById("horariosContainer");
@@ -22,7 +23,8 @@ export async function cargarHorariosComercio() {
   container.innerHTML = "";
 
   for (let i = 0; i < 7; i++) {
-    const horarioDia = horarios.find(h => h.diaSemana === i) || {
+    const diaReal = (i + 1) % 7; // Lunes=1, ..., Domingo=0
+    const horarioDia = horarios.find(h => h.diaSemana === diaReal) || {
       apertura: "09:00",
       cierre: "17:00",
       cerrado: false
@@ -49,21 +51,21 @@ export async function guardarHorariosComercio() {
     const apertura = document.getElementById(`apertura-${i}`).value;
     const cierre = document.getElementById(`cierre-${i}`).value;
     const cerrado = document.getElementById(`cerrado-${i}`).checked;
+    const diaReal = (i + 1) % 7; // Alineado con getDay()
 
     const { data: existente } = await supabase
       .from("horarios")
       .select("id")
       .eq("idComercio", idComercio)
-      .eq("diaSemana", i)
+      .eq("diaSemana", diaReal)
       .maybeSingle();
 
     if (existente) {
       await supabase.from("horarios").update({ apertura, cierre, cerrado }).eq("id", existente.id);
     } else {
-      await supabase.from("horarios").insert({ idComercio, diaSemana: i, apertura, cierre, cerrado });
+      await supabase.from("horarios").insert({ idComercio, diaSemana: diaReal, apertura, cierre, cerrado });
     }
   }
 
   console.log("Horarios guardados ✅");
 }
-
