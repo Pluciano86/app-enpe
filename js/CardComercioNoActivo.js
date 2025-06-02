@@ -32,7 +32,9 @@ export function cardComercioNoActivo(comercio) {
     
 
       <!-- Teléfono -->
-      <p class="text-[15 px]] text-gray-600 mt-1 mb-1 no-underline">${comercio.telefono || ''}</p>
+      <a href="tel:${comercio.telefono}" class="text-[15px]] text-gray-600 mt-1 mb-1 no-underline">
+      ${comercio.telefono}
+      </a>
 
       <!-- Badge de perfil no disponible -->
       <span class="mt-2 px-4 py-1 text-xs bg-gray-300 text-gray-700 rounded-full whitespace-nowrap">
