@@ -1,6 +1,7 @@
 // 📦 Supabase y componentes
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
+import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -252,8 +253,11 @@ function aplicarFiltrosYRedibujar() {
   }
 
   for (const comercio of filtrados) {
-    const card = cardComercio(comercio);
-    contenedor.appendChild(card);
+    const card = comercio.activoEnPeErre
+  ? cardComercio(comercio)
+  : cardComercioNoActivo(comercio);
+
+contenedor.appendChild(card);
   }
 }
 
