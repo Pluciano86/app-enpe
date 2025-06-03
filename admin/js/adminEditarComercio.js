@@ -116,3 +116,5 @@ async function guardarDatosGenerales() {
 
   if (error) console.error('Error guardando datos generales:', error);
 }
+
+

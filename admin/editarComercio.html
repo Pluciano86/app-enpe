@@ -12,7 +12,7 @@
     label { display: block; margin-bottom: 0.25rem; font-weight: 600; }
   </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 pb-24">
 
 <div id="headerContainer"></div>
 <script>
@@ -130,6 +130,13 @@ fetch("adminHeader.html")
         <input type="color" id="colorSecundario" class="w-full h-10 rounded border border-gray-300" />
       </div>
     </div>
+<br>
+    <div>
+    <a id="btnAdminMenu" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow">
+  Administrar Menú
+</a>
+    </div>
+
     <button id="btn-guardar" class="mt-6 bg-blue-600 text-white px-4 py-2 rounded">Guardar Cambios</button>
   </div>
 </main>
@@ -144,6 +151,7 @@ fetch("adminHeader.html")
 <script type="module" src="/admin/js/adminCategoriasComercio.js"></script>
 <script type="module" src="/admin/js/adminEditarComercio.js"></script>
 <script type="module" src="/admin/js/adminGuardarCambios.js"></script>
+<script type="module" src="/admin/js/botonAdminMenu.js"></script>
 
 
 

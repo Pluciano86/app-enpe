@@ -31,7 +31,8 @@ const filtrosActivos = {
   abiertoAhora: false,
   favoritos: false,
   activos: false,
-  destacadosPrimero: true
+  destacadosPrimero: true,
+  comerciosPorPlato: [] 
 };
 
 function actualizarEtiquetaSubcategoria(nombreCategoria) {
@@ -137,6 +138,31 @@ async function cargarComercios() {
     return;
   }
 
+
+  const { data: productosAll } = await supabase
+  .from('productos')
+  .select('idMenu, nombre');
+
+const { data: menusAll } = await supabase
+  .from('menus')
+  .select('id, idComercio');
+
+const productosPorComercio = {};
+
+for (const producto of productosAll) {
+  const menu = menusAll.find(m => m.id === producto.idMenu);
+  if (!menu) continue;
+
+  if (!productosPorComercio[menu.idComercio]) {
+    productosPorComercio[menu.idComercio] = [];
+  }
+
+  productosPorComercio[menu.idComercio].push(producto.nombre);
+}
+
+
+
+
   // 4. Procesar la lista
   listaOriginal = comercios.map(comercio => {
     const portada = imagenesAll.find(img => img.idComercio === comercio.id && img.portada);
@@ -175,7 +201,8 @@ async function cargarComercios() {
         ? comercio.idSubcategoria
         : [parseInt(comercio.idSubcategoria)],
       activoEnPeErre: comercio.activo === true,
-      favorito: comercio.favorito || false
+      favorito: comercio.favorito || false,
+      platos: productosPorComercio[comercio.id] || [],
     };
   });
 }
@@ -193,10 +220,11 @@ function aplicarFiltrosYRedibujar() {
 
   const texto = normalizarTexto(filtrosActivos.textoBusqueda.trim());
   if (texto) {
-    filtrados = filtrados.filter(c =>
-      normalizarTexto(c.nombre).includes(texto)
-    );
-  }
+  filtrados = filtrados.filter(c =>
+    normalizarTexto(c.nombre).includes(texto) ||
+    (c.platos && c.platos.some(p => normalizarTexto(p).includes(texto)))
+  );
+}
 
   if (filtrosActivos.municipio) {
     filtrados = filtrados.filter(c => c.pueblo === filtrosActivos.municipio);
@@ -276,11 +304,45 @@ function crearTagFiltro(texto, onClick) {
     const el = document.getElementById(id);
     if (!el) return;
     const evento = id === 'filtro-nombre' ? 'input' : 'change';
-    el.addEventListener(evento, (e) => {
+    el.addEventListener(evento, async (e) => {
       const v = e.target;
-      if (id === 'filtro-nombre') filtrosActivos.textoBusqueda = v.value;
+      if (id === 'filtro-nombre') {
+  const texto = v.value.trim();
+  filtrosActivos.textoBusqueda = texto;
+
+  // 🔍 Extra: también busca platos relacionados
+  if (texto.length >= 3) {
+    const { data: productos, error } = await supabase
+      .from('productos')
+      .select('idMenu, nombre')
+      .ilike('nombre', `%${texto}%`);
+
+    if (!error && productos?.length) {
+      const idMenus = productos.map(p => p.idMenu);
+
+      const { data: menus, error: errMenus } = await supabase
+        .from('menus')
+        .select('idComercio')
+        .in('id', idMenus);
+
+      if (!errMenus && menus?.length) {
+        const idComercios = [...new Set(menus.map(m => m.idComercio))];
+        filtrosActivos.comerciosPorPlato = idComercios;
+      }
+    } else {
+      filtrosActivos.comerciosPorPlato = [];
+    }
+  } else {
+    filtrosActivos.comerciosPorPlato = [];
+  }
+
+  aplicarFiltrosYRedibujar();
+}
       if (id === 'filtro-municipio') filtrosActivos.municipio = v.value;
       if (id === 'filtro-subcategoria') filtrosActivos.subcategoria = v.value;
+      if (filtrosActivos.comerciosPorPlato?.length > 0) {
+  filtrados = filtrados.filter(c => filtrosActivos.comerciosPorPlato.includes(c.id));
+}
       if (id === 'filtro-orden') filtrosActivos.orden = v.value;
       if (id === 'filtro-abierto') filtrosActivos.abiertoAhora = v.checked;
       if (id === 'filtro-destacados') filtrosActivos.destacadosPrimero = v.checked;
@@ -337,6 +399,11 @@ async function cargarComerciosConOrden() {
   // Unir listas: activos primero
   listaOriginal = [...activos, ...noActivos];
 }
+
+// ✅ Filtrar por comercios relacionados a búsqueda por platos (si aplica)
+  if (filtrosActivos.comerciosPorPlato?.length > 0) {
+    listaOriginal = listaOriginal.filter(c => filtrosActivos.comerciosPorPlato.includes(c.id));
+  }
 
   aplicarFiltrosYRedibujar();
 }
@@ -422,3 +489,44 @@ function borrarFiltro(tipo) {
   }
   aplicarFiltrosYRedibujar();
 }
+
+document.getElementById('filtro-plato')?.addEventListener('input', async (e) => {
+  const termino = e.target.value.trim();
+  if (!termino || termino.length < 3) {
+    filtrosActivos.comerciosPorPlato = [];
+    aplicarFiltrosYRedibujar();
+    return;
+  }
+
+  const { data: productos, error } = await supabase
+    .from('productos')
+    .select('idMenu, nombre')
+    .ilike('nombre', `%${termino}%`);
+
+  if (error) {
+    console.error('Error buscando productos:', error);
+    return;
+  }
+
+  if (!productos.length) {
+    filtrosActivos.comerciosPorPlato = [];
+    aplicarFiltrosYRedibujar();
+    return;
+  }
+
+  const idMenus = productos.map(p => p.idMenu);
+
+  const { data: menus, error: errMenus } = await supabase
+    .from('menus')
+    .select('id, idComercio')
+    .in('id', idMenus);
+
+  if (errMenus) {
+    console.error('Error buscando menús:', errMenus);
+    return;
+  }
+
+  const idComercios = [...new Set(menus.map(m => m.idComercio))];
+  filtrosActivos.comerciosPorPlato = idComercios;
+  aplicarFiltrosYRedibujar();
+});

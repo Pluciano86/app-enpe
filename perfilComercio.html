@@ -104,9 +104,7 @@
       
     </div>
 
-   <a id="btnVerMenu" class="bg-orange-500 text-white font-semibold text-lg px-6 py-2 rounded-full">
-  Ver Menú
-</a>
+   <a id="btnVerMenu" class="hidden bg-primary text-xl text-white px-4 py-2 rounded">Ver Nuestro Menú</a>
 
   </section>
 
@@ -154,11 +152,14 @@
 <script type="module" src="./js/logoHorario.js"></script>
 <script type="module" src="./js/contacto.js"></script>
 <script type="module" src="./js/redesSociales.js"></script>
-<script type="module" src="./js/menu.js"></script>
+<script type="module" src="./js/botonMenu.js"></script>
 <script type="module" src="./js/descripcion.js"></script>
 <script type="module" src="./js/horarios.js"></script>
 <script type="module" src="./js/amenidades.js"></script>
 
+
+
+<!-- Animacion Reloj -->
 <style>
   @keyframes spin {
     from { transform: rotate(0deg); }
@@ -170,14 +171,6 @@
   }
 </style>
 
-<script type="module">
-  const idComercio = new URLSearchParams(window.location.search).get('id');
-
-const btnVerMenu = document.getElementById('btnVerMenu');
-if (btnVerMenu && idComercio) {
-  btnVerMenu.href = `menu/menuComercio.html?id=${idComercio}`;
-}
-</script>
 
 
 <footer class="fixed bottom-0 w-full h-[60px] bg-[#231F20] text-white flex justify-around items-center shadow-inner z-50">

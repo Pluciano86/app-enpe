@@ -45,10 +45,10 @@ async function cargarDatos() {
 
   for (const menu of menus) {
     const wrapper = document.createElement('div');
-    wrapper.className = 'w-[75%] mx-auto'; // 75% ancho centrado
+    wrapper.className = 'w-[90%] mx-auto';
 
     const btn = document.createElement('button');
-    btn.className = 'w-full bg-[var(--colorPrimario)] text-white px-4 py-2 rounded mb-2 shadow font-medium hover:opacity-90 transition text-center';
+    btn.className = 'w-full bg-[var(--colorPrimario)] text-white text-xl px-4 py-2 rounded mb-2 shadow font-medium hover:opacity-90 transition text-center';
     btn.textContent = menu.titulo;
 
     const productosContenedor = document.createElement('div');
@@ -82,32 +82,32 @@ async function cargarDatos() {
       `;
 
       for (const p of productos) {
-  const div = document.createElement('div');
-  div.className = 'bg-white rounded-lg shadow p-4 mb-2 flex gap-4';
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-lg shadow p-4 mb-2 flex gap-4';
 
-  const imagenHTML = p.imagen
-    ? `
-      <div class="w-24 h-24 flex-shrink-0">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/productos/${p.imagen}" 
-             alt="${p.nombre}" class="w-full h-full object-cover rounded cursor-pointer"
-             onclick="ampliarImagen('${p.imagen}')">
-      </div>
-    `
-    : '';
+        const imagenHTML = p.imagen
+          ? `
+            <div class="w-24 h-24 flex-shrink-0">
+              <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/productos/${p.imagen}" 
+                   alt="${p.nombre}" class="w-full h-full object-cover rounded cursor-pointer"
+                   onclick="ampliarImagen('${p.imagen}')">
+            </div>
+          `
+          : '';
 
-  div.innerHTML = `
-    ${imagenHTML}
-    <div class="flex flex-col justify-between">
-      <div>
-        <h3 class="text-lg font-semibold text-gray-800">${p.nombre}</h3>
-        <p class="text-sm text-gray-600">${p.descripcion || ''}</p>
-      </div>
-      <div class="text-[var(--colorPrimario)] font-bold text-lg mt-2">$${p.precio.toFixed(2)}</div>
-    </div>
-  `;
+        div.innerHTML = `
+          ${imagenHTML}
+          <div class="flex flex-col justify-between">
+            <div>
+              <h3 class="text-xl font-semibold text-gray-800">${p.nombre}</h3>
+              <p class="text-base leading-5 font-light text-gray-600">${p.descripcion || ''}</p>
+            </div>
+            <div class="text-[var(--colorPrimario)] font-bold text-xl mt-2">$${p.precio.toFixed(2)}</div>
+          </div>
+        `;
 
-  productosContenedor.appendChild(div);
-}
+        productosContenedor.appendChild(div);
+      }
     };
 
     wrapper.appendChild(btn);
@@ -118,6 +118,11 @@ async function cargarDatos() {
   const linkPerfil = document.getElementById('linkPerfilComercio');
   linkPerfil.textContent = comercio.nombre;
   linkPerfil.href = `/perfilComercio.html?id=${idComercio}`;
+
+  const logoLink = document.getElementById('logoLinkPerfil');
+  if (logoLink) {
+    logoLink.href = `/perfilComercio.html?id=${idComercio}`;
+  }
 }
 
 window.ampliarImagen = function (nombreImagen) {
