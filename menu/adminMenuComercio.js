@@ -90,15 +90,18 @@ async function cargarSecciones() {
       div.onclick = () => abrirEditarProducto(seccion.id, producto);
 
       div.innerHTML = `
-        <div class="flex gap-4">
-          ${producto.imagen ? `<img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/productos/${producto.imagen}" class="w-16 h-16 object-cover rounded">` : ''}
-          <div>
-            <h4 class="text-md font-semibold">${producto.nombre}</h4>
-            <p class="text-sm text-gray-600">${producto.descripcion || ''}</p>
-            <p class="text-blue-600 font-bold mt-1">$${producto.precio.toFixed(2)}</p>
-          </div>
-        </div>
-      `;
+  <div class="flex gap-4 justify-between items-start">
+    <div class="flex gap-4">
+      ${producto.imagen ? `<img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${producto.imagen}" class="w-16 h-16 object-cover rounded">` : ''}
+      <div>
+        <h4 class="text-md font-semibold">${producto.nombre}</h4>
+        <p class="text-sm text-gray-600">${producto.descripcion || ''}</p>
+        <p class="text-blue-600 font-bold mt-1">$${producto.precio.toFixed(2)}</p>
+      </div>
+    </div>
+   <button onclick="eliminarProducto(${producto.id}, '${producto.nombre}', '${producto.imagen ?? ''}')" class="text-red-600 text-sm underline ml-4">Eliminar</button>
+  </div>
+`;
       productosContenedor.appendChild(div);
     });
 
@@ -201,6 +204,32 @@ window.abrirNuevoProducto = (idMenu) => {
   }
 };
 
+window.eliminarProducto = async (idProducto, nombreProducto, rutaImagen = '') => {
+  const confirmar = confirm(`¿Estás seguro de que deseas eliminar "${nombreProducto}"?`);
+  if (!confirmar) return;
+
+  // Elimina imagen si existe
+  if (rutaImagen) {
+    const { error: errorBorrado } = await supabase.storage
+      .from('galeriacomercios')
+      .remove([rutaImagen]);
+
+    if (errorBorrado) {
+      console.warn('No se pudo eliminar imagen:', errorBorrado);
+    }
+  }
+
+  // Elimina producto
+  const { error } = await supabase.from('productos').delete().eq('id', idProducto);
+  if (error) {
+    alert('Error al eliminar producto');
+    console.error(error);
+  } else {
+    alert(`"${nombreProducto}" fue eliminado exitosamente.`);
+    await cargarSecciones();
+  }
+};
+
 btnCancelarProducto.onclick = () => {
   modalProducto.classList.add('hidden');
 };
@@ -236,13 +265,14 @@ btnGuardarProducto.onclick = async () => {
     productoId = data.id;
   }
 
+  // Subir imagen
   const archivo = inputImagenProducto.files[0];
 if (archivo && productoId) {
   const ext = archivo.name.split('.').pop();
-  const nombreArchivo = `${productoId}.${ext}`;
+  const nombreArchivo = `menu/${productoId}.${ext}`;  // Ruta dentro de galeriacomercios
 
   const { error: errorSubida } = await supabase.storage
-    .from('productos')
+    .from('galeriacomercios')
     .upload(nombreArchivo, archivo, {
       upsert: true,
       contentType: archivo.type,
