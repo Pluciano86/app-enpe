@@ -88,7 +88,7 @@ async function cargarDatos() {
         const imagenHTML = p.imagen
           ? `
             <div class="w-24 h-24 flex-shrink-0">
-              <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/productos/${p.imagen}" 
+             <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${p.imagen}" 
                    alt="${p.nombre}" class="w-full h-full object-cover rounded cursor-pointer"
                    onclick="ampliarImagen('${p.imagen}')">
             </div>
@@ -128,7 +128,7 @@ async function cargarDatos() {
 window.ampliarImagen = function (nombreImagen) {
   const modal = document.getElementById('modalImagen');
   const img = document.getElementById('imgAmpliada');
-  img.src = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/productos/${nombreImagen}`;
+  img.src = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${nombreImagen}`;
   modal.classList.remove('hidden');
   modal.onclick = () => modal.classList.add('hidden');
 };
