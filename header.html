@@ -8,7 +8,11 @@
 
 <script>
   // Mostrar botón de Back si no estamos en index.html
-  if (!location.pathname.endsWith("index.html")) {
-    document.getElementById("backButton").classList.remove("hidden");
+  document.addEventListener('DOMContentLoaded', () => {
+  const btnBack = document.getElementById('btnBack');
+  if (window.history.length > 1) {
+    btnBack.classList.remove('hidden');
+    btnBack.addEventListener('click', () => history.back());
   }
+});
 </script>
