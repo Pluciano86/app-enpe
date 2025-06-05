@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseClient.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
@@ -13,15 +12,17 @@ async function cargarPerfilComercio() {
 
   const nombre = document.getElementById('nombreComercio');
   const telefono = document.getElementById('telefonoComercio');
-  const direccion = document.getElementById('direccionComercio');
+  const textoDireccion = document.getElementById('textoDireccion');
   const logo = document.getElementById('logoComercio');
 
   if (nombre) nombre.textContent = data.nombre;
+
   if (telefono) {
-  telefono.href = `tel:${data.telefono}`;
-  telefono.innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${data.telefono}`;
-}   
-  if (direccion) direccion.textContent = data.direccion;
+    telefono.href = `tel:${data.telefono}`;
+    telefono.innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${data.telefono}`;
+  }
+
+  if (textoDireccion) textoDireccion.textContent = data.direccion;
 
   // redes sociales
   if (data.whatsapp) document.getElementById('linkWhatsapp')?.setAttribute('href', data.whatsapp);

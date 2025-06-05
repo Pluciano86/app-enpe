@@ -72,12 +72,18 @@
                mx-auto mt-2 max-w-[100%]">
       <i class="fas fa-phone text-2x1"></i> 787-000-0000
     </a>
+    
+<div id="direccionComercio" class="flex items-center gap-2 text-[#23b4e9] text-xl leading-none mx-auto w-fit mb-2">
+  <i class="fas fa-map-pin"></i>
+  <span id="textoDireccion"></span>
+</div>
+
 
     <p id="tiempoVehiculo" class="text-[#9c9c9c] text-xl font-medium  mb-4">
   <i class="fas fa-car"></i> Cargando distancia...
 </p>
 
-    <div class="flex justify-center gap-4 mb-4">
+    <div class="flex justify-center gap-4 mb-6">
 <a id="btnGoogleMaps" href="#" target="_blank">
     <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg"
          alt="Google Maps" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
@@ -105,6 +111,32 @@
     </div>
 
    <a id="btnVerMenu" class="hidden bg-primary text-xl text-white px-4 py-2 rounded">Ver Nuestro Menú</a>
+
+   <!-- Especial de Almuerzo -->
+<section id="especialAlmuerzo" class="hidden mt-6">
+  <h3 class="text-lg font-bold text-[#23b4e9] mb-2">Especial de Almuerzo</h3>
+  <div class="flex gap-4 items-start bg-white shadow p-4 rounded-lg">
+    <img id="imagenAlmuerzo" src="" alt="Imagen Almuerzo" class="w-24 h-24 object-cover rounded-md">
+    <div>
+      <p id="nombreAlmuerzo" class="font-semibold text-md"></p>
+      <p id="descripcionAlmuerzo" class="text-sm text-gray-600 mb-1"></p>
+      <p id="precioAlmuerzo" class="font-bold text-green-600"></p>
+    </div>
+  </div>
+</section>
+
+<!-- Happy Hour -->
+<section id="especialHappyHour" class="hidden mt-6">
+  <h3 class="text-lg font-bold text-pink-500 mb-2">Happy Hour</h3>
+  <div class="flex gap-4 items-start bg-white shadow p-4 rounded-lg">
+    <img id="imagenHappy" src="" alt="Imagen Happy Hour" class="w-24 h-24 object-cover rounded-md">
+    <div>
+      <p id="nombreHappy" class="font-semibold text-md"></p>
+      <p id="descripcionHappy" class="text-sm text-gray-600 mb-1"></p>
+      <p id="precioHappy" class="font-bold text-green-600"></p>
+    </div>
+  </div>
+</section>
 
   </section>
 
@@ -147,7 +179,8 @@
 <script type="module" src="./js/ubicacion.js"></script>
 <script type="module" src="./js/supabaseClient.js"></script>
 <script type="module" src="./js/utils.js"></script>
-<script type="module" src="./js/perfil.js"></script> 
+<script type="module" src="./js/perfil.js"></script>
+<script type="module" src="./js/especialesComercio.js"></script> 
 <script type="module" src="./js/galeria.js"></script>
 <script type="module" src="./js/logoHorario.js"></script>
 <script type="module" src="./js/contacto.js"></script>

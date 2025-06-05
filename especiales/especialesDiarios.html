@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Especiales del Día</title>
+  <script src="https://cdn.tailwindcss.com"></script> <!-- ✅ Este sí funciona -->
+  <script src="https://kit.fontawesome.com/tu-key-aqui.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+
+  <header class="bg-[#23b4e9] text-white py-4 shadow">
+    <h1 class="text-center text-2xl font-bold">Especiales del Día</h1>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-6">
+
+    <!-- 🔍 Buscador y filtros -->
+    <div class="flex flex-wrap gap-4 items-center justify-between mb-6">
+      <input id="searchEspecial" type="text" placeholder="Buscar por nombre o comercio..." class="w-full sm:w-1/2 px-4 py-2 border rounded shadow-sm">
+      
+      <select id="filtroMunicipio" class="px-4 py-2 border rounded shadow-sm">
+        <option value="">Todos los municipios</option>
+        <!-- Opciones dinámicas -->
+      </select>
+
+      <select id="filtroOrden" class="px-4 py-2 border rounded shadow-sm">
+        <option value="cercania">Ordenar por cercanía</option>
+        <option value="alfabetico">A-Z</option>
+        <option value="recientes">Más recientes</option>
+      </select>
+
+      <label class="inline-flex items-center space-x-2">
+        <input type="checkbox" id="filtroFavoritos" class="form-checkbox">
+        <span>Favoritos</span>
+      </label>
+    </div>
+
+    <!-- 🥗 Especiales de Almuerzo -->
+    <section>
+      <h2 class="text-xl font-semibold text-[#23b4e9] mb-3">Especiales de Almuerzo</h2>
+      <div id="contenedorAlmuerzos" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Tarjetas dinámicas -->
+      </div>
+    </section> 
+
+    <!-- 🍹 Happy Hours -->
+    <section class="mt-10">
+      <h2 class="text-xl font-semibold text-pink-500 mb-3">Happy Hours</h2>
+      <div id="contenedorHappy" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Tarjetas dinámicas -->
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="./especialesDiarios.js"></script>
+</body>
+</html>
