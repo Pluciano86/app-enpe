@@ -1,44 +1,85 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Especiales del Día</title>
   <script src="https://cdn.tailwindcss.com"></script> <!-- ✅ Este sí funciona -->
+  <script> tailwind.config = {theme: {extend: {fontFamily: {sans: ['Kanit', 'sans-serif']}}}}
+</script>
   <script src="https://kit.fontawesome.com/tu-key-aqui.js" crossorigin="anonymous"></script>
-</head>
-<body class="bg-gray-50 min-h-screen text-gray-800">
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-  <header class="bg-[#23b4e9] text-white py-4 shadow">
-    <h1 class="text-center text-2xl font-bold">Especiales del Día</h1>
-  </header>
+</head>
+
+<body class="bg-gray-100 min-h-screen text-gray-800 pb-24">
+
+    <!-- Header -->
+  <div id="headerContainer"></div> 
+
+  <script>
+    fetch("/header.html")
+      .then(res => res.text())
+      .then(html => document.getElementById("headerContainer").innerHTML = html);
+  </script>
+
+
+
+   
+
 
   <main class="max-w-5xl mx-auto px-4 py-6">
 
-    <!-- 🔍 Buscador y filtros -->
-    <div class="flex flex-wrap gap-4 items-center justify-between mb-6">
-      <input id="searchEspecial" type="text" placeholder="Buscar por nombre o comercio..." class="w-full sm:w-1/2 px-4 py-2 border rounded shadow-sm">
-      
-      <select id="filtroMunicipio" class="px-4 py-2 border rounded shadow-sm">
-        <option value="">Todos los municipios</option>
-        <!-- Opciones dinámicas -->
-      </select>
+  <section class="text-3xl text-center my-6">
+  <h1 id="tituloEspeciales" class="font-semibold flex justify-center items-center gap-2">
+    <!-- Icono + Tipo -->
+  </h1>
+  <p id="subtituloDia" class="text-xl text-gray-500 mt-1">para Hoy</p>
+</section>
 
-      <select id="filtroOrden" class="px-4 py-2 border rounded shadow-sm">
-        <option value="cercania">Ordenar por cercanía</option>
-        <option value="alfabetico">A-Z</option>
-        <option value="recientes">Más recientes</option>
-      </select>
+      <!-- Título y buscador -->
+  <section>
+   <h1 id="tituloCategoria" class="text-center text-2xl font-medium mb-4"></h1>
+    <div class="rounded-xl border border-gray-300 p-3 flex flex-col gap-2 bg-white">
+      <div class="flex items-center gap-2">
+        <input type="text" id="filtro-nombre" placeholder="Buscar" class="flex-1 px-3 py-2 border rounded-full text-base" />
+        <i class="fas fa-search text-gray-400"></i>
+      </div>
+      <div class="flex gap-2 text-sm">
 
-      <label class="inline-flex items-center space-x-2">
-        <input type="checkbox" id="filtroFavoritos" class="form-checkbox">
-        <span>Favoritos</span>
-      </label>
-    </div>
+
+  <div class="flex flex-col flex-1">
+    <label for="filtro-municipio" class="text-xs font-semibold text-gray-500 mb-1">Municipios:</label>
+    <select id="filtro-municipio" class="border rounded px-2 py-1 w-full text-sm">
+      <option value="">Municipios</option>
+    </select>
+  </div>
+
+  <div class="flex flex-col flex-1">
+    <label for="filtro-orden" class="text-xs font-semibold text-gray-500 mb-1">Ordenar por:</label>
+    <select id="filtro-orden" class="border rounded px-2 py-1 w-full text-sm">
+      <option value="ubicacion">Cercanía</option>
+      <option value="az">Orden Alfabético</option>
+      <option value="recientes">Más Recientes</option>
+    </select>
+  </div>
+
+  <!-- Mis Favoritos -->
+  <div class="flex-1 text-center">
+    <div class="mb-1 text-gray-700 font-medium">Mis Favoritos</div>
+    <label class="relative inline-flex items-center cursor-pointer">
+      <input type="checkbox" id="filtro-favoritos" class="sr-only peer">
+      <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-pink-500 transition-colors duration-300"></div>
+      <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 transform peer-checked:translate-x-5"></div>
+    </label>
+  </div>
+
+</section>
 
     <!-- 🥗 Especiales de Almuerzo -->
     <section>
-      <h2 class="text-xl font-semibold text-[#23b4e9] mb-3">Especiales de Almuerzo</h2>
       <div id="contenedorAlmuerzos" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Tarjetas dinámicas -->
       </div>
@@ -46,7 +87,6 @@
 
     <!-- 🍹 Happy Hours -->
     <section class="mt-10">
-      <h2 class="text-xl font-semibold text-pink-500 mb-3">Happy Hours</h2>
       <div id="contenedorHappy" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Tarjetas dinámicas -->
       </div>
@@ -54,6 +94,19 @@
 
   </main>
 
-  <script type="module" src="./especialesDiarios.js"></script>
+  <!-- Scripts para Especiales -->
+<script type="module" src="./especialesDiarios.js"></script>
+<script type="module" src="./cargarEspeciales.js"></script>
+<script type="module" src="./renderEspeciales.js"></script>
+<script type="module" src="./renderImagenesEspecial.js"></script>
+
+
+  <div id="footerContainer"></div>
+
+<script>
+  fetch("/footer.html")
+    .then(res => res.text())
+    .then(html => document.getElementById("footerContainer").innerHTML = html);
+</script>
 </body>
 </html>

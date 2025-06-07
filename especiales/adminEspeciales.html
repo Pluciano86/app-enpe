@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrar Especiales</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div class="max-w-5xl mx-auto px-4 py-6">
+    <h1 class="text-2xl font-semibold text-center mb-4">Especiales del Comercio</h1>
+
+    <!-- Botones tipo tabs -->
+    <div class="flex justify-center mb-6 gap-2">
+      <button id="btnAlmuerzo" class="px-4 py-2 rounded bg-blue-600 text-white">Almuerzo</button>
+      <button id="btnHappy" class="px-4 py-2 rounded bg-gray-200 text-gray-700">Happy Hour</button>
+    </div>
+
+    <!-- Contenedor de especiales -->
+    <div id="contenedorDias" class="space-y-4 px-4"></div>
+
+    <!-- Modal para añadir nuevo -->
+    <div id="modalEspecial" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg w-full max-w-xl p-6 relative">
+        <button id="cerrarModal" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
+        <h2 class="text-lg font-semibold mb-4">Añadir Especial</h2>
+        <form id="formEspecial">
+          <input type="text" id="nombreEspecial" placeholder="Nombre" class="w-full mb-2 border rounded px-3 py-2">
+          <textarea id="descripcionEspecial" placeholder="Descripción" class="w-full mb-2 border rounded px-3 py-2"></textarea>
+          <input type="number" id="precioEspecial" placeholder="Precio" step="0.01" class="w-full mb-2 border rounded px-3 py-2">
+          <input type="file" id="imagenEspecial" accept="image/*" class="mb-2">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" id="permanenteEspecial"> Permanente
+          </label>
+          <button type="submit" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Guardar Especial</button>
+        </form>
+
+        <h3 class="text-md font-semibold mt-6 mb-2">Añadidos Anteriormente</h3>
+        <div id="anterioresContainer" class="grid gap-2"></div>
+      </div>
+    </div>
+  </div>
+
+
+<!-- Modal Editar Especial -->
+<div id="modalEditarEspecial" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+  <div class="bg-white w-full max-w-md p-6 rounded shadow-lg relative">
+    <button id="cerrarModal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+    <h2 class="text-lg font-semibold mb-4">Editar Especial</h2>
+    <form id="formEditarEspecial" class="space-y-4">
+
+      <!-- ID oculto -->
+      <input type="hidden" id="editarIdEspecial">
+
+      <!-- Imagen actual -->
+      <div>
+        <label class="block font-medium mb-1">Imagen actual</label>
+        <img id="editarImagenActual" src="" alt="Imagen del especial" class="w-full h-40 object-cover rounded border" />
+      </div>
+
+      <!-- Cambiar imagen -->
+      <div>
+        <label for="editarNuevaImagen" class="block font-medium">Nueva imagen (opcional)</label>
+        <input type="file" id="editarNuevaImagen" accept="image/*" class="w-full border rounded px-2 py-1 text-sm" />
+      </div>
+
+      <div>
+        <label for="editarNombre" class="block font-medium">Nombre</label>
+        <input type="text" id="editarNombre" class="w-full border rounded px-3 py-2 text-sm" />
+      </div>
+
+      <div>
+        <label for="editarDescripcion" class="block font-medium">Descripción</label>
+        <textarea id="editarDescripcion" class="w-full border rounded px-3 py-2 text-sm"></textarea>
+      </div>
+
+      <div>
+        <label for="editarPrecio" class="block font-medium">Precio</label>
+        <input type="number" id="editarPrecio" step="0.01" class="w-full border rounded px-3 py-2 text-sm" />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="editarPermanente" />
+        <label for="editarPermanente">Permanente</label>
+      </div>
+
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">Guardar Cambios</button>
+    </form>
+  </div>
+</div>
+
+
+
+  <script type="module" src="./adminEspeciales.js"></script>
+</body>
+</html>

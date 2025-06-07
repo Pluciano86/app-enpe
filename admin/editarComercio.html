@@ -137,6 +137,13 @@ fetch("adminHeader.html")
     </a>
     </div>
 
+  <a
+    id="btnAdministrarEspeciales"
+    href="#"
+    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+    🥘 Administrar Almuerzos y Happy Hours
+  </a>
+
     <button id="btn-guardar" class="mt-6 bg-blue-600 text-white px-4 py-2 rounded">Guardar Cambios</button>
   </div>
 </main>
@@ -153,6 +160,19 @@ fetch("adminHeader.html")
 <script type="module" src="/admin/js/adminGuardarCambios.js"></script>
 <script type="module" src="/admin/js/botonAdminMenu.js"></script>
 
+
+<!-- ✅ Botón Ediytar Alm/HH  -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const idComercio = params.get('id');
+
+    if (idComercio) {
+      const btnEspeciales = document.getElementById('btnAdministrarEspeciales');
+      btnEspeciales.href = `../especiales/adminEspeciales.html?id=${idComercio}`;
+    }
+  });
+</script>
 
 
 <!-- ✅ Script: Muestra la imagen de portada del comercio -->
@@ -309,6 +329,8 @@ export async function cargarDatosComercio() {
     await guardarAmenidadesComercio();
   });
 </script>
+
+
 
 
 </body>
