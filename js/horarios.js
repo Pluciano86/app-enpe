@@ -25,7 +25,8 @@ function obtenerProximoDiaAbierto(horarios, diaActual) {
     if (diaHorario && !diaHorario.cerrado) {
       return {
         nombre: diasSemana[diaSiguiente],
-        apertura: formato12Horas(diaHorario.apertura?.slice(0, 5))
+        apertura: formato12Horas(diaHorario.apertura?.slice(0, 5)),
+        esManana: i === 1
       };
     }
   }
@@ -55,16 +56,30 @@ async function cargarHorarios() {
     abierto = horaActual >= aperturaHoy && horaActual <= cierreHoy;
   }
 
-  const proximo = !abierto ? obtenerProximoDiaAbierto(horarios, diaActual) : null;
   const cierreEnMenosDe2Horas = abierto && cierreHoy && ((parseInt(cierreHoy.slice(0, 2)) * 60 + parseInt(cierreHoy.slice(3, 5))) - (parseInt(horaActual.slice(0, 2)) * 60 + parseInt(horaActual.slice(3, 5))) <= 120);
 
+  let mensajeEstado = '';
+  if (!abierto && hoyHorario && !hoyHorario.cerrado && horaActual < hoyHorario.apertura.slice(0, 5)) {
+    // Abre hoy más tarde
+    mensajeEstado = `Abre hoy a las ${formato12Horas(hoyHorario.apertura.slice(0, 5))}`;
+  } else if (!abierto) {
+    const proximo = obtenerProximoDiaAbierto(horarios, diaActual);
+    if (proximo) {
+      const cuando = proximo.esManana ? 'mañana' : proximo.nombre;
+      mensajeEstado = `Abre ${cuando} a las ${proximo.apertura}`;
+    }
+  }
+
+  if (cierreEnMenosDe2Horas) {
+    mensajeEstado += (mensajeEstado ? ' • ' : '') + `Cierra a las ${formato12Horas(cierreHoy)}`;
+  }
+
   estadoHorario.innerHTML = `
-    <p class="font-semibold text-2x1 ${abierto ? 'text-green-600' : 'text-red-600'}">
+    <p class="font-semibold text-2xl ${abierto ? 'text-green-600' : 'text-red-600'}">
       ${abierto ? 'Abierto Ahora' : 'Cerrado Ahora'}
     </p>
     <p class="text-sm font-normal text-gray-600">
-      ${!abierto && proximo ? `Abre ${proximo.nombre} a las ${proximo.apertura}` : ''}
-      ${cierreEnMenosDe2Horas ? `Cierra a las ${formato12Horas(cierreHoy)}` : ''}
+      ${mensajeEstado}
     </p>
   `;
 
@@ -98,3 +113,4 @@ async function cargarHorarios() {
 }
 
 cargarHorarios();
+setInterval(cargarHorarios, 30000); // Refresca cada 30 segundos
