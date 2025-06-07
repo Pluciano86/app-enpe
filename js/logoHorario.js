@@ -6,7 +6,7 @@ const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viern
 const iconoEl = document.querySelector('#estadoHorarioContainer i');
 const textoEl = document.querySelector('#estadoHorarioContainer p');
 const subtituloEl = document.createElement('p');
-subtituloEl.className = 'text-sm text-gray-500 font-normal mt-1';
+subtituloEl.className = 'text-xs text-gray-500 font-light mt-1';
 textoEl.insertAdjacentElement('afterend', subtituloEl);
 
 function formato12Horas(horaStr) {
@@ -74,7 +74,7 @@ async function verificarHorario() {
       (parseInt(horaActual.slice(0, 2)) * 60 + parseInt(horaActual.slice(3, 5)));
 
     if (tiempoCierre <= 120) {
-      subtituloEl.textContent = `Cierra a las ${formato12Horas(cierre)}`;
+      subtituloEl.innerHTML = `Cierra a las<br><span class="text-sm">${formato12Horas(cierre)}</span>`;
     } else {
       subtituloEl.textContent = '';
     }
@@ -83,7 +83,7 @@ async function verificarHorario() {
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
     textoEl.textContent = 'Cerrado Ahora';
     textoEl.className = 'text-base text-red-600 font-medium';
-    subtituloEl.textContent = `Abre hoy a las ${formato12Horas(apertura)}`;
+    subtituloEl.innerHTML = `Abre hoy<br><span class="text-sm ">${formato12Horas(apertura)}</span>`;
   }
 }
 
