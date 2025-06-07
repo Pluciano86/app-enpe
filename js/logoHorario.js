@@ -64,7 +64,7 @@ async function verificarHorario() {
   const abierto = horaActual >= apertura && horaActual <= cierre;
 
   if (abierto) {
-    iconoEl.className = 'fa-regular fa-clock text-green-500 text-2xl slow-spin';
+    iconoEl.className = 'fa-regular fa-clock text-green-500 text-4xl slow-spin';
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
     textoEl.textContent = 'Abierto Ahora';
     textoEl.className = 'text-sm text-green-600 font-light';
@@ -79,7 +79,7 @@ async function verificarHorario() {
       subtituloEl.textContent = '';
     }
   } else {
-    iconoEl.className = 'fa-regular fa-clock text-red-500 text-3xl';
+    iconoEl.className = 'fa-regular fa-clock text-red-500 text-4xl';
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
     textoEl.textContent = 'Cerrado Ahora';
     textoEl.className = 'text-sm text-red-600 font-medium';
