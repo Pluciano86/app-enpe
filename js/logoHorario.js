@@ -6,7 +6,7 @@ const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viern
 const iconoEl = document.querySelector('#estadoHorarioContainer i');
 const textoEl = document.querySelector('#estadoHorarioContainer p');
 const subtituloEl = document.createElement('p');
-subtituloEl.className = 'text-xs text-gray-500 font-light mt-1';
+subtituloEl.className = 'text-xs text-gray-500 font-light';
 textoEl.insertAdjacentElement('afterend', subtituloEl);
 
 function formato12Horas(horaStr) {
@@ -44,10 +44,10 @@ async function verificarHorario() {
   const hoyHorario = horarios.find(h => h.diaSemana === diaSemana);
 
   if (!hoyHorario || hoyHorario.cerrado) {
-    iconoEl.className = 'fa-regular fa-clock text-red-500 text-3xl';
+    iconoEl.className = 'fa-regular fa-clock text-red-500 text-2xl';
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
     textoEl.textContent = 'Cerrado Ahora';
-    textoEl.className = 'text-base text-red-600 font-medium';
+    textoEl.className = 'text-sm, text-red-600 font-light';
 
     const proximo = obtenerProximoDiaAbierto(horarios, diaSemana);
     if (proximo) {
@@ -64,10 +64,10 @@ async function verificarHorario() {
   const abierto = horaActual >= apertura && horaActual <= cierre;
 
   if (abierto) {
-    iconoEl.className = 'fa-regular fa-clock text-green-500 text-3xl slow-spin';
+    iconoEl.className = 'fa-regular fa-clock text-green-500 text-2xl slow-spin';
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
     textoEl.textContent = 'Abierto Ahora';
-    textoEl.className = 'text-base text-green-600 font-medium';
+    textoEl.className = 'text-sm text-green-600 font-light';
 
     const tiempoCierre =
       parseInt(cierre.slice(0, 2)) * 60 + parseInt(cierre.slice(3, 5)) -
@@ -82,7 +82,7 @@ async function verificarHorario() {
     iconoEl.className = 'fa-regular fa-clock text-red-500 text-3xl';
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
     textoEl.textContent = 'Cerrado Ahora';
-    textoEl.className = 'text-base text-red-600 font-medium';
+    textoEl.className = 'text-sm text-red-600 font-medium';
     subtituloEl.innerHTML = `Abre hoy<br><span class="text-sm ">${formato12Horas(apertura)}</span>`;
   }
 }
