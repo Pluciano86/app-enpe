@@ -1,12 +1,25 @@
-export async function obtenerTiempoVehiculo(origen, destinos = []) {
-  const key = ' AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI';
-  const origins = `${origen.lat},${origen.lon}`;
-  const destinations = destinos.map(d => `${d.lat},${d.lon}`).join('|');
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origins)}&destinations=${encodeURIComponent(destinations)}&mode=driving&units=metric&key=${key}`;
+// utilsDistancia.js
 
-  const resp = await fetch(url);
-  const data = await resp.json();
-  const tiempos = data.rows[0].elements.map(el => el.duration?.value || null); // segundos
+/**
+ * Llama a la función serverless en Netlify para obtener los tiempos reales en vehículo
+ * usando Google Maps Distance Matrix API (a través de functions/distance.js)
+ *
+ * @param {Object} origen - Objeto con lat y lon del comercio actual
+ * @param {Array} destinos - Arreglo de objetos con lat y lon de los comercios a comparar
+ * @returns {Promise<Array<number>>} - Tiempos en segundos para cada destino (o null si falla)
+ */
+export async function obtenerTiempoVehiculo(origen, destinos) {
+  try {
+    const res = await fetch('/.netlify/functions/distance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origen, destinos }),
+    });
 
-  return tiempos; // array de segundos
+    const data = await res.json();
+    return data.tiempos || [];
+  } catch (err) {
+    console.error('Error consultando distancia en carro:', err);
+    return [];
+  }
 }

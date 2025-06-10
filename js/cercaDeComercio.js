@@ -66,19 +66,24 @@ export async function buscarComerciosCercanos(idComercio, categoriaIds = []) {
       ? supabase.storage.from('galeriacomercios').getPublicUrl(logoImg).data.publicUrl
       : '';
 
-    const minutos = tiempos?.[tiempoIdx] ? Math.round(tiempos[tiempoIdx] / 60) : null;
-    tiempoIdx++;
+    const distanciaKm = calcularDistancia(
+  ubicacion.lat,
+  ubicacion.lon,
+  com.latitud,
+  com.longitud
+);
+const minutos = Math.round(distanciaKm * 2);
 
-    resultados.push({
-      id: com.id,
-      nombre: com.nombre,
-      categoria: categoriasMap[com.idCategoria?.[0]] || 'Sin categoría',
-      municipio: com.municipio?.nombre || '',
-      distancia: minutos,
-      tiempoTexto: minutos ? `${minutos} min` : '',
-      portada,
-      logo
-    });
+resultados.push({
+  id: com.id,
+  nombre: com.nombre,
+  categoria: categoriasMap[com.idCategoria?.[0]] || 'Sin categoría',
+  municipio: com.municipio?.nombre || '',
+  distancia: minutos,
+  tiempoTexto: `${minutos} min`,
+  portada,
+  logo
+});
   }
 
   return resultados.sort((a, b) => a.distancia - b.distancia);
