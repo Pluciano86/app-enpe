@@ -13,13 +13,8 @@
         </style>
 
   <!-- Header -->
-  <div id="headerContainer"></div>
-
-  <script>
-    fetch("header.html")
-      .then(res => res.text())
-      .then(html => document.getElementById("headerContainer").innerHTML = html);
-  </script>
+<div id="headerContainer"></div>
+<script type="module" src="./js/header.js"></script>
 
 
 
@@ -106,12 +101,7 @@
   
 <!-- Footer -->
 <div id="footerContainer"></div>
-
-<script>
-  fetch("footer.html")
-    .then(res => res.text())
-    .then(html => document.getElementById("footerContainer").innerHTML = html);
-</script>
+<script type="module" src="./js/footer.js"></script>
 
 
 

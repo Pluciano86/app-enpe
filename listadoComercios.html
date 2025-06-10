@@ -17,12 +17,8 @@
 <body class="bg-white text-gray-800 pb-24">
 
   <!-- Header -->
-  <div id="headerContainer"></div>
-  <script>
-    fetch("header.html")
-      .then(res => res.text())
-      .then(html => document.getElementById("headerContainer").innerHTML = html);
-  </script>
+<div id="headerContainer"></div>
+<script type="module" src="./js/header.js"></script>
 
   <!-- Título y buscador -->
   <section class="p-4">
@@ -109,12 +105,8 @@
  <br><br>
 
   <!-- Footer -->
-  <div id="footerContainer"></div>
-  <script>
-    fetch("footer.html")
-      .then(res => res.text())
-      .then(html => document.getElementById("footerContainer").innerHTML = html);
-  </script>
+<div id="footerContainer"></div>
+<script type="module" src="./js/footer.js"></script>
 
   <!-- <script>
   fetch("listadoCards.html")

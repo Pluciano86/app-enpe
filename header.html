@@ -5,14 +5,5 @@
   <div class="w-6"></div> <!-- Esto ocupa el espacio del ícono izquierdo para balance -->
 </header>
 
-<script>
-  // Mostrar botón de Back si no estamos en index.html
-  document.addEventListener('DOMContentLoaded', () => {
-  const btnBack = document.getElementById('btnBack');
-  if (window.history.length > 1) {
-    btnBack.classList.remove('hidden');
-    btnBack.addEventListener('click', () => history.back());
-  }
-});
-</script>
+
 

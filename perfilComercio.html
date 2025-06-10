@@ -14,12 +14,8 @@
 <body id="bodyPrincipal" class="bg-white text-gray-800 overflow-y-auto pb-24">
 
   <!-- Header -->
-  <div id="headerContainer"></div>
-  <script>
-    fetch("header.html")
-      .then(res => res.text())
-      .then(html => document.getElementById("headerContainer").innerHTML = html);
-  </script>
+<div id="headerContainer"></div>
+<script type="module" src="./js/header.js"></script>
 
   <!-- Galería Swipe de Imágenes -->
 <!-- Fragmento HTML para perfilComercio.html (galería) -->
@@ -185,6 +181,15 @@
   </div>
 </section>
 
+
+
+<section id="contenedorComidaCercana" class="mt-6">
+  <h3 class="text-lg font-semibold mb-2 px-4">Cerca de aquí para comer</h3>
+  <div id="slideComida" class="overflow-x-auto flex gap-4 px-4 pb-2 scroll-smooth snap-x"></div>
+</section>
+
+
+
   <!-- Scripts principales -->
 <script type="module" src="./js/ubicacion.js"></script>
 <script type="module" src="./js/supabaseClient.js"></script>
@@ -199,6 +204,8 @@
 <script type="module" src="./js/descripcion.js"></script>
 <script type="module" src="./js/horarios.js"></script>
 <script type="module" src="./js/amenidades.js"></script>
+<script type="module" src="./js/cardComercioSlide.js"></script>
+<script type="module" src="./js/cercanosComida.js"></script>
 
 
 
@@ -216,24 +223,8 @@
 
 
 
-<footer class="fixed bottom-0 w-full h-[60px] bg-[#231F20] text-white flex justify-around items-center shadow-inner z-50">
-  <a href="index.html" class="flex flex-col items-center text-med w-1/4">
-    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/appicon/iconInicio.png" class="w-6 h-6 mb-1" alt="Inicio">
-    Inicio
-  </a>
-  <a href="happyhours.html" class="flex flex-col items-center text-med w-1/4">
-    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/appicon/beer.svg" class="w-6 h-6 mb-1" alt="Happy Hours">
-    Happy Hours
-  </a>
-  <a href="eventos.html" class="flex flex-col items-center text-med w-1/4">
-    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/appicon/deadline.svg" class="w-6 h-6 mb-1" alt="Eventos">
-    Eventos
-  </a>
-  <a href="perfil.html" class="flex flex-col items-center text-med w-1/4">
-    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/appicon/profile.svg" class="w-6 h-6 mb-1" alt="Mi Cuenta">
-    Mi Cuenta
-  </a>
-</footer>
+<div id="footerContainer"></div>
+<script type="module" src="./js/footer.js"></script>
 
 </body>
 </html>

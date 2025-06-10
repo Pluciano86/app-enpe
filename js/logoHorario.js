@@ -1,7 +1,7 @@
 import { supabase } from './supabaseClient.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
-const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 const iconoEl = document.querySelector('#estadoHorarioContainer i');
 const textoEl = document.querySelector('#estadoHorarioContainer p');
@@ -52,7 +52,7 @@ async function verificarHorario() {
     const proximo = obtenerProximoDiaAbierto(horarios, diaSemana);
     if (proximo) {
       const cuando = proximo.esManana ? 'mañana' : proximo.dia;
-      subtituloEl.textContent = `Abre ${cuando} a las ${proximo.apertura}`;
+      subtituloEl.innerHTML = `Abre ${cuando}<br>a las ${proximo.apertura}`;
     } else {
       subtituloEl.textContent = '';
     }

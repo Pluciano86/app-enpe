@@ -17,14 +17,8 @@
 <body class="bg-gray-100 min-h-screen text-gray-800 pb-24">
 
     <!-- Header -->
-  <div id="headerContainer"></div> 
-
-  <script>
-    fetch("/header.html")
-      .then(res => res.text())
-      .then(html => document.getElementById("headerContainer").innerHTML = html);
-  </script>
-
+<div id="headerContainer"></div>
+<script type="module" src="../js/header.js"></script>
 
 
    
@@ -101,12 +95,9 @@
 <script type="module" src="./renderImagenesEspecial.js"></script>
 
 
-  <div id="footerContainer"></div>
+<!-- Footer -->
+<div id="footerContainer"></div>
+<script type="module" src="../js/footer.js"></script>
 
-<script>
-  fetch("/footer.html")
-    .then(res => res.text())
-    .then(html => document.getElementById("footerContainer").innerHTML = html);
-</script>
 </body>
 </html>
