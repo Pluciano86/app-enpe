@@ -57,3 +57,18 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
             Math.sin(dLon / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+export async function obtenerUbicacionComercio(idComercio) {
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('latitud, longitud')
+    .eq('id', idComercio)
+    .single();
+
+  if (error || !data) {
+    console.error('❌ Error obteniendo ubicación del comercio:', error);
+    return null;
+  }
+
+  return { lat: data.latitud, lon: data.longitud };
+}

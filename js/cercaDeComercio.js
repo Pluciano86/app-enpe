@@ -1,4 +1,8 @@
-import { supabase } from '../js/supabaseClient.js'
+import { supabase } from '../js/supabaseClient.js';
+import { obtenerTiempoVehiculo } from './utilsDistancia.js';
+import { obtenerUbicacionComercio } from './ubicacion.js'; // 👈 ajusta el path según tu estructura
+import { obtenerMapaCategorias } from './obtenerMapaCategorias.js';
+
 
 /**
  * Calcula la distancia entre dos coordenadas en kilómetros
@@ -14,78 +18,66 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-/**
- * Verifica si un comercio está abierto ahora
- */
-async function estaAbierto(idComercio) {
-  const ahora = new Date();
-  const hora = ahora.toTimeString().slice(0, 5);
-  const dia = ahora.getDay();
-
-  const { data, error } = await supabase
-    .from('Horarios')
-    .select('apertura, cierre, cerrado')
-    .eq('idComercio', idComercio)
-    .eq('diaSemana', dia)
-    .maybeSingle();
-
-  if (error || !data || data.cerrado) return false;
-  return hora >= data.apertura && hora <= data.cierre;
-} 
-
-/**
- * Obtiene la ubicación (lat/lon) del comercio principal en perfil
- */
-export async function obtenerUbicacionComercio(idComercio) {
-  const { data, error } = await supabase
-    .from('Comercios')
-    .select('latitud, longitud')
-    .eq('id', idComercio)
-    .single();
-
-  if (error || !data) return null;
-  return { lat: data.latitud, lon: data.longitud };
-}
-
-/**
- * Busca comercios cercanos con toda la info necesaria
- */
 export async function buscarComerciosCercanos(idComercio, categoriaIds = []) {
   const ubicacion = await obtenerUbicacionComercio(idComercio);
   if (!ubicacion) return [];
 
+  const categoriasMap = await obtenerMapaCategorias();
+
   const { data: comercios, error } = await supabase
     .from('Comercios')
-    .select('id,nombre,latitud,longitud,idCategoria,idMunicipio')
-    .overlaps('idCategoria', categoriaIds); // ✅ usamos overlaps para arrays
+    .select(`
+      id,
+      nombre,
+      latitud,
+      longitud,
+      idCategoria,
+      idMunicipio,
+      municipio:Municipios(nombre),
+      imagenes:imagenesComercios(imagen, portada, logo)
+    `)
+    .overlaps('idCategoria', categoriaIds.map(id => BigInt(id)));
 
   if (error) {
-    console.error('❌ Error cargando comercios:', error);
+    console.error('❌ Error cargando comercios:', JSON.stringify(error, null, 2));
     return [];
   }
 
+  const destinos = comercios
+    .filter(c => c.latitud && c.longitud && c.id !== parseInt(idComercio))
+    .map(c => ({ lat: c.latitud, lon: c.longitud }));
+
+  const tiempos = await obtenerTiempoVehiculo(ubicacion, destinos);
+
   const resultados = [];
+  let tiempoIdx = 0;
 
   for (const com of comercios) {
     if (!com.latitud || !com.longitud) continue;
     if (com.id === parseInt(idComercio)) continue;
 
-    const distancia = calcularDistancia(
-      ubicacion.lat,
-      ubicacion.lon,
-      com.latitud,
-      com.longitud
-    );
+    const portadaImg = com.imagenes?.find(img => img.portada)?.imagen || '';
+    const logoImg = com.imagenes?.find(img => img.logo)?.imagen || '';
 
- /**   const abierto = await estaAbierto(com.id);
-    if (!abierto) continue;
- */
+    const portada = portadaImg
+      ? supabase.storage.from('galeriacomercios').getPublicUrl(portadaImg).data.publicUrl
+      : '';
+    const logo = logoImg
+      ? supabase.storage.from('galeriacomercios').getPublicUrl(logoImg).data.publicUrl
+      : '';
+
+    const minutos = tiempos?.[tiempoIdx] ? Math.round(tiempos[tiempoIdx] / 60) : null;
+    tiempoIdx++;
+
     resultados.push({
       id: com.id,
       nombre: com.nombre,
-      idCategoria: com.idCategoria,
-      idMunicipio: com.idMunicipio,
-      distancia
+      categoria: categoriasMap[com.idCategoria?.[0]] || 'Sin categoría',
+      municipio: com.municipio?.nombre || '',
+      distancia: minutos,
+      tiempoTexto: minutos ? `${minutos} min` : '',
+      portada,
+      logo
     });
   }
 
@@ -93,7 +85,7 @@ export async function buscarComerciosCercanos(idComercio, categoriaIds = []) {
 }
 
 /**
- * Export genérico para facilitar el uso en otros módulos
+ * Exporta los comercios filtrados por nombres de categorías
  */
 export async function obtenerCercanos({ categorias = [] } = {}) {
   const idComercio = new URLSearchParams(window.location.search).get('id');
