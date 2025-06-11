@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 exports.handler = async function (event) {
   const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
@@ -30,6 +28,8 @@ exports.handler = async function (event) {
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
 
   try {
+    // 👇 Import dinámico aquí resuelve el problema
+    const fetch = (await import('node-fetch')).default;
     const response = await fetch(url);
     const data = await response.json();
 
