@@ -2,13 +2,13 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
-import { obtenerTiemposReales } from './distanciaGoogle.js';
+import { calcularTiemposParaLista } from './ubicacionGoogle.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
   const raw = params.get('idCategoria');
   if (!raw) return null;
-  return parseInt(raw); // <-- esto es lo importante
+  return parseInt(raw);
 }
 
 const supabaseUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co';
@@ -33,8 +33,9 @@ const filtrosActivos = {
   favoritos: false,
   activos: false,
   destacadosPrimero: true,
-  comerciosPorPlato: [] 
+  comerciosPorPlato: []
 };
+
 
 function actualizarEtiquetaSubcategoria(nombreCategoria) {
   const label = document.querySelector('label[for="filtro-subcategoria"]');
@@ -359,29 +360,12 @@ navigator.geolocation.getCurrentPosition(async (pos) => {
   latUsuario = pos.coords.latitude;
   lonUsuario = pos.coords.longitude;
 
-  // 1. Cargar comercios
   await cargarComercios();
+  listaOriginal = await calcularTiemposParaLista(listaOriginal, {
+    lat: latUsuario,
+    lon: lonUsuario
+  });
 
-  // 2. Preparar destinos para Google Maps
-  const destinos = listaOriginal
-    .filter(c => c.latitud && c.longitud)
-    .map(c => ({ lat: c.latitud, lon: c.longitud }));
-
-  // 3. Obtener tiempos reales
-  const googleMapsApiKey = 'AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI';
-  const tiempos = await obtenerTiemposReales({ lat: latUsuario, lon: lonUsuario }, destinos, googleMapsApiKey);
-
-  // 4. Reemplazar tiempo estimado por real
-  let idx = 0;
-  for (const comercio of listaOriginal) {
-    if (!comercio.latitud || !comercio.longitud) continue;
-    const segundos = tiempos[idx++];
-    if (segundos != null) {
-      comercio.tiempoVehiculo = Math.round(segundos / 60) + ' min';
-    }
-  }
-
-  // 5. Redibujar
   aplicarFiltrosYRedibujar();
 });
 
