@@ -1,24 +1,20 @@
+// utilsDistancia.js
+const baseURL = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+  ? 'http://localhost:8888'
+  : 'https://test.enpe-erre.com';
+
 export async function obtenerTiempoVehiculo(origen, destinos) {
-  const GOOGLE_MAPS_API_KEY = 'AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI'; // 👈🏽 Tu key pública de prueba
-
-  const params = new URLSearchParams({
-    origins: `${origen.lat},${origen.lon}`,
-    destinations: destinos.map(d => `${d.lat},${d.lon}`).join('|'),
-    mode: 'driving',
-    units: 'metric',
-    key: GOOGLE_MAPS_API_KEY
-  });
-
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
-
   try {
-    const response = await fetch(url);
-    const data = await response.json();
+    const res = await fetch(`${baseURL}/.netlify/functions/distance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ origen, destinos }),
+    });
 
-    const tiempos = data.rows[0].elements.map(el => el.duration?.value || null);
-    return tiempos;
+    const data = await res.json();
+    return data.tiempos || [];
   } catch (err) {
-    console.error('❌ Error en obtenerTiempoVehiculo:', err);
+    console.error('❌ Error consultando distancia en carro:', err);
     return [];
   }
 }
