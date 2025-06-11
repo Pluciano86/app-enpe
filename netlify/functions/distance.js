@@ -1,7 +1,6 @@
-// netlify/functions/distance.js
 const fetch = require('node-fetch');
 
-exports.handler = async function(event) {
+exports.handler = async function (event) {
   const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
   if (!GOOGLE_MAPS_API_KEY) {
@@ -20,12 +19,9 @@ exports.handler = async function(event) {
 
   const { origen, destinos } = JSON.parse(event.body);
 
-  // Debug: muestra los datos recibidos
-  console.log('📦 Body recibido:', { origen, destinos });
-
   const params = new URLSearchParams({
     origins: `${origen.lat},${origen.lon}`,
-    destinations: destinos.map(d => `${d.lat},${d.lon}`).join('|'),
+    destinations: destinos.map((d) => `${d.lat},${d.lon}`).join('|'),
     mode: 'driving',
     units: 'metric',
     key: GOOGLE_MAPS_API_KEY
@@ -37,14 +33,14 @@ exports.handler = async function(event) {
     const response = await fetch(url);
     const data = await response.json();
 
-    const tiempos = data.rows[0].elements.map(el => el.duration?.value || null);
+    const tiempos = data.rows[0].elements.map((el) => el.duration?.value || null);
 
     return {
       statusCode: 200,
       body: JSON.stringify({ tiempos })
     };
   } catch (err) {
-    console.error('❌ Error en función distance:', err);
+    console.error('Error en función distance:', err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'Error consultando Google Maps' })
