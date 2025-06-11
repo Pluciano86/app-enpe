@@ -2,6 +2,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
+import { obtenerTiemposReales } from './distanciaGoogle.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -354,19 +355,34 @@ function crearTagFiltro(texto, onClick) {
     });
   });
 
-navigator.geolocation.getCurrentPosition(
-  (pos) => {
-    latUsuario = pos.coords.latitude;
-    lonUsuario = pos.coords.longitude;
-    cargarComerciosConOrden();
-  },
-  () => cargarComerciosConOrden()
-);
+navigator.geolocation.getCurrentPosition(async (pos) => {
+  latUsuario = pos.coords.latitude;
+  lonUsuario = pos.coords.longitude;
 
-document.addEventListener('DOMContentLoaded', () => {
-  cargarNombreCategoria();
-  cargarMunicipios();
-  cargarSubcategorias(idCategoriaDesdeURL);
+  // 1. Cargar comercios
+  await cargarComercios();
+
+  // 2. Preparar destinos para Google Maps
+  const destinos = listaOriginal
+    .filter(c => c.latitud && c.longitud)
+    .map(c => ({ lat: c.latitud, lon: c.longitud }));
+
+  // 3. Obtener tiempos reales
+  const googleMapsApiKey = 'AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI';
+  const tiempos = await obtenerTiemposReales({ lat: latUsuario, lon: lonUsuario }, destinos, googleMapsApiKey);
+
+  // 4. Reemplazar tiempo estimado por real
+  let idx = 0;
+  for (const comercio of listaOriginal) {
+    if (!comercio.latitud || !comercio.longitud) continue;
+    const segundos = tiempos[idx++];
+    if (segundos != null) {
+      comercio.tiempoVehiculo = Math.round(segundos / 60) + ' min';
+    }
+  }
+
+  // 5. Redibujar
+  aplicarFiltrosYRedibujar();
 });
 
 async function cargarComerciosConOrden() {
