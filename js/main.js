@@ -2,7 +2,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
-import { calcularTiemposParaLista } from './ubicacionGoogle.js';
+import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -185,27 +185,29 @@ for (const producto of productosAll) {
       distancia = calcularDistancia(latUsuario, lonUsuario, comercio.latitud, comercio.longitud);
     }
 
-    const minutosEstimados = distancia ? Math.round(distancia * 2) : null;
-
     return {
-      id: comercio.id,
-      nombre: comercio.nombre,
-      telefono: comercio.telefono,
-      googleMap: comercio.googleMap,
-      pueblo: comercio.municipio,
-      abierto,
-      tiempoVehiculo: minutosEstimados != null ? formatearTiempo(minutosEstimados) : null,
-      imagenPortada: portada ? `${baseImageUrl}/${portada.imagen}` : '',
-      logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
-      distanciaKm: distancia,
-      idCategoria: comercio.idCategoria,
-      idSubcategoria: Array.isArray(comercio.idSubcategoria)
-        ? comercio.idSubcategoria
-        : [parseInt(comercio.idSubcategoria)],
-      activoEnPeErre: comercio.activo === true,
-      favorito: comercio.favorito || false,
-      platos: productosPorComercio[comercio.id] || [],
-    };
+  id: comercio.id,
+  nombre: comercio.nombre,
+  telefono: comercio.telefono,
+  googleMap: comercio.googleMap,
+  pueblo: comercio.municipio,
+  abierto,
+  tiempoVehiculo: null,
+  imagenPortada: portada ? `${baseImageUrl}/${portada.imagen}` : '',
+  logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
+  distanciaKm: distancia,
+  idCategoria: comercio.idCategoria,
+  idSubcategoria: Array.isArray(comercio.idSubcategoria)
+    ? comercio.idSubcategoria
+    : [parseInt(comercio.idSubcategoria)],
+  activoEnPeErre: comercio.activo === true,
+  favorito: comercio.favorito || false,
+  platos: productosPorComercio[comercio.id] || [],
+
+  // ✅ Añade estas líneas
+  latitud: comercio.latitud,
+  longitud: comercio.longitud,
+};
   });
 }
 
@@ -365,6 +367,7 @@ navigator.geolocation.getCurrentPosition(async (pos) => {
     lat: latUsuario,
     lon: lonUsuario
   });
+  console.log("🔵 Comercios antes de calcular distancias:", listaOriginal);
 
   aplicarFiltrosYRedibujar();
 });

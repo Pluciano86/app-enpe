@@ -65,11 +65,19 @@ export async function mostrarTiempoIndividual(id) {
 export async function calcularTiemposParaLista(lista, origenCoords) {
   const apiKey = 'AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI';
 
+  console.log('🟡 Lista recibida:', lista);
+  console.log('🟡 Coordenadas de origen:', origenCoords);
+
   const destinos = lista
     .filter(c => c.latitud && c.longitud)
     .map(c => `${c.latitud},${c.longitud}`);
 
-  if (destinos.length === 0) return lista;
+  console.log('🟡 Destinos válidos:', destinos);
+
+  if (destinos.length === 0) {
+    console.warn('⚠️ No hay destinos con coordenadas válidas.');
+    return lista;
+  }
 
   const params = new URLSearchParams({
     origins: `${origenCoords.lat},${origenCoords.lon}`,
@@ -79,14 +87,21 @@ export async function calcularTiemposParaLista(lista, origenCoords) {
     key: apiKey
   });
 
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?${params}`;
+  console.log('📡 URL de la solicitud:', url);
+
   try {
-    const response = await fetch(`https://maps.googleapis.com/maps/api/distancematrix/json?${params}`);
+    const response = await fetch(url);
     const result = await response.json();
+
+    console.log('✅ Resultado recibido de la API:', result);
 
     const tiempos = result?.rows?.[0]?.elements || [];
 
     return lista.map((comercio, i) => {
       const duracion = tiempos[i]?.duration?.value || null;
+      console.log(`🕒 Tiempo para comercio ${comercio.nombre || i}:`, duracion);
+
       return {
         ...comercio,
         tiempoVehiculo: duracion ? `${Math.round(duracion / 60)} min` : comercio.tiempoVehiculo
