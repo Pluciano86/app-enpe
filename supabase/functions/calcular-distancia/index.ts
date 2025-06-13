@@ -20,7 +20,12 @@ serve(async (req) => {
     url.searchParams.set("destinations", destinos);
     url.searchParams.set("mode", "driving");
     url.searchParams.set("units", "metric");
-    url.searchParams.set("key", Deno.env.get("IzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI") || "");
+
+    // 👇 Aquí está el fix
+    const apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY") || "";
+    url.searchParams.set("key", apiKey);
+
+    console.log("🌐 URL final:", url.toString());
 
     const response = await fetch(url.toString());
     const data = await response.json();
