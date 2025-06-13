@@ -22,6 +22,13 @@ export async function calcularTiemposParaLista(lista, origenCoords) {
     return lista;
   }
 
+  const body = {
+    origen: `${origenCoords.lat},${origenCoords.lon}`,
+    destinos: destinos.join('|')
+  };
+
+  console.log('📦 BODY ENVIADO:', body);
+
   try {
     const response = await fetch('https://zgjaxanqfkweslkxtayt.functions.supabase.co/calcular-distancia', {
       method: 'POST',
@@ -29,10 +36,7 @@ export async function calcularTiemposParaLista(lista, origenCoords) {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
       },
-      body: JSON.stringify({
-        origen: `${origenCoords.lat},${origenCoords.lon}`,
-        destinos: destinos.join('|')
-      })
+      body: JSON.stringify(body)
     });
 
     const result = await response.json();
