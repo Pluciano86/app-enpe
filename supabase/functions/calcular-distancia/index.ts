@@ -1,6 +1,17 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 serve(async (req) => {
+  // 🔁 Manejar OPTIONS para preflight CORS
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      }
+    });
+  }
+
   try {
     const { origen, destinos } = await req.json();
 
@@ -9,19 +20,25 @@ serve(async (req) => {
     url.searchParams.set("destinations", destinos);
     url.searchParams.set("mode", "driving");
     url.searchParams.set("units", "metric");
-    url.searchParams.set("key", Deno.env.get("GOOGLE_MAPS_API_KEY") || "");
+    url.searchParams.set("key", Deno.env.get("IzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI") || "");
 
     const response = await fetch(url.toString());
     const data = await response.json();
 
     return new Response(JSON.stringify(data), {
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
       status: 200,
     });
 
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
       status: 500,
     });
   }
