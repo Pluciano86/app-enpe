@@ -18,6 +18,12 @@ const baseImageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object
 
 const diaActual = new Date().getDay();
 const idCategoriaDesdeURL = obtenerIdCategoriaDesdeURL();
+cargarNombreCategoria();
+cargarMunicipios();
+if (idCategoriaDesdeURL) {
+  cargarSubcategorias(idCategoriaDesdeURL);
+}
+
 
 let listaOriginal = [];
 let latUsuario = null;
@@ -101,80 +107,42 @@ function formatearTiempo(minutos) {
 }
 
 async function cargarComercios() {
-  // 1. Traer todos los comercios activos
   let query = supabase.from('Comercios').select('*');
   if (idCategoriaDesdeURL) {
     query = query.overlaps('idCategoria', [idCategoriaDesdeURL]);
   }
 
   const { data: comercios, error } = await query;
+  if (error || !comercios?.length) return;
 
-  if (error) {
-    console.error('❌ Error cargando comercios:', error);
-    return;
-  }
-
-  if (!comercios?.length) {
-    console.warn('⚠️ No se encontraron comercios en la base de datos.');
-    return;
-  }
-
-  // 2. Traer todas las imágenes (portadas y logos)
-  const { data: imagenesAll, error: errorImagenes } = await supabase
+  const { data: imagenesAll } = await supabase
     .from('imagenesComercios')
     .select('idComercio, imagen, portada, logo');
 
-  if (errorImagenes) {
-    console.error('❌ Error cargando imágenes:', errorImagenes);
-    return;
-  }
-
-  // 3. Traer todos los horarios del día actual
-  const { data: horariosAll, error: errorHorarios } = await supabase
+  const { data: horariosAll } = await supabase
     .from('Horarios')
     .select('idComercio, apertura, cierre, cerrado, diaSemana')
     .eq('diaSemana', diaActual);
 
-  if (errorHorarios) {
-    console.error('❌ Error cargando horarios:', errorHorarios);
-    return;
+  const { data: productosAll } = await supabase.from('productos').select('idMenu, nombre');
+  const { data: menusAll } = await supabase.from('menus').select('id, idComercio');
+
+  const productosPorComercio = {};
+  for (const producto of productosAll) {
+    const menu = menusAll.find(m => m.id === producto.idMenu);
+    if (!menu) continue;
+    if (!productosPorComercio[menu.idComercio]) productosPorComercio[menu.idComercio] = [];
+    productosPorComercio[menu.idComercio].push(producto.nombre);
   }
 
-
-  const { data: productosAll } = await supabase
-  .from('productos')
-  .select('idMenu, nombre');
-
-const { data: menusAll } = await supabase
-  .from('menus')
-  .select('id, idComercio');
-
-const productosPorComercio = {};
-
-for (const producto of productosAll) {
-  const menu = menusAll.find(m => m.id === producto.idMenu);
-  if (!menu) continue;
-
-  if (!productosPorComercio[menu.idComercio]) {
-    productosPorComercio[menu.idComercio] = [];
-  }
-
-  productosPorComercio[menu.idComercio].push(producto.nombre);
-}
-
-
-
-
-  // 4. Procesar la lista
   listaOriginal = comercios.map(comercio => {
     const portada = imagenesAll.find(img => img.idComercio === comercio.id && img.portada);
     const logo = imagenesAll.find(img => img.idComercio === comercio.id && img.logo);
     const horario = horariosAll.find(h => h.idComercio === comercio.id);
 
-    const ahora = new Date();
-    const horaActual = ahora.toTimeString().slice(0, 5);
     let abierto = false;
     if (horario && !horario.cerrado && horario.apertura && horario.cierre) {
+      const horaActual = new Date().toTimeString().slice(0, 5);
       const apertura = horario.apertura.slice(0, 5);
       const cierre = horario.cierre.slice(0, 5);
       abierto = horaActual >= apertura && horaActual <= cierre;
@@ -186,28 +154,26 @@ for (const producto of productosAll) {
     }
 
     return {
-  id: comercio.id,
-  nombre: comercio.nombre,
-  telefono: comercio.telefono,
-  googleMap: comercio.googleMap,
-  pueblo: comercio.municipio,
-  abierto,
-  tiempoVehiculo: null,
-  imagenPortada: portada ? `${baseImageUrl}/${portada.imagen}` : '',
-  logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
-  distanciaKm: distancia,
-  idCategoria: comercio.idCategoria,
-  idSubcategoria: Array.isArray(comercio.idSubcategoria)
-    ? comercio.idSubcategoria
-    : [parseInt(comercio.idSubcategoria)],
-  activoEnPeErre: comercio.activo === true,
-  favorito: comercio.favorito || false,
-  platos: productosPorComercio[comercio.id] || [],
-
-  // ✅ Añade estas líneas
-  latitud: comercio.latitud,
-  longitud: comercio.longitud,
-};
+      id: comercio.id,
+      nombre: comercio.nombre,
+      telefono: comercio.telefono,
+      googleMap: comercio.googleMap,
+      pueblo: comercio.municipio,
+      abierto,
+      tiempoVehiculo: null,
+      imagenPortada: portada ? `${baseImageUrl}/${portada.imagen}` : '',
+      logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
+      distanciaKm: distancia,
+      idCategoria: comercio.idCategoria,
+      idSubcategoria: Array.isArray(comercio.idSubcategoria)
+        ? comercio.idSubcategoria
+        : [parseInt(comercio.idSubcategoria)],
+      activoEnPeErre: comercio.activo === true,
+      favorito: comercio.favorito || false,
+      platos: productosPorComercio[comercio.id] || [],
+      latitud: comercio.latitud,
+      longitud: comercio.longitud
+    };
   });
 }
 
@@ -217,6 +183,7 @@ function normalizarTexto(texto) {
 
 
 function aplicarFiltrosYRedibujar() {
+    console.log("🟡 Aplicando filtros con:", filtrosActivos);
   const contenedor = document.getElementById('app');
   contenedor.innerHTML = '';
 
@@ -224,24 +191,27 @@ function aplicarFiltrosYRedibujar() {
 
   const texto = normalizarTexto(filtrosActivos.textoBusqueda.trim());
   if (texto) {
-  filtrados = filtrados.filter(c =>
-    normalizarTexto(c.nombre).includes(texto) ||
-    (c.platos && c.platos.some(p => normalizarTexto(p).includes(texto)))
-  );
-}
+    filtrados = filtrados.filter(c =>
+      normalizarTexto(c.nombre).includes(texto) ||
+      (c.platos && c.platos.some(p => normalizarTexto(p).includes(texto)))
+    );
+  }
+
+  if (filtrosActivos.comerciosPorPlato?.length > 0) {
+    filtrados = filtrados.filter(c => filtrosActivos.comerciosPorPlato.includes(c.id));
+  }
 
   if (filtrosActivos.municipio) {
     filtrados = filtrados.filter(c => c.pueblo === filtrosActivos.municipio);
   }
-  if (filtrosActivos.categoria) {
-    filtrados = filtrados.filter(c => c.idCategoria == filtrosActivos.categoria);
-  }
+
   if (filtrosActivos.subcategoria) {
-  filtrados = filtrados.filter(c =>
-    Array.isArray(c.idSubcategoria) &&
-    c.idSubcategoria.includes(parseInt(filtrosActivos.subcategoria))
-  );
-}
+    filtrados = filtrados.filter(c =>
+      Array.isArray(c.idSubcategoria) &&
+      c.idSubcategoria.includes(parseInt(filtrosActivos.subcategoria))
+    );
+  }
+
   if (filtrosActivos.abiertoAhora) {
     filtrados = filtrados.filter(c => c.abierto === true);
   }
@@ -252,9 +222,9 @@ function aplicarFiltrosYRedibujar() {
 
   const categoriaCruda = document.getElementById('tituloCategoria')?.textContent || 'Resultados';
   const categoriaNombre = categoriaCruda
-  .split(' ')
-  .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
-  .join(' ');
+    .split(' ')
+    .map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ');
   const total = filtrados.length;
   const labelTotal = document.createElement('span');
   labelTotal.textContent = `${total} ${categoriaNombre}`;
@@ -283,13 +253,13 @@ function aplicarFiltrosYRedibujar() {
     });
     filtrosDiv.appendChild(tag);
   }
+  
 
   for (const comercio of filtrados) {
     const card = comercio.activoEnPeErre
-  ? cardComercio(comercio)
-  : cardComercioNoActivo(comercio);
-
-contenedor.appendChild(card);
+      ? cardComercio(comercio)
+      : cardComercioNoActivo(comercio);
+    contenedor.appendChild(card);
   }
 }
 
@@ -307,56 +277,63 @@ function crearTagFiltro(texto, onClick) {
   .forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
+
     const evento = id === 'filtro-nombre' ? 'input' : 'change';
     el.addEventListener(evento, async (e) => {
       const v = e.target;
+      console.log(`🛠 Cambió filtro ${id}:`, v.value ?? v.checked);
+
       if (id === 'filtro-nombre') {
-  const texto = v.value.trim();
-  filtrosActivos.textoBusqueda = texto;
+        const texto = v.value.trim();
+        filtrosActivos.textoBusqueda = texto;
 
-  // 🔍 Extra: también busca platos relacionados
-  if (texto.length >= 3) {
-    const { data: productos, error } = await supabase
-      .from('productos')
-      .select('idMenu, nombre')
-      .ilike('nombre', `%${texto}%`);
+        if (texto.length >= 3) {
+          const { data: productos, error } = await supabase
+            .from('productos')
+            .select('idMenu, nombre')
+            .ilike('nombre', `%${texto}%`);
 
-    if (!error && productos?.length) {
-      const idMenus = productos.map(p => p.idMenu);
-
-      const { data: menus, error: errMenus } = await supabase
-        .from('menus')
-        .select('idComercio')
-        .in('id', idMenus);
-
-      if (!errMenus && menus?.length) {
-        const idComercios = [...new Set(menus.map(m => m.idComercio))];
-        filtrosActivos.comerciosPorPlato = idComercios;
+          if (!error && productos?.length) {
+            const idMenus = productos.map(p => p.idMenu);
+            const { data: menus, error: errMenus } = await supabase
+              .from('menus')
+              .select('idComercio')
+              .in('id', idMenus);
+            if (!errMenus && menus?.length) {
+              const idComercios = [...new Set(menus.map(m => m.idComercio))];
+              filtrosActivos.comerciosPorPlato = idComercios;
+            }
+          } else {
+            filtrosActivos.comerciosPorPlato = [];
+          }
+        } else {
+          filtrosActivos.comerciosPorPlato = [];
+        }
       }
-    } else {
-      filtrosActivos.comerciosPorPlato = [];
-    }
-  } else {
-    filtrosActivos.comerciosPorPlato = [];
-  }
 
-  aplicarFiltrosYRedibujar();
-}
       if (id === 'filtro-municipio') filtrosActivos.municipio = v.value;
       if (id === 'filtro-subcategoria') filtrosActivos.subcategoria = v.value;
-      if (filtrosActivos.comerciosPorPlato?.length > 0) {
-  filtrados = filtrados.filter(c => filtrosActivos.comerciosPorPlato.includes(c.id));
-}
       if (id === 'filtro-orden') filtrosActivos.orden = v.value;
       if (id === 'filtro-abierto') filtrosActivos.abiertoAhora = v.checked;
-      if (id === 'filtro-destacados') filtrosActivos.destacadosPrimero = v.checked;
-      if (['filtro-nombre', 'filtro-municipio', 'filtro-subcategoria', 'filtro-abierto'].includes(id)) {
-        aplicarFiltrosYRedibujar();
+      if (id === 'filtro-destacados') {
+  filtrosActivos.destacadosPrimero = v.checked;
+  console.log(`⭐ Cambió filtro destacadosPrimero: ${v.checked}`);
+  await cargarComerciosConOrden(); // ✅ refresca con orden
+  return;
+}
+
+      // ✅ Nuevo console antes de aplicar
+      console.log('🟡 Aplicando filtros con:', { ...filtrosActivos });
+
+      if (id === 'filtro-orden') {
+        await cargarComerciosConOrden();
       } else {
-        cargarComerciosConOrden();
+        aplicarFiltrosYRedibujar();
       }
     });
   });
+
+  
 
 navigator.geolocation.getCurrentPosition(async (pos) => {
   latUsuario = pos.coords.latitude;
@@ -367,45 +344,57 @@ navigator.geolocation.getCurrentPosition(async (pos) => {
     lat: latUsuario,
     lon: lonUsuario
   });
+
   console.log("🔵 Comercios antes de calcular distancias:", listaOriginal);
 
-  aplicarFiltrosYRedibujar();
+  // ✅ Esto sí respeta el orden y destacadosPrimero
+  await cargarComerciosConOrden();
 });
 
 async function cargarComerciosConOrden() {
+  console.log("🔄 Orden seleccionado:", filtrosActivos.orden);
+
+  // Solo recarga comercios (no toca tiempos)
   await cargarComercios();
 
+  // Solo calcular tiempos si el orden es por cercanía
   if (filtrosActivos.orden === 'ubicacion') {
-    listaOriginal.sort((a, b) => {
-      if (a.distanciaKm == null) return 1;
-      if (b.distanciaKm == null) return -1;
-      return a.distanciaKm - b.distanciaKm;
+    listaOriginal = await calcularTiemposParaLista(listaOriginal, {
+      lat: latUsuario,
+      lon: lonUsuario
     });
+
+    console.log("🕐 Lista con tiempos:", listaOriginal.map(c => ({
+      nombre: c.nombre,
+      tiempoVehiculo: c.tiempoVehiculo,
+      minutosCrudos: c.minutosCrudos
+    })));
+  }
+
+  // Ordenamiento base
+  if (filtrosActivos.orden === 'ubicacion') {
+    listaOriginal.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
   } else if (filtrosActivos.orden === 'az') {
     listaOriginal.sort((a, b) => a.nombre.localeCompare(b.nombre));
   } else if (filtrosActivos.orden === 'recientes') {
     listaOriginal.sort((a, b) => b.id - a.id);
   }
 
+  // Reordenar si destacados está activo
   if (filtrosActivos.destacadosPrimero) {
-  // Separa activos y no activos
-  const activos = listaOriginal.filter(c => c.activoEnPeErre === true);
-  const noActivos = listaOriginal.filter(c => c.activoEnPeErre !== true);
+    const activos = listaOriginal.filter(c => c.activoEnPeErre);
+    const inactivos = listaOriginal.filter(c => !c.activoEnPeErre);
 
-  console.log("Activos:", activos.map(c => c.nombre));
-  console.log("No activos:", noActivos.map(c => c.nombre));
+    activos.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
+    inactivos.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
 
-  // Ordenar ambos por distancia
-  activos.sort((a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity));
-  noActivos.sort((a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity));
+    listaOriginal = [...activos, ...inactivos];
+  }
 
-  // Unir listas: activos primero
-  listaOriginal = [...activos, ...noActivos];
-}
-
-// ✅ Filtrar por comercios relacionados a búsqueda por platos (si aplica)
   if (filtrosActivos.comerciosPorPlato?.length > 0) {
-    listaOriginal = listaOriginal.filter(c => filtrosActivos.comerciosPorPlato.includes(c.id));
+    listaOriginal = listaOriginal.filter(c =>
+      filtrosActivos.comerciosPorPlato.includes(c.id)
+    );
   }
 
   aplicarFiltrosYRedibujar();
