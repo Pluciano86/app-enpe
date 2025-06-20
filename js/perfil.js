@@ -1,6 +1,9 @@
 import { supabase } from './supabaseClient.js';
+import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
+let latUsuario = null;
+let lonUsuario = null;
 
 async function cargarPerfilComercio() {
   const { data, error } = await supabase.from('Comercios').select('*').eq('id', idComercio).single();
@@ -42,6 +45,30 @@ async function cargarPerfilComercio() {
     const url = supabase.storage.from('galeriacomercios').getPublicUrl(imagenes.imagen).data.publicUrl;
     logo.src = url;
   }
+
+  // 🚗 Calcular distancia desde la ubicación del usuario
+  if (latUsuario && lonUsuario && data.latitud && data.longitud) {
+    const [conTiempo] = await calcularTiemposParaLista([data], {
+      lat: latUsuario,
+      lon: lonUsuario
+    });
+
+    const divTiempo = document.getElementById('tiempoVehiculo');
+    if (divTiempo) {
+      divTiempo.innerHTML = `<i class="fas fa-car"></i> ${conTiempo.tiempoVehiculo}`;
+    }
+  }
 }
 
-document.addEventListener('DOMContentLoaded', cargarPerfilComercio);
+// Obtener ubicación del usuario primero
+navigator.geolocation.getCurrentPosition(
+  async (pos) => {
+    latUsuario = pos.coords.latitude;
+    lonUsuario = pos.coords.longitude;
+    await cargarPerfilComercio();
+  },
+  async () => {
+    console.warn('❗ Usuario no permitió ubicación.');
+    await cargarPerfilComercio(); // cargar sin distancia
+  }
+);
