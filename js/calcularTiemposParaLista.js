@@ -1,33 +1,19 @@
 export async function calcularTiemposParaLista(lista, origenCoords) {
-//  console.log('🟡 Lista recibida:', lista);
-//  console.log('🟡 Coordenadas de origen:', origenCoords);
+  const comerciosValidos = lista.filter(c =>
+    typeof c.latitud === 'number' &&
+    typeof c.longitud === 'number' &&
+    !isNaN(c.latitud) &&
+    !isNaN(c.longitud)
+  );
 
-  lista.forEach((c, i) => {
-//    console.log(`📍 Comercio ${i + 1}:`, c.nombre, 'Lat:', c.latitud, 'Lon:', c.longitud);
-  });
+  const destinos = comerciosValidos.map(c => `${c.latitud},${c.longitud}`);
 
-  const destinos = lista
-    .filter(c =>
-      typeof c.latitud === 'number' &&
-      typeof c.longitud === 'number' &&
-      !isNaN(c.latitud) &&
-      !isNaN(c.longitud)
-    )
-    .map(c => `${c.latitud},${c.longitud}`);
-
-//  console.log('🟡 Destinos válidos:', destinos);
-
-  if (destinos.length === 0) {
-    console.warn('⚠️ No hay destinos con coordenadas válidas.');
-    return lista;
-  }
+  if (destinos.length === 0) return lista;
 
   const body = {
     origen: `${origenCoords.lat},${origenCoords.lon}`,
     destinos: destinos.join('|')
   };
-
-//  console.log('📦 BODY ENVIADO:', body);
 
   try {
     const response = await fetch('https://zgjaxanqfkweslkxtayt.functions.supabase.co/calcular-distancia', {
@@ -40,36 +26,25 @@ export async function calcularTiemposParaLista(lista, origenCoords) {
     });
 
     const result = await response.json();
-  //  console.log('✅ Resultado recibido de la API:', result);
-
     const tiempos = result?.rows?.[0]?.elements || [];
 
-    return lista.map((comercio, i) => {
-  const duracion = tiempos[i]?.duration?.value || null; // en segundos
-  const minutos = duracion ? Math.round(duracion / 60) : null;
+    comerciosValidos.forEach((comercio, i) => {
+      const duracion = tiempos[i]?.duration?.value || null;
+      const minutos = duracion ? Math.round(duracion / 60) : null;
 
-  let tiempoTexto = null;
-  if (minutos !== null) {
-    if (minutos >= 60) {
-      const horas = Math.floor(minutos / 60);
-      const mins = minutos % 60;
-      tiempoTexto = `a ${horas} hr${horas > 1 ? 's' : ''}${mins > 0 ? ` y ${mins} minutos` : ''}`;
-    } else {
-      tiempoTexto = `a ${minutos} minutos`;
-    }
-  }
+      if (minutos !== null) {
+        comercio.tiempoVehiculo = minutos >= 60
+          ? `a ${Math.floor(minutos / 60)} hr${Math.floor(minutos / 60) > 1 ? 's' : ''} y ${minutos % 60} minutos`
+          : `a ${minutos} minutos`;
 
-//  console.log(`🕒 Tiempo para comercio ${comercio.nombre || i}:`, tiempoTexto);
+        comercio.minutosCrudos = minutos;
+      } else {
+        comercio.tiempoVehiculo = null;
+        comercio.minutosCrudos = null;
+      }
+    });
 
-  return {
-  ...comercio,
-  tiempoVehiculo: minutos >= 60
-    ? `a ${Math.floor(minutos / 60)} hr${Math.floor(minutos / 60) > 1 ? 's' : ''} y ${minutos % 60} minutos`
-    : `a ${minutos} minutos`,
-  minutosCrudos: minutos
-};
-});
-
+    return lista;
   } catch (err) {
     console.error('❌ Error calculando tiempos para lista:', err);
     return lista;
