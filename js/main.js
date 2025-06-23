@@ -3,6 +3,14 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
+import { detectarMunicipioUsuario } from './detectarMunicipio.js';
+
+function mostrarLoader() {
+  document.getElementById('loaderLogo')?.classList.remove('hidden');
+}
+function ocultarLoader() {
+  document.getElementById('loaderLogo')?.classList.add('hidden');
+}
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -339,15 +347,29 @@ navigator.geolocation.getCurrentPosition(async (pos) => {
   latUsuario = pos.coords.latitude;
   lonUsuario = pos.coords.longitude;
 
-  await cargarComercios();
-  listaOriginal = await calcularTiemposParaLista(listaOriginal, {
+  // Detectar municipio
+  const municipioDetectado = detectarMunicipioUsuario({
     lat: latUsuario,
     lon: lonUsuario
   });
+  console.log("📍 Municipio más cercano detectado:", municipioDetectado);
 
-  console.log("🔵 Comercios antes de calcular distancias:", listaOriginal);
+  // Activar ese filtro automáticamente
+  filtrosActivos.municipio = municipioDetectado;
+  const selectMunicipio = document.getElementById('filtro-municipio');
+  if (selectMunicipio) selectMunicipio.value = municipioDetectado;
 
-  // ✅ Esto sí respeta el orden y destacadosPrimero
+  // Continuar flujo
+ await cargarComercios();
+mostrarLoader();
+
+listaOriginal = await calcularTiemposParaLista(listaOriginal, {
+  lat: latUsuario,
+  lon: lonUsuario
+});
+
+ocultarLoader();
+
   await cargarComerciosConOrden();
 });
 
@@ -522,3 +544,4 @@ document.getElementById('filtro-plato')?.addEventListener('input', async (e) => 
   filtrosActivos.comerciosPorPlato = idComercios;
   aplicarFiltrosYRedibujar();
 });
+
