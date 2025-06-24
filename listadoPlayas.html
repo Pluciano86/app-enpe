@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listado de Playas</title>
+    <!-- Tailwind & fuentes -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+  
+</head>
+<body class="bg-white text-gray-800 pb-24">
+
+  <!-- Header -->
+<div id="headerContainer"></div>
+<script type="module" src="./js/header.js"></script>
+    
+
+  <h1 class="p-4 text-center text-2xl font-medium">Playas de Puerto Rico</h1>
+
+  <!-- Filtros -->
+  <section class="p-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-center">
+    <input id="inputBuscar" type="text" placeholder="Buscar playa..." class="p-2 rounded border w-full md:w-64" />
+    <select id="selectCosta" class="p-2 rounded border w-full md:w-40">
+      <option value="">Todas las Costas</option>
+    </select>
+    <select id="selectMunicipio" class="p-2 rounded border w-full md:w-48">
+      <option value="">Todos los Municipios</option>
+    </select>
+  </section>
+
+  <!-- Listado -->
+  <main id="contenedorPlayas" class="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4"></main>
+
+  <!-- Template de Card -->
+  <template id="templateCard">
+    <div class="text-center bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden">
+      <img class="imagen w-full h-48 object-cover" src="" alt="imagen playa">
+      <div class="p-4">
+        <h2 class="text-xl font-medium mb-2 nombre">Nombre Playa</h2>
+        <div class="text-center flex gap-2 text-blue-600 mb-2">
+          <span class="icon-nadar hidden">🏊‍♂️</span>
+          <span class="icon-surfear hidden">🏄‍♂️</span>
+          <span class="icon-snorkel hidden">🤿</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <span class="icon-clima">🌤️</span>
+          <span class="estado-clima">Soleado</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-600 mt-1">
+            <span>💨</span><span class="viento">12 km/h</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-600 mt-1">
+          <span>📍</span><span class="municipio">Pueblo</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm text-gray-600 mt-1">
+          <span class="icon-transporte">🚗</span><span class="distancia">12min</span>
+        </div>
+      </div>
+    </div>
+  </template>
+
+    <!-- Footer -->
+<div id="footerContainer"></div>
+<script type="module" src="./js/footer.js"></script>
+
+<script type="module" src="js/listadoPlayas.js"></script>
+
+</body>
+</html>

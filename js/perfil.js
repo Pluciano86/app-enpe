@@ -22,6 +22,9 @@ async function cargarPerfilComercio() {
   const telefono = document.getElementById('telefonoComercio');
   const textoDireccion = document.getElementById('textoDireccion');
   const logo = document.getElementById('logoComercio');
+  const nombreCercanos = document.getElementById('nombreCercanosComida');
+
+  if (nombreCercanos) nombreCercanos.textContent = data.nombre;
 
   if (nombre) nombre.textContent = data.nombre;
 

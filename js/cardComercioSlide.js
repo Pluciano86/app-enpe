@@ -5,21 +5,32 @@ export function cardComercioSlide(comercio) {
     categoria,
     municipio,
     tiempoTexto,
-    imagenPortada, // <-- se usará esta
-    logo
+    imagenPortada,
+    logo,
+    activo
   } = comercio;
 
+  const isActivo = activo === true;
+
   const card = document.createElement("a");
-  card.href = `perfilComercio.html?id=${id}`;
-  card.className = "block w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative";
+
+  // Solo si está activo tiene href
+  if (isActivo) {
+    card.href = `perfilComercio.html?id=${id}`;
+  }
+
+  card.className = `
+    block w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative
+    ${!isActivo ? 'pointer-events-none opacity-60' : ''}
+  `.trim();
 
   card.innerHTML = `
     <!-- Imagen portada -->
     <div class="w-full h-24 relative bg-gray-200">
-      <img src="${imagenPortada || 'https://placehold.co/200x120'}" alt="Portada" class="w-full h-full object-cover" />
+      <img src="${imagenPortada || 'https://placehold.co/200x120?text=Portada'}" alt="Portada" class="w-full h-full object-cover" />
       
       <!-- Logo circular -->
-      <div class="absolute -bottom-5 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white rounded-full shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)] overflow-hidden">
+      <div class="absolute -bottom-5 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white rounded-full shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)]  overflow-hidden">
         <img src="${logo || 'https://placehold.co/40x40?text=Logo'}" alt="Logo" class="w-full h-full object-cover" />
       </div>
     </div>
