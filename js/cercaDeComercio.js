@@ -1,91 +1,58 @@
-import { supabase } from '../js/supabaseClient.js';
-import { obtenerTiempoVehiculo } from './utilsDistancia.js';
-import { obtenerUbicacionComercio } from './ubicacion.js';
-import { crearCardComercioSlide } from './cardComercioSlide.js';
+import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
+import { cardComercio } from './CardComercio.js';
+import { supabase } from './supabaseClient.js';
 
-export async function obtenerMapaCategorias() {
-  const { data, error } = await supabase.from('Categorias').select('id, nombre');
-  if (error) return {};
-  return Object.fromEntries(data.map((c) => [c.id, c.nombre]));
-}
+export async function mostrarComerciosCercanos(comercioOrigen) {
+  const origenCoords = {
+    lat: comercioOrigen.latitud,
+    lon: comercioOrigen.longitud
+  };
 
-export async function buscarComerciosCercanos(idComercio, categoriaIds = []) {
-  const ubicacion = await obtenerUbicacionComercio(idComercio);
-  if (!ubicacion) return [];
+  if (!origenCoords.lat || !origenCoords.lon) {
+    console.warn('⚠️ Comercio origen sin coordenadas válidas.');
+    return;
+  }
 
-  const categoriasMap = await obtenerMapaCategorias();
-
+  // 1. Traer todos los comercios con coordenadas válidas, excepto el actual
   const { data: comercios, error } = await supabase
     .from('Comercios')
-    .select(`
-      id,
-      nombre,
-      latitud,
-      longitud,
-      idCategoria,
-      idMunicipio,
-      municipio:Municipios(nombre),
-      imagenes:imagenesComercios(imagen, portada, logo)
-    `)
-    .overlaps('idCategoria', categoriaIds.map((id) => BigInt(id)));
+    .select('*')
+    .neq('id', comercioOrigen.id);
 
-  if (error) {
-    console.error('❌ Error cargando comercios:', error);
-    return [];
+  if (error || !comercios) {
+    console.error('❌ Error trayendo comercios:', error);
+    return;
   }
 
-  const destinos = comercios
-    .filter((c) => c.latitud && c.longitud && c.id !== parseInt(idComercio))
-    .map((c) => ({ lat: c.latitud, lon: c.longitud }));
+  const comerciosConCoords = comercios.filter(c =>
+    typeof c.latitud === 'number' &&
+    typeof c.longitud === 'number' &&
+    !isNaN(c.latitud) &&
+    !isNaN(c.longitud)
+  );
 
-  const tiempos = await obtenerTiempoVehiculo(ubicacion, destinos);
+  // 2. Calcular distancias reales usando API
+  const listaConTiempos = await calcularTiemposParaLista(comerciosConCoords, origenCoords);
 
-  const resultados = [];
-  let tiempoIdx = 0;
+  // 3. Filtrar los que estén dentro de ~15 minutos (aprox. 5 km)
+  const cercanos = listaConTiempos.filter(c =>
+    c.minutosCrudos !== null && c.minutosCrudos <= 15
+  );
 
-  for (const com of comercios) {
-    if (!com.latitud || !com.longitud || com.id === parseInt(idComercio)) continue;
+  // 4. Mostrar resultados si existen
+  const container = document.getElementById('cercanosComidaContainer');
+  const slider = document.getElementById('sliderCercanosComida');
 
-    const minutos = tiempos?.[tiempoIdx] ? Math.round(tiempos[tiempoIdx] / 60) : null;
-    tiempoIdx++;
-
-    const portadaImg = com.imagenes?.find((img) => img.portada)?.imagen || '';
-    const logoImg = com.imagenes?.find((img) => img.logo)?.imagen || '';
-
-    const portada = portadaImg
-      ? supabase.storage.from('galeriacomercios').getPublicUrl(portadaImg).data.publicUrl
-      : '';
-    const logo = logoImg
-      ? supabase.storage.from('galeriacomercios').getPublicUrl(logoImg).data.publicUrl
-      : '';
-
-    resultados.push({
-      id: com.id,
-      nombre: com.nombre,
-      categoria: categoriasMap[com.idCategoria?.[0]] || 'Sin categoría',
-      municipio: com.municipio?.nombre || '',
-      distancia: minutos,
-      tiempoTexto: minutos !== null ? `${minutos} min` : '',
-      portada,
-      logo
-    });
+  if (!container || !slider) {
+    console.warn('⚠️ No se encontraron los contenedores para mostrar los comercios cercanos.');
+    return;
   }
 
-  return resultados.sort((a, b) => (a.distancia ?? Infinity) - (b.distancia ?? Infinity));
-}
-
-export async function obtenerCercanos({ categorias = [] } = {}) {
-  const idComercio = new URLSearchParams(window.location.search).get('id');
-
-  const { data: categoriasData, error } = await supabase
-    .from('Categorias')
-    .select('id')
-    .in('nombre', categorias);
-
-  if (error || !categoriasData) return [];
-
-  const ids = categoriasData.map((c) => c.id);
-  console.log('🟢 IDs de categorías obtenidas:', ids);
-
-  return await buscarComerciosCercanos(idComercio, ids);
+  if (cercanos.length > 0) {
+    slider.innerHTML = '';
+    cercanos.forEach(c => slider.appendChild(cardComercio(c)));
+    container.classList.remove('hidden');
+  } else {
+    container.classList.add('hidden'); // Por si no hay ninguno
+  }
 }

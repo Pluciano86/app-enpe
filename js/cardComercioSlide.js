@@ -1,13 +1,11 @@
-// cardComercioSlide.js
-
-export function crearCardComercioSlide(comercio) {
+export function cardComercioSlide(comercio) {
   const {
     id,
     nombre,
     categoria,
     municipio,
     tiempoTexto,
-    portada,
+    imagenPortada, // <-- se usará esta
     logo
   } = comercio;
 
@@ -18,11 +16,10 @@ export function crearCardComercioSlide(comercio) {
   card.innerHTML = `
     <!-- Imagen portada -->
     <div class="w-full h-24 relative bg-gray-200">
-      <img src="${portada || 'https://placehold.co/200x120'}" alt="Portada" class="w-full h-full object-cover" />
-      
+      <img src="${imagenPortada || 'https://placehold.co/200x120'}" alt="Portada" class="w-full h-full object-cover" />
       
       <!-- Logo circular -->
-      <div class="absolute -bottom-5 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white rounded-full shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)]  overflow-hidden">
+      <div class="absolute -bottom-5 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-white rounded-full shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)] overflow-hidden">
         <img src="${logo || 'https://placehold.co/40x40?text=Logo'}" alt="Logo" class="w-full h-full object-cover" />
       </div>
     </div>
@@ -35,7 +32,7 @@ export function crearCardComercioSlide(comercio) {
         <i class="fas fa-map-pin text-sky-600"></i>
         <span>${municipio}</span>
         <i class="fas fa-car text-red-500 ml-2"></i>
-        <span>${tiempoTexto}</span>
+        <span>${tiempoTexto || 'N/A'}</span>
       </div>
     </div>
   `;
