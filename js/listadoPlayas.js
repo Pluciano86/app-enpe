@@ -1,6 +1,7 @@
 // listadoPlayas.js
 import { obtenerClima } from "./obtenerClima.js";
 import { supabase } from "./supabaseClient.js";
+import { calcularTiemposParaLugares } from './distanciaLugar.js';
 
 const inputBuscar = document.getElementById("inputBuscar");
 const selectCosta = document.getElementById("selectCosta");
@@ -14,14 +15,17 @@ let usuarioLon = null;
 
 // Obtener ubicación del usuario
 navigator.geolocation.getCurrentPosition(
-  (pos) => {
+  async (pos) => {
     usuarioLat = pos.coords.latitude;
     usuarioLon = pos.coords.longitude;
-    cargarPlayas();
+    await cargarPlayas();
+    await calcularTiempos();
+    renderizarPlayas();
   },
-  (err) => {
+  async (err) => {
     console.warn("No se pudo obtener la ubicación del usuario", err);
-    cargarPlayas();
+    await cargarPlayas();
+    renderizarPlayas();
   }
 );
 
@@ -30,8 +34,16 @@ async function cargarPlayas() {
   const { data, error } = await supabase.from("playas").select("*");
   if (error) return console.error("Error cargando playas:", error);
   todasLasPlayas = data;
-  renderizarPlayas();
   cargarFiltros();
+}
+
+// Calcular distancias con API de Google Maps
+async function calcularTiempos() {
+  if (!usuarioLat || !usuarioLon) return;
+  todasLasPlayas = await calcularTiemposParaLugares(todasLasPlayas, {
+    lat: usuarioLat,
+    lon: usuarioLon
+  });
 }
 
 inputBuscar.addEventListener("input", renderizarPlayas);
@@ -76,12 +88,7 @@ async function renderizarPlayas() {
       distancia.textContent = "Acceso en bote";
     } else {
       iconTransporte.innerHTML = '<i class="fas fa-car" style="color: #636466;"></i>';
-      if (usuarioLat && usuarioLon && playa.latitud && playa.longitud) {
-        const duracion = await obtenerDuracionViaje(usuarioLat, usuarioLon, playa.latitud, playa.longitud);
-        distancia.textContent = duracion || "";
-      } else {
-        distancia.textContent = "";
-      }
+      distancia.textContent = playa.tiempoVehiculo || "";
     }
 
     // Icono de ubicación
@@ -110,36 +117,6 @@ async function renderizarPlayas() {
     contenedor.appendChild(clone);
   }
 }
-
-// Obtener duración en vehículo desde la API de Google Maps Distance Matrix
-async function obtenerDuracionViaje(lat1, lon1, lat2, lon2) {
-  const apiKey = "AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI"; // reemplaza con tu API Key válida
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${lat1},${lon1}&destinations=${lat2},${lon2}&mode=driving&key=${apiKey}`;
-
- try {
-    const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
-    const res = await fetch(proxyUrl);
-    const wrapped = await res.json();
-    const data = JSON.parse(wrapped.contents);
-    const texto = data.rows[0].elements[0].duration.text;
-
-    const partes = texto.match(/(\d+)\s*hour[s]?(?:\s*(\d+)\s*min)?|((\d+)\s*min)/);
-    if (partes) {
-      if (partes[1]) {
-        const horas = partes[1];
-        const minutos = partes[2] || "0";
-        return `a ${horas} h y ${minutos} min`;
-      } else if (partes[4]) {
-        return `a ${partes[4]} min`;
-      }
-    }
-    return texto;
-  } catch (e) {
-    console.warn("No se pudo obtener duración exacta:", e);
-    return null;
-  }
-}
-
 
 // Cargar filtros dinámicamente (si tienes tabla de costas y municipios)
 async function cargarFiltros() {
