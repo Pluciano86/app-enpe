@@ -1,23 +1,22 @@
-// obtenerClima.js
 const climaMap = {
-  0: { icon: "☀️", estado: "Despejado" },
-  1: { icon: "☀️", estado: "Mayormente soleado" },
-  2: { icon: "☁️", estado: "Parcialmente nublado" },
-  3: { icon: "☁️", estado: "Nublado" },
-  45: { icon: "🌫️", estado: "Niebla" },
-  48: { icon: "🌫️", estado: "Niebla con escarcha" },
-  51: { icon: "🌧️", estado: "Llovizna ligera" },
-  53: { icon: "🌧️", estado: "Llovizna moderada" },
-  55: { icon: "🌧️", estado: "Llovizna densa" },
-  61: { icon: "🌧️", estado: "Lluvia ligera" },
-  63: { icon: "🌧️", estado: "Lluvia moderada" },
-  65: { icon: "🌧️", estado: "Lluvia fuerte" },
-  80: { icon: "🌧️", estado: "Chubascos" },
-  81: { icon: "🌧️", estado: "Chubascos moderados" },
-  82: { icon: "🌧️", estado: "Chubascos violentos" },
-  95: { icon: "⛈️", estado: "Tormenta" },
-  96: { icon: "⛈️", estado: "Tormenta con granizo leve" },
-  99: { icon: "⛈️", estado: "Tormenta con granizo fuerte" }
+  0: "0",
+  1: "1",
+  2: "2",
+  3: "3",
+  45: "45",
+  48: "45",  // Mismo ícono para niebla con escarcha
+  51: "51",
+  53: "53",
+  55: "55",
+  61: "61",
+  63: "63",
+  65: "65",
+  80: "61",  // Puedes personalizarlo si deseas separarlo
+  81: "63",
+  82: "65",
+  95: "95",
+  96: "95",
+  99: "95"
 };
 
 export async function obtenerClima(lat, lon) {
@@ -29,21 +28,48 @@ export async function obtenerClima(lat, lon) {
 
     const code = data.current.weather_code;
     const isDay = data.current.is_day === 1;
-    const icono = climaMap[code]?.icon || "❓";
-    const estado = climaMap[code]?.estado || "Desconocido";
     const viento = data.current.wind_speed_10m;
 
+    // Seleccionar nombre base del archivo según el código
+    const iconCode = climaMap[code] ?? "0";
+    const suffix = isDay ? "" : "n";
+    const iconURL = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/${iconCode}${suffix}.svg`;
+
     return {
-      icono: isDay ? icono : '🌙 ' + icono,
-      estado,
+      iconoURL: iconURL,
+      estado: obtenerNombreEstado(code),
       viento: `${viento} km/h`
     };
   } catch (error) {
     console.error("Error obteniendo clima:", error);
     return {
-      icono: "❓",
-      estado: "Error",
+      iconoURL: "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/0.svg",
+      estado: "Desconocido",
       viento: null
     };
   }
+}
+
+function obtenerNombreEstado(code) {
+  const nombres = {
+    0: "Despejado",
+    1: "Mayormente soleado",
+    2: "Parcialmente nublado",
+    3: "Nublado",
+    45: "Niebla",
+    48: "Niebla con escarcha",
+    51: "Llovizna ligera",
+    53: "Llovizna moderada",
+    55: "Llovizna densa",
+    61: "Lluvia ligera",
+    63: "Lluvia moderada",
+    65: "Lluvia fuerte",
+    80: "Chubascos",
+    81: "Chubascos moderados",
+    82: "Chubascos violentos",
+    95: "Tormenta",
+    96: "Tormenta con granizo",
+    99: "Tormenta fuerte"
+  };
+  return nombres[code] ?? "Desconocido";
 }
