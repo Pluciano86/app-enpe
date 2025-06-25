@@ -87,8 +87,8 @@ async function renderizarPlayas() {
       iconTransporte.innerHTML = '<i class="fas fa-ship" style="color: #636466;"></i>';
       distancia.textContent = "Acceso en bote";
     } else {
-      iconTransporte.innerHTML = '<i class="fas fa-car" style="color: #636466;"></i>';
-      distancia.textContent = playa.tiempoVehiculo || "";
+      iconTransporte.innerHTML = '<i class="fas fa-car" style="color: #9c9c9c;"></i>';
+      distancia.textContent = playa.tiempoVehiculo || ""; 
     }
 
     // Icono de ubicación
@@ -111,7 +111,7 @@ async function renderizarPlayas() {
         iconClima.innerHTML = "";
         iconClima.appendChild(img);
       }
-      if (viento) viento.innerHTML = `<i class="fas fa-wind text-gray-400"></i> ${clima.viento}`;
+      if (viento) viento.innerHTML = `<i class="fas fa-wind text-gray-400"></i> Viento de: ${clima.viento}`;
     }
 
     contenedor.appendChild(clone);

@@ -42,7 +42,11 @@
   <div class="text-center bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden">
     <img class="imagen w-full h-48 object-cover" src="" alt="imagen playa">
     <div class="p-4">
-      <h2 class="text-xl font-medium mb-2 nombre">Nombre Playa</h2>
+
+      <!-- Nombre con altura fija y truncado -->
+      <h2 class="nombre text-base font-semibold leading-tight h-12 overflow-hidden text-ellipsis text-center px-2">
+        Nombre Playa
+      </h2>
 
       <!-- Apto para -->
       <div class="text-sm text-gray-500 mb-1">Apta para:</div>
@@ -55,33 +59,37 @@
           <span>🏄‍♂️</span>
           <span class="text-xs text-[#23b4e9]">Surfear</span>
         </div>
-        <div class="icon-snorkel hidden flex flex-col items-center text-4xl ">
+        <div class="icon-snorkel hidden flex flex-col items-center text-4xl">
           <span>🤿</span>
           <span class="text-xs text-[#23b4e9]">Snorkel</span>
         </div>
       </div>
 
       <!-- Clima -->
-      <div class="flex items-center gap-2 text-sm text-gray-600">
-        <span class="icon-clima"><i class="fas fa-sun text-yellow-400"></i></span>
+      <div class="flex justify-center items-center text-sm text-gray-600">
+        <span class="icon-clima">
+          <i class="fas fa-sun text-yellow-400"></i>
+        </span>
         <span class="estado-clima">Soleado</span>
       </div>
 
       <!-- Viento -->
-      <div class="flex items-center gap-2 text-sm text-gray-600 mt-1">
-        <span class="viento">12 km/h</span>
-    </div>
+      <div class="flex justify-center items-center gap-2 text-sm text-gray-400 mt-1">
+        <span class="viento">Viento: 12 km/h</span>
+      </div>
 
       <!-- Municipio -->
-      <div class="flex items-center gap-2 text-sm text-gray-600 mt-1">
+      <div class="flex justify-center items-center gap-2 text-sm text-gray-600 mt-1">
         <span><i class="fas fa-map-pin text-[#23b4e9]"></i></span>
-        <span class="municipio">Pueblo</span>
+        <span class="municipio text-[#23b4e9]">Pueblo</span>
       </div>
 
       <!-- Distancia -->
-      <div class="flex items-center gap-2 text-sm text-gray-600 mt-1">
-        <span class="icon-transporte text-[#636466]"><i class="fas fa-car text-[#636466]"></i></span>
-        <span class="distancia">12min</span>
+      <div class="flex justify-center items-center gap-2 text-sm text-[#9c9c9c] mt-1">
+        <span class="icon-transporte text-[#9c9c9c]">
+          <i class="fas fa-car text-[#9c9c9c]"></i>
+        </span>
+        <span class="distancia">12 min</span>
       </div>
     </div>
   </div>
