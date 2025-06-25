@@ -11,7 +11,7 @@ const climaMap = {
   61: "61",
   63: "63",
   65: "65",
-  80: "61",  // Puedes personalizarlo si deseas separarlo
+  80: "61",
   81: "63",
   82: "65",
   95: "95",
@@ -28,18 +28,19 @@ export async function obtenerClima(lat, lon) {
 
     const code = data.current.weather_code;
     const isDay = data.current.is_day === 1;
-    const viento = data.current.wind_speed_10m;
+    const vientoMph = (data.current.wind_speed_10m * 0.621371).toFixed(1);
 
-    // Seleccionar nombre base del archivo según el código
+    // Ruta del ícono SVG según código y si es de noche
     const iconCode = climaMap[code] ?? "0";
     const suffix = isDay ? "" : "n";
-    const iconURL = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/${iconCode}${suffix}.svg`;
+    const iconoURL = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/${iconCode}${suffix}.svg`;
 
     return {
-      iconoURL: iconURL,
+      iconoURL,
       estado: obtenerNombreEstado(code),
-      viento: `${viento} km/h`
+      viento: `${vientoMph} mph`
     };
+
   } catch (error) {
     console.error("Error obteniendo clima:", error);
     return {

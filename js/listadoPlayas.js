@@ -1,13 +1,18 @@
 // listadoPlayas.js
 import { obtenerClima } from "./obtenerClima.js";
 import { supabase } from "./supabaseClient.js";
-import { calcularTiemposParaLugares } from './distanciaLugar.js';
+import { calcularTiemposParaLugares, calcularDistancia } from './distanciaLugar.js';
 
 const inputBuscar = document.getElementById("inputBuscar");
 const selectCosta = document.getElementById("selectCosta");
 const selectMunicipio = document.getElementById("selectMunicipio");
 const contenedor = document.getElementById("contenedorPlayas");
 const template = document.getElementById("templateCard");
+
+// nuevos filtros de actividad
+const checkNadar = document.getElementById("filtro-nadar");
+const checkSurfear = document.getElementById("filtro-surfear");
+const checkSnorkel = document.getElementById("filtro-snorkel");
 
 let todasLasPlayas = [];
 let usuarioLat = null;
@@ -46,12 +51,14 @@ async function calcularTiempos() {
   });
 }
 
+// eventos de filtros
 inputBuscar.addEventListener("input", renderizarPlayas);
 selectCosta.addEventListener("change", () => {
   renderizarPlayas();
   cargarMunicipios();
 });
 selectMunicipio.addEventListener("change", renderizarPlayas);
+[checkNadar, checkSurfear, checkSnorkel].forEach(el => el.addEventListener("change", renderizarPlayas));
 
 async function renderizarPlayas() {
   contenedor.innerHTML = "";
@@ -59,12 +66,26 @@ async function renderizarPlayas() {
   const costa = selectCosta.value;
   const municipio = selectMunicipio.value;
 
-  const filtradas = todasLasPlayas.filter((p) => {
+  let filtradas = todasLasPlayas.filter((p) => {
     const coincideNombre = p.nombre.toLowerCase().includes(texto);
     const coincideCosta = costa ? p.costa === costa : true;
     const coincideMunicipio = municipio ? p.municipio === municipio : true;
-    return coincideNombre && coincideCosta && coincideMunicipio;
+    const pasaFiltroNadar = !checkNadar.checked || p.nadar;
+    const pasaFiltroSurfear = !checkSurfear.checked || p.surfear;
+    const pasaFiltroSnorkel = !checkSnorkel.checked || p.snorkel;
+    return coincideNombre && coincideCosta && coincideMunicipio &&
+           pasaFiltroNadar && pasaFiltroSurfear && pasaFiltroSnorkel;
   });
+
+  if (usuarioLat && usuarioLon) {
+    filtradas = filtradas
+      .filter(p => p.latitud && p.longitud)
+      .map(p => {
+        const d = calcularDistancia(usuarioLat, usuarioLon, p.latitud, p.longitud);
+        return { ...p, _distancia: d };
+      })
+      .sort((a, b) => a._distancia - b._distancia);
+  }
 
   for (const playa of filtradas) {
     const clone = template.content.cloneNode(true);
@@ -75,12 +96,10 @@ async function renderizarPlayas() {
     clone.querySelector(".nombre").textContent = playa.nombre;
     clone.querySelector(".municipio").textContent = playa.municipio;
 
-    // Actividades
     if (playa.nadar) clone.querySelector(".icon-nadar").classList.remove("hidden");
     if (playa.surfear) clone.querySelector(".icon-surfear").classList.remove("hidden");
     if (playa.snorkel) clone.querySelector(".icon-snorkel").classList.remove("hidden");
 
-    // Transporte
     const iconTransporte = clone.querySelector(".icon-transporte");
     const distancia = clone.querySelector(".distancia");
     if (playa.bote) {
@@ -88,14 +107,12 @@ async function renderizarPlayas() {
       distancia.textContent = "Acceso en bote";
     } else {
       iconTransporte.innerHTML = '<i class="fas fa-car" style="color: #9c9c9c;"></i>';
-      distancia.textContent = playa.tiempoVehiculo || ""; 
+      distancia.textContent = playa.tiempoVehiculo || "";
     }
 
-    // Icono de ubicación
     const iconPin = clone.querySelector(".icon-pin");
     if (iconPin) iconPin.innerHTML = '<i class="fas fa-map-pin" style="color: #23B4E9;"></i>';
 
-    // Clima actual
     const estadoClima = clone.querySelector(".estado-clima");
     const iconClima = clone.querySelector(".icon-clima");
     const viento = clone.querySelector(".viento");
@@ -118,12 +135,10 @@ async function renderizarPlayas() {
   }
 }
 
-// Cargar filtros dinámicamente (si tienes tabla de costas y municipios)
 async function cargarFiltros() {
-  // Por ahora podrías llenar esto manual o desde otra tabla si lo deseas luego
+  // puedes ajustar esto luego si necesitas cargar desde Supabase
 }
 
-// Lógica para llenar municipios por costa
 function cargarMunicipios() {
   const costaSeleccionada = selectCosta.value;
   const municipiosUnicos = [...new Set(
