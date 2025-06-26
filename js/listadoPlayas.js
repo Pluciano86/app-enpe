@@ -9,7 +9,7 @@ const selectMunicipio = document.getElementById("selectMunicipio");
 const contenedor = document.getElementById("contenedorPlayas");
 const template = document.getElementById("templateCard");
 
-// nuevos filtros de actividad
+// Filtros de actividad
 const checkNadar = document.getElementById("filtro-nadar");
 const checkSurfear = document.getElementById("filtro-surfear");
 const checkSnorkel = document.getElementById("filtro-snorkel");
@@ -42,7 +42,7 @@ async function cargarPlayas() {
   cargarFiltros();
 }
 
-// Calcular distancias con API de Google Maps
+// Calcular tiempo de viaje desde la ubicación del usuario
 async function calcularTiempos() {
   if (!usuarioLat || !usuarioLon) return;
   todasLasPlayas = await calcularTiemposParaLugares(todasLasPlayas, {
@@ -51,14 +51,16 @@ async function calcularTiempos() {
   });
 }
 
-// eventos de filtros
+// Listeners
 inputBuscar.addEventListener("input", renderizarPlayas);
 selectCosta.addEventListener("change", () => {
   renderizarPlayas();
   cargarMunicipios();
 });
 selectMunicipio.addEventListener("change", renderizarPlayas);
-[checkNadar, checkSurfear, checkSnorkel].forEach(el => el.addEventListener("change", renderizarPlayas));
+[checkNadar, checkSurfear, checkSnorkel].forEach(el =>
+  el.addEventListener("change", renderizarPlayas)
+);
 
 async function renderizarPlayas() {
   contenedor.innerHTML = "";
@@ -66,13 +68,17 @@ async function renderizarPlayas() {
   const costa = selectCosta.value;
   const municipio = selectMunicipio.value;
 
+  const filtrarNadar = checkNadar.checked;
+  const filtrarSurfear = checkSurfear.checked;
+  const filtrarSnorkel = checkSnorkel.checked;
+
   let filtradas = todasLasPlayas.filter((p) => {
     const coincideNombre = p.nombre.toLowerCase().includes(texto);
     const coincideCosta = costa ? p.costa === costa : true;
     const coincideMunicipio = municipio ? p.municipio === municipio : true;
-    const pasaFiltroNadar = !checkNadar.checked || p.nadar;
-    const pasaFiltroSurfear = !checkSurfear.checked || p.surfear;
-    const pasaFiltroSnorkel = !checkSnorkel.checked || p.snorkel;
+    const pasaFiltroNadar = !filtrarNadar || p.nadar;
+    const pasaFiltroSurfear = !filtrarSurfear || p.surfear;
+    const pasaFiltroSnorkel = !filtrarSnorkel || p.snorkel;
     return coincideNombre && coincideCosta && coincideMunicipio &&
            pasaFiltroNadar && pasaFiltroSurfear && pasaFiltroSnorkel;
   });
@@ -124,7 +130,7 @@ async function renderizarPlayas() {
         const img = document.createElement("img");
         img.src = clima.iconoURL;
         img.alt = clima.estado;
-        img.classList.add("w-6", "h-6", "inline");
+        img.classList.add("w-6", "h-6", "inline", "mr-1");
         iconClima.innerHTML = "";
         iconClima.appendChild(img);
       }
@@ -135,17 +141,28 @@ async function renderizarPlayas() {
   }
 }
 
+// Filtros dinámicos
 async function cargarFiltros() {
-  // puedes ajustar esto luego si necesitas cargar desde Supabase
+  const costasUnicas = [...new Set(todasLasPlayas.map(p => p.costa).filter(Boolean))].sort();
+  selectCosta.innerHTML = `<option value="">Todas las Costas</option>`;
+  costasUnicas.forEach(c => {
+    const option = document.createElement("option");
+    option.value = c;
+    option.textContent = c;
+    selectCosta.appendChild(option);
+  });
+
+  cargarMunicipios();
 }
 
+// Municipios por costa
 function cargarMunicipios() {
   const costaSeleccionada = selectCosta.value;
   const municipiosUnicos = [...new Set(
     todasLasPlayas
-      .filter(p => p.costa === costaSeleccionada)
+      .filter(p => !costaSeleccionada || p.costa === costaSeleccionada)
       .map(p => p.municipio)
-  )];
+  )].sort();
 
   selectMunicipio.innerHTML = `<option value="">Todos</option>`;
   municipiosUnicos.forEach(m => {

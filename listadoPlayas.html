@@ -63,7 +63,7 @@
   <div class="flex-1">
     <div class="mb-1 text-gray-700 font-medium">Apta para nadar</div>
     <label class="relative inline-flex items-center cursor-pointer">
-      <input type="checkbox" id="filtro-nadar" class="sr-only peer" checked>
+      <input type="checkbox" id="filtro-nadar" class="sr-only peer">
       <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-blue-500 transition-colors duration-300"></div>
       <div class="absolute left-0.5 top-0.5 bg-white w-5 h-5 rounded-full transition-transform duration-300 transform peer-checked:translate-x-5"></div>
     </label>
@@ -101,17 +101,17 @@
   <!-- Template de Card -->
   <template id="templateCard">
   <div class="text-center bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden">
-    <img class="imagen w-full h-48 object-cover" src="" alt="imagen playa">
+    <img class="imagen w-full h-36 object-cover" src="" alt="imagen playa">
     <div class="p-4">
 
       <!-- Nombre con altura fija y truncado -->
-      <h2 class="nombre text-lg font-medium text-[#424242] leading-[0.9] h-12 overflow-hidden text-ellipsis text-center px-2">
-        Nombre Playa 
+      <h2 class="nombre text-lg font-medium text-[#424242] leading-[0.9] h-12 overflow-hidden text-ellipsis text-center px-2 mb-0">
+        Nombre Playa quiero
       </h2>
 
       <!-- Apto para -->
-      <div class="text-sm text-gray-500 mb-1">Apta para:</div>
-      <div class="text-center flex justify-center gap-4 text-blue-600 mb-3">
+      <div class="text-sm text-gray-500 -mt-2 mb-1">Apta para:</div>
+      <div class="text-center flex justify-center gap-4 text-blue-600">
         <div class="icon-nadar hidden flex flex-col items-center text-4xl">
           <span>🏊‍♂️</span>
           <span class="text-xs text-[#23b4e9]">Nadar</span>
@@ -127,7 +127,7 @@
       </div>
 
       <!-- Clima -->
-      <div class="flex justify-center items-center text-sm text-gray-600">
+      <div class="flex justify-center items-center gap-1 text-sm text-gray-600">
         <span class="icon-clima">
           <i class="fas fa-sun text-yellow-400"></i>
         </span>

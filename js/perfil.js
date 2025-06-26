@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
+import { mostrarPlayasCercanas } from './playasCercanas.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 let latUsuario = null;
@@ -89,11 +90,17 @@ navigator.geolocation.getCurrentPosition(
     latUsuario = pos.coords.latitude;
     lonUsuario = pos.coords.longitude;
     const comercio = await cargarPerfilComercio();
-    if (comercio) mostrarCercanosComida(comercio);
+    if (comercio) {
+      mostrarCercanosComida(comercio);
+      mostrarPlayasCercanas(comercio); // ✅ NUEVO
+    }
   },
   async () => {
     console.warn('❗ Usuario no permitió ubicación.');
     const comercio = await cargarPerfilComercio();
-    if (comercio) mostrarCercanosComida(comercio);
+    if (comercio) {
+      mostrarCercanosComida(comercio);
+      mostrarPlayasCercanas(comercio); // ✅ NUEVO
+    }
   }
 );
