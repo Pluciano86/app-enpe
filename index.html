@@ -70,15 +70,34 @@
   </section>
 
   <!-- Video Card -->
-  <section class="relative">
-    <video autoplay muted loop playsinline class="w-full h-auto">
-      <source src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/index_video.mp4" type="video/mp4">
-    </video>
-    <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40"></div>
-    <div class="absolute inset-0 flex items-center justify-center">
-      <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center">Vamos Pa' la Playa</a>
-    </div>
-  </section>
+ <section class="relative">
+  <video
+    id="videoHero"
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="auto"
+    class="w-full h-auto"
+  >
+    <source src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/index_video.mp4" type="video/mp4">
+  </video>
+  <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40"></div>
+  <div class="absolute inset-0 flex items-center justify-center">
+    <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center">Vamos Pa' la Playa</a>
+  </div>
+</section>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const video = document.getElementById("videoHero");
+    if (video) {
+      video.play().catch(e => {
+        console.warn("Autoplay bloqueado por el navegador:", e);
+      });
+    }
+  });
+</script>
 
   <!-- Descubre lo que hay en tu área -->
   <section class="py-6 px-3">
