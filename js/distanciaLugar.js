@@ -50,8 +50,8 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
 
     if (minutos !== null) {
       const texto = minutos >= 60
-        ? `a ${Math.floor(minutos / 60)} h y ${minutos % 60} min`
-        : `a ${minutos} min`;
+        ? `a ${Math.floor(minutos / 60)} hora y ${minutos % 60} minutos`
+        : `a ${minutos} minutos`;
 
       lugar.tiempoVehiculo = texto;
       lugar.minutosCrudos = minutos;
