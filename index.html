@@ -70,7 +70,8 @@
   </section>
 
   <!-- Video Card -->
- <section class="relative">
+ <section class="relative h-[260px] overflow-hidden">
+  <!-- Video en segundo plano con altura fija -->
   <video
     id="videoHero"
     autoplay
@@ -78,12 +79,16 @@
     loop
     playsinline
     preload="auto"
-    class="w-full h-auto"
+    class="absolute top-0 left-0 w-full h-full object-cover z-0"
   >
     <source src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/index_video.mp4" type="video/mp4">
   </video>
-  <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40"></div>
-  <div class="absolute inset-0 flex items-center justify-center">
+
+  <!-- Overlay con gradiente -->
+  <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40 z-10"></div>
+
+  <!-- Texto encima del video -->
+  <div class="relative z-20 flex items-center justify-center h-full">
     <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center">Vamos Pa' la Playa</a>
   </div>
 </section>
