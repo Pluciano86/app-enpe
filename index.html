@@ -70,11 +70,10 @@
   </section>
 
   <!-- Video Card -->
- <section class="relative h-[260px] overflow-hidden">
-  <!-- Video en segundo plano con altura fija -->
+<section class="relative h-[260px] overflow-hidden">
+  <!-- Video oculto hasta que se active -->
   <video
     id="videoHero"
-    autoplay
     muted
     loop
     playsinline
@@ -84,24 +83,28 @@
     <source src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/index_video.mp4" type="video/mp4">
   </video>
 
-  <!-- Overlay con gradiente -->
+  <!-- Overlay -->
   <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40 z-10"></div>
 
-  <!-- Texto encima del video -->
+  <!-- Texto -->
   <div class="relative z-20 flex items-center justify-center h-full">
     <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center">Vamos Pa' la Playa</a>
   </div>
 </section>
 
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const video = document.getElementById("videoHero");
-    if (video) {
-      video.play().catch(e => {
-        console.warn("Autoplay bloqueado por el navegador:", e);
-      });
+  const video = document.getElementById("videoHero");
+  let intentado = false;
+
+  function reproducirVideo() {
+    if (!intentado && video) {
+      intentado = true;
+      video.play().catch(e => console.warn("Intento de reproducción fallido:", e));
     }
-  });
+  }
+
+  document.addEventListener("touchstart", reproducirVideo, { once: true });
+  document.addEventListener("scroll", reproducirVideo, { once: true });
 </script>
 
   <!-- Descubre lo que hay en tu área -->
