@@ -1,0 +1,237 @@
+// lugares.js
+
+import { supabase } from './supabaseClient.js';
+import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
+
+const contenedor = document.getElementById('lugaresContainer');
+const inputBuscar = document.getElementById('searchInput');
+const selectCategoria = document.getElementById('selectCategoria');
+const selectMunicipio = document.getElementById('selectMunicipio');
+const btnAbierto = document.getElementById('btnAbierto');
+const btnFavoritos = document.getElementById('btnFavoritos');
+const btnGratis = document.getElementById('btnGratis');
+
+let lugares = [];
+let latUsuario = null;
+let lonUsuario = null;
+
+function crearCardLugar(lugar) {
+  const div = document.createElement('div');
+  div.className = "bg-white rounded-2xl shadow-md overflow-hidden text-center w-full max-w-[200px] mx-auto";
+
+  // Determinar texto, color e ícono
+  let estadoTexto = '';
+  let estadoColor = '';
+  let estadoIcono = '';
+
+  if (lugar.estado === 'cerrado temporal') {
+    estadoTexto = 'Cerrado Temporalmente';
+    estadoColor = 'text-orange-500';
+    estadoIcono = 'fa-solid fa-triangle-exclamation';
+  } else if (lugar.estado === 'siempre abierto') {
+    estadoTexto = 'Abierto Siempre';
+    estadoColor = 'text-blue-600';
+    estadoIcono = 'fa-solid fa-infinity';
+  } else if (lugar.abiertoAhora === true) {
+    estadoTexto = 'Abierto Ahora';
+    estadoColor = 'text-green-600';
+    estadoIcono = 'fa-regular fa-clock';
+  } else {
+    estadoTexto = 'Cerrado Ahora';
+    estadoColor = 'text-red-600';
+    estadoIcono = 'fa-regular fa-clock';
+  }
+
+  div.innerHTML = `
+    <div class="relative">
+      <!-- Portada -->
+      <img src="${lugar.portada}" alt="Portada de ${lugar.nombre}" 
+           class="w-full h-40 object-cover" />
+
+      <!-- Nombre con enlace -->
+      <a href="perfilComercio.html?id=${lugar.id}" 
+         class="relative w-full flex flex-col items-center no-underline">
+
+        <!-- Nombre centrado -->
+        <div class="relative h-12 w-full">
+          <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
+            <h3 class="${lugar.nombre.length > 25 ? 'text-lg' : 'text-xl'} 
+                       font-medium text-[#424242] z-30 mt-2 leading-[0.9] text-center">
+              ${lugar.nombre}
+            </h3>
+          </div>
+        </div>
+      </a>
+
+   
+
+      <!-- Estado de apertura -->
+      <div class="flex justify-center items-center gap-1 ${estadoColor} 
+                  font-medium mb-1 text-base">
+        <i class="${estadoIcono}"></i> ${estadoTexto}
+      </div>
+
+      <!-- Precio -->
+    <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-orange-600">
+      <i class="fa-solid fa-tag"></i> ${lugar.precioEntrada || 'Gratis'}
+    </div>
+
+      <!-- Municipio -->
+      <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#23b4e9]">
+        <i class="fas fa-map-pin"></i> ${lugar.municipio}
+      </div>
+
+      <!-- Distancia -->
+      <div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-4">
+        <i class="fas fa-car"></i> ${lugar.tiempoTexto || ''}
+      </div>
+    </div>
+  `;
+
+  return div;
+}
+
+async function cargarLugares() {
+  let { data, error } = await supabase
+    .from('LugaresTuristicos')
+    .select('*')
+    .eq('activo', true);
+
+  if (error) {
+    console.error('Error cargando lugares:', error);
+    return;
+  }
+
+  lugares = data.filter(l => l.latitud && l.longitud);
+
+  // Imagenes
+  const { data: imagenes, error: errorImg } = await supabase
+    .from('imagenesLugares')
+    .select('imagen, idLugar, portada')
+    .eq('portada', true);
+
+  if (errorImg) {
+    console.error('Error cargando portadas:', errorImg);
+  }
+
+  lugares.forEach(lugar => {
+    const imgPortada = imagenes?.find(img => img.idLugar === lugar.id);
+    lugar.portada = imgPortada?.imagen || null;
+  });
+
+  // Calcular distancia
+  if (latUsuario && lonUsuario) {
+    lugares = await calcularTiemposParaLista(lugares, { lat: latUsuario, lon: lonUsuario });
+  }
+
+  // Horarios
+  const diaSemana = new Date().getDay();
+
+  const { data: horarios, error: errorHorarios } = await supabase
+    .from('horariosLugares')
+    .select('idLugar, apertura, cierre, cerrado, abiertoSiempre, cerradoTemporalmente')
+    .eq('diaSemana', diaSemana);
+
+  if (errorHorarios) {
+    console.error('❌ Error cargando horarios:', errorHorarios);
+  }
+
+  const ahora = new Date();
+  const horaActual = ahora.getHours() + ahora.getMinutes() / 60;
+
+  lugares.forEach(lugar => {
+    const horario = horarios?.find(h => h.idLugar === lugar.id);
+
+    if (horario) {
+      if (horario.cerradoTemporal) {
+        lugar.estado = 'cerrado temporal';
+        lugar.abiertoAhora = false;
+      } else if (horario.abiertoSiempre) {
+        lugar.estado = 'siempre abierto';
+        lugar.abiertoAhora = true;
+      } else if (horario.cerrado) {
+        lugar.abiertoAhora = false;
+      } else {
+        const [hA, mA] = horario.apertura.split(':').map(Number);
+        const [hC, mC] = horario.cierre.split(':').map(Number);
+        const horaApertura = hA + mA / 60;
+        const horaCierre = hC + mC / 60;
+        lugar.abiertoAhora = horaActual >= horaApertura && horaActual < horaCierre;
+      }
+    } else {
+      lugar.abiertoAhora = false;
+    }
+  });
+
+  renderizarLugares();
+}
+
+function renderizarLugares() {
+  contenedor.innerHTML = '';
+
+  let filtrados = [...lugares];
+
+  const texto = inputBuscar.value.toLowerCase();
+  if (texto) {
+    filtrados = filtrados.filter(l => l.nombre.toLowerCase().includes(texto));
+  }
+
+  const idCat = selectCategoria.value;
+  if (idCat) {
+    filtrados = filtrados.filter(l => l.idCategoria === parseInt(idCat));
+  }
+
+  const municipio = selectMunicipio.value;
+  if (municipio) {
+    filtrados = filtrados.filter(l => l.municipio === municipio);
+  }
+
+  if (btnAbierto.classList.contains('bg-blue-500')) {
+    filtrados = filtrados.filter(l => l.abiertoAhora);
+  }
+
+  if (btnFavoritos.classList.contains('bg-blue-500')) {
+    filtrados = filtrados.filter(l => l.favorito);
+  }
+
+  if (btnGratis.classList.contains('bg-blue-500')) {
+    filtrados = filtrados.filter(l => l.precio === 'Gratis');
+  }
+  const orden = document.getElementById('filtro-orden')?.value;
+
+if (orden === 'az') {
+  filtrados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+} else if (orden === 'recientes') {
+  filtrados.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+} else {
+  // Orden por cercanía por defecto
+  filtrados.sort((a, b) => a.distanciaLugar - b.distanciaLugar);
+}
+  filtrados.forEach(l => contenedor.appendChild(crearCardLugar(l)));
+}
+
+// Eventos
+inputBuscar.addEventListener('input', renderizarLugares);
+selectCategoria.addEventListener('change', renderizarLugares);
+selectMunicipio.addEventListener('change', renderizarLugares);
+
+[btnAbierto, btnFavoritos, btnGratis].forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.classList.toggle('bg-blue-500');
+    btn.classList.toggle('text-white');
+    renderizarLugares();
+  });
+});
+
+// Ubicación
+navigator.geolocation.getCurrentPosition(
+  async (pos) => {
+    latUsuario = pos.coords.latitude;
+    lonUsuario = pos.coords.longitude;
+    await cargarLugares();
+  },
+  async () => {
+    console.warn('❗ Usuario no permitió ubicación.');
+    await cargarLugares();
+  }
+);
