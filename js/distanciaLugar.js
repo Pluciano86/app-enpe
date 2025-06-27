@@ -1,4 +1,4 @@
-// distanciaLugar.js
+// ✅ distanciaLugar.js
 
 export async function calcularTiemposParaLugares(lista, origenCoords) {
   const lugaresValidos = lista.filter(l =>
@@ -23,16 +23,14 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
     const destinos = chunk.map(l => `${l.latitud},${l.longitud}`);
     const body = {
       origen: `${origenCoords.lat},${origenCoords.lon}`,
-      destinos: destinos.join('|')
+      destinos: destinos.join('|'),
+      departure_time: 'now' // ✅ tiempo real con tráfico
     };
 
     try {
-      const response = await fetch('https://zgjaxanqfkweslkxtayt.functions.supabase.co/calcular-distancia', {
+      const response = await fetch('https://maps.googleapis.com/maps/api/distancematrix/json?units=metric', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
 
@@ -40,7 +38,7 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
       const tiempos = result?.rows?.[0]?.elements || [];
       allDurations.push(...tiempos);
     } catch (err) {
-      console.error('❌ Error consultando API para chunk de lugares:', err);
+      console.error('❌ Error consultando Google Maps API:', err);
     }
   }
 
@@ -50,12 +48,14 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
 
     if (minutos !== null) {
       const texto = minutos >= 60
-        ? `a ${Math.floor(minutos / 60)} hora y ${minutos % 60} minutos`
+        ? `a ${Math.floor(minutos / 60)} hr${Math.floor(minutos / 60) > 1 ? 's' : ''} y ${minutos % 60} minutos`
         : `a ${minutos} minutos`;
 
+      lugar.tiempoTexto = texto;
       lugar.tiempoVehiculo = texto;
       lugar.minutosCrudos = minutos;
     } else {
+      lugar.tiempoTexto = null;
       lugar.tiempoVehiculo = null;
       lugar.minutosCrudos = null;
     }
@@ -64,7 +64,6 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
   return lista;
 }
 
-// ✅ Exportamos calcularDistancia también
 export function calcularDistancia(lat1, lon1, lat2, lon2) {
   const rad = Math.PI / 180;
   const R = 6371;

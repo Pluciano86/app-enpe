@@ -1,27 +1,28 @@
 export async function calcularTiemposParaLista(lista, origenCoords) {
-  const comerciosValidos = lista.filter(c =>
-    typeof c.latitud === 'number' &&
-    typeof c.longitud === 'number' &&
-    !isNaN(c.latitud) &&
-    !isNaN(c.longitud)
+  const lugaresValidos = lista.filter(l =>
+    typeof l.latitud === 'number' &&
+    typeof l.longitud === 'number' &&
+    !isNaN(l.latitud) &&
+    !isNaN(l.longitud)
   );
 
-  if (comerciosValidos.length === 0) return lista;
+  if (lugaresValidos.length === 0) return lista;
 
   const chunkSize = 20;
   const chunks = [];
 
-  for (let i = 0; i < comerciosValidos.length; i += chunkSize) {
-    chunks.push(comerciosValidos.slice(i, i + chunkSize));
+  for (let i = 0; i < lugaresValidos.length; i += chunkSize) {
+    chunks.push(lugaresValidos.slice(i, i + chunkSize));
   }
 
   const allDurations = [];
 
   for (const chunk of chunks) {
-    const destinos = chunk.map(c => `${c.latitud},${c.longitud}`);
+    const destinos = chunk.map(l => `${l.latitud},${l.longitud}`);
     const body = {
       origen: `${origenCoords.lat},${origenCoords.lon}`,
-      destinos: destinos.join('|')
+      destinos: destinos.join('|'),
+      departure_time: 'now' // ✅ tiempo real
     };
 
     try {
@@ -42,7 +43,7 @@ export async function calcularTiemposParaLista(lista, origenCoords) {
     }
   }
 
-  comerciosValidos.forEach((comercio, i) => {
+  lugaresValidos.forEach((lugar, i) => {
     const duracion = allDurations[i]?.duration?.value || null;
     const minutos = duracion ? Math.round(duracion / 60) : null;
 
@@ -51,13 +52,13 @@ export async function calcularTiemposParaLista(lista, origenCoords) {
         ? `a ${Math.floor(minutos / 60)} hr${Math.floor(minutos / 60) > 1 ? 's' : ''} y ${minutos % 60} minutos`
         : `a ${minutos} minutos`;
 
-      comercio.tiempoTexto = texto;
-      comercio.tiempoVehiculo = texto; // ✅ compatibilidad
-      comercio.minutosCrudos = minutos;
+      lugar.tiempoTexto = texto;
+      lugar.tiempoVehiculo = texto;
+      lugar.minutosCrudos = minutos;
     } else {
-      comercio.tiempoTexto = null;
-      comercio.tiempoVehiculo = null; // ✅ compatibilidad
-      comercio.minutosCrudos = null;
+      lugar.tiempoTexto = null;
+      lugar.tiempoVehiculo = null;
+      lugar.minutosCrudos = null;
     }
   });
 

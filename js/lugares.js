@@ -1,7 +1,7 @@
 // lugares.js
 
 import { supabase } from './supabaseClient.js';
-import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
+import { calcularTiemposParaLugares } from './distanciaLugar.js';
 
 const contenedor = document.getElementById('lugaresContainer');
 const inputBuscar = document.getElementById('searchInput');
@@ -121,7 +121,10 @@ async function cargarLugares() {
 
   // Calcular distancia
   if (latUsuario && lonUsuario) {
-    lugares = await calcularTiemposParaLista(lugares, { lat: latUsuario, lon: lonUsuario });
+    lugares = await calcularTiemposParaLugares(lugares, { lat: latUsuario, lon: lonUsuario });
+
+    // ⬇️ Ordenar por cercanía usando minutosCrudos (como en listadoPlayas.js)
+    lugares.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
   }
 
   // Horarios
@@ -207,7 +210,7 @@ if (orden === 'az') {
   // Orden por cercanía por defecto
   filtrados.sort((a, b) => a.distanciaLugar - b.distanciaLugar);
 }
-  filtrados.forEach(l => contenedor.appendChild(crearCardLugar(l)));
+  filtrados.forEach(l => contenedor.appendChild(crearCardLugar(l))); 
 }
 
 // Eventos
