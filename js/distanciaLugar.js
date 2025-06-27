@@ -1,4 +1,4 @@
-// ✅ distanciaLugar.js
+// distanciaLugar.js
 
 export async function calcularTiemposParaLugares(lista, origenCoords) {
   const lugaresValidos = lista.filter(l =>
@@ -24,13 +24,16 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
     const body = {
       origen: `${origenCoords.lat},${origenCoords.lon}`,
       destinos: destinos.join('|'),
-      departure_time: 'now' // ✅ tiempo real con tráfico
+      departure_time: 'now' // tráfico real
     };
 
     try {
-      const response = await fetch('https://maps.googleapis.com/maps/api/distancematrix/json?units=metric', {
+      const response = await fetch('https://zgjaxanqfkweslkxtayt.functions.supabase.co/calcular-distancia', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
+        },
         body: JSON.stringify(body)
       });
 
@@ -38,7 +41,7 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
       const tiempos = result?.rows?.[0]?.elements || [];
       allDurations.push(...tiempos);
     } catch (err) {
-      console.error('❌ Error consultando Google Maps API:', err);
+      console.error('❌ Error consultando API para chunk:', err);
     }
   }
 
