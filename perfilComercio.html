@@ -200,7 +200,12 @@
   <div id="sliderPlayasCercanas" class="flex gap-4 overflow-x-auto px-2"></div>
 </section>
 
-<br>
+<section id="cercanosLugaresContainer" class="hidden mt-6">
+  <h2 class="text-lg font-bold mb-2 px-4">Lugares de interés cerca de <span id="nombreCercanosComida"></span></h2>
+  <div id="sliderCercanosLugares" class="flex gap-4 px-4 overflow-x-auto"></div>
+</section>
+
+<br> <br>
 
 
 
@@ -223,7 +228,6 @@
 <script type="module" src="./js/cercaDeComercio.js"></script>
 
 
-
 <!-- Animacion Reloj -->
 <style>
   @keyframes spin {
@@ -240,6 +244,21 @@
 
 <div id="footerContainer"></div>
 <script type="module" src="./js/footer.js"></script>
+
+<script type="module">
+  import { mostrarLugaresCercanos } from './mostrarLugaresCercanos.js';
+  import { obtenerComercioPorID } from './perfil.js'; // Asumiendo que ahí cargas el comercio
+
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+  if (id) {
+    obtenerComercioPorID(id).then(comercio => {
+      if (comercio) {
+        mostrarLugaresCercanos(comercio);
+      }
+    });
+  }
+</script>
 
 </body>
 </html>

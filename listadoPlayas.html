@@ -95,18 +95,23 @@
   
 </section>
 
+  <div id="mensajeSinResultados" class="hidden text-center text-gray-500 py-6">
+  No se encontraron playas con los filtros seleccionados.
+  </div>
+
   <!-- Listado -->
   <main id="contenedorPlayas" class="grid grid-cols-2 sm:grid-cols-4 gap-4 px-4"></main>
+
 
   <!-- Template de Card -->
   <template id="templateCard">
   <div class="text-center bg-white rounded-xl shadow hover:shadow-lg transition overflow-hidden">
-    <img class="imagen w-full h-36 object-cover" src="" alt="imagen playa">
+    <img class="imagen w-full h-40 object-cover" src="" alt=""></img>
     <div class="p-4">
 
       <!-- Nombre con altura fija y truncado -->
       <h2 class="nombre text-lg font-medium text-[#424242] leading-[0.9] h-12 overflow-hidden text-ellipsis text-center px-2 mb-0">
-        Nombre Playa quiero
+        Nombre Playa
       </h2>
 
       <!-- Apto para -->

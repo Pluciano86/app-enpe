@@ -1,10 +1,11 @@
 export function mostrarMensajeVacio(contenedor, mensaje = 'No se encontraron lugares de interés para los filtros seleccionados.', icono = '📍') {
-  contenedor.className = 'w-full min-h-[300px] bg-white flex items-center justify-center';
   contenedor.innerHTML = `
-    <div class="w-full max-w-xs text-center text-gray-600 p-6">
-      <div class="text-5xl mb-2 animate-bounce">${icono}</div>
-      <p class="text-lg font-medium leading-tight mb-1">${mensaje}</p>
-      <p class="text-sm text-gray-400">Prueba cambiar los filtros o intenta otra búsqueda.</p>
+    <div class="col-span-full flex justify-center items-center py-12">
+      <div class="w-full max-w-xs text-center text-gray-600 px-4">
+        <div class="text-5xl mb-2 animate-bounce">${icono}</div>
+        <p class="text-lg font-medium leading-tight mb-1">${mensaje}</p>
+        <p class="text-sm text-gray-400">Prueba cambiar los filtros o intenta otra búsqueda.</p>
+      </div>
     </div>
   `;
 }
