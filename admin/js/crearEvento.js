@@ -1,4 +1,3 @@
-
 // adminEventos.js
 import { supabase } from './supabaseClient.js';
 
@@ -28,11 +27,11 @@ form.addEventListener('submit', async (e) => {
   const nombreArchivo = `eventos/${Date.now()}_${imagenFile.name}`;
 
   const { data: imgData, error: errorUpload } = await supabase.storage
-    .from('galeriacomercios')
-    .upload(nombreArchivo, imagenFile, {
-      cacheControl: '3600',
-      upsert: false
-    });
+  .from('galeriaeventos') // ← ✅ usa el bucket correcto
+  .upload(nombreArchivo, imagenFile, {
+    cacheControl: '3600',
+    upsert: false
+  });
 
   if (errorUpload) {
     alert('Error subiendo imagen');
@@ -52,11 +51,15 @@ form.addEventListener('submit', async (e) => {
     municipio_id: parseInt(formData.get('municipio')),
     categoria: parseInt(formData.get('categoria')),
     enlaceboletos: formData.get('enlaceBoletos')?.trim() || null,
-    imagen: `https://zgjaxangfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${nombreArchivo}`,
+    imagen: `https://zgjaxangfkweslkxtayt.supabase.co/storage/v1/object/public/galeriaeventos/${nombreArchivo}`,
     activo: true
   };
 
-  console.log('🧪 Evento a insertar:', evento);
+  // 🔎 DEBUG extra
+  console.log('📦 Payload evento:', JSON.stringify(evento, null, 2));
+  if (!evento.nombre || !evento.descripcion || !evento.fecha || !evento.hora || !evento.municipio_id || !evento.categoria) {
+    console.error('❌ Campos requeridos faltantes o inválidos:', evento);
+  }
 
   const { error } = await supabase.from('eventos').insert(evento);
 

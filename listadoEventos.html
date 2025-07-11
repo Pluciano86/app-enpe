@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Eventos en Puerto Rico</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+</head>
+<body class="bg-white text-gray-800">
+
+  <!-- Header -->
+  <div id="headerContainer"></div>
+  <script type="module" src="./js/header.js"></script>
+
+  <!-- Filtros -->
+  <div class="p-4 bg-white shadow-md sticky top-0 z-10">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <select id="filtroMunicipio" class="w-full p-2 rounded border">
+        <option value="">Todos los Municipios</option>
+      </select>
+      <select id="filtroCategoria" class="w-full p-2 rounded border">
+        <option value="">Todas las Categorías</option>
+      </select>
+      <input type="text" id="busquedaNombre" placeholder="Buscar evento por nombre..." class="w-full p-2 rounded border" />
+    </div>
+  </div>
+
+  <!-- Lista de eventos -->
+  <section class="p-4">
+    <div id="listaEventos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Aquí van las tarjetas -->
+    </div>
+  </section>
+
+  <!-- Modal -->
+  <div id="modalEvento" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 items-center justify-center">
+    <div class="bg-white max-w-md w-full mx-4 p-4 rounded relative">
+      <button id="cerrarModal" class="absolute top-2 right-2 text-gray-500 hover:text-red-500 text-xl">&times;</button>
+      <img id="modalImagen" class="w-full h-64 object-cover rounded mb-4" src="" alt="">
+      <h2 id="modalTitulo" class="text-xl font-bold mb-2"></h2>
+      <p id="modalDescripcion" class="text-sm mb-2"></p>
+      <p id="modalFecha" class="text-sm text-gray-600 mb-2"></p>
+      <p id="modalLugar" class="text-sm mb-2"></p>
+      <p id="modalDireccion" class="text-sm text-gray-600 mb-2"></p>
+      <a id="modalBoletos" href="#" target="_blank" class="text-blue-600 underline text-sm hidden">Comprar boletos</a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div id="footerContainer"></div>
+  <script type="module" src="./js/footer.js"></script>
+  <script type="module" src="./js/listadoEventos.js"></script>
+
+</body>
+</html>
