@@ -177,7 +177,7 @@ function renderizarLugares() {
   }
 
   if (filtrados.length === 0) {
-  mostrarMensajeVacio(contenedor, 'No se encontraron Lugares de Interés para los filtros seleccionados.');
+  mostrarMensajeVacio(contenedor, 'No se encontraron Lugares de Interés para los filtros seleccionados.', '📍');
 } else {
   filtrados.forEach(l => contenedor.appendChild(crearCardLugar(l)));
 }

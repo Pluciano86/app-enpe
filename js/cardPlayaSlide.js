@@ -13,7 +13,7 @@ export function cardPlayaSlide(playa) {
   `.trim();
 
   const urlImagen = imagen || 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg';
-
+console.log('🧪 Imagen detectada:', playa.imagen);
   card.innerHTML = `
     <div class="w-full h-24 relative bg-gray-200">
       <img src="${urlImagen}" alt="Imagen de ${nombre}" class="w-full h-full object-cover" />
@@ -37,3 +37,4 @@ export function cardPlayaSlide(playa) {
 
   return card;
 }
+

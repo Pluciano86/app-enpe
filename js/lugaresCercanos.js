@@ -13,7 +13,6 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
     return;
   }
 
-  // 1. Traer todos los lugares activos y con coordenadas válidas
   const { data: lugares, error } = await supabase
     .from('LugaresTuristicos')
     .select('*')
@@ -31,7 +30,6 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
     !isNaN(l.longitud)
   );
 
-  // 2. Traer portadas desde imagenesLugares
   const { data: imagenes, error: errorImg } = await supabase
     .from('imagenesLugares')
     .select('imagen, idLugar')
@@ -41,7 +39,6 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
     console.error('❌ Error trayendo portadas:', errorImg);
   }
 
-  // 3. Agregar imagen y calcular tiempos
   const lugaresConImagen = lugaresConCoords.map(l => {
     const portada = imagenes?.find(img => img.idLugar === l.id);
     return {
@@ -52,18 +49,20 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
 
   const lugaresConTiempos = await calcularTiemposParaLista(lugaresConImagen, origenCoords);
 
-  const cercanos = lugaresConTiempos.filter(l =>
-    l.minutosCrudos !== null && l.minutosCrudos <= 15
-  );
+  const cercanos = lugaresConTiempos
+    .filter(l => l.minutosCrudos !== null && l.minutosCrudos <= 15)
+    .sort((a, b) => a.minutosCrudos - b.minutosCrudos); // ✅ ordenar por cercanía
 
-  // 4. Mostrar resultados si existen
   const container = document.getElementById('cercanosLugaresContainer');
   const slider = document.getElementById('sliderCercanosLugares');
+  const nombreSpan = document.getElementById('nombreCercanosLugares'); // ✅ nombre del comercio
 
   if (!container || !slider) {
     console.warn('⚠️ No se encontraron los contenedores para mostrar los lugares cercanos.');
     return;
   }
+
+  if (nombreSpan) nombreSpan.textContent = comercioOrigen.nombre;
 
   if (cercanos.length > 0) {
     slider.innerHTML = '';

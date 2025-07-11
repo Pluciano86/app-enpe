@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crear Evento</title>
+  <script src="https://kit.fontawesome.com/your-free-kit.js" crossorigin="anonymous"></script>
+  <script type="module" src="./js/crearEvento.js" defer></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"/>
+</head>
+<body class="bg-gray-50 p-6">
+  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6">
+    <h1 class="text-2xl font-bold mb-4">Crear Nuevo Evento</h1>
+    <form id="formCrearEvento" class="space-y-4">
+      <div>
+        <label class="block font-medium">Nombre del Evento</label>
+        <input required type="text" name="nombre" class="w-full border rounded px-3 py-2"/>
+      </div>
+
+      <div>
+        <label class="block font-medium">Descripción</label>
+        <textarea required name="descripcion" rows="3" class="w-full border rounded px-3 py-2"></textarea>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="flex-1">
+          <label class="block font-medium">Fecha</label>
+          <input required type="date" name="fecha" class="w-full border rounded px-3 py-2"/>
+        </div>
+        <div class="flex-1">
+          <label class="block font-medium">Hora</label>
+          <input required type="time" name="hora" class="w-full border rounded px-3 py-2"/>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="gratis" name="gratis" class="form-checkbox h-5 w-5 text-blue-600">
+        <label for="gratis" class="font-medium">Gratis</label>
+      </div>
+
+      <div>
+        <label class="block font-medium">Costo</label>
+        <input required type="text" name="costo" id="costo" class="w-full border rounded px-3 py-2"/>
+      </div>
+
+      <div>
+        <label class="block font-medium">Lugar</label>
+        <input required type="text" name="lugar" class="w-full border rounded px-3 py-2"/>
+      </div>
+
+      <div>
+        <label class="block font-medium">Dirección</label>
+        <input required type="text" name="direccion" class="w-full border rounded px-3 py-2"/>
+      </div>
+
+      <div>
+        <label class="block font-medium">Municipio</label>
+        <select required name="municipio" id="municipio" class="w-full border rounded px-3 py-2">
+          <option value="">Selecciona un municipio</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-medium">Categoría</label>
+        <select required name="categoria" id="categoria" class="w-full border rounded px-3 py-2">
+          <option value="">Selecciona una categoría</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-medium">Enlace a Boletos (opcional)</label>
+        <input type="url" name="enlaceBoletos" class="w-full border rounded px-3 py-2"/>
+      </div>
+
+      <div>
+        <label class="block font-medium">Imagen del Evento</label>
+        <input required type="file" name="imagen" accept="image/*" class="w-full"/>
+      </div>
+
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+        Guardar Evento
+      </button>
+    </form>
+  </div>
+
+  <script type="module" src="js/crearEvento.js"></script>
+
+  <script>
+    const checkGratis = document.getElementById('gratis');
+    const inputCosto = document.getElementById('costo');
+
+    checkGratis.addEventListener('change', () => {
+      if (checkGratis.checked) {
+        inputCosto.value = 'Libre de Costo';
+        inputCosto.setAttribute('readonly', true);
+      } else {
+        inputCosto.value = '';
+        inputCosto.removeAttribute('readonly');
+      }
+    });
+  </script>
+</body>
+</html>

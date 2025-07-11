@@ -19,16 +19,16 @@ export async function mostrarPlayasCercanas(comercio) {
 
   if (!municipioData?.costa) return;
 
-  // Buscar playas del mismo municipio
+  // Buscar playas con coordenadas
   const { data: playas, error } = await supabase
-  .from('playas')
-  .select('*')
-  .not('latitud', 'is', null)
-  .not('longitud', 'is', null);
+    .from('playas')
+    .select('*')
+    .not('latitud', 'is', null)
+    .not('longitud', 'is', null);
 
   if (error || !playas || playas.length === 0) return;
 
-  // Calcular tiempo desde el comercio hacia cada playa
+  // Calcular tiempos
   const conTiempo = await calcularTiemposParaLugares(playas, {
     lat: comercio.latitud,
     lon: comercio.longitud
@@ -44,29 +44,37 @@ export async function mostrarPlayasCercanas(comercio) {
   seccion.classList.remove('hidden');
 
   for (const playa of filtradas) {
-    // Imagen: Supabase o default
-    let imagenURL;
-if (playa.imagen) {
-  const { data: imgData } = supabase.storage.from('galeriacomercios').getPublicUrl(playa.imagen);
-  imagenURL = imgData?.publicUrl || 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg';
-} else {
-  imagenURL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg';
-}
+    // 🔍 Obtener imagen de portada desde la tabla imagenesPlayas
+    let imagenURL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg';
 
-    // Clima
+    const { data: imgData, error: errorImg } = await supabase
+      .from('imagenesPlayas')
+      .select('imagen')
+      .eq('idPlaya', playa.id)
+      .eq('portada', true)
+      .single();
+
+    if (imgData?.imagen) {
+      imagenURL = imgData.imagen;
+    }
+
+    console.log(`🧪 Imagen usada para ${playa.nombre}:`, imagenURL);
+
+    // Obtener clima
     const clima = await obtenerClima(playa.latitud, playa.longitud);
 
+    // Crear tarjeta
     const card = cardPlayaSlide({
-  id: playa.id,
-  nombre: playa.nombre,
-  imagen: imagenURL,
-  municipio: playa.municipio,
-  clima: {
-    estado: clima?.estado || 'Clima desconocido',
-    iconoURL: clima?.iconoURL || ''
-  },
-  tiempoTexto: playa.tiempoVehiculo || 'Cercana'
-});
+      id: playa.id,
+      nombre: playa.nombre,
+      imagen: imagenURL,
+      municipio: playa.municipio,
+      clima: {
+        estado: clima?.estado || 'Clima desconocido',
+        iconoURL: clima?.iconoURL || ''
+      },
+      tiempoTexto: playa.tiempoVehiculo || 'Cercana'
+    });
 
     contenedor.appendChild(card);
   }
