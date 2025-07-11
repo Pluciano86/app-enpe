@@ -25,7 +25,7 @@ container.innerHTML = `
       <img src="${iconBase}${icono}" class="w-8 h-8 mb-1" alt="${texto}">
       ${texto}
     </a>
-    <a href="${base}eventos.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
+    <a href="${base}listadoEventos.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
       <img src="${iconBase}deadline.svg" class="w-8 h-8 mb-1" alt="Eventos">
       Eventos
     </a>
