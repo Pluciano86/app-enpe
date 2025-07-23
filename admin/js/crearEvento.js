@@ -24,13 +24,13 @@ form.addEventListener('submit', async (e) => {
 
   const formData = new FormData(form);
   const imagenFile = formData.get('imagen');
-  const nombreArchivo = `eventos/${Date.now()}_${imagenFile.name}`;
+  const nombreArchivo = `${Date.now()}_${imagenFile.name}`;
 
   const { data: imgData, error: errorUpload } = await supabase.storage
   .from('galeriaeventos') // ← ✅ usa el bucket correcto
   .upload(nombreArchivo, imagenFile, {
     cacheControl: '3600',
-    upsert: false
+    upsert: true
   });
 
   if (errorUpload) {
