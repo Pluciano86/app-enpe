@@ -4,7 +4,6 @@ import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
-import { mostrarMensajeVacio } from './mensajesUI.js';
 
 function mostrarLoader() {
   document.getElementById('loaderLogo')?.classList.remove('hidden');
