@@ -1,6 +1,6 @@
 // 📦 Supabase y componentes
 
-function mostrarMensajeVacio(contenedor, mensaje = 'No se encontraron comercios para los filtros seleccionados.', icono = '🏪') {
+function mostrarMensajeVacio(contenedor, mensaje = 'No se encontraron comercios para los filtros seleccionados.', icono = '📍') {
   contenedor.innerHTML = `
     <div class="col-span-full flex justify-center items-center py-12">
       <div class="w-full max-w-xs text-center text-gray-600 px-4">
@@ -340,7 +340,7 @@ function crearTagFiltro(texto, onClick) {
       }
 
       if (id === 'filtro-municipio') filtrosActivos.municipio = v.value;
-      if (id === 'filtro-subcategoria') filtrosActivos.subcategoria = v.value;
+      if (id === 'filtro-subcategoria') filtrosActivos.subcategoria = v.value;3
       if (id === 'filtro-orden') filtrosActivos.orden = v.value;
       if (id === 'filtro-abierto') filtrosActivos.abiertoAhora = v.checked;
       if (id === 'filtro-destacados') {

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Descubre por Área</title> 
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+      <!-- Header -->
+  <div id="headerContainer"></div>
+  <script type="module" src="./js/header.js"></script>
+
+  <header class="bg-white shadow px-4 py-4 sticky top-0 z-10">
+    <h1 class="text-2xl font-bold">Descubre por Área</h1>
+  </header>
+
+
+  <main class="mt-6 space-y-10">
+    <!-- Lugares para Comer -->
+    <section id="cercanosComidaContainer" class="hidden mt-8">
+      <h2 class="text-lg font-medium mb-4 px-4">Lugares de I <span id="nombreCercanosComida" class="text-primary"></span></h2>
+      <div id="sliderCercanosComida" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
+    </section>
+
+    <!-- Playas Cercanas -->
+    <section id="cercanosPlayasContainer" class="hidden mt-8">
+      <h2 class="text-lg font-medium mb-4 px-4">Playas a menos de 45 minutos de <span id="nombreCercanosPlayas" class="text-primary"></span></h2>
+      <div id="sliderPlayasCercanas" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
+    </section>
+
+    <!-- Lugares de Interés -->
+    <section id="cercanosLugaresContainer" class="hidden mt-6">
+      <h2 class="text-lg font-medium mb-2 px-4">Lugares de interés cerca de <span id="nombreCercanosLugares"></span></h2>
+      <div id="sliderCercanosLugares" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
+    </section>
+  </main>
+
+    <!-- Footer -->
+<div id="footerContainer"></div>
+<script type="module" src="./js/footer.js"></script>
+
+<script type="module" src="js/listadoArea.js"></script>
+<script type="module" src="./js/cardComercioSlide.js"></script>
+<script type="module" src="./js/cercanosComida.js"></script>
+<script type="module" src="./js/cercaDeComercio.js"></script>
+<script type="module">
+  import { cargarCercanosDesdeUsuario } from './js/cercaDesdeUsuario.js';
+  cargarCercanosDesdeUsuario();
+</script>
+
+
+</body>
+</html>
