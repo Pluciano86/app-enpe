@@ -105,7 +105,7 @@ function renderizarEventos() {
 
   // Sin resultados
   if (filtrados.length === 0) {
-    mostrarMensajeVacio(lista, 'No se encontraron eventos para los filtros seleccionados.', '🎉');
+    mostrarMensajeVacio(lista, 'No se encontraron eventos para los filtros seleccionados.', '📍');
     return;
   }
 
