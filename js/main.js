@@ -1,4 +1,17 @@
 // 📦 Supabase y componentes
+
+function mostrarMensajeVacio(contenedor, mensaje = 'No se encontraron comercios para los filtros seleccionados.', icono = '🏪') {
+  contenedor.innerHTML = `
+    <div class="col-span-full flex justify-center items-center py-12">
+      <div class="w-full max-w-xs text-center text-gray-600 px-4">
+        <div class="text-5xl mb-2 animate-bounce">${icono}</div>
+        <p class="text-lg font-medium leading-tight mb-1">${mensaje}</p>
+        <p class="text-sm text-gray-400">Prueba cambiar los filtros o intenta otra búsqueda.</p>
+      </div>
+    </div>
+  `;
+}
+
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
@@ -263,12 +276,19 @@ function aplicarFiltrosYRedibujar() {
   }
   
 
+  
+  if (filtrados.length === 0) {
+    mostrarMensajeVacio(contenedor);
+    return;
+  }
+
   for (const comercio of filtrados) {
     const card = comercio.activoEnPeErre
       ? cardComercio(comercio)
       : cardComercioNoActivo(comercio);
     contenedor.appendChild(card);
   }
+
 }
 
 // Utilidad para tags de filtro
