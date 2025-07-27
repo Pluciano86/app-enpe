@@ -99,17 +99,21 @@ async function cargarPorTipo(tabla, idArea, containerId, cardFunc) {
 
   const storageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
 
-if (tabla === 'playas' || tabla === 'LugaresTuristicos') {
-  for (const item of conTiempos) {
-    if (item.imagen && !item.imagen.startsWith('http')) {
-      const result = supabase
-        .storage
-        .from('galeriacomercios')
-        .getPublicUrl(item.imagen);
+for (const item of conTiempos) {
+  if (item.imagen && !item.imagen.startsWith('http')) {
+    const bucket =
+      tabla === 'playas' ? 'galeriaplayas' :
+      tabla === 'LugaresTuristicos' ? 'galerialugares' :
+      null;
+ 
+
+    if (bucket) {
+      const result = supabase.storage.from(bucket).getPublicUrl(item.imagen);
       item.imagen = result?.data?.publicUrl || null;
     }
   }
 }
+
 
   if (conTiempos.length > 0) {
     console.log(`✅ Mostrando ${conTiempos.length} resultados para ${tabla}`);
