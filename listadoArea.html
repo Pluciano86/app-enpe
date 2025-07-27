@@ -23,34 +23,39 @@
   </header>
 
 
-  <main class="mt-6 space-y-10">
-    <!-- Lugares para Comer -->
-    <section id="cercanosComidaContainer" class="hidden mt-8">
-      <h2 class="text-lg font-medium mb-4 px-4">Lugares de I <span id="nombreCercanosComida" class="text-primary"></span></h2>
-      <div id="sliderCercanosComida" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
-    </section>
+  <main class="mt-10 space-y-10">
+<section id="cercanosComidaContainer" class="hidden mt-8">
+  <h2 class="text-lg font-medium mb-4">Vámonos a Comer en el Área </h2>
+  <div id="sliderCercanosComida" class="flex gap-4 overflow-x-auto px-2"></div>
+</section>
 
-    <!-- Playas Cercanas -->
-    <section id="cercanosPlayasContainer" class="hidden mt-8">
-      <h2 class="text-lg font-medium mb-4 px-4">Playas a menos de 45 minutos de <span id="nombreCercanosPlayas" class="text-primary"></span></h2>
-      <div id="sliderPlayasCercanas" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
-    </section>
+<section id="cercanosPlayasContainer" class="hidden mt-8">
+  <h2 class="text-lg font-medium mb-4">Chequea las Playas del Área </h2>
+  <div id="sliderPlayasCercanas" class="flex gap-4 overflow-x-auto px-2"></div>
+</section>
 
-    <!-- Lugares de Interés -->
-    <section id="cercanosLugaresContainer" class="hidden mt-6">
-      <h2 class="text-lg font-medium mb-2 px-4">Lugares de interés cerca de <span id="nombreCercanosLugares"></span></h2>
-      <div id="sliderCercanosLugares" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
-    </section>
+<section id="cercanosLugaresContainer" class="hidden mt-6">
+  <h2 class="text-lg font-medium mb-2 px-4">Descubre estos Lugares de Interés en el Área</h2>
+  <div id="sliderCercanosLugares" class="flex gap-4 px-4 overflow-x-auto"></div>
+</section>
+
+<!-- Eventos Cercanos -->
+<section id="eventosContainer" class="hidden mt-8">
+  <h2 class="text-lg font-medium mb-4 px-4">Eventos en el Área</h2>
+  <div id="sliderEventos" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
+</section>
   </main>
 
     <!-- Footer -->
 <div id="footerContainer"></div>
 <script type="module" src="./js/footer.js"></script>
 
-<script type="module" src="js/listadoArea.js"></script>
+<script type="module" src="./js/listadoArea.js"></script>
 <script type="module" src="./js/cardComercioSlide.js"></script>
-<script type="module" src="./js/cercanosComida.js"></script>
-<script type="module" src="./js/cercaDeComercio.js"></script>
+<script type="module" src="./js/cardLugarSlide.js"></script>
+<script type="module" src="./js/cardPlayaSlide.js"></script>
+<script type="module" src="./js/cardEventoSlide.js"></script>
+
 <script type="module">
   import { cargarCercanosDesdeUsuario } from './js/cercaDesdeUsuario.js';
   cargarCercanosDesdeUsuario();
