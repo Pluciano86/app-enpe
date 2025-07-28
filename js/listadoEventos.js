@@ -119,7 +119,7 @@ function renderizarEventos() {
         <img src="${e.imagen}?v=${e.id}" class="relative z-10 w-full h-full object-contain" alt="${e.nombre}" />
       </div>
       <div class="p-3 flex-1 flex flex-col text-center justify-between">
-        <h3 class="text-sm font-semibold mb-1 line-clamp-2">${e.nombre}</h3>
+        <h3 class="text-base font-medium mb-1 line-clamp-2">${e.nombre}</h3>
         <div class="text-xs text-gray-500 mb-1">${e.categoriaNombre || ''}</div>
         <div class="text-sm mb-1"><i class="fa-solid fa-calendar-days mr-1 text-sky-600"></i> ${formatearFecha(e.fecha)}</div>
         <div class="text-sm mb-1"><i class="fa-solid fa-map-pin mr-1 text-pink-600"></i> ${e.municipioNombre}</div>
