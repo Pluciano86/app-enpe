@@ -8,6 +8,7 @@ import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 let municipioSeleccionado = null;
 let nombreMunicipioSeleccionado = '';
 let nombreAreaActual = '';
+let idAreaGlobal = null;
 
 async function obtenerUbicacionUsuario() {
   return new Promise((resolve, reject) => {
@@ -92,13 +93,8 @@ async function mostrarMunicipios(idArea) {
       volverBtn.className = 'block mx-auto mt-4 text-blue-600 font-medium underline';
 
       volverBtn.onclick = () => {
-        municipioSeleccionado = null;
-        nombreMunicipioSeleccionado = '';
-        document.querySelector('header h1').textContent = `Descubre el Área ${nombreAreaActual}`;
-        document.getElementById('gridMunicipios')?.classList.remove('hidden');
-        document.querySelector('h2.text-xl')?.classList.remove('hidden');
-        volverBtn.remove();
-        cargarTodoDesdeCoords();
+        // 👉 Refrescar la página original con el idArea
+        window.location.href = `listadoArea.html?idArea=${idAreaGlobal}`;
       };
 
       if (!document.getElementById('btnVolverArea')) {
@@ -129,8 +125,9 @@ async function cargarPorTipo(tabla, idArea, containerId, cardFunc) {
 
   const municipioActual = municipios.find(m => m.id === municipioSeleccionado);
 
+  // ⚠️ Oculta playas si no hay costa
   if (tabla === 'playas' && municipioSeleccionado && municipioActual?.costa === false) {
-    console.log('🌴 Municipio sin costa, no se muestran playas');
+    console.log('🌴 Municipio sin costa, ocultando playas');
     const section = container.closest('section');
     if (section) section.classList.add('hidden');
     return;
@@ -153,12 +150,11 @@ async function cargarPorTipo(tabla, idArea, containerId, cardFunc) {
   }
 
   let conTiempos = [];
-
   if (tabla === 'eventos') {
     conTiempos = [...data].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
   } else {
     const coords = data.filter(d => d.latitud && d.longitud);
-    const userCoords = await obtenerUbicacionUsuario().catch(() => null);
+    const userCoords = await obtenerUbicacionUsuario().catch(err => null);
     conTiempos = userCoords ? await calcularTiemposParaLista(coords, userCoords) : coords;
     if (userCoords) conTiempos.sort((a, b) => a.minutosCrudos - b.minutosCrudos);
   }
@@ -201,18 +197,18 @@ async function cargarPorTipo(tabla, idArea, containerId, cardFunc) {
 }
 
 async function cargarTodoDesdeCoords() {
-  const params = new URLSearchParams(window.location.search);
-  const idArea = parseInt(params.get('idArea'));
-  if (!idArea) return;
-
-  await cargarPorTipo('Comercios', idArea, 'sliderCercanosComida', cardComercioSlide);
-  await cargarPorTipo('LugaresTuristicos', idArea, 'sliderCercanosLugares', cardLugarSlide);
-  await cargarPorTipo('playas', idArea, 'sliderPlayasCercanas', cardPlayaSlide);
-  await cargarPorTipo('eventos', idArea, 'sliderEventos', cardEventoSlide);
+  await cargarPorTipo('Comercios', idAreaGlobal, 'sliderCercanosComida', cardComercioSlide);
+  await cargarPorTipo('LugaresTuristicos', idAreaGlobal, 'sliderCercanosLugares', cardLugarSlide);
+  await cargarPorTipo('playas', idAreaGlobal, 'sliderPlayasCercanas', cardPlayaSlide);
+  await cargarPorTipo('eventos', idAreaGlobal, 'sliderEventos', cardEventoSlide);
 }
 
+// Inicialización
 const params = new URLSearchParams(window.location.search);
 const idArea = parseInt(params.get('idArea'));
-mostrarNombreArea(idArea);
-mostrarMunicipios(idArea);
-cargarTodoDesdeCoords();
+if (idArea) {
+  idAreaGlobal = idArea;
+  mostrarNombreArea(idArea);
+  mostrarMunicipios(idArea);
+  cargarTodoDesdeCoords();
+}
