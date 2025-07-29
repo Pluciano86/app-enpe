@@ -34,3 +34,12 @@
 .animate-logo {
   animation: moverLogo 2s ease-in-out infinite;
 }
+
+#gridMunicipios {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+#gridMunicipios > *:nth-last-child(-n+5):nth-child(n+11) {
+  justify-self: center;
+}

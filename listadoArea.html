@@ -10,6 +10,7 @@
   
   <style>
     body { font-family: 'Kanit', sans-serif; }
+    
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -22,26 +23,33 @@
     <h1 class="text-2xl text-center font-bold">Descubre por Área</h1>
   </header>
 
+  <section class="py-6">
+  <h2 class="text-xl font-normal text-center mb-4">Municipios del Área</h2>
+  <div id="gridMunicipios" class="flex flex-wrap justify-center px-2">
+    <!-- Aquí se insertan los municipios con JS -->
+  </div>
+</section>
 
-  <main class="mt-16 space-y-10 text-center">
+
+  <main class="text-center">
 <section id="cercanosComidaContainer" class="hidden mt-8">
-  <h2 class="text-2xl font- mb-4">Vamos a Comer en el Área </h2>
+  <h2 class="text-2xl mb-4">Vamos a Comer en el Área </h2>
   <div id="sliderCercanosComida" class="flex gap-4 overflow-x-auto px-2"></div>
 </section>
 
 <section id="cercanosPlayasContainer" class="hidden mt-8">
-  <h2 class="text-2xl font- mb-4">Chequea las Playas del Área </h2>
+  <h2 class="text-2xl mb-4">Chequea las Playas del Área </h2>
   <div id="sliderPlayasCercanas" class="flex gap-4 overflow-x-auto px-2"></div>
 </section>
 
 <section id="cercanosLugaresContainer" class="hidden mt-6">
-  <h2 class="text-2xl font- mb-2 px-4">Descubre estos Lugares de Interés en el Área</h2>
+  <h2 class="text-2xl mb-2 px-4">Descubre estos Lugares de Interés en el Área</h2>
   <div id="sliderCercanosLugares" class="flex gap-4 px-4 overflow-x-auto"></div>
 </section>
 
 <!-- Eventos Cercanos -->
 <section id="eventosContainer" class="hidden mt-10">
-  <h2 class="text-2xl font- mb-4 px-4">Eventos en el Área</h2>
+  <h2 class="text-2xl mb-4 px-4">Eventos en el Área</h2>
   <div id="sliderEventos" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
 </section>
   </main>
