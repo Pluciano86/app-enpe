@@ -228,7 +228,7 @@ function actualizarTitulos() {
   if (municipiosTitle)
     municipiosTitle.textContent = `Municipios del Área ${nombreAreaActual}`;
   if (comidaTitle)
-    comidaTitle.textContent = `Vamos a Comer ${sufijo}`;
+    comidaTitle.textContent = `Lugares para Comer ${sufijo}`;
   if (playaTitle)
     playaTitle.textContent = `Chequea las Playas ${sufijo}`;
   if (lugaresTitle)
