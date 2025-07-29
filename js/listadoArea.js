@@ -141,32 +141,46 @@ async function cargarPorTipo(tabla, idArea, containerId, cardFunc) {
     if (userCoords) conTiempos.sort((a, b) => a.minutosCrudos - b.minutosCrudos);
   }
 
-  if (tabla === 'Comercios') {
-    for (const c of conTiempos) {
-      const { data: imagenes } = await supabase
-        .from('imagenesComercios')
-        .select('imagen, logo, portada')
-        .eq('idComercio', c.id);
+if (tabla === 'Comercios') {
+  for (const c of conTiempos) {
+    const { data: imagenes } = await supabase
+      .from('imagenesComercios')
+      .select('imagen, logo, portada')
+      .eq('idComercio', c.id);
 
-      const storageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
-      const logo = imagenes?.find(i => i.logo)?.imagen;
-      const portada = imagenes?.find(i => i.portada)?.imagen;
-      c.logo = logo ? `${storageUrl}${logo}` : null;
-      c.imagenPortada = portada ? `${storageUrl}${portada}` : null;
-    }
+    const storageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
+    const logo = imagenes?.find(i => i.logo)?.imagen;
+    const portada = imagenes?.find(i => i.portada)?.imagen;
+    c.logo = logo ? `${storageUrl}${logo}` : null;
+    c.imagenPortada = portada ? `${storageUrl}${portada}` : null;
   }
+}
 
-  for (const item of conTiempos) {
-    if (item.imagen && !item.imagen.startsWith('http')) {
-      const bucket =
-        tabla === 'playas' ? 'galeriaplayas' :
-        tabla === 'LugaresTuristicos' ? 'galerialugares' : null;
-      if (bucket) {
-        const result = supabase.storage.from(bucket).getPublicUrl(item.imagen);
-        item.imagen = result?.data?.publicUrl || null;
-      }
-    }
+else if (tabla === 'LugaresTuristicos') {
+  for (const l of conTiempos) {
+    const { data: imagen } = await supabase
+      .from('imagenesLugares')
+      .select('imagen')
+      .eq('idLugar', l.id)
+      .eq('portada', true)
+      .maybeSingle();
+
+    l.imagen = imagen?.imagen || null;
   }
+}
+
+else if (tabla === 'playas') {
+  for (const p of conTiempos) {
+    const { data: imagen } = await supabase
+      .from('imagenesPlayas')
+      .select('imagen')
+      .eq('idPlaya', p.id)
+      .eq('portada', true)
+      .maybeSingle();
+
+    p.imagen = imagen?.imagen || null;
+  }
+}
 
   conTiempos.forEach(c => {
     const card = cardFunc(c);

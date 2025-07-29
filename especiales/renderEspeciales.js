@@ -63,8 +63,8 @@ async function renderizarEspeciales(lista) {
   if (!hayResultados) {
     const emoji = tipoSeleccionado === 'almuerzo' ? '🍴' : '🍻';
     const mensaje = tipoSeleccionado === 'almuerzo'
-      ? 'No hay Almuerzos disponibles para hoy'
-      : 'No hay Happy Hours disponibles para hoy';
+      ? 'No hay Almuerzos disponibles para hoy en esta selección.'
+      : 'No hay Happy Hours disponibles para en esta selección.';
 
     const contenedor = tipoSeleccionado === 'almuerzo' ? contenedorAlmuerzos : contenedorHappy;
     const seccion = tipoSeleccionado === 'almuerzo' ? seccionAlmuerzo : seccionHappy;
