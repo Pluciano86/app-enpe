@@ -17,7 +17,7 @@ let cuentaHref = `${base}admin/login/logearse.html`;
 
 (async () => {
   try {
-    const { supabase } = await import(`${base}js/supabaseClient.js`);
+    const { supabase } = await import('/js/supabaseClient.js');
     const { data: { user }, error } = await supabase.auth.getUser();
 
     if (user && !error) {
