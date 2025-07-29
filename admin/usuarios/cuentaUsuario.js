@@ -144,3 +144,23 @@ if (nuevaFoto) {
     window.location.reload();
   }
 });
+
+// ... (todo tu código anterior igual hasta el final del `formEditar.addEventListener`)
+
+// 6. Botón de Logout
+const btnLogout = document.getElementById('btnLogout');
+
+if (btnLogout) {
+  btnLogout.addEventListener('click', async () => {
+    const confirmar = confirm('¿Deseas cerrar sesión?');
+    if (!confirmar) return;
+
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('🛑 Error al cerrar sesión:', error.message);
+      alert('Hubo un problema al cerrar sesión.');
+    } else {
+      window.location.href = `${location.origin}/index.html`;
+    }
+  });
+}

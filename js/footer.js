@@ -10,18 +10,17 @@ const iconBase = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/pub
 const nivelActual = location.pathname.split('/').length - 2;
 const base = '../'.repeat(nivelActual);
 
-// Footer por defecto (sin login)
+// Valores por defecto si no está logeado
 let cuentaImg = `${iconBase}profile.svg`;
 let cuentaTexto = `Mi Cuenta`;
-let cuentaHref = `${base}login/logearse.html`;
+let cuentaHref = `${base}admin/login/logearse.html`;
 
-// Intentar obtener usuario (sin bloquear)
 (async () => {
   try {
     const { supabase } = await import(`${base}js/supabaseClient.js`);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-    if (user) {
+    if (user && !error) {
       const uid = user.id;
       const { data: perfil } = await supabase
         .from('usuarios')
@@ -32,14 +31,14 @@ let cuentaHref = `${base}login/logearse.html`;
       if (perfil) {
         cuentaImg = perfil.imagen || cuentaImg;
         cuentaTexto = perfil.nombre || user.email.split('@')[0];
-        cuentaHref = `${base}admin/usuarios/cuentaUsuario.html`;
+        cuentaHref = `${base}admin/usuarios/cuentaUsuario.html`; // ← solo si está logeado
       }
     }
   } catch (error) {
     console.warn('⚠️ No logueado o Supabase no disponible:', error.message);
   }
 
-  // Generar footer final
+  // Generar el footer
   container.innerHTML = `
     <footer class="fixed bottom-0 left-0 right-0 z-50 bg-[#231F20] text-white border-t border-gray-700" style="padding-bottom: env(safe-area-inset-bottom);">
       <nav class="flex justify-around py-2">
@@ -55,10 +54,13 @@ let cuentaHref = `${base}login/logearse.html`;
           <img src="${iconBase}deadline.svg" class="w-8 h-8 mb-1" alt="Eventos">
           Eventos
         </a>
-        <a href="${cuentaHref}" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <img src="${cuentaImg}" class="w-8 h-8 mb-1 rounded-full object-cover" alt="Cuenta">
-          ${cuentaTexto}
-        </a>
+       <a href="${cuentaHref}" class="flex flex-col items-center text-sm font-extralight w-1/4">
+  <img 
+    src="${cuentaImg}" 
+    class="w-8 h-8 mb-1 ${cuentaImg.includes('profile.svg') ? '' : 'rounded-full object-cover'}" 
+    alt="Cuenta">
+  ${cuentaTexto}
+</a>
       </nav>
     </footer>
   `;
