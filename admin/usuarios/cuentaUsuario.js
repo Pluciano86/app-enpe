@@ -1,5 +1,6 @@
 import { supabase } from '../../js/supabaseClient.js';
 
+// ------------------ Datos de perfil ------------------
 const nombreUsuario = document.getElementById('nombreUsuario');
 const fechaRegistro = document.getElementById('fechaRegistro');
 const fotoPerfil = document.getElementById('fotoPerfil');
@@ -15,7 +16,7 @@ const inputFoto = document.getElementById('inputFoto');
 const previewFoto = document.getElementById('previewFoto');
 const imagenActual = document.getElementById('imagenActual');
 
-// 1. Obtener sesión y usuario
+// ------------------ Obtener sesión ------------------
 const { data: { user }, error } = await supabase.auth.getUser();
 if (!user || error) {
   console.error('🛑 No se pudo obtener el usuario:', error);
@@ -23,7 +24,7 @@ if (!user || error) {
 }
 const uid = user.id;
 
-// 2. Obtener perfil
+// ------------------ Cargar perfil ------------------
 const { data: perfil, error: errorPerfil } = await supabase
   .from('usuarios')
   .select('*')
@@ -50,7 +51,7 @@ if (!perfil || errorPerfil) {
   })}`;
 }
 
-// 3. Preview de imagen nueva
+// ------------------ Cambiar imagen preview ------------------
 inputFoto.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (file) {
@@ -63,11 +64,11 @@ inputFoto.addEventListener('change', (e) => {
   }
 });
 
-// 4. Mostrar/Cerrar Modal
+// ------------------ Mostrar/Cerrar modal ------------------
 btnEditar.addEventListener('click', () => modal.classList.remove('hidden'));
 btnCancelar.addEventListener('click', () => modal.classList.add('hidden'));
 
-// 5. Guardar cambios
+// ------------------ Guardar cambios perfil ------------------
 formEditar.addEventListener('submit', async (e) => {
   e.preventDefault();
 
@@ -76,91 +77,151 @@ formEditar.addEventListener('submit', async (e) => {
   const nuevaFoto = inputFoto.files[0];
   let nuevaImagen = perfil.imagen;
 
-  console.log('📤 Comenzando actualización del perfil...');
+  if (nuevaFoto) {
+    const extension = nuevaFoto.name.split('.').pop();
+    const nuevoNombreArchivo = `usuarios/${uid}_${Date.now()}.${extension}`;
 
-  // 5a. Subir nueva imagen y borrar anterior si existe
-if (nuevaFoto) {
-  const extension = nuevaFoto.name.split('.').pop();
-  const nuevoNombreArchivo = `usuarios/${uid}_${Date.now()}.${extension}`; // archivo con timestamp
-
-  console.log('🗑️ Intentando borrar imagen anterior (si aplica)...');
-
-  if (perfil.imagen && perfil.imagen.includes('imagenesusuarios')) {
-    try {
-      const url = new URL(perfil.imagen);
-      const key = decodeURIComponent(url.pathname.split('/storage/v1/object/public/imagenesusuarios/')[1]);
-
-      const { error: errorBorrado } = await supabase.storage
-        .from('imagenesusuarios')
-        .remove([key]);
-
-      if (errorBorrado) {
-        console.warn('⚠️ No se pudo borrar la imagen anterior:', errorBorrado.message);
-      } else {
-        console.log('✅ Imagen anterior borrada:', key);
+    if (perfil.imagen && perfil.imagen.includes('imagenesusuarios')) {
+      try {
+        const url = new URL(perfil.imagen);
+        const key = decodeURIComponent(url.pathname.split('/storage/v1/object/public/imagenesusuarios/')[1]);
+        await supabase.storage.from('imagenesusuarios').remove([key]);
+      } catch (err) {
+        console.warn('⚠️ Error al borrar imagen anterior:', err);
       }
-    } catch (err) {
-      console.warn('⚠️ Error al analizar la URL de la imagen anterior:', err);
+    }
+
+    const { error: errorSubida } = await supabase.storage
+      .from('imagenesusuarios')
+      .upload(nuevoNombreArchivo, nuevaFoto, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: nuevaFoto.type
+      });
+
+    if (!errorSubida) {
+      const { data } = supabase.storage
+        .from('imagenesusuarios')
+        .getPublicUrl(nuevoNombreArchivo);
+      nuevaImagen = data.publicUrl;
     }
   }
 
-  console.log('📸 Subiendo nueva imagen al bucket `imagenesusuarios`: ', nuevoNombreArchivo);
-
-  const { error: errorSubida } = await supabase.storage
-    .from('imagenesusuarios')
-    .upload(nuevoNombreArchivo, nuevaFoto, {
-      cacheControl: '3600',
-      upsert: true,
-      contentType: nuevaFoto.type
-    });
-
-  if (errorSubida) {
-    console.error('🛑 Error al subir imagen:', errorSubida);
-  } else {
-    const { data } = supabase.storage
-      .from('imagenesusuarios')
-      .getPublicUrl(nuevoNombreArchivo);
-    nuevaImagen = data.publicUrl;
-    console.log('✅ Imagen subida con éxito:', nuevaImagen);
-  }
-}
-
-  // 5b. Actualizar datos del usuario
   const { error: errorUpdate } = await supabase
     .from('usuarios')
-    .update({
-      nombre: nuevoNombre,
-      apellido: nuevoApellido,
-      imagen: nuevaImagen
-    })
+    .update({ nombre: nuevoNombre, apellido: nuevoApellido, imagen: nuevaImagen })
     .eq('id', uid);
 
-  if (errorUpdate) {
-    console.error('🛑 Error al actualizar perfil:', errorUpdate);
-    alert('Error al actualizar tu perfil.');
-  } else {
-    console.log('✅ Perfil actualizado correctamente.');
+  if (!errorUpdate) {
     modal.classList.add('hidden');
     window.location.reload();
+  } else {
+    alert('Error al actualizar tu perfil.');
   }
 });
 
-// ... (todo tu código anterior igual hasta el final del `formEditar.addEventListener`)
-
-// 6. Botón de Logout
+// ------------------ Logout ------------------
 const btnLogout = document.getElementById('btnLogout');
-
 if (btnLogout) {
   btnLogout.addEventListener('click', async () => {
-    const confirmar = confirm('¿Deseas cerrar sesión?');
-    if (!confirmar) return;
-
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('🛑 Error al cerrar sesión:', error.message);
-      alert('Hubo un problema al cerrar sesión.');
-    } else {
-      window.location.href = `${location.origin}/index.html`;
-    }
+    if (!confirm('¿Deseas cerrar sesión?')) return;
+    await supabase.auth.signOut();
+    window.location.href = '/index.html';
   });
 }
+
+// ------------------ FAVORITOS USUARIO ------------------
+const btnAbrirFavoritos = document.getElementById('btnFavoritos');
+const btnCerrarFavoritos = document.getElementById('btnCerrarFavoritos');
+const modalFavoritos = document.getElementById('modalFavoritos');
+const listaFavoritos = document.getElementById('listaFavoritos');
+
+const inputBuscar = document.getElementById('searchFavorito');
+const filtroMunicipio = document.getElementById('filtroMunicipio');
+const filtroCategoria = document.getElementById('filtroCategoria');
+const filtroSubcategoria = document.getElementById('filtroSubcategoria');
+
+let favoritos = [];
+
+btnAbrirFavoritos.addEventListener('click', () => {
+  modalFavoritos.classList.remove('hidden');
+  cargarFavoritos();
+});
+
+btnCerrarFavoritos.addEventListener('click', () => {
+  modalFavoritos.classList.add('hidden');
+});
+
+inputBuscar.addEventListener('input', mostrarFavoritos);
+filtroMunicipio.addEventListener('change', mostrarFavoritos);
+filtroCategoria.addEventListener('change', mostrarFavoritos);
+filtroSubcategoria.addEventListener('change', mostrarFavoritos);
+
+async function cargarFavoritos() {
+  const { data, error } = await supabase
+    .from('favoritosUsuarios')
+    .select(`
+      id, creado_en,
+      Comercios (
+        id, nombre, municipio, idCategoria, idSubcategoria, logo,
+        Categorias ( nombre ),
+        Subcategorias ( nombre )
+      )
+    `)
+    .eq('idUsuario', uid);
+
+  if (!error && data) {
+    favoritos = data;
+    mostrarFavoritos();
+  }
+}
+
+function mostrarFavoritos() {
+  const texto = inputBuscar.value.toLowerCase();
+  const muni = filtroMunicipio.value;
+  const cat = filtroCategoria.value;
+  const subcat = filtroSubcategoria.value;
+
+  const filtrados = favoritos.filter(fav => {
+    const c = fav.Comercios;
+    if (!c) return false;
+    return (
+      c.nombre.toLowerCase().includes(texto) &&
+      (!muni || c.municipio === muni) &&
+      (!cat || c.idCategoria == cat) &&
+      (!subcat || c.idSubcategoria == subcat)
+    );
+  });
+
+  listaFavoritos.innerHTML = filtrados.map(fav => {
+    const c = fav.Comercios;
+    const logo = c.logo || 'https://placehold.co/60x60?text=Logo';
+    const cat = c?.Categorias?.nombre || '';
+    const sub = c?.Subcategorias?.nombre || '';
+    return `
+      <div class="flex items-center gap-3 border-b pb-2">
+        <img src="${logo}" class="w-12 h-12 rounded" alt="${c.nombre}">
+        <div class="flex-1">
+          <div class="font-semibold">${c.nombre}</div>
+          <div class="text-xs text-gray-500">${cat} • ${c.municipio} ${sub ? `• ${sub}` : ''}</div>
+        </div>
+        <button onclick="eliminarFavorito(${fav.id})" class="text-red-500 hover:text-red-700">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+    `;
+  }).join('') || '<p class="text-center text-sm text-gray-500">No hay favoritos.</p>';
+}
+
+// 🗑️ Eliminar favorito
+window.eliminarFavorito = async (idFavorito) => {
+  const { error } = await supabase
+    .from('favoritosUsuarios')
+    .delete()
+    .eq('id', idFavorito);
+
+  if (!error) {
+    favoritos = favoritos.filter(f => f.id !== idFavorito);
+    mostrarFavoritos();
+  }
+};

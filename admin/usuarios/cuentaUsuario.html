@@ -30,7 +30,7 @@
     </div>
 
     <div class="mt-6 space-y-3">
-      <button class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Comercios Favoritos</button>
+      <button id="btnFavoritos" class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Comercios Favoritos</button>
       <button class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Playas Favoritas</button>
     </div>
 
@@ -89,6 +89,35 @@
 </div>
 
   <script type="module" src="./cuentaUsuario.js"></script>
+
+
+  <div id="modalFavoritos" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+  <div class="bg-white rounded-lg shadow max-w-2xl mx-auto my-8 p-4 relative">
+    <h2 class="text-xl font-semibold mb-4">Mis Comercios Favoritos</h2>
+
+    <!-- Filtros -->
+    <div class="flex flex-wrap gap-2 mb-4">
+      <input type="text" id="searchFavorito" placeholder="Buscar..." class="border px-2 py-1 rounded w-full sm:w-auto flex-1">
+      <select id="filtroMunicipio" class="border px-2 py-1 rounded">
+        <option value="">Municipio</option>
+      </select>
+      <select id="filtroCategoria" class="border px-2 py-1 rounded">
+        <option value="">Categoría</option>
+      </select>
+      <select id="filtroSubcategoria" class="border px-2 py-1 rounded">
+        <option value="">Subcategoría</option>
+      </select>
+    </div>
+
+    <!-- Resultados -->
+    <div id="listaFavoritos" class="space-y-3 max-h-[400px] overflow-y-auto">
+      <!-- Aquí van los favoritos dinámicamente -->
+    </div>
+
+    <!-- Botón cerrar -->
+    <button id="btnCerrarFavoritos" class="absolute top-2 right-2 text-gray-600 hover:text-black">&times;</button>
+  </div>
+</div>
 
 
 <!-- Footer -->
