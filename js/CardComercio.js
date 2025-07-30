@@ -8,6 +8,16 @@ export function cardComercio(comercio) {
 
   div.innerHTML = `
     <div class="relative">
+
+    ${comercio.favorito ? `
+  <div class="absolute top-2 right-2 z-50">
+    <div class="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
+      <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
+        <i class="fas fa-heart text-red-600 text-xs"></i>
+      </div>
+    </div>
+  </div>` : ''
+}
       <!-- Imagen de portada -->
       <img src="${comercio.imagenPortada}" alt="Portada de ${comercio.nombre}" 
         class="w-full h-20 object-cover" />

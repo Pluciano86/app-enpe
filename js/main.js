@@ -146,6 +146,21 @@ async function cargarComercios() {
     .eq('diaSemana', diaActual);
 
   const { data: productosAll } = await supabase.from('productos').select('idMenu, nombre');
+
+// Obtener usuario autenticado
+const { data: { user } } = await supabase.auth.getUser();
+let favoritosUsuario = [];
+
+if (user) {
+  const { data: favoritosData } = await supabase
+    .from('favoritosusuarios')
+    .select('idcomercio')
+    .eq('idusuario', user.id);
+
+  favoritosUsuario = favoritosData?.map(f => f.idcomercio) ?? [];
+}
+
+
   const { data: menusAll } = await supabase.from('menus').select('id, idComercio');
 
   const productosPorComercio = {};
@@ -190,7 +205,7 @@ async function cargarComercios() {
         ? comercio.idSubcategoria
         : [parseInt(comercio.idSubcategoria)],
       activoEnPeErre: comercio.activo === true,
-      favorito: comercio.favorito || false,
+      favorito: favoritosUsuario.includes(comercio.id),
       platos: productosPorComercio[comercio.id] || [],
       latitud: comercio.latitud,
       longitud: comercio.longitud
@@ -204,7 +219,7 @@ function normalizarTexto(texto) {
 
 
 function aplicarFiltrosYRedibujar() {
-    console.log("🟡 Aplicando filtros con:", filtrosActivos);
+  console.log("🟡 Aplicando filtros con:", filtrosActivos);
   const contenedor = document.getElementById('app');
   contenedor.innerHTML = '';
 
@@ -235,6 +250,10 @@ function aplicarFiltrosYRedibujar() {
 
   if (filtrosActivos.abiertoAhora) {
     filtrados = filtrados.filter(c => c.abierto === true);
+  }
+
+  if (filtrosActivos.favoritos) {
+    filtrados = filtrados.filter(c => c.favorito === true);
   }
 
   // Mostrar filtros activos
@@ -274,9 +293,7 @@ function aplicarFiltrosYRedibujar() {
     });
     filtrosDiv.appendChild(tag);
   }
-  
 
-  
   if (filtrados.length === 0) {
     mostrarMensajeVacio(contenedor);
     return;
@@ -288,7 +305,6 @@ function aplicarFiltrosYRedibujar() {
       : cardComercioNoActivo(comercio);
     contenedor.appendChild(card);
   }
-
 }
 
 // Utilidad para tags de filtro
@@ -301,7 +317,7 @@ function crearTagFiltro(texto, onClick) {
 }
 
 // 🧩 Listeners
-['filtro-nombre', 'filtro-municipio', 'filtro-subcategoria', 'filtro-orden', 'filtro-abierto', 'filtro-destacados']
+['filtro-nombre', 'filtro-municipio', 'filtro-subcategoria', 'filtro-orden', 'filtro-abierto', 'filtro-destacados', 'filtro-favoritos']
   .forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -340,15 +356,16 @@ function crearTagFiltro(texto, onClick) {
       }
 
       if (id === 'filtro-municipio') filtrosActivos.municipio = v.value;
-      if (id === 'filtro-subcategoria') filtrosActivos.subcategoria = v.value;3
+      if (id === 'filtro-subcategoria') filtrosActivos.subcategoria = v.value;
       if (id === 'filtro-orden') filtrosActivos.orden = v.value;
       if (id === 'filtro-abierto') filtrosActivos.abiertoAhora = v.checked;
+      if (id === 'filtro-favoritos') filtrosActivos.favoritos = v.checked;
       if (id === 'filtro-destacados') {
-  filtrosActivos.destacadosPrimero = v.checked;
-  console.log(`⭐ Cambió filtro destacadosPrimero: ${v.checked}`);
-  await cargarComerciosConOrden(); // ✅ refresca con orden
-  return;
-}
+        filtrosActivos.destacadosPrimero = v.checked;
+        console.log(`⭐ Cambió filtro destacadosPrimero: ${v.checked}`);
+        await cargarComerciosConOrden(); // ✅ refresca con orden
+        return;
+      }
 
       // ✅ Nuevo console antes de aplicar
       console.log('🟡 Aplicando filtros con:', { ...filtrosActivos });

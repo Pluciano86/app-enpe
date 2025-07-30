@@ -18,9 +18,11 @@ let cuentaHref = `${base}admin/login/logearse.html`;
 (async () => {
   try {
     const { supabase } = await import('/js/supabaseClient.js');
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) throw error;
 
-    if (user && !error) {
+    const user = session?.user;
+    if (user) {
       const uid = user.id;
       const { data: perfil } = await supabase
         .from('usuarios')
@@ -31,7 +33,7 @@ let cuentaHref = `${base}admin/login/logearse.html`;
       if (perfil) {
         cuentaImg = perfil.imagen || cuentaImg;
         cuentaTexto = perfil.nombre || user.email.split('@')[0];
-        cuentaHref = `${base}admin/usuarios/cuentaUsuario.html`; // ← solo si está logeado
+        cuentaHref = `${base}admin/usuarios/cuentaUsuario.html`;
       }
     }
   } catch (error) {
@@ -54,13 +56,13 @@ let cuentaHref = `${base}admin/login/logearse.html`;
           <img src="${iconBase}deadline.svg" class="w-8 h-8 mb-1" alt="Eventos">
           Eventos
         </a>
-       <a href="${cuentaHref}" class="flex flex-col items-center text-sm font-extralight w-1/4">
-  <img 
-    src="${cuentaImg}" 
-    class="w-8 h-8 mb-1 ${cuentaImg.includes('profile.svg') ? '' : 'rounded-full object-cover'}" 
-    alt="Cuenta">
-  ${cuentaTexto}
-</a>
+        <a href="${cuentaHref}" class="flex flex-col items-center text-sm font-extralight w-1/4">
+          <img 
+            src="${cuentaImg}" 
+            class="w-8 h-8 mb-1 ${cuentaImg.includes('profile.svg') ? '' : 'rounded-full object-cover'}" 
+            alt="Cuenta">
+          ${cuentaTexto}
+        </a>
       </nav>
     </footer>
   `;

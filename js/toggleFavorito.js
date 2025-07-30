@@ -1,5 +1,3 @@
-import { supabase } from './js/supabaseClient.js';
-
 document.addEventListener('DOMContentLoaded', async () => {
   const btn = document.getElementById('btnFavorito');
   const icono = btn?.querySelector('i');
@@ -11,66 +9,73 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!btn || !idComercio) return;
 
-  // 1. Verificar sesión y si ya es favorito
+  // Verificar sesión
+  const { supabase } = await import('./supabaseClient.js');
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
   usuarioId = user.id;
 
+  // Verificar si ya es favorito
   const { data } = await supabase
-    .from('favoritosComercios')
+    .from('favoritosusuarios')
     .select('id')
-    .eq('idUsuario', usuarioId)
-    .eq('idComercio', idComercio)
+    .eq('idusuario', usuarioId)
+    .eq('idcomercio', parseInt(idComercio))
     .maybeSingle();
 
   esFavorito = !!data;
   actualizarUI();
 
-  // 2. Escuchar clic para toggle
+  // Toggle favorito
   btn.addEventListener('click', async () => {
     if (!usuarioId) {
-      alert('Debes iniciar sesión para guardar favoritos.');
+      alert(`Para añadir a este comercio a favoritos debes iniciar sesión.`);
       window.location.href = '/login/logearse.html';
       return;
     }
 
     if (esFavorito) {
       const { error } = await supabase
-        .from('favoritosComercios')
+        .from('favoritosusuarios')
         .delete()
-        .eq('idUsuario', usuarioId)
-        .eq('idComercio', idComercio);
+        .eq('idusuario', usuarioId)
+        .eq('idcomercio', parseInt(idComercio));
 
       if (!error) {
         esFavorito = false;
         actualizarUI();
+      } else {
+        console.error('❌ Error eliminando favorito:', error.message);
       }
     } else {
       const { error } = await supabase
-        .from('favoritosComercios')
-        .insert({ idUsuario: usuarioId, idComercio: idComercio });
+        .from('favoritosusuarios')
+        .insert([
+          { idusuario: usuarioId, idcomercio: parseInt(idComercio) }
+        ]);
 
       if (!error) {
         esFavorito = true;
         actualizarUI();
+      } else {
+        console.error('❌ Error insertando favorito:', error.message);
+        alert('Hubo un problema al añadir este comercio a favoritos.');
       }
     }
   });
 
-  // 3. Cambiar ícono y texto
   function actualizarUI() {
     if (!icono || !texto) return;
 
-    btn.classList.add('animate-bounce');
-    setTimeout(() => btn.classList.remove('animate-bounce'), 300);
-
     if (esFavorito) {
-      icono.className = 'fas fa-heart text-3xl mb-1 text-red-600';
+      icono.className = 'fas fa-heart text-4xl mb-1 text-red-600 animate-bounce';
       texto.textContent = '¡Mi Favorito!';
+      texto.classList.add('text-red-600');
     } else {
-      icono.className = 'far fa-heart text-3xl mb-1 text-gray-400';
+      icono.className = 'far fa-heart text-3xl mb-1 text-gray-600';
       texto.textContent = 'Añadir a Favoritos';
+      texto.classList.remove('text-red-600');
     }
   }
 });
