@@ -158,24 +158,90 @@ filtroCategoria.addEventListener('change', mostrarFavoritos);
 filtroSubcategoria.addEventListener('change', mostrarFavoritos);
 
 async function cargarFavoritos() {
-  const { data, error } = await supabase
-    .from('favoritosUsuarios')
-    .select(`
-      id, creado_en,
-      Comercios (
-        id, nombre, municipio, idCategoria, idSubcategoria, logo,
-        Categorias ( nombre ),
-        Subcategorias ( nombre )
-      )
-    `)
-    .eq('idUsuario', uid);
+  try {
+    const { data: favIds, error: errorFavs } = await supabase
+      .from('favoritosusuarios')
+      .select('id, idcomercio, creado_en')
+      .eq('idusuario', uid);
 
-  if (!error && data) {
-    favoritos = data;
+    if (errorFavs) throw errorFavs;
+    if (!favIds || favIds.length === 0) {
+      favoritos = [];
+      mostrarFavoritos();
+      return;
+    }
+
+    const ids = favIds.map(f => f.idcomercio);
+
+    const { data: comercios, error: errorCom } = await supabase
+      .from('Comercios')
+      .select('id, nombre, municipio, idCategoria, idSubcategoria')
+      .in('id', ids);
+
+    if (errorCom) throw errorCom;
+
+    // Buscar logos desde imagenesComercios
+    const { data: logosRaw } = await supabase
+  .from('imagenesComercios')
+  .select('idComercio, imagen')
+  .eq('logo', true)
+  .in('idComercio', ids);
+
+const logos = logosRaw?.map(item => {
+  const { data } = supabase.storage
+    .from('galeriacomercios')
+    .getPublicUrl(item.imagen);
+
+  return {
+    idComercio: item.idComercio,
+    url: data.publicUrl
+  };
+});
+
+    // Obtener categorías, subcategorías y áreas en paralelo
+const [cats, subs, areasRaw] = await Promise.all([
+  supabase.from('Categorias').select('id, nombre'),
+  supabase.from('subCategoria').select('id, nombre'),
+  supabase.from('Area').select('id, nombre')
+]);
+const categorias = cats.data || [];
+const subcategorias = subs.data || [];
+const areas = areasRaw.data || [];
+
+
+// Combinar resultados
+favoritos = favIds.map(f => {
+  const comercio = comercios.find(c => c.id === f.idcomercio);
+  const logoObj = logos?.find(l => l.idComercio === f.idcomercio);
+
+  const categoriasNombres = (comercio?.idCategoria || [])
+  .map(id => categorias.find(cat => String(cat.id) === String(id))?.nombre)
+  .filter(Boolean);
+
+  console.log('👉 idCategoria raw:', comercio?.idCategoria);
+console.log('👉 categorias:', categorias);
+
+const subcategoriasNombres = (comercio?.idSubcategoria || [])
+  .map(id => subcategorias.find(sub => String(sub.id) === String(id))?.nombre)
+  .filter(Boolean);
+  return {
+    id: f.id,
+    creado_en: f.creado_en,
+    comercios: comercio ? {
+      ...comercio,
+      logo: logoObj?.url || '',
+      categoriaNombre: categoriasNombres.join(', '), // 👈 muestra como texto
+      subcategoriaNombre: subcategoriasNombres.join(', ')
+    } : null
+  };
+});
+
     mostrarFavoritos();
+  } catch (err) {
+    console.error('❌ Error cargando favoritos:', err.message || err);
   }
+  
 }
-
 function mostrarFavoritos() {
   const texto = inputBuscar.value.toLowerCase();
   const muni = filtroMunicipio.value;
@@ -183,42 +249,48 @@ function mostrarFavoritos() {
   const subcat = filtroSubcategoria.value;
 
   const filtrados = favoritos.filter(fav => {
-    const c = fav.Comercios;
-    if (!c) return false;
-    return (
-      c.nombre.toLowerCase().includes(texto) &&
-      (!muni || c.municipio === muni) &&
-      (!cat || c.idCategoria == cat) &&
-      (!subcat || c.idSubcategoria == subcat)
-    );
-  });
+  const c = fav.comercios;
+  if (!c) return false;
+  return (
+    c.nombre?.toLowerCase().includes(texto) &&
+    (!muni || c.municipio === muni) &&
+    (!cat || (Array.isArray(c.idCategoria) && c.idCategoria.includes(Number(cat)))) &&
+    (!subcat || (Array.isArray(c.idSubcategoria) && c.idSubcategoria.includes(Number(subcat))))
+  );
+});
 
   listaFavoritos.innerHTML = filtrados.map(fav => {
-    const c = fav.Comercios;
-    const logo = c.logo || 'https://placehold.co/60x60?text=Logo';
-    const cat = c?.Categorias?.nombre || '';
-    const sub = c?.Subcategorias?.nombre || '';
-    return `
+  const c = fav.comercios;
+  const logo = c.logo || 'https://placehold.co/60x60?text=Logo';
+  const categoria = Array.isArray(c?.categoriaNombre)
+    ? c.categoriaNombre.join(', ')
+    : c?.categoriaNombre || '';
+
+  return `
+    <a href="/perfilComercio.html?id=${c.id}" class="block hover:bg-gray-50 p-1 rounded">
       <div class="flex items-center gap-3 border-b pb-2">
         <img src="${logo}" class="w-12 h-12 rounded" alt="${c.nombre}">
         <div class="flex-1">
           <div class="font-semibold">${c.nombre}</div>
-          <div class="text-xs text-gray-500">${cat} • ${c.municipio} ${sub ? `• ${sub}` : ''}</div>
+          <div class="text-xs text-gray-500">
+            ${categoria} • ${c.municipio}
+          </div>
         </div>
-        <button onclick="eliminarFavorito(${fav.id})" class="text-red-500 hover:text-red-700">
+        <button onclick="event.preventDefault(); eliminarFavorito(${fav.id})" class="text-red-500 hover:text-red-700">
           <i class="fas fa-trash-alt"></i>
         </button>
       </div>
-    `;
-  }).join('') || '<p class="text-center text-sm text-gray-500">No hay favoritos.</p>';
+    </a>
+  `;
+}).join('') || '<p class="text-center text-sm text-gray-500">No hay favoritos.</p>';
 }
 
 // 🗑️ Eliminar favorito
 window.eliminarFavorito = async (idFavorito) => {
-  const { error } = await supabase
-    .from('favoritosUsuarios')
-    .delete()
-    .eq('id', idFavorito);
+  const { data, error } = await supabase
+  .from('favoritosusuarios')
+  .select('*')
+  .eq('idusuario', uid);
 
   if (!error) {
     favoritos = favoritos.filter(f => f.id !== idFavorito);
