@@ -22,8 +22,8 @@ export function cardLugarSlide(lugar) {
         <i class="fas fa-map-pin text-sky-600"></i>
         <span>${municipio}</span>
       </div>
-      <div class="flex items-center justify-center gap-1 text-[11px] text-gray-600 mt-1">
-        <i class="fas fa-car text-red-500"></i>
+      <div class="flex items-start justify-center gap-1 text-[11px] text-gray-600 mt-1">
+  <i class="fas fa-car text-red-500 mt-[2px]"></i>
         <span>${tiempoTexto || 'N/A'}</span>
       </div>
     </div>

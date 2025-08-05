@@ -6,31 +6,62 @@ export function cardComercio(comercio) {
     w-full max-w-[180px] sm:max-w-[200px] mx-auto
   `;
 
+  // Lógica ajustada: velocidad dinámica según distancia
+  function calcularTiempoEstimado(distanciaKm) {
+    let velocidadPromedio;
+
+    if (distanciaKm < 5) {
+      velocidadPromedio = 30; // urbano
+    } else if (distanciaKm < 15) {
+      velocidadPromedio = 45; // mixto
+    } else if (distanciaKm < 40) {
+      velocidadPromedio = 60; // carretera local
+    } else {
+      velocidadPromedio = 75; // autopista o tramos largos
+    }
+
+    return Math.round((distanciaKm / velocidadPromedio) * 60);
+  }
+
+  function formatearMinutosConversacional(minutos) {
+    if (minutos < 60) return `a unos ${minutos} minutos`;
+
+    const horas = Math.floor(minutos / 60);
+    const mins = minutos % 60;
+
+    if (mins === 0) return `a ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+    return `a ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
+  }
+
+  let textoTiempoEstimado = '';
+  if (comercio.distanciaKm) {
+    const minutosEstimados = calcularTiempoEstimado(comercio.distanciaKm);
+    textoTiempoEstimado = formatearMinutosConversacional(minutosEstimados);
+  }
+
   div.innerHTML = `
     <div class="relative">
+      ${comercio.favorito ? `
+        <div class="absolute top-2 right-2 z-50">
+          <div class="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
+            <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
+              <i class="fas fa-heart text-red-600 text-xs"></i>
+            </div>
+          </div>
+        </div>` : ''
+      }
 
-    ${comercio.favorito ? `
-  <div class="absolute top-2 right-2 z-50">
-    <div class="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
-      <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
-        <i class="fas fa-heart text-red-600 text-xs"></i>
-      </div>
-    </div>
-  </div>` : ''
-}
       <!-- Imagen de portada -->
       <img src="${comercio.imagenPortada}" alt="Portada de ${comercio.nombre}" 
         class="w-full h-20 object-cover" />
 
       <!-- Logo y nombre con enlace -->
       <a href="perfilComercio.html?id=${comercio.id}" class="relative w-full flex flex-col items-center pt-9 mt-6 no-underline">
-        <!-- Logo centrado y superpuesto -->
         <img src="${comercio.logo}" alt="Logo de ${comercio.nombre}"
           class="w-24 h-24 rounded-full absolute left-1/2 -top-10 transform -translate-x-1/2 
                  bg-white object-contain shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)] 
                  border-4 border-white z-20" />
 
-        <!-- Nombre con ajuste de tamaño si es largo -->
         <div class="relative h-12 w-full">
           <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
             <h3 class="${comercio.nombre.length > 25 ? 'text-lg' : 'text-xl'} 
@@ -61,10 +92,12 @@ export function cardComercio(comercio) {
         <i class="fas fa-map-pin text-[#23b4e9]"></i> ${comercio.pueblo}
       </div>
 
-      <!-- Tiempo en vehículo -->
-      <div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-4">
-        <i class="fas fa-car"></i> ${comercio.tiempoVehiculo}
-      </div>
+      <!-- Tiempo estimado -->
+      ${textoTiempoEstimado ? `
+        <div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-4">
+          <i class="fas fa-car"></i> ${textoTiempoEstimado}
+        </div>` : ''
+      }
     </div>
   `;
 

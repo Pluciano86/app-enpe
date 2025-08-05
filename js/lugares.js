@@ -66,9 +66,9 @@ function crearCardLugar(lugar) {
       <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#23b4e9]">
         <i class="fas fa-map-pin"></i> ${lugar.municipio}
       </div>
-      <div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-4">
+      <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 mb-2 leading-tight">
         <i class="fas fa-car"></i> ${lugar.tiempoTexto || ''}
-      </div>
+      </d iv>
     </div>
   `;
   return div;

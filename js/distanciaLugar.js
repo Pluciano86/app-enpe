@@ -1,5 +1,3 @@
-// distanciaLugar.js
-
 export async function calcularTiemposParaLugares(lista, origenCoords) {
   const lugaresValidos = lista.filter(l =>
     typeof l.latitud === 'number' &&
@@ -24,7 +22,7 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
     const body = {
       origen: `${origenCoords.lat},${origenCoords.lon}`,
       destinos: destinos.join('|'),
-      departure_time: 'now' // tráfico real
+      departure_time: 'now'
     };
 
     try {
@@ -47,21 +45,32 @@ export async function calcularTiemposParaLugares(lista, origenCoords) {
 
   lugaresValidos.forEach((lugar, i) => {
     const duracion = allDurations[i]?.duration?.value || null;
-    const minutos = duracion ? Math.round(duracion / 60) : null;
+    let minutos = duracion ? Math.round(duracion / 60) : null;
 
-    if (minutos !== null) {
-      const texto = minutos >= 60
-        ? `a ${Math.floor(minutos / 60)} hr${Math.floor(minutos / 60) > 1 ? 's' : ''} y ${minutos % 60} minutos`
-        : `a ${minutos} minutos`;
+    if (minutos === null) {
+      // Calcular distancia manual y estimar duración
+      const distanciaKm = calcularDistancia(origenCoords.lat, origenCoords.lon, lugar.latitud, lugar.longitud);
+      let velocidad = 30;
+      if (distanciaKm < 5) velocidad = 30;
+      else if (distanciaKm < 15) velocidad = 45;
+      else if (distanciaKm < 40) velocidad = 60;
+      else velocidad = 75;
 
-      lugar.tiempoTexto = texto;
-      lugar.tiempoVehiculo = texto;
-      lugar.minutosCrudos = minutos;
-    } else {
-      lugar.tiempoTexto = null;
-      lugar.tiempoVehiculo = null;
-      lugar.minutosCrudos = null;
+      minutos = Math.round((distanciaKm / velocidad) * 60);
     }
+
+        function formatearMinutosConversacional(min) {
+      if (min < 60) return `a unos ${min} minutos`;
+      const horas = Math.floor(min / 60);
+      const mins = min % 60;
+      if (mins === 0) return `a ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+      return `a ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
+    }
+
+    const texto = formatearMinutosConversacional(minutos);
+    lugar.tiempoTexto = texto;
+    lugar.tiempoVehiculo = texto;
+    lugar.minutosCrudos = minutos;
   });
 
   return lista;

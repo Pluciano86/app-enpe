@@ -1,3 +1,4 @@
+
 import { supabase } from './supabaseClient.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
@@ -7,6 +8,17 @@ import { mostrarLugaresCercanos } from './lugaresCercanos.js';
 const idComercio = new URLSearchParams(window.location.search).get('id');
 let latUsuario = null;
 let lonUsuario = null;
+
+// Función para formato conversacional del tiempo
+function formatearMinutosConversacional(minutos) {
+  if (minutos < 60) return `Aproximadamente a ${minutos} minutos`;
+
+  const horas = Math.floor(minutos / 60);
+  const mins = minutos % 60;
+
+  if (mins === 0) return `Aproximadamente a ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+  return `Aproximadamente a ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
+}
 
 async function cargarPerfilComercio() {
   const { data, error } = await supabase
@@ -64,20 +76,23 @@ async function cargarPerfilComercio() {
     });
 
     const divTiempo = document.getElementById('tiempoVehiculo');
-    if (divTiempo && conTiempo?.tiempoVehiculo) {
-      divTiempo.innerHTML = `<i class="fas fa-car"></i> ${conTiempo.tiempoVehiculo}`;
+    if (divTiempo && conTiempo?.minutosCrudos !== null) {
+      const tiempoFormateado = formatearMinutosConversacional(conTiempo.minutosCrudos);
+      divTiempo.innerHTML = `<i class="fas fa-car"></i> ${tiempoFormateado}`;
     }
-      // Enlaces a Google Maps y Waze
-  if (data.latitud && data.longitud) {
-    const googleMapsURL = `https://www.google.com/maps/search/?api=1&query=${data.latitud},${data.longitud}`;
-    const wazeURL = `https://waze.com/ul?ll=${data.latitud},${data.longitud}&navigate=yes`;
 
-    const btnGoogleMaps = document.getElementById('btnGoogleMaps');
-    const btnWaze = document.getElementById('btnWaze');
+    // Enlaces a Google Maps y Waze
+    if (data.latitud && data.longitud) {
+      const googleMapsURL = `https://www.google.com/maps/search/?api=1&query=${data.latitud},${data.longitud}`;
+      const wazeURL = `https://waze.com/ul?ll=${data.latitud},${data.longitud}&navigate=yes`;
 
-    if (btnGoogleMaps) btnGoogleMaps.href = googleMapsURL;
-    if (btnWaze) btnWaze.href = wazeURL;
-  }
+      const btnGoogleMaps = document.getElementById('btnGoogleMaps');
+      const btnWaze = document.getElementById('btnWaze');
+
+      if (btnGoogleMaps) btnGoogleMaps.href = googleMapsURL;
+      if (btnWaze) btnWaze.href = wazeURL;
+    }
+
     data.tiempoVehiculo = conTiempo?.tiempoVehiculo || '';
     data.minutosCrudos = conTiempo?.minutosCrudos || null;
   }
@@ -94,7 +109,7 @@ navigator.geolocation.getCurrentPosition(
     if (comercio) {
       mostrarCercanosComida(comercio);
       mostrarPlayasCercanas(comercio); 
-      mostrarLugaresCercanos(comercio); // ✅ AÑADE ESTA LÍNEA
+      mostrarLugaresCercanos(comercio); 
     }
   },
   async () => {

@@ -15,7 +15,7 @@ function mostrarMensajeVacio(contenedor, mensaje = 'No se encontraron comercios 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
-import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
+//import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
 
 function mostrarLoader() {
@@ -396,14 +396,6 @@ navigator.geolocation.getCurrentPosition(async (pos) => {
   const selectMunicipio = document.getElementById('filtro-municipio');
   if (selectMunicipio) selectMunicipio.value = municipioDetectado;
 
-  // Continuar flujo
- await cargarComercios();
-mostrarLoader();
-
-listaOriginal = await calcularTiemposParaLista(listaOriginal, {
-  lat: latUsuario,
-  lon: lonUsuario
-});
 
 ocultarLoader();
 
@@ -416,28 +408,13 @@ async function cargarComerciosConOrden() {
   // Solo recarga comercios (no toca tiempos)
   await cargarComercios();
 
-  // Solo calcular tiempos si el orden es por cercanía
-  if (filtrosActivos.orden === 'ubicacion') {
-    listaOriginal = await calcularTiemposParaLista(listaOriginal, {
-      lat: latUsuario,
-      lon: lonUsuario
-    });
-
-    console.log("🕐 Lista con tiempos:", listaOriginal.map(c => ({
-      nombre: c.nombre,
-      tiempoVehiculo: c.tiempoVehiculo,
-      minutosCrudos: c.minutosCrudos
-    })));
-  }
-
-  // Ordenamiento base
-  if (filtrosActivos.orden === 'ubicacion') {
-    listaOriginal.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
-  } else if (filtrosActivos.orden === 'az') {
-    listaOriginal.sort((a, b) => a.nombre.localeCompare(b.nombre));
-  } else if (filtrosActivos.orden === 'recientes') {
-    listaOriginal.sort((a, b) => b.id - a.id);
-  }
+if (filtrosActivos.orden === 'ubicacion') {
+  listaOriginal.sort((a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity));
+} else if (filtrosActivos.orden === 'az') {
+  listaOriginal.sort((a, b) => a.nombre.localeCompare(b.nombre));
+} else if (filtrosActivos.orden === 'recientes') {
+  listaOriginal.sort((a, b) => b.id - a.id);
+}
 
   // Reordenar si destacados está activo
   if (filtrosActivos.destacadosPrimero) {

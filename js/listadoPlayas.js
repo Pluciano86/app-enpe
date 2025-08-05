@@ -145,14 +145,20 @@ async function renderizarPlayas() {
     if (playa.snorkel) clone.querySelector(".icon-snorkel")?.classList.remove("hidden");
 
     const iconTransporte = clone.querySelector(".icon-transporte");
-    const distancia = clone.querySelector(".distancia");
-    if (playa.bote) {
-      iconTransporte.innerHTML = '<i class="fas fa-ship text-gray-500"></i>';
-      distancia.textContent = "Acceso en bote";
-    } else {
-      iconTransporte.innerHTML = '<i class="fas fa-car text-gray-500"></i>';
-      distancia.textContent = playa.tiempoVehiculo || "";
-    }
+
+if (playa.bote) {
+  iconTransporte.innerHTML = `
+    <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
+      <span><i class="fas fa-ship text-[#9c9c9c]"></i></span>
+      <span class="text-center leading-snug">Acceso en bote</span>
+    </div>`;
+} else {
+  iconTransporte.innerHTML = `
+    <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
+      <span><i class="fas fa-car text-[#9c9c9c]"></i></span>
+      <span class="text-center leading-snug">${playa.tiempoVehiculo || ""}</span>
+    </div>`;
+}
 
     const estadoClima = clone.querySelector(".estado-clima");
     const iconClima = clone.querySelector(".icon-clima");
