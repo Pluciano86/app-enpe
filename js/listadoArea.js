@@ -12,8 +12,8 @@ let idAreaGlobal = null;
 async function obtenerUbicacionUsuario() {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      (err) => reject(err)
+      pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+      () => resolve(null)
     );
   });
 }
@@ -25,10 +25,7 @@ async function mostrarNombreArea(idArea, idMunicipio = null) {
     .eq('idArea', idArea)
     .single();
 
-  if (error) {
-    console.warn('No se pudo cargar el nombre del área:', error);
-    return;
-  }
+  if (error || !data) return;
 
   nombreAreaActual = data.nombre;
 
@@ -52,25 +49,20 @@ async function mostrarMunicipios(idArea) {
   const container = document.getElementById('gridMunicipios');
   if (!container) return;
 
-  const { data: municipios, error } = await supabase
+  const { data: municipios } = await supabase
     .from('Municipios')
     .select('id, nombre')
     .eq('idArea', idArea)
     .order('nombre', { ascending: true });
 
-  if (error || !municipios) {
-    console.error('Error cargando municipios:', error);
-    return;
-  }
+  if (!municipios) return;
 
   container.innerHTML = '';
 
   municipios.forEach(m => {
     const nombreImagen = m.nombre
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\u00f1/g, 'n')
-      .replace(/\u00d1/g, 'N')
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, '')
+      .replace(/\u00f1/g, 'n').replace(/\u00d1/g, 'N')
       .toLowerCase();
 
     const url = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenmunicipio/${nombreImagen}.jpg`;
@@ -83,10 +75,9 @@ async function mostrarMunicipios(idArea) {
       </div>
       <div class="mt-2 text-sm font-medium">${m.nombre}</div>
     `;
-
-    card.addEventListener('click', () => {
+    card.onclick = () => {
       window.location.href = `listadoArea.html?idArea=${idAreaGlobal}&idMunicipio=${m.id}`;
-    });
+    };
 
     container.appendChild(card);
   });
@@ -97,90 +88,103 @@ async function cargarPorTipo(tabla, idArea, containerId, cardFunc) {
   if (!container) return;
   container.innerHTML = '';
 
-  const { data: municipios, error: errorMunicipios } = await supabase
+  const { data: municipios } = await supabase
     .from('Municipios')
     .select('id, costa')
     .eq('idArea', idArea);
 
-  if (errorMunicipios || !municipios || municipios.length === 0) {
-    console.warn(`No se encontraron municipios para idArea ${idArea}`);
-    return;
-  }
+  if (!municipios || municipios.length === 0) return;
 
   const municipioActual = municipios.find(m => m.id === municipioSeleccionado);
   if (tabla === 'playas' && municipioSeleccionado && municipioActual?.costa === false) {
-    console.log('🌴 Municipio sin costa, no se muestran playas');
     const section = container.closest('section');
     if (section) section.classList.add('hidden');
     return;
   }
 
-  const idMunicipios = municipioSeleccionado ? [municipioSeleccionado] : municipios.map(m => m.id);
-  const campoMunicipio = tabla === 'eventos' ? 'municipio_id' : 'idMunicipio';
+  const idsMunicipios = municipioSeleccionado
+    ? [municipioSeleccionado]
+    : municipios.map(m => m.id);
 
-  const { data, error } = await supabase
+  const campo = tabla === 'eventos' ? 'municipio_id' : 'idMunicipio';
+
+    const query = supabase
     .from(tabla)
     .select('*')
-    .in(campoMunicipio, idMunicipios)
-    .eq('activo', true);
+    .in(campo, idsMunicipios);
 
-  if (error || !data || data.length === 0) {
-    console.log(`🔍 No hay resultados para ${tabla}`);
+  if (tabla !== 'Comercios') {
+    query.eq('activo', true);
+  }
+
+  const { data: resultados } = await query;
+  if (!resultados || resultados.length === 0) {
     const section = container.closest('section');
     if (section) section.classList.add('hidden');
     return;
   }
 
-  let conTiempos = [];
+  // Calcular distancias
+   let conTiempos = [];
+
   if (tabla === 'eventos') {
-    conTiempos = [...data].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+    conTiempos = [...resultados].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
   } else {
-    const coords = data.filter(d => d.latitud && d.longitud);
-    const userCoords = await obtenerUbicacionUsuario().catch(() => null);
-    conTiempos = userCoords ? await calcularTiemposParaLista(coords, userCoords) : coords;
+    const coords = resultados.filter(r => r.latitud && r.longitud);
+    const userCoords = await obtenerUbicacionUsuario();
+    conTiempos = userCoords
+      ? await calcularTiemposParaLista(coords, userCoords)
+      : coords;
+
     if (userCoords) conTiempos.sort((a, b) => a.minutosCrudos - b.minutosCrudos);
   }
 
-if (tabla === 'Comercios') {
-  for (const c of conTiempos) {
+  // ✅ UNA SOLA CONSULTA DE IMÁGENES POR TIPO
+  if (tabla === 'Comercios') {
+    const ids = conTiempos.map(c => c.id);
     const { data: imagenes } = await supabase
       .from('imagenesComercios')
-      .select('imagen, logo, portada')
-      .eq('idComercio', c.id);
+      .select('idComercio, imagen, logo, portada')
+      .in('idComercio', ids);
 
-    const storageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
-    const logo = imagenes?.find(i => i.logo)?.imagen;
-    const portada = imagenes?.find(i => i.portada)?.imagen;
-    c.logo = logo ? `${storageUrl}${logo}` : null;
-    c.imagenPortada = portada ? `${storageUrl}${portada}` : null;
+    const base = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/';
+
+    conTiempos.forEach(c => {
+      const imagenesComercio = imagenes.filter(i => i.idComercio === c.id);
+      const logo = imagenesComercio.find(i => i.logo)?.imagen;
+      const portada = imagenesComercio.find(i => i.portada)?.imagen;
+      c.logo = logo ? `${base}${logo}` : null;
+      c.imagenPortada = portada ? `${base}${portada}` : null;
+    });
   }
-}
 
-else if (tabla === 'LugaresTuristicos') {
-  for (const l of conTiempos) {
-    const { data: imagen } = await supabase
+  if (tabla === 'LugaresTuristicos') {
+    const ids = conTiempos.map(c => c.id);
+    const { data: imagenes } = await supabase
       .from('imagenesLugares')
-      .select('imagen')
-      .eq('idLugar', l.id)
+      .select('idLugar, imagen, portada')
       .eq('portada', true)
-      .maybeSingle();
+      .in('idLugar', ids);
 
-    l.imagen = imagen?.imagen || null;
+    conTiempos.forEach(c => {
+      const match = imagenes.find(i => i.idLugar === c.id);
+      c.imagen = match?.imagen || null;
+    });
   }
-}
 
-else if (tabla === 'playas') {
-  for (const p of conTiempos) {
-    const { data: imagen } = await supabase
+  if (tabla === 'playas') {
+    const ids = conTiempos.map(c => c.id);
+    const { data: imagenes } = await supabase
       .from('imagenesPlayas')
-      .select('imagen')
-      .eq('idPlaya', p.id)
+      .select('idPlaya, imagen, portada')
       .eq('portada', true)
-      .maybeSingle();
+      .in('idPlaya', ids);
 
-    p.imagen = imagen?.imagen || null;
+    conTiempos.forEach(c => {
+      const match = imagenes.find(i => i.idPlaya === c.id);
+      c.imagen = match?.imagen || null;
+    });
   }
-}
 
   conTiempos.forEach(c => {
     const card = cardFunc(c);
@@ -201,6 +205,7 @@ async function cargarTodoDesdeCoords() {
   municipioSeleccionado = isNaN(idMunicipio) ? null : idMunicipio;
 
   await mostrarNombreArea(idArea, municipioSeleccionado);
+
   if (!municipioSeleccionado) {
     await mostrarMunicipios(idArea);
   } else {
@@ -229,26 +234,20 @@ async function cargarTodoDesdeCoords() {
 }
 
 function actualizarTitulos() {
-  const comidaTitle = document.querySelector('#cercanosComidaContainer h2');
-  const playaTitle = document.querySelector('#cercanosPlayasContainer h2');
-  const lugaresTitle = document.querySelector('#cercanosLugaresContainer h2');
-  const eventosTitle = document.querySelector('#eventosContainer h2');
-  const municipiosTitle = document.querySelector('h2.text-xl');
-
   const sufijo = municipioSeleccionado
     ? `en ${document.querySelector('header h1')?.textContent.replace('Descubre ', '')}`
     : `del Área ${nombreAreaActual}`;
 
-  if (municipiosTitle)
-    municipiosTitle.textContent = `Municipios del Área ${nombreAreaActual}`;
-  if (comidaTitle)
-    comidaTitle.textContent = `Lugares para Comer ${sufijo}`;
-  if (playaTitle)
-    playaTitle.textContent = `Chequea las Playas ${sufijo}`;
-  if (lugaresTitle)
-    lugaresTitle.textContent = `Descubre estos Lugares de Interés ${sufijo}`;
-  if (eventosTitle)
-    eventosTitle.textContent = `Eventos ${sufijo}`;
+  const actualiza = (selector, texto) => {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = texto;
+  };
+
+  actualiza('#cercanosComidaContainer h2', `Lugares para Comer ${sufijo}`);
+  actualiza('#sliderPlayasCercanas h2', `Chequea las Playas ${sufijo}`);
+  actualiza('#cercanosLugaresContainer h2', `Lugares de Interés ${sufijo}`);
+  actualiza('#eventosContainer h2', `Eventos ${sufijo}`);
+  actualiza('h2.text-xl', `Municipios del Área ${nombreAreaActual}`);
 }
 
 cargarTodoDesdeCoords();

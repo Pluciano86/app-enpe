@@ -29,8 +29,8 @@ export function cardComercioNoActivo(comercio) {
     const horas = Math.floor(minutos / 60);
     const mins = minutos % 60;
 
-    if (mins === 0) return `A ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
-    return `A ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
+    if (mins === 0) return `a ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+    return `a ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
   }
 
   let textoTiempoEstimado = '';
