@@ -1,4 +1,3 @@
-
 import { supabase } from './supabaseClient.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
@@ -9,18 +8,50 @@ const idComercio = new URLSearchParams(window.location.search).get('id');
 let latUsuario = null;
 let lonUsuario = null;
 
-// Función para formato conversacional del tiempo
 function formatearMinutosConversacional(minutos) {
   if (minutos < 60) return `Aproximadamente a ${minutos} minutos`;
-
   const horas = Math.floor(minutos / 60);
   const mins = minutos % 60;
-
-  if (mins === 0) return `Aproximadamente a ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
-  return `Aproximadamente a ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
+  return mins === 0
+    ? `Aproximadamente a ${horas} ${horas === 1 ? 'hora' : 'horas'}`
+    : `Aproximadamente a ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
 }
 
-async function cargarPerfilComercio() {
+async function mostrarSucursales(idComercio) {
+  const { data: relaciones } = await supabase
+    .from('ComercioSucursales')
+    .select('idSucursal, idComercio')
+    .or(`idComercio.eq.${idComercio},idSucursal.eq.${idComercio}`);
+
+  if (!relaciones || relaciones.length === 0) return;
+
+  const ids = relaciones
+    .map(r => (r.idSucursal == idComercio ? r.idComercio : r.idSucursal))
+    .filter(id => id !== idComercio);
+
+  const { data: sucursales } = await supabase
+    .from('Comercios')
+    .select('id, nombre, nombreSucursal')
+    .in('id', ids);
+
+  if (!sucursales || sucursales.length === 0) return;
+
+  const contenedor = document.getElementById('listaSucursales');
+  const wrapper = document.getElementById('sucursalesContainer');
+  if (!contenedor || !wrapper) return;
+
+  sucursales.forEach(sucursal => {
+    const btn = document.createElement('button');
+    btn.textContent = sucursal.nombreSucursal || sucursal.nombre;
+    btn.className = 'px-3 py-2 m-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium hover:bg-blue-200';
+    btn.onclick = () => window.location.href = `perfilComercio.html?id=${sucursal.id}`;
+    contenedor.appendChild(btn);
+  });
+
+  wrapper.classList.remove('hidden');
+}
+
+export async function obtenerComercioPorID(idComercio) {
   const { data, error } = await supabase
     .from('Comercios')
     .select('*')
@@ -32,93 +63,75 @@ async function cargarPerfilComercio() {
     return null;
   }
 
-  const nombre = document.getElementById('nombreComercio');
-  const telefono = document.getElementById('telefonoComercio');
-  const textoDireccion = document.getElementById('textoDireccion');
-  const logo = document.getElementById('logoComercio');
-  const nombreCercanos = document.getElementById('nombreCercanosComida');
-
-  if (nombreCercanos) nombreCercanos.textContent = data.nombre;
-
-  if (nombre) nombre.textContent = data.nombre;
-
-  if (telefono) {
-    telefono.href = `tel:${data.telefono}`;
-    telefono.innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${data.telefono}`;
+  document.getElementById('nombreComercio').textContent = data.nombre;
+  if (data.nombreSucursal) {
+    document.getElementById('nombreSucursal').textContent = data.nombreSucursal;
   }
+  document.getElementById('textoDireccion').textContent = data.direccion;
+  document.getElementById('telefonoComercio').innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${data.telefono}`;
+  document.getElementById('telefonoComercio').href = `tel:${data.telefono}`;
+  document.getElementById('nombreCercanosComida').textContent = data.nombre;
 
-  if (textoDireccion) textoDireccion.textContent = data.direccion;
-
-  // Redes sociales
   if (data.whatsapp) document.getElementById('linkWhatsapp')?.setAttribute('href', data.whatsapp);
   if (data.facebook) document.getElementById('linkFacebook')?.setAttribute('href', data.facebook);
   if (data.instagram) document.getElementById('linkInstagram')?.setAttribute('href', data.instagram);
+  if (data.tiktok) document.getElementById('linkTikTok')?.setAttribute('href', data.tiktok);
   if (data.webpage) document.getElementById('linkWeb')?.setAttribute('href', data.webpage);
+  if (data.email) document.getElementById('linkEmail')?.setAttribute('href', `mailto:${data.email}`);
 
-  // Logo
-  const { data: imagenes } = await supabase
+  const { data: imagenLogo } = await supabase
     .from('imagenesComercios')
     .select('imagen')
     .eq('idComercio', idComercio)
     .eq('logo', true)
-    .single();
+    .maybeSingle();
 
-  if (imagenes && logo) {
-    const url = supabase.storage.from('galeriacomercios').getPublicUrl(imagenes.imagen).data.publicUrl;
-    logo.src = url;
+  if (imagenLogo?.imagen) {
+    const url = supabase.storage.from('galeriacomercios').getPublicUrl(imagenLogo.imagen).data.publicUrl;
+    document.getElementById('logoComercio').src = url;
   }
 
-  // Distancia desde usuario
   if (latUsuario && lonUsuario && data.latitud && data.longitud) {
     const [conTiempo] = await calcularTiemposParaLista([data], {
       lat: latUsuario,
       lon: lonUsuario
     });
 
-    const divTiempo = document.getElementById('tiempoVehiculo');
-    if (divTiempo && conTiempo?.minutosCrudos !== null) {
+    if (conTiempo?.minutosCrudos !== null) {
       const tiempoFormateado = formatearMinutosConversacional(conTiempo.minutosCrudos);
-      divTiempo.innerHTML = `<i class="fas fa-car"></i> ${tiempoFormateado}`;
+      document.getElementById('tiempoVehiculo').innerHTML = `<i class="fas fa-car"></i> ${tiempoFormateado}`;
     }
 
-    // Enlaces a Google Maps y Waze
-    if (data.latitud && data.longitud) {
-      const googleMapsURL = `https://www.google.com/maps/search/?api=1&query=${data.latitud},${data.longitud}`;
-      const wazeURL = `https://waze.com/ul?ll=${data.latitud},${data.longitud}&navigate=yes`;
+    const googleMapsURL = `https://www.google.com/maps/search/?api=1&query=${data.latitud},${data.longitud}`;
+    const wazeURL = `https://waze.com/ul?ll=${data.latitud},${data.longitud}&navigate=yes`;
 
-      const btnGoogleMaps = document.getElementById('btnGoogleMaps');
-      const btnWaze = document.getElementById('btnWaze');
-
-      if (btnGoogleMaps) btnGoogleMaps.href = googleMapsURL;
-      if (btnWaze) btnWaze.href = wazeURL;
-    }
-
-    data.tiempoVehiculo = conTiempo?.tiempoVehiculo || '';
-    data.minutosCrudos = conTiempo?.minutosCrudos || null;
+    document.getElementById('btnGoogleMaps').href = googleMapsURL;
+    document.getElementById('btnWaze').href = wazeURL;
   }
+
+  if (data.tieneSucursales) await mostrarSucursales(idComercio);
 
   return data;
 }
 
-// Obtener ubicación del usuario primero y luego cargar perfil
 navigator.geolocation.getCurrentPosition(
   async (pos) => {
     latUsuario = pos.coords.latitude;
     lonUsuario = pos.coords.longitude;
-    const comercio = await cargarPerfilComercio();
+    const comercio = await obtenerComercioPorID(idComercio);
     if (comercio) {
       mostrarCercanosComida(comercio);
-      mostrarPlayasCercanas(comercio); 
-      mostrarLugaresCercanos(comercio); 
+      mostrarPlayasCercanas(comercio);
+      mostrarLugaresCercanos(comercio);
     }
   },
   async () => {
     console.warn('❗ Usuario no permitió ubicación.');
-    const comercio = await cargarPerfilComercio();
+    const comercio = await obtenerComercioPorID(idComercio);
     if (comercio) {
       mostrarCercanosComida(comercio);
-      mostrarPlayasCercanas(comercio); 
-      mostrarLugaresCercanos(comercio); 
+      mostrarPlayasCercanas(comercio);
+      mostrarLugaresCercanos(comercio);
     }
   }
 );
