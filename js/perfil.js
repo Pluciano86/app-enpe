@@ -17,22 +17,31 @@ function formatearMinutosConversacional(minutos) {
     : `Aproximadamente a ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
 }
 
-async function mostrarSucursales(idComercio) {
-  const { data: relaciones } = await supabase
+async function mostrarSucursales(idComercio, nombreComercio) {
+  const { data: relaciones, error: errorRelaciones } = await supabase
     .from('ComercioSucursales')
-    .select('idSucursal, idComercio')
-    .or(`idComercio.eq.${idComercio},idSucursal.eq.${idComercio}`);
+    .select('comercio_id, sucursal_id')
+    .or(`comercio_id.eq.${idComercio},sucursal_id.eq.${idComercio}`);
+
+  if (errorRelaciones) {
+    console.error('Error consultando relaciones de sucursales:', errorRelaciones);
+    return;
+  }
 
   if (!relaciones || relaciones.length === 0) return;
 
-  const ids = relaciones
-    .map(r => (r.idSucursal == idComercio ? r.idComercio : r.idSucursal))
-    .filter(id => id !== idComercio);
+  const idsRelacionados = relaciones.flatMap(r => [r.comercio_id, r.sucursal_id]);
+  const idsUnicos = [...new Set(idsRelacionados.filter(id => id !== parseInt(idComercio)))];
 
-  const { data: sucursales } = await supabase
+  const { data: sucursales, error: errorSucursales } = await supabase
     .from('Comercios')
     .select('id, nombre, nombreSucursal')
-    .in('id', ids);
+    .in('id', idsUnicos);
+
+  if (errorSucursales) {
+    console.error('Error consultando sucursales:', errorSucursales);
+    return;
+  }
 
   if (!sucursales || sucursales.length === 0) return;
 
@@ -43,10 +52,13 @@ async function mostrarSucursales(idComercio) {
   sucursales.forEach(sucursal => {
     const btn = document.createElement('button');
     btn.textContent = sucursal.nombreSucursal || sucursal.nombre;
-    btn.className = 'px-3 py-2 m-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium hover:bg-blue-200';
+    btn.className = 'px-3 py-2 m-1 bg-red-600 text-white rounded-full text-base font-medium hover:bg-red-700 transition';
     btn.onclick = () => window.location.href = `perfilComercio.html?id=${sucursal.id}`;
     contenedor.appendChild(btn);
   });
+
+  const titulo = document.getElementById('tituloSucursales');
+  if (titulo) titulo.textContent = `Otras Sucursales de ${nombreComercio}`;
 
   wrapper.classList.remove('hidden');
 }
@@ -109,7 +121,7 @@ export async function obtenerComercioPorID(idComercio) {
     document.getElementById('btnWaze').href = wazeURL;
   }
 
-  if (data.tieneSucursales) await mostrarSucursales(idComercio);
+  if (data.tieneSucursales) await mostrarSucursales(idComercio, data.nombre);
 
   return data;
 }

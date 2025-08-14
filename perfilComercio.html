@@ -19,7 +19,7 @@
 
   <!-- Galería Swipe de Imágenes -->
 <!-- Fragmento HTML para perfilComercio.html (galería) -->
-<section class="relative">
+<section class="relative pb-8">
   <div id="galeriaImagenes" class="w-full h-64 overflow-x-auto scroll-smooth flex snap-x snap-mandatory whitespace-nowrap">
     <!-- Las imágenes se insertarán aquí dinámicamente -->
   </div>
@@ -43,19 +43,25 @@
 </div>
 
   <!-- Encabezado con Logo, Favorito y Horario -->
-  <section class="flex justify-between items-center px-4 py-1">
-    <button id="btnFavorito" class="flex flex-col items-center focus:outline-none">
-  <i class="far fa-heart text-3xl mb-1"></i>
-  <span class="text-base font-medium">Añadir a Favoritos</span>
-</button>
-    <div class="w-[180px] sm:h-[180px] shadow-[0px_-21px_23px_-7px_rgba(0,_0,_0,_0.3)] bg-white rounded-full -mt-12 z-10 overflow-hidden">
-  <img id="logoComercio" src="" alt="Logo" class="w-full h-full object-contain">
-</div>
-    <div id="estadoHorarioContainer" class="text-center">
-      <i id="iconoHorario" class="fa-regular fa-clock text-red-500 text-3xl" style="-webkit-text-stroke: 1.2px currentColor;"></i>
-      <p id="textoHorario" class="text-sm text-red-600 font-medium">Cerrado Ahora</p>
-    </div>
-  </section>
+<section class="relative h-[120px] sm:h-[140px] flex items-center justify-center pb-16">
+  
+  <!-- Botón Favorito (izquierda) -->
+  <button id="btnFavorito" class="absolute left-4 top-1 flex flex-col items-center text-gray-600 text-sm">
+    <i class="far fa-heart text-3xl mb-1"></i>
+    <span class="text-base font-medium">Favorito</span>
+  </button>
+
+  <!-- Logo (centro) -->
+  <div class="w-[180px] h-[180px] shadow-[0px_-21px_23px_-7px_rgba(0,_0,_0,_0.3)] bg-white rounded-full z-10 overflow-hidden">
+    <img id="logoComercio" src="" alt="Logo" class="w-full h-full object-contain">
+  </div>
+
+  <!-- Estado horario (derecha) -->
+  <div id="estadoHorarioContainer" class="absolute right-4 top-3 text-center">
+    <i id="iconoHorario" class="fa-regular fa-clock text-red-500 text-3xl" style="-webkit-text-stroke: 1.2px currentColor;"></i>
+    <p id="textoHorario" class="text-sm text-red-600 font-medium">Cerrado Ahora</p>
+  </div>
+</section>
   
 
   <!-- Info de Contacto -->
@@ -114,7 +120,8 @@
 
 <section id="sucursalesContainer" class="mt-6 px-6 hidden">
   <div class="bg-white rounded-lg shadow-sm p-5">
-    <h2 class="text-center text-xl font-semibold mb-4 text-[#424242]">Otras Sucursales</h2>
+    <h2 id="tituloSucursales" class="text-center text-xl font-medium mb-4 text-[#424242]">
+  Otras Sucursales </h2>
     <div id="listaSucursales" class="flex flex-wrap justify-center gap-3">
       <!-- Botones de sucursales -->
     </div>
