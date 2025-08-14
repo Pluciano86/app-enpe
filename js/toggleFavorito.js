@@ -69,12 +69,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!icono || !texto) return;
 
     if (esFavorito) {
-      icono.className = 'fas fa-heart text-4xl mb-1 text-red-600 animate-bounce';
+      icono.className = 'fas fa-heart text-5xl mb-1 text-red-600 animate-bounce';
       texto.textContent = '¡Mi Favorito!';
       texto.classList.add('text-red-600');
     } else {
       icono.className = 'far fa-heart text-3xl mb-1 text-gray-600';
-      texto.textContent = 'Añadir a Favoritos';
+      texto.innerHTML = 'Añadir<br>Favoritos';
       texto.classList.remove('text-red-600');
     }
   }
