@@ -177,12 +177,24 @@ if (user) {
     const horario = horariosAll.find(h => h.idComercio === comercio.id);
 
     let abierto = false;
-    if (horario && !horario.cerrado && horario.apertura && horario.cierre) {
-      const horaActual = new Date().toTimeString().slice(0, 5);
-      const apertura = horario.apertura.slice(0, 5);
-      const cierre = horario.cierre.slice(0, 5);
-      abierto = horaActual >= apertura && horaActual <= cierre;
-    }
+if (horario && !horario.cerrado && horario.apertura && horario.cierre) {
+  const ahora = new Date();
+  const [horaAct, minAct] = [ahora.getHours(), ahora.getMinutes()];
+  const minutosActual = horaAct * 60 + minAct;
+
+  const [hA, mA] = horario.apertura.slice(0, 5).split(':').map(Number);
+  const [hC, mC] = horario.cierre.slice(0, 5).split(':').map(Number);
+  const minutosApertura = hA * 60 + mA;
+  const minutosCierre = hC * 60 + mC;
+
+  if (minutosCierre > minutosApertura) {
+    // Horario normal en el mismo día
+    abierto = minutosActual >= minutosApertura && minutosActual <= minutosCierre;
+  } else {
+    // Horario que cruza medianoche (ej: 8pm–2am)
+    abierto = minutosActual >= minutosApertura || minutosActual <= minutosCierre;
+  }
+}
 
     let distancia = null;
     if (latUsuario && lonUsuario && comercio.latitud && comercio.longitud) {
