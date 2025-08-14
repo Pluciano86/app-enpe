@@ -33,6 +33,37 @@ function obtenerProximoDiaAbierto(horarios, diaActual) {
   return null;
 }
 
+function minutosDesdeMedianoche(horaStr) {
+  const [hora, minuto] = horaStr.split(':').map(Number);
+  return hora * 60 + minuto;
+}
+
+function estaAbierto(horarios, diaActual, horaActual) {
+  const horaMin = minutosDesdeMedianoche(horaActual);
+  const hoy = horarios.find(h => h.diaSemana === diaActual);
+  const ayer = horarios.find(h => h.diaSemana === (diaActual + 6) % 7);
+
+  if (hoy && !hoy.cerrado) {
+    const apertura = minutosDesdeMedianoche(hoy.apertura.slice(0, 5));
+    const cierre = minutosDesdeMedianoche(hoy.cierre.slice(0, 5));
+    if (apertura < cierre) {
+      if (horaMin >= apertura && horaMin < cierre) return { abierto: true, cierreHoy: hoy.cierre };
+    } else {
+      if (horaMin >= apertura || horaMin < cierre) return { abierto: true, cierreHoy: hoy.cierre };
+    }
+  }
+
+  if (ayer && !ayer.cerrado) {
+    const apertura = minutosDesdeMedianoche(ayer.apertura.slice(0, 5));
+    const cierre = minutosDesdeMedianoche(ayer.cierre.slice(0, 5));
+    if (apertura > cierre && horaMin < cierre) {
+      return { abierto: true, cierreHoy: ayer.cierre };
+    }
+  }
+
+  return { abierto: false };
+}
+
 async function cargarHorarios() {
   const { data: comercio } = await supabase.from('Comercios').select('nombre').eq('id', idComercio).maybeSingle();
   const { data: horarios, error } = await supabase
@@ -45,22 +76,13 @@ async function cargarHorarios() {
 
   tituloHorario.textContent = `Horario de ${comercio?.nombre || ''}`;
 
-  const hoyHorario = horarios.find(h => h.diaSemana === diaActual);
-  let abierto = false;
-  let aperturaHoy = null;
-  let cierreHoy = null;
-
-  if (hoyHorario && !hoyHorario.cerrado) {
-    aperturaHoy = hoyHorario.apertura.slice(0, 5);
-    cierreHoy = hoyHorario.cierre.slice(0, 5);
-    abierto = horaActual >= aperturaHoy && horaActual <= cierreHoy;
-  }
-
-  const cierreEnMenosDe2Horas = abierto && cierreHoy && ((parseInt(cierreHoy.slice(0, 2)) * 60 + parseInt(cierreHoy.slice(3, 5))) - (parseInt(horaActual.slice(0, 2)) * 60 + parseInt(horaActual.slice(3, 5))) <= 120);
+  const resultado = estaAbierto(horarios, diaActual, horaActual);
+  const abierto = resultado.abierto;
+  const cierreHoy = resultado.cierreHoy;
 
   let mensajeEstado = '';
+  const hoyHorario = horarios.find(h => h.diaSemana === diaActual);
   if (!abierto && hoyHorario && !hoyHorario.cerrado && horaActual < hoyHorario.apertura.slice(0, 5)) {
-    // Abre hoy más tarde
     mensajeEstado = `Abre hoy a las ${formato12Horas(hoyHorario.apertura.slice(0, 5))}`;
   } else if (!abierto) {
     const proximo = obtenerProximoDiaAbierto(horarios, diaActual);
@@ -69,6 +91,8 @@ async function cargarHorarios() {
       mensajeEstado = `Abre ${cuando} a las ${proximo.apertura}`;
     }
   }
+
+  const cierreEnMenosDe2Horas = abierto && cierreHoy && (minutosDesdeMedianoche(cierreHoy) - minutosDesdeMedianoche(horaActual) <= 120);
 
   if (cierreEnMenosDe2Horas) {
     mensajeEstado += (mensajeEstado ? ' • ' : '') + `Cierra a las ${formato12Horas(cierreHoy)}`;
@@ -113,4 +137,4 @@ async function cargarHorarios() {
 }
 
 cargarHorarios();
-setInterval(cargarHorarios, 30000); // Refresca cada 30 segundos
+setInterval(cargarHorarios, 30000); // Actualiza cada 30 segundos

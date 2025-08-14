@@ -237,7 +237,17 @@ function aplicarFiltrosYRedibujar() {
     filtrados = filtrados.filter(c => filtrosActivos.comerciosPorPlato.includes(c.id));
   }
 
-  if (filtrosActivos.municipio) {
+  const hayBusquedaNombre = filtrosActivos.textoBusqueda?.trim().length >= 3;
+  const hayBusquedaPlato = filtrosActivos.comerciosPorPlato?.length > 0;
+
+  // ✅ Ocultar chip de municipio si hay búsqueda
+  const chipMunicipio = document.getElementById('chipMunicipioActivo');
+  if (chipMunicipio) {
+    chipMunicipio.classList.toggle('hidden', hayBusquedaNombre || hayBusquedaPlato);
+  }
+
+  // ✅ Aplicar filtro por municipio solo si no hay búsqueda
+  if (filtrosActivos.municipio && !hayBusquedaNombre && !hayBusquedaPlato) {
     filtrados = filtrados.filter(c => c.pueblo === filtrosActivos.municipio);
   }
 
@@ -256,7 +266,7 @@ function aplicarFiltrosYRedibujar() {
     filtrados = filtrados.filter(c => c.favorito === true);
   }
 
-  // Mostrar filtros activos
+  // ✅ Mostrar filtros activos
   const filtrosDiv = document.getElementById('filtros-activos');
   filtrosDiv.innerHTML = '';
 
@@ -284,8 +294,8 @@ function aplicarFiltrosYRedibujar() {
     }
   }
 
-  // Municipio activo
-  if (filtrosActivos.municipio) {
+  // ✅ Mostrar chip de municipio SOLO si no hay búsqueda
+  if (filtrosActivos.municipio && !hayBusquedaNombre && !hayBusquedaPlato) {
     const tag = crearTagFiltro(`en ${filtrosActivos.municipio}`, () => {
       filtrosActivos.municipio = '';
       document.getElementById('filtro-municipio').value = '';

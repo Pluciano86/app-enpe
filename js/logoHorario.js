@@ -16,6 +16,11 @@ function formato12Horas(horaStr) {
   return `${hora12}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
+function minutosDesdeMedianoche(horaStr) {
+  const [hora, minuto] = horaStr.split(':').map(Number);
+  return hora * 60 + minuto;
+}
+
 function obtenerProximoDiaAbierto(horarios, diaActual) {
   for (let i = 1; i <= 7; i++) {
     const diaSiguiente = (diaActual + i) % 7;
@@ -35,6 +40,7 @@ async function verificarHorario() {
   const hoy = new Date();
   const diaSemana = hoy.getDay();
   const horaActual = hoy.toTimeString().slice(0, 5);
+  const horaMinutos = minutosDesdeMedianoche(horaActual);
 
   const { data: horarios } = await supabase
     .from('Horarios')
@@ -42,38 +48,48 @@ async function verificarHorario() {
     .eq('idComercio', idComercio);
 
   const hoyHorario = horarios.find(h => h.diaSemana === diaSemana);
+  const ayerHorario = horarios.find(h => h.diaSemana === (diaSemana + 6) % 7); // día anterior
 
-  if (!hoyHorario || hoyHorario.cerrado) {
-    iconoEl.className = 'fa-regular fa-clock text-red-500 text-2xl';
-    iconoEl.style.webkitTextStroke = '1.2px currentColor';
-    textoEl.textContent = 'Cerrado Ahora';
-    textoEl.className = 'text-sm, text-red-600 font-light';
+  let abierto = false;
+  let cierre = null;
 
-    const proximo = obtenerProximoDiaAbierto(horarios, diaSemana);
-    if (proximo) {
-      const cuando = proximo.esManana ? 'mañana' : proximo.dia;
-      subtituloEl.innerHTML = `Abre ${cuando}<br>a las ${proximo.apertura}`;
+  if (hoyHorario && !hoyHorario.cerrado) {
+    const aperturaMin = minutosDesdeMedianoche(hoyHorario.apertura.slice(0, 5));
+    const cierreMin = minutosDesdeMedianoche(hoyHorario.cierre.slice(0, 5));
+
+    if (aperturaMin < cierreMin) {
+      abierto = horaMinutos >= aperturaMin && horaMinutos < cierreMin;
     } else {
-      subtituloEl.textContent = '';
+      abierto = horaMinutos >= aperturaMin || horaMinutos < cierreMin;
     }
-    return;
+
+    if (abierto) cierre = hoyHorario.cierre;
   }
 
-  const apertura = hoyHorario.apertura.slice(0, 5);
-  const cierre = hoyHorario.cierre.slice(0, 5);
-  const abierto = horaActual >= apertura && horaActual <= cierre;
+  // Verifica si sigue abierto desde ayer (pasó medianoche)
+  if (!abierto && ayerHorario && !ayerHorario.cerrado) {
+    const aperturaMin = minutosDesdeMedianoche(ayerHorario.apertura.slice(0, 5));
+    const cierreMin = minutosDesdeMedianoche(ayerHorario.cierre.slice(0, 5));
 
+    if (aperturaMin > cierreMin && horaMinutos < cierreMin) {
+      abierto = true;
+      cierre = ayerHorario.cierre;
+    }
+  }
+
+  // Resultado visual
   if (abierto) {
     iconoEl.className = 'fa-regular fa-clock text-green-500 text-4xl slow-spin';
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
     textoEl.textContent = 'Abierto Ahora';
     textoEl.className = 'text-sm text-green-600 font-light';
 
-    const tiempoCierre =
-      parseInt(cierre.slice(0, 2)) * 60 + parseInt(cierre.slice(3, 5)) -
-      (parseInt(horaActual.slice(0, 2)) * 60 + parseInt(horaActual.slice(3, 5)));
+    const minutosCierre = minutosDesdeMedianoche(cierre);
+    const diferencia = (minutosCierre >= horaMinutos)
+      ? minutosCierre - horaMinutos
+      : 1440 - horaMinutos + minutosCierre; // por si cruza medianoche
 
-    if (tiempoCierre <= 120) {
+    if (diferencia <= 120) {
       subtituloEl.innerHTML = `Cierra a las<br><span class="text-sm">${formato12Horas(cierre)}</span>`;
     } else {
       subtituloEl.textContent = '';
@@ -83,7 +99,19 @@ async function verificarHorario() {
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
     textoEl.textContent = 'Cerrado Ahora';
     textoEl.className = 'text-sm text-red-600 font-medium';
-    subtituloEl.innerHTML = `Abre hoy<br><span class="text-sm ">${formato12Horas(apertura)}</span>`;
+
+    // ¿Abre más tarde hoy?
+    if (hoyHorario && !hoyHorario.cerrado && horaMinutos < minutosDesdeMedianoche(hoyHorario.apertura.slice(0, 5))) {
+      subtituloEl.innerHTML = `Abre hoy<br><span class="text-sm ">${formato12Horas(hoyHorario.apertura.slice(0, 5))}</span>`;
+    } else {
+      const proximo = obtenerProximoDiaAbierto(horarios, diaSemana);
+      if (proximo) {
+        const cuando = proximo.esManana ? 'mañana' : proximo.dia;
+        subtituloEl.innerHTML = `Abre ${cuando}<br><span class="text-sm">${proximo.apertura}</span>`;
+      } else {
+        subtituloEl.textContent = '';
+      }
+    }
   }
 }
 
