@@ -19,61 +19,62 @@
       <button id="btnHappy" class="px-4 py-2 rounded bg-gray-200 text-gray-700">Happy Hour</button>
     </div>
 
-    <!-- Contenedor de especiales -->
-    <div id="contenedorDias" class="space-y-4 px-4"></div>
-
-    <!-- Modal para añadir nuevo -->
-    <div id="modalEspecial" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg w-full max-w-xl p-6 relative">
-        <button id="cerrarModal" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
-        <h2 class="text-lg font-semibold mb-4">Añadir Especial</h2>
-        <form id="formEspecial">
-          <input type="text" id="nombreEspecial" placeholder="Nombre" class="w-full mb-2 border rounded px-3 py-2">
-          <textarea id="descripcionEspecial" placeholder="Descripción" class="w-full mb-2 border rounded px-3 py-2"></textarea>
-          <input type="number" id="precioEspecial" placeholder="Precio" step="0.01" class="w-full mb-2 border rounded px-3 py-2">
-          <input type="file" id="imagenEspecial" accept="image/*" class="mb-2">
-          <label class="flex items-center gap-2">
-            <input type="checkbox" id="permanenteEspecial"> Permanente
-          </label>
-          <button type="submit" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Guardar Especial</button>
-        </form>
-
-        <h3 class="text-md font-semibold mt-6 mb-2">Añadidos Anteriormente</h3>
-        <div id="anterioresContainer" class="grid gap-2"></div>
-      </div>
+    <!-- Contenedor de especiales frecuentes -->
+    <div id="contenedorFrecuentes" class="mb-6">
+      <h3 class="text-lg font-bold mb-2">Especiales Frecuentes</h3>
+      <!-- Las tarjetas frecuentes se insertan desde JS -->
     </div>
+
+    <!-- Contenedor de especiales por día -->
+    <div id="contenedorDias" class="space-y-4 px-4"></div>
   </div>
 
-
-<!-- Modal Editar Especial -->
-<div id="modalEditarEspecial" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
-  <div class="bg-white w-full max-w-md p-6 rounded shadow-lg relative">
-    <button id="cerrarModal" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
-    <h2 class="text-lg font-semibold mb-4">Editar Especial</h2>
-    <form id="formEditarEspecial" class="space-y-3">
-      <input type="hidden" id="editarIdEspecial">
-      <div>
-        <label for="editarNombre" class="block font-medium">Nombre</label>
-        <input type="text" id="editarNombre" class="w-full border rounded px-3 py-2 text-sm" />
-      </div>
-      <div>
-        <label for="editarDescripcion" class="block font-medium">Descripción</label>
-        <textarea id="editarDescripcion" class="w-full border rounded px-3 py-2 text-sm"></textarea>
-      </div>
-      <div>
-        <label for="editarPrecio" class="block font-medium">Precio</label>
-        <input type="number" id="editarPrecio" step="0.01" class="w-full border rounded px-3 py-2 text-sm" />
-      </div>
-      <div class="flex items-center gap-2">
-        <input type="checkbox" id="editarPermanente" />
-        <label for="editarPermanente">Permanente</label>
-      </div>
-      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">Guardar Cambios</button>
-    </form>
-  </div>
+  <!-- Modal para añadir o editar especial -->
+  <div id="modalEditarEspecial" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg w-full max-w-md relative">
+      <button id="cerrarModal" class="absolute top-2 right-2 text-gray-500 hover:text-black">&times;</button>
+      <form id="formEditarEspecial" class="space-y-4">
+        <input type="hidden" id="editarIdEspecial">
+        <div>
+          <label>Nombre</label>
+          <input id="editarNombre" class="w-full border px-3 py-2 rounded" required />
+        </div>
+        <div>
+          <label>Descripción</label>
+          <textarea id="editarDescripcion" class="w-full border px-3 py-2 rounded"></textarea>
+        </div>
+        <div>
+          <label>Precio</label>
+          <input id="editarPrecio" type="number" step="0.01" class="w-full border px-3 py-2 rounded" required />
+        </div>
+        <div>
+          <label class="flex gap-2 items-center">
+            <input type="checkbox" id="editarPermanente"> Permanente
+          </label>
+        </div>
+        <div>
+          <div>
+  <label>Imagen actual:</label>
+  <img id="editarImagenActual" src="" alt="Preview" class="w-24 h-24 object-cover rounded border mb-2" />
+</div>
+        <!-- Subir nueva imagen -->
+<div>
+  <label>Subir nueva imagen</label>
+  <input type="file" id="editarNuevaImagen" accept="image/*" />
 </div>
 
+<!-- Checkbox para guardar como frecuente -->
+<div>
+  <label class="flex gap-2 items-center">
+    <input type="checkbox" id="guardarComoFrecuente"> Guardar como frecuente
+  </label>
+</div>
 
+<!-- Botón guardar -->
+<button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded">Guardar cambios</button>
+      </form>
+    </div>
+  </div>
 
   <script type="module" src="./adminEspeciales.js"></script>
 </body>

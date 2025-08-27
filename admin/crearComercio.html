@@ -5,558 +5,144 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Crear Comercio</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm"></script>
-  <style>
-    body { font-family: 'Kanit', sans-serif; }
-  </style>
+  <style> body { font-family: 'Kanit', sans-serif; } </style>
 </head>
 <body class="bg-gray-50">
 
-  <!-- Header y Sidebar -->
-  <div id="headerContainer"></div>
+  <main class="px-4 py-6 max-w-xl mx-auto">
+    <h2 class="text-2xl font-semibold mb-4 text-center">Nuevo Comercio</h2>
 
-  <script>
-  fetch("adminHeader.html")
-    .then(res => res.text())
-    .then(html => {
-      document.getElementById("headerContainer").innerHTML = html;
+    <div class="grid grid-cols-1 gap-4">
+      <input type="text" id="nombre" placeholder="Nombre del Comercio" class="border px-3 py-2 rounded" />
+      <input type="text" id="telefono" placeholder="Teléfono" class="border px-3 py-2 rounded" />
+      <input type="text" id="direccion" placeholder="Dirección" class="border px-3 py-2 rounded" />
+      
+      <select id="municipio" class="border px-3 py-2 rounded">
+        <option value="">Seleccionar Municipio</option>
+      </select>
 
-      // Activar funcionalidad del sidebar
-      const toggleBtn = document.getElementById("menuToggle");
-      const sidebar = document.getElementById("adminSidebar");
-      const overlay = document.getElementById("sidebarOverlay");
+      <input type="text" id="latitud" placeholder="Latitud" class="border px-3 py-2 rounded" />
+      <input type="text" id="longitud" placeholder="Longitud" class="border px-3 py-2 rounded" />
 
-      if (toggleBtn && sidebar && overlay) {
-        toggleBtn.addEventListener("click", () => {
-          const visible = sidebar.classList.contains("-translate-x-full");
-          sidebar.classList.toggle("-translate-x-full");
-          overlay.classList.toggle("hidden", !visible);
-        });
-
-        overlay.addEventListener("click", () => {
-          sidebar.classList.add("-translate-x-full");
-          overlay.classList.add("hidden");
-        });
-      }
-    });
-</script>
-
-<main class="px-4 py-6">
-  <div class="max-w-5xl mx-auto">
-    <h2 class="text-2xl text-center font-medium mb-4">Nuevo Comercio</h2>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <input type="text" id="nombre" placeholder="Nombre del Comercio" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-      <input type="text" id="telefono" placeholder="Teléfono del Comercio" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-      <input type="text" id="direccion" placeholder="Dirección del Comercio" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-      <select id="municipio" class="w-full border border-gray-300 rounded px-3 py-2 text-sm"><option>Seleccionar Municipio</option></select>
-      <input type="text" id="latitud" placeholder="Latitud" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-      <input type="text" id="longitud" placeholder="Longitud" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-      <select id="categoria" class="w-full border border-gray-300 rounded px-3 py-2 text-sm"><option>Seleccionar Categoría</option></select>
-      <select id="subcategoria" class="w-full border border-gray-300 rounded px-3 py-2 text-sm"><option>Seleccionar Subcategoría</option></select>   
+      <select id="categoria" class="border px-3 py-2 rounded">
+        <option value="">Seleccionar Categoría</option>
+      </select>
+      <select id="subcategoria" class="border px-3 py-2 rounded">
+        <option value="">Seleccionar Subcategoría</option>
+      </select>
     </div>
 
-    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Logo del Comercio</label>
-        <input type="file" id="logoInput" accept="image/*">
-        <div id="logoPreview" class="mt-2 hidden"></div>
-
-        <!-- Card Preview -->
-        <div id="cardPreview" class="relative w-80 h-[130px] mt-6 border border-black rounded">
-          <img id="portadaPreviewImg" src="" class="w-full h-full object-cover">
-          <img id="logoOverlayImg" src="" class="w-24 h-24 rounded-full absolute -bottom-12 left-1/2 transform -translate-x-1/2 
-            bg-white object-contain shadow-lg border-4 border-white z-10
-            transition-transform duration-300 ease-in-out hover:scale-110">
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-1">Galería (una será portada)</label>
-        <input type="file" id="galeriaInput" multiple accept="image/*">
-        <div id="galeriaPreview" class="flex flex-wrap gap-2 mt-2"></div>
-      </div>
-    </div>
-
-
-    <!-- Redes Sociales + Web -->
-<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-  <input type="text" id="whatsapp" placeholder="Whatsapp" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-  <input type="text" id="facebook" placeholder="Facebook" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-  <input type="text" id="instagram" placeholder="Instagram" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-  <input type="text" id="tiktok" placeholder="TikTok" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-  <input type="text" id="webpage" placeholder="Página Web" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-</div>
-
-<!-- Descripción -->
-<div class="mt-6">
-  <label for="descripcion" class="block text-sm font-medium mb-1">Descripción del Comercio</label>
-  <textarea id="descripcion" rows="4" placeholder="Escribe una descripción breve..." class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></textarea>
-</div>
-
-
-<!-- Horario y Feriados -->
-<div class="mt-10">
-  <h2 class="text-xl font-bold mb-4">Horario</h2>
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm text-left" id="tablaHorario">
-  <thead>
-    <tr>
-      <th class="px-4 py-2">Día</th>
-      <th class="px-2 py-2">Apertura</th>
-      <th class="px-2 py-2"></th>
-      <th class="px-2 py-2"></th>
-      <th class="px-2 py-2">AM/PM</th>
-      <th class="px-2 py-2">Cierre</th>
-      <th class="px-2 py-2"></th>
-      <th class="px-2 py-2"></th>
-      <th class="px-2 py-2">AM/PM</th>
-      <th class="px-2 py-2">Cerrado</th>
-    </tr>
-  </thead>
-  <tbody id="tablaHorarioBody">
-    <!-- Las filas se generan dinámicamente -->
-  </tbody>
-</table>
-  </div>
-</div>
-
-<!-- Feriado -->
-<div class="mt-10">
-  <h2 class="text-xl font-bold mb-4">Feriado</h2>
-  <div id="feriadosContainer" class="space-y-4">
-    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
-      <input type="text" placeholder="Nombre del Feriado" class="border rounded px-3 py-2 w-full col-span-2">
-      <input type="date" class="border rounded px-3 py-2 w-full">
-      <div class="flex gap-2">
-        <select class="border rounded px-2 py-1">
-          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option>
-        </select>
-        <span class="mt-2">:</span>
-        <select class="border rounded px-2 py-1">
-          <option>00</option><option>15</option><option>30</option><option>45</option>
-        </select>
-        <select class="border rounded px-2 py-1">
-          <option>AM</option><option>PM</option>
-        </select>
-      </div>
-      <div class="flex gap-2">
-        <select class="border rounded px-2 py-1">
-          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option>
-        </select>
-        <span class="mt-2">:</span>
-        <select class="border rounded px-2 py-1">
-          <option>00</option><option>15</option><option>30</option><option>45</option>
-        </select>
-        <select class="border rounded px-2 py-1">
-          <option>AM</option><option>PM</option>
-        </select>
-      </div>
-      <button class="text-red-500 hover:text-red-700 text-xl">🗑</button>
-    </div>
-  </div>
-  <button onclick="añadirFeriado()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded shadow">
-    Añadir otro feriado
-  </button>
-</div>
-
-
-<!-- Colores personalizados -->
-<div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div>
-    <label for="colorPrimario" class="block text-sm font-medium mb-1">Color Primario</label>
-    <input type="color" id="colorPrimario" value="#000000" class="w-full h-10 rounded border border-gray-300">
-  </div>
-  <div>
-    <label for="colorSecundario" class="block text-sm font-medium mb-1">Color Secundario</label>
-    <input type="color" id="colorSecundario" value="#ffffff" class="w-full h-10 rounded border border-gray-300">
-  </div>
-</div>
-
-      <div class="mt-6">
-        <h2 class="font-bold mb-2">Amenidades</h2>
-      <div id="amenidadesContainer" class="grid grid-cols-2 md:grid-cols-3 gap-2">
-    <!-- Se llenan dinámicamente -->
-      </div>
-    </div>
-
-
-
-    <button id="crearBtn" class="mt-8 px-6 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700">
+    <button id="crearBtn" class="mt-6 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
       Crear Comercio
     </button>
-  </div>
-    </main>
+  </main>
 
-
-
-
-
-
-  <!-- Funciones JS -->
-    
+  <script type="module" src="js/crearComercio.js"></script>
 
   <script type="module">
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
     const supabase = createClient(
       'https://zgjaxanqfkweslkxtayt.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
     );
 
-function generarRutaBucket(nombre, categoria, municipio, archivo) {
-  const clean = (txt) =>
-    txt
-      .normalize('NFD') // quitar tildes
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, '') // quitar espacios
-      .replace(/[^a-zA-Z0-9]/g, '') // quitar otros caracteres especiales
-      .toUpperCase();
-
-  const cat = clean(categoria.charAt(0).toUpperCase() + categoria.slice(1).toLowerCase());
-  const mun = clean(municipio.charAt(0).toUpperCase() + municipio.slice(1).toLowerCase());
-  const nom = clean(nombre);
-
-  return `galeriacomercios/${cat}/${mun}/${nom}/${archivo}`;
-}
-
-
-
-    const logoInput = document.getElementById('logoInput');
-    const galeriaInput = document.getElementById('galeriaInput');
-    const logoOverlayImg = document.getElementById('logoOverlayImg');
-    const portadaPreviewImg = document.getElementById('portadaPreviewImg');
-    const galeriaPreview = document.getElementById('galeriaPreview');
     const municipioSelect = document.getElementById('municipio');
     const categoriaSelect = document.getElementById('categoria');
     const subcategoriaSelect = document.getElementById('subcategoria');
-    const amenidadesContainer = document.getElementById('amenidadesContainer');
-    let imagenesGaleria = [];
-    let indexPortada = 0;
-
-    logoInput.addEventListener('change', () => {
-      const file = logoInput.files[0];
-      if (file) {
-        logoOverlayImg.src = URL.createObjectURL(file);
-      }
-    });
-
-    galeriaInput.addEventListener('change', () => {
-      imagenesGaleria = Array.from(galeriaInput.files);
-      indexPortada = 0;
-      renderGaleriaPreview();
-    });
-
-    function renderGaleriaPreview() {
-      galeriaPreview.innerHTML = '';
-      imagenesGaleria.forEach((file, index) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'relative inline-block m-1';
-
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        img.className = 'w-20 h-20 object-cover rounded border';
-
-        if (indexPortada === index) {
-          portadaPreviewImg.src = img.src;
-        }
-
-        const portadaBtn = document.createElement('button');
-        portadaBtn.textContent = index === 0 ? '⭐' : '☆';
-        portadaBtn.title = 'Marcar como portada';
-        portadaBtn.className = 'absolute top-0 right-0 bg-white text-med px-2 rounded shadow';
-        portadaBtn.onclick = () => {
-          indexPortada = index;
-          const portada = imagenesGaleria.splice(index, 1)[0];
-          imagenesGaleria.unshift(portada);
-          renderGaleriaPreview();
-        };
-
-        const eliminarBtn = document.createElement('button');
-        eliminarBtn.textContent = '❌';
-        eliminarBtn.className = 'absolute bottom-0 left-0 bg-white text-med px-1 text-red-600';
-        eliminarBtn.onclick = () => {
-          imagenesGaleria.splice(index, 1);
-          renderGaleriaPreview();
-        };
-
-        wrapper.appendChild(img);
-        wrapper.appendChild(portadaBtn);
-        wrapper.appendChild(eliminarBtn);
-        galeriaPreview.appendChild(wrapper);
-      });
-    }
 
     async function cargarMunicipios() {
-      const { data, error } = await supabase.from('Municipios').select('id, nombre').order('nombre');
-      if (error) {
-        console.error('Error cargando municipios:', error);
-        return;
-      }
+      const { data, error } = await supabase.from('Municipios').select('id, nombre');
+      if (error) return console.error('Error cargando municipios:', error);
       data.forEach(m => {
-        const option = document.createElement('option');
-        option.value = m.id;
-        option.textContent = m.nombre;
-        municipioSelect.appendChild(option);
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.nombre;
+        municipioSelect.appendChild(opt);
       });
     }
 
     async function cargarCategorias() {
-      const { data, error } = await supabase.from('Categorias').select('id, nombre').order('nombre');
-      if (error) {
-        console.error('Error cargando categorías:', error);
-        return;
-      }
-      categoriaSelect.innerHTML = '<option value="">Seleccionar Categoría</option>';
-      data.forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat.id;
-        option.textContent = cat.nombre;
-        categoriaSelect.appendChild(option);
+      const { data, error } = await supabase.from('Categorias').select('id, nombre');
+      if (error) return console.error('Error cargando categorías:', error);
+      data.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.nombre;
+        categoriaSelect.appendChild(opt);
       });
     }
 
     async function cargarSubcategorias() {
-      const categoriaId = categoriaSelect.value;
-      if (!categoriaId) {
+      const idCat = parseInt(categoriaSelect.value);
+      if (isNaN(idCat)) {
         subcategoriaSelect.innerHTML = '<option value="">Seleccionar Subcategoría</option>';
         return;
       }
 
-      const { data, error } = await supabase.from('subCategoria')
-        .select('id, nombre')
-        .eq('idCategoria', categoriaId)
-        .order('nombre');
-
-      if (error) {
-        console.error('Error cargando subcategorías:', error);
-        return;
-      }
+      const { data, error } = await supabase.from('subCategoria').select('id, nombre').eq('idCategoria', idCat);
+      if (error) return console.error('Error cargando subcategorías:', error);
 
       subcategoriaSelect.innerHTML = '<option value="">Seleccionar Subcategoría</option>';
-      data.forEach(sub => {
-        const option = document.createElement('option');
-        option.value = sub.id;
-        option.textContent = sub.nombre;
-        subcategoriaSelect.appendChild(option);
+      data.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.nombre;
+        subcategoriaSelect.appendChild(opt);
       });
     }
 
-    async function cargarAmenidades() {
-      const { data, error } = await supabase.from('Amenidades').select('id, nombre, icono').order('nombre');
+    categoriaSelect.addEventListener('change', cargarSubcategorias);
 
-      if (error) {
-        console.error('❌ Error cargando amenidades:', error);
+    document.getElementById('crearBtn').addEventListener('click', async () => {
+      const nombre = document.getElementById('nombre').value.trim();
+      const telefono = document.getElementById('telefono').value.trim();
+      const direccion = document.getElementById('direccion').value.trim();
+      const idMunicipio = parseInt(municipioSelect.value);
+      const idCategoria = parseInt(categoriaSelect.value);
+      const idSubcategoria = parseInt(subcategoriaSelect.value);
+      const latitud = parseFloat(document.getElementById('latitud').value);
+      const longitud = parseFloat(document.getElementById('longitud').value);
+
+      if (!nombre || !telefono || !direccion || isNaN(idMunicipio) || isNaN(idCategoria)) {
+        alert('Faltan campos requeridos.');
         return;
       }
 
-      const container = document.getElementById('amenidadesContainer');
-      data.forEach(amenidad => {
-        const label = document.createElement('label');
-        label.className = 'flex items-center gap-2';
+      // 🔄 Buscar el idArea según el municipio seleccionado
+      const { data: munData, error: munError } = await supabase
+        .from('Municipios')
+        .select('idArea')
+        .eq('id', idMunicipio)
+        .single();
 
-        label.innerHTML = `
-          <input type="checkbox" value="${amenidad.id}" class="form-checkbox">
-          <i class="${amenidad.icono} text-gray-600"></i>
-          <span>${amenidad.nombre}</span>
-        `;
+      if (munError || !munData?.idArea) {
+        alert('Error obteniendo el área del municipio');
+        return;
+      }
 
-        container.appendChild(label);
+      const idArea = munData.idArea;
+
+      const { error } = await supabase.from('Comercios').insert({
+        nombre, telefono, direccion,
+        idMunicipio, idCategoria,
+        idSubcategoria: isNaN(idSubcategoria) ? null : idSubcategoria,
+        latitud, longitud,
+        idArea,
+        activo: true
       });
-    }
 
-const crearBtn = document.getElementById('crearBtn');
-crearBtn.addEventListener('click', async () => {
-  const nombre = document.getElementById('nombre').value.trim();
-  const telefono = document.getElementById('telefono').value.trim();
-  const direccion = document.getElementById('direccion').value.trim();
-  const municipio = parseInt(document.getElementById('municipio').value);
-  const idCategoria = parseInt(document.getElementById('categoria').value);
-  const idSubcategoria = parseInt(document.getElementById('subcategoria').value);
-  const idArea = parseInt(document.getElementById('area')?.value); // ✅ Captura idArea
-
-  const latitud = parseFloat(document.getElementById('latitud').value);
-  const longitud = parseFloat(document.getElementById('longitud').value);
-  const whatsapp = document.getElementById('whatsapp')?.value.trim();
-  const facebook = document.getElementById('facebook')?.value.trim();
-  const instagram = document.getElementById('instagram')?.value.trim();
-  const tiktok = document.getElementById('tiktok')?.value.trim();
-  const webpage = document.getElementById('webpage')?.value.trim();
-  const descripcion = document.getElementById('descripcion')?.value.trim();
-  const colorPrimario = document.getElementById('colorPrimario')?.value.trim();
-  const colorSecundario = document.getElementById('colorSecundario')?.value.trim();
-
-  if (!nombre || !telefono || !direccion || isNaN(municipio) || isNaN(idCategoria)) {
-    alert('Faltan campos obligatorios (nombre, teléfono, dirección, municipio, categoría o área).');
-    return;
-  }
-
-  // ➕ Insertar comercio
-  const { data: comercioData, error: comercioError } = await supabase.from('Comercios').insert({
-    nombre,
-    telefono,
-    direccion,
-    latitud,
-    longitud,
-    whatsapp,
-    facebook,
-    instagram,
-    tiktok,
-    webpage,
-    descripcion,
-    colorPrimario,
-    colorSecundario,
-    idMunicipio: municipio,
-    idCategoria,
-    idSubcategoria: isNaN(idSubcategoria) ? null : idSubcategoria,
-    idArea,
-    activo: true,
-    destacadosPrimero: true,
-  }).select().single();
-
-  if (comercioError) {
-    console.error('❌ Error al guardar comercio:', comercioError.message, comercioError.details, comercioError.hint);
-    alert('❌ Error al guardar comercio:\n' + comercioError.message + '\n' + comercioError.details);
-    return;
-  }
-
-  const idComercio = comercioData.id;
-  const categoriaTxt = categoriaSelect.options[categoriaSelect.selectedIndex].text;
-  const municipioTxt = municipioSelect.options[municipioSelect.selectedIndex].text;
-
-  // ✅ Limpiar ruta
-  const clean = (txt) =>
-    txt.normalize("NFD").replace(/[\u0300-\u036f]/g, "") // tildes
-        .replace(/\s+/g, "") // espacios
-        .replace(/[^a-zA-Z0-9]/g, "") // otros caracteres
-        .toUpperCase();
-
-  const folder = `galeriacomercios/${capitalize(categoriaTxt)}/${capitalize(municipioTxt)}/${clean(nombre)}`;
-
-  // 🖼 Subir logo
-  const logoFile = logoInput.files[0];
-  if (logoFile) {
-    const ext = logoFile.name.split('.').pop();
-    const logoPath = `${folder}/logo.${ext}`;
-    const { error: errLogo } = await supabase.storage.from('galeriacomercios').upload(logoPath, logoFile, { upsert: true });
-    if (!errLogo) {
-      await supabase.from('imagenesComercios').insert({
-        idComercio,
-        imagen: logoPath,
-        logo: true,
-        portada: false
-      });
-    }
-  }
-
-  // 📸 Subir galería
-  for (let i = 0; i < imagenesGaleria.length; i++) {
-    const file = imagenesGaleria[i];
-    const ext = file.name.split('.').pop();
-    const imgPath = `${folder}/imagen_${i + 1}.${ext}`;
-    const { error: errGal } = await supabase.storage.from('galeriacomercios').upload(imgPath, file, { upsert: true });
-    if (!errGal) {
-      await supabase.from('imagenesComercios').insert({
-        idComercio,
-        imagen: imgPath,
-        logo: false,
-        portada: i === 0
-      });
-    }
-  }
-
-  // ✅ Amenidades seleccionadas
-  const checks = document.querySelectorAll('#amenidadesContainer input[type="checkbox"]:checked');
-  for (const check of checks) {
-    const idAmenidad = parseInt(check.value);
-    if (!isNaN(idAmenidad)) {
-      await supabase.from('comercioamenidades').insert({ idComercio, idAmenidad });
-    }
-  }
-
-  alert('✅ Comercio creado con éxito (datos, imágenes y amenidades).');
-});
-
-// Función extra para capitalizar categoría/municipio
-function capitalize(txt) {
-  return txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase();
-}
+      if (error) {
+        alert('❌ Error creando comercio');
+        console.error(error);
+      } else {
+        alert('✅ Comercio creado exitosamente');
+        location.href = 'adminComercios.html';
+      }
+    });
 
     cargarMunicipios();
     cargarCategorias();
-    cargarAmenidades();
-    categoriaSelect.addEventListener('change', cargarSubcategorias);
-
-
-  const diasSemana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-  const tablaHorario = document.getElementById('tablaHorario');
-
-  
-diasSemana.forEach((dia, i) => {
-  const fila = document.createElement('tr');
-  fila.innerHTML = `
-    <td class="px-4 py-2 font-medium">${dia}</td>
-    <td><select class="border rounded px-2 py-1">${getHoras()}</select></td>
-    <td>:</td>
-    <td><select class="border rounded px-2 py-1">${getMinutos()}</select></td>
-    <td><select class="border rounded px-2 py-1">${getAmPm()}</select></td>
-    <td><select class="border rounded px-2 py-1">${getHoras()}</select></td>
-    <td>:</td>
-    <td><select class="border rounded px-2 py-1">${getMinutos()}</select></td>
-    <td><select class="border rounded px-2 py-1">${getAmPm()}</select></td>
-    <td class="text-center"><input type="checkbox" class="w-5 h-5"></td>
-  `;
-  document.getElementById('tablaHorarioBody').appendChild(fila);
-});
-
-
-  function añadirFeriado() {
-    const container = document.getElementById('feriadosContainer');
-    const div = document.createElement('div');
-    div.className = "grid grid-cols-1 md:grid-cols-6 gap-4 items-center";
-    div.innerHTML = `
-      <input type="text" placeholder="Nombre del Feriado" class="border rounded px-3 py-2 w-full col-span-2">
-      <input type="date" class="border rounded px-3 py-2 w-full">
-      <div class="flex gap-2">
-        <select class="border rounded px-2 py-1">
-          ${Array.from({ length: 12 }, (_, j) => `<option>${j + 1}</option>`).join('')}
-        </select>
-        <span class="mt-2">:</span>
-        <select class="border rounded px-2 py-1">
-          <option>00</option><option>15</option><option>30</option><option>45</option>
-        </select>
-        <select class="border rounded px-2 py-1">
-          <option>AM</option><option>PM</option>
-        </select>
-      </div>
-      <div class="flex gap-2">
-        <select class="border rounded px-2 py-1">
-          ${Array.from({ length: 12 }, (_, j) => `<option>${j + 1}</option>`).join('')}
-        </select>
-        <span class="mt-2">:</span>
-        <select class="border rounded px-2 py-1">
-          <option>00</option><option>15</option><option>30</option><option>45</option>
-        </select>
-        <select class="border rounded px-2 py-1">
-          <option>AM</option><option>PM</option>
-        </select>
-      </div>
-      <button onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-xl">🗑</button>
-    `;
-    container.appendChild(div);
-  }
-
-    function getHoras() {
-      return Array.from({ length: 12 }, (_, i) => `<option>${i + 1}</option>`).join('');
-    }
-    function getMinutos() {
-      return ["00", "15", "30", "45"].map(m => `<option>${m}</option>`).join('');
-    }
-    function getAmPm() {
-      return ["AM", "PM"].map(m => `<option>${m}</option>`).join('');
-    }
-</script>
+  </script>
 </body>
 </html>
