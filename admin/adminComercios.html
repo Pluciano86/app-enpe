@@ -17,59 +17,58 @@
   <div id="headerContainer"></div>
 
   <script>
-  fetch("adminHeader.html")
-    .then(res => res.text())
-    .then(html => {
-      document.getElementById("headerContainer").innerHTML = html;
+    fetch("adminHeader.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("headerContainer").innerHTML = html;
 
-      // Activar funcionalidad del sidebar
-      const toggleBtn = document.getElementById("menuToggle");
-      const sidebar = document.getElementById("adminSidebar");
-      const overlay = document.getElementById("sidebarOverlay");
+        // Activar funcionalidad del sidebar
+        const toggleBtn = document.getElementById("menuToggle");
+        const sidebar = document.getElementById("adminSidebar");
+        const overlay = document.getElementById("sidebarOverlay");
 
-      if (toggleBtn && sidebar && overlay) {
-        toggleBtn.addEventListener("click", () => {
-          const visible = sidebar.classList.contains("-translate-x-full");
-          sidebar.classList.toggle("-translate-x-full");
-          overlay.classList.toggle("hidden", !visible);
-        });
+        if (toggleBtn && sidebar && overlay) {
+          toggleBtn.addEventListener("click", () => {
+            const visible = sidebar.classList.contains("-translate-x-full");
+            sidebar.classList.toggle("-translate-x-full");
+            overlay.classList.toggle("hidden", !visible);
+          });
 
-        overlay.addEventListener("click", () => {
-          sidebar.classList.add("-translate-x-full");
-          overlay.classList.add("hidden");
-        });
-      }
-    });
-</script>
+          overlay.addEventListener("click", () => {
+            sidebar.classList.add("-translate-x-full");
+            overlay.classList.add("hidden");
+          });
+        }
+      });
+  </script>
 
   <main class="px-4 py-6">
-     <h2 class="text-2xl text-center font-medium mb-4">Listado de Comercios</h2>
-     <div class="flex justify-center items-center mb-4">
-
-  <a href="crearComercio.html" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow inline-flex items-center gap-2">
-    <i class="fas fa-plus"></i>
-    Nuevo Comercio
-  </a>
-</div>
+    <h2 class="text-2xl text-center font-medium mb-4">Listado de Comercios</h2>
+    <div class="flex justify-center items-center mb-4">
+      <a href="crearComercio.html" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow inline-flex items-center gap-2">
+        <i class="fas fa-plus"></i>
+        Nuevo Comercio
+      </a>
+    </div>
 
     <!-- Filtros -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <input id="search-nombre" type="text" placeholder="Buscar por nombre..." class="border px-2 py-1 rounded w-full sm:w-1/3" />
-  
-  <select id="search-categoria" class="border px-2 py-1 rounded w-full sm:w-1/4">
-    <option value="">Todas las categorías</option>
-  </select>
-  
-  <select id="search-municipio" class="border px-2 py-1 rounded w-full sm:w-1/4">
-    <option value="">Todos los municipios</option>
-  </select>
-  
-  <select id="search-orden" class="border px-2 py-1 rounded w-full sm:w-1/5">
-    <option value="fecha">Más recientes</option>
-    <option value="az">Orden alfabético</option>
-  </select>
-</div>
-<div id="contador-comercios" class="text-sm text-gray-600 mb-3">Mostrando 0 comercios</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <input id="search-nombre" type="text" placeholder="Buscar por nombre..." class="border px-2 py-1 rounded w-full sm:w-1/3" />
+      
+      <select id="search-categoria" class="border px-2 py-1 rounded w-full sm:w-1/4">
+        <option value="">Todas las categorías</option>
+      </select>
+      
+      <select id="search-municipio" class="border px-2 py-1 rounded w-full sm:w-1/4">
+        <option value="">Todos los municipios</option>
+      </select>
+      
+      <select id="search-orden" class="border px-2 py-1 rounded w-full sm:w-1/5">
+        <option value="fecha">Más recientes</option>
+        <option value="az">Orden alfabético</option>
+      </select>
+    </div>
+    <div id="contador-comercios" class="text-sm text-gray-600 mb-3">Mostrando 0 comercios</div>
 
     <!-- Tabla responsive -->
     <div class="overflow-x-auto bg-white rounded shadow hidden lg:block">
@@ -98,7 +97,40 @@
   </main>
 
   <!-- Lógica para cargar datos -->
-  <script type="module" src="js/mainAdmin.js"></script>
+  <script type="module">
+    import { idComercio, cargarDatosComercio, cargarMunicipiosFormulario, cargarCategorias, cargarMunicipios, cargarComercios } from './js/mainAdmin.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Solo si estás en editarComercio.html con ?id=...
+      if (idComercio && window.location.pathname.includes('editarComercio')) {
+        await cargarDatosComercio();
+        const comercio = await cargarComercioPorId(idComercio);
+        await cargarMunicipiosFormulario(comercio?.idMunicipio);
+      }
+
+      await cargarCategorias();
+      await cargarMunicipios();
+      await cargarComercios();
+
+      ['search-nombre', 'search-categoria', 'search-municipio', 'search-orden'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => window.filtrarYMostrarComercios?.());
+      });
+    });
+
+    async function cargarComercioPorId(id) {
+      const { data, error } = await window.supabase
+        .from('Comercios')
+        .select('idMunicipio')
+        .eq('id', id)
+        .single();
+      if (error) {
+        console.warn('Error cargando comercio por ID:', error);
+        return null;
+      }
+      return data;
+    }
+  </script>
 
 </body>
 </html>

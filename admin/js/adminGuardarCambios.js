@@ -9,7 +9,6 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   e.preventDefault();
   console.log('👉 Guardar Cambios presionado');
 
-  // 1. Actualizar información básica
   const nombre = document.getElementById('nombre')?.value.trim();
   const direccion = document.getElementById('direccion')?.value.trim();
   const telefono = document.getElementById('telefono')?.value.trim();
@@ -23,6 +22,11 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   const colorPrimario = document.getElementById('colorPrimario')?.value.trim();
   const colorSecundario = document.getElementById('colorSecundario')?.value.trim();
 
+  // ✅ Primero subimos el logo si hay uno nuevo
+  console.log('📤 Verificando si hay logo nuevo...');
+  await guardarLogoSiAplica();
+  console.log('✅ Logo procesado');
+
   console.log('📝 Datos a actualizar:', {
     nombre, direccion, telefono, whatsapp, descripcion,
     municipio, facebook, instagram, tiktok, webpage,
@@ -34,25 +38,27 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   const { error: errorUpdate } = await supabase
     .from('Comercios')
     .update({
-      nombre,
-      direccion,
-      telefono,
-      whatsapp,
-      descripcion,
-      idMunicipio: municipio,
-      facebook,
-      instagram,
-      tiktok,
-      webpage,
-      colorPrimario,
-      colorSecundario,
-      idCategoria: window.categoriasSeleccionadas || [],
-      idSubcategoria: window.subcategoriasSeleccionadas || []
-    })
+  nombre,
+  direccion,
+  telefono,
+  whatsapp,
+  descripcion,
+  idMunicipio: municipio,
+  facebook,
+  instagram,
+  tiktok,
+  webpage,
+  colorPrimario,
+  colorSecundario,
+  latitud: document.getElementById('latitud')?.value,
+  longitud: document.getElementById('longitud')?.value,
+  idCategoria: window.categoriasSeleccionadas || [],
+  idSubcategoria: window.subcategoriasSeleccionadas || []
+})
     .eq('id', idComercio);
 
-    console.log('📦 Categorías:', window.categoriasSeleccionadas);
-console.log('📦 Subcategorías:', window.subcategoriasSeleccionadas);
+  console.log('📦 Categorías:', window.categoriasSeleccionadas);
+  console.log('📦 Subcategorías:', window.subcategoriasSeleccionadas);
 
   if (errorUpdate) {
     alert('❌ Error al actualizar la información básica');
@@ -61,11 +67,6 @@ console.log('📦 Subcategorías:', window.subcategoriasSeleccionadas);
   }
 
   console.log('✅ Información básica actualizada');
-
-  // 2. Subir logo si hay uno nuevo
-  console.log('📤 Verificando si hay logo nuevo...');
-  await guardarLogoSiAplica();
-  console.log('✅ Logo procesado');
 
   // 3. Guardar horarios regulares
   console.log('🕘 Guardando horarios...');
