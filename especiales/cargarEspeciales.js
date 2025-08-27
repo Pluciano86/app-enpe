@@ -1,10 +1,9 @@
 console.log('🚀 Inició cargarEspeciales.js');
 import { supabase } from '../js/supabaseClient.js';
 import { renderizarEspeciales } from './renderEspeciales.js';
-import { obtenerImagenEspecial } from './renderImagenesEspecial.js';
 
 async function cargarEspecialesDelDia() {
-  const hoy = new Date().getDay(); // 0 = domingo
+  const hoy = new Date().getDay();
 
   const { data: especiales, error } = await supabase
     .from('especialesDia')
@@ -23,12 +22,30 @@ async function cargarEspecialesDelDia() {
     const comercioId = especial.idcomercio;
 
     if (!agrupados[comercioId]) {
-      const { data: comercio } = await supabase
+            const { data: comercio } = await supabase
         .from('Comercios')
-        .select('id, nombre')
+        .select(`
+          id,
+          nombre,
+          municipio,
+          idCategoria,
+          idSubcategoria
+        `)
         .eq('id', comercioId)
         .single();
 
+      const categorias = [];
+
+      if (comercio?.idCategoria?.length > 0) {
+        const { data: catData } = await supabase
+          .from('Categorias')
+          .select('nombre, id')
+          .in('id', comercio.idCategoria);
+
+        if (catData) {
+          categorias.push(...catData.map(c => c.nombre));
+        }
+      }
       const { data: logoData } = await supabase
         .from('imagenesComercios')
         .select('imagen')
@@ -36,10 +53,12 @@ async function cargarEspecialesDelDia() {
         .eq('logo', true)
         .maybeSingle();
 
-      agrupados[comercioId] = {
+            agrupados[comercioId] = {
         comercio: {
           id: comercio?.id,
           nombre: comercio?.nombre || 'Comercio',
+          municipio: comercio?.municipio || '',
+          categorias: categorias,
           logo: logoData?.imagen
             ? `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${logoData.imagen}`
             : null
@@ -48,10 +67,9 @@ async function cargarEspecialesDelDia() {
       };
     }
 
-    const imagenEspecial = await obtenerImagenEspecial(especial.id);
     agrupados[comercioId].especiales.push({
       ...especial,
-      imagen: imagenEspecial
+      imagen: especial.imagen || null
     });
   }
 

@@ -23,17 +23,27 @@ async function renderizarEspeciales(lista) {
   for (const grupo of lista) {
     const { comercio, especiales } = grupo;
     const urlLogo = comercio.logo;
+    const nombreComercio = comercio.nombre || 'Comercio';
+    const municipio = comercio.municipio || '';
+    const categorias = comercio.categorias || [];
+
+    const categoriasTexto = categorias.join(', ');
+    const subtitulo = `${categoriasTexto} en ${municipio}`;
 
     const especialesFiltrados = especiales.filter(esp => esp.tipo === tipoSeleccionado);
     if (especialesFiltrados.length === 0) continue;
 
     const contenido = await Promise.all(especialesFiltrados.map(async (esp) => `
       <div class="flex gap-4 items-start mb-4">
-        <img src="${esp.imagen}" alt="Imagen especial" class="w-24 h-24 object-cover rounded-md">
+        <img src="${esp.imagen 
+          ? `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${encodeURIComponent(esp.imagen)}`
+          : 'https://via.placeholder.com/100x100.png?text=Especial'}" 
+          alt="Imagen especial" 
+          class="w-24 h-24 object-cover rounded-md">
         <div class="flex flex-col justify-between flex-1">
-          <h3 class="font-bold text-lg">${esp.nombre}</h3>
-          <p class="text-sm text-gray-600">${esp.descripcion || ''}</p>
-          <p class="text-black font-bold text-md mt-2">$${esp.precio?.toFixed(2) || ''}</p>
+          <h3 class="font-normal text-xl">${esp.nombre}</h3>
+          <p class="text-sm font-light text-gray-600">${esp.descripcion || ''}</p>
+          <p class="font-medium text-xl mt-2">$${esp.precio?.toFixed(2) || ''}</p>
         </div>
       </div>
     `));
@@ -41,9 +51,12 @@ async function renderizarEspeciales(lista) {
     const tarjeta = document.createElement('div');
     tarjeta.className = 'bg-white rounded-lg shadow p-4';
     tarjeta.innerHTML = `
-      <div class="flex items-center justify-start gap-2 mb-2">
-        ${urlLogo ? `<img src="${urlLogo}" class="w-16 h-16 rounded-full object-cover">` : ''}
-        <span class="text-lg text-gray-500">${comercio.nombre}</span>
+      <div class="flex items-center justify-start gap-4 mb-3">
+        ${urlLogo ? `<img src="${urlLogo}" class="w-24 h-24 rounded-full object-cover">` : ''}
+        <div>
+          <h2 class="text-xl font-semibold leading-tight text-gray-800">${nombreComercio}</h2>
+          <p class="text-sm text-gray-500">${subtitulo}</p>
+        </div>
       </div>
       <hr class="border-t border-gray-200 mb-2">
       ${contenido.join('')}
