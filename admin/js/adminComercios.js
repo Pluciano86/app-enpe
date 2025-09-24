@@ -1,5 +1,10 @@
 // adminLogoComercio.js
-import { supabase } from './supabaseClient.js';
+import { supabase } from '/shared/supabaseClient.js';
+
+function getPublicBase() {
+  const nivel = location.pathname.split('/').indexOf('admin');
+  return nivel !== -1 ? '/public/' : './';
+}
 
 export async function guardarLogoSiAplica() {
   const input = document.getElementById('nuevo-logo');

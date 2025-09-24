@@ -1,5 +1,5 @@
 // adminGuardarCambios.js
-import { supabase } from './supabaseClient.js';
+import { supabase } from '/shared/supabaseClient.js';
 import { guardarLogoSiAplica } from './adminLogoComercio.js';
 import { guardarAmenidadesSeleccionadas } from './adminAmenidadesComercio.js';
 

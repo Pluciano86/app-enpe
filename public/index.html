@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inicio - EnPe Erre</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-800 pb-24">
+        <style>
+          body {font-family: 'Kanit', sans-serif;}
+        </style>
+
+  <!-- Header -->
+<div id="headerContainer"></div>
+<script type="module" src="js/header.js"></script>
+
+
+
+  <!-- Categorías más buscadas -->
+  <section class="text-center py-6">
+    <h2 class="text-2xl font-medium mb-4">CATEGORÍAS MÁS BUSCADAS</h2>
+    <div class="grid grid-cols-3 gap-4 px-4">
+
+      <a href="listadoComercios.html?idCategoria=1">
+      <div class="flex flex-col items-center">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/RESTAURANTES.jpg" class="rounded-full w-24 h-24 object-cover">
+        <p>Restaurantes</p>
+      </div>
+      </a>
+
+      <a href="listadoComercios.html?idCategoria=5">
+      <div class="flex flex-col items-center">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/FOOD%20TRUCK.jpg" class="rounded-full w-24 h-24 object-cover">
+        <p>Food Trucks</p>
+      </div>
+      </a>
+
+      <a href="listadoComercios.html?idCategoria=4">
+      <div class="flex flex-col items-center">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/COFFE%20SHOP.jpg" class="rounded-full w-24 h-24 object-cover">
+        <p>Coffee Shops</p>
+      </div>
+      </a>
+      
+      <a href="listadoComercios.html?idCategoria=6">
+      <div class="flex flex-col items-center">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/Dispensario.jpg" class="rounded-full w-24 h-24 object-cover">
+        <p>Dispensarios</p>
+      </div>
+      </a>
+
+      <a href="listadoComercios.html?idCategoria=3">
+      <div class="flex flex-col items-center">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/Bares.jpg" class="rounded-full w-24 h-24 object-cover">
+        <p>Bares</p>
+        </div>
+        </a>
+
+      <a href="listadoComercios.html?idCategoria=2">
+      <div class="flex flex-col items-center">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/panaderias.jpg" class="rounded-full w-24 h-24 object-cover">
+        <p>Panaderías</p>
+      </div>
+      </a>
+
+    </div>
+    <p class="mt-4 text-sm"">Ver todas las Categorías...</p>
+  </section>
+
+  <!-- Video Card -->
+<section class="relative h-[260px] overflow-hidden">
+  <!-- Video oculto hasta que se active -->
+  <video
+    id="videoHero"
+    muted
+    loop
+    playsinline
+    preload="auto"
+    class="absolute top-0 left-0 w-full h-full object-cover z-0"
+  >
+    <source src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/index_video.mp4" type="video/mp4">
+  </video>
+
+  <!-- Overlay -->
+  <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40 z-10"></div>
+
+  <!-- Texto -->
+  <div class="relative z-20 flex items-center justify-center h-full">
+    <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center">Vamos Pa' la Playa</a>
+  </div>
+</section>
+
+<script>
+  const video = document.getElementById("videoHero");
+  let intentado = false;
+
+  function reproducirVideo() {
+    if (!intentado && video) {
+      intentado = true;
+      video.play().catch(e => console.warn("Intento de reproducción fallido:", e));
+    }
+  }
+
+  document.addEventListener("touchstart", reproducirVideo, { once: true });
+  document.addEventListener("scroll", reproducirVideo, { once: true });
+</script>
+
+  <!-- Descubre lo que hay en tu área -->
+ <a href="listadoLugares.html" class="py-6 px-3">
+ <h2 class="text-xl text-center uppercase">Descubre lo que hay en tu área</h2> </a>
+
+  <div class="grid grid-cols-2 gap-4 pr-4 pb-4 pl-4">
+        <a href="listadoArea.html?idArea=1">
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/areas/SUR.jpg" class="rounded-lg">
+        </a>
+
+        <a href="listadoArea.html?idArea=4">
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/areas/NORTE.jpg" class="rounded-lg">
+        </a>
+
+        <a href="listadoArea.html?idArea=5">
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/areas/ESTE.jpg" class="rounded-lg">
+        </a>
+
+        <a href="listadoArea.html?idArea=3">
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/areas/OESTE.jpg" class="rounded-lg">
+        </a>
+
+        <a href="listadoArea.html?idArea=2">
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/areas/METRO.jpg" class="rounded-lg">
+          </a>
+
+          <a href="listadoArea.html?idArea=6">
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/areas/CENTRO.jpg" class="rounded-lg">
+            </a>
+    </div>
+
+    <div class="px-4">
+  <a href="listadoArea.html?idArea=7">
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/areas/ISLAS%20MUNICIPIO.jpg" class="rounded-lg col-span-2">
+              </a>
+    </div>
+  </section>
+<br><br>
+
+
+
+
+  
+<!-- Footer -->
+<div id="footerContainer"></div>
+<script type="module" src="js/footer.js"></script>
+
+
+
+</body>
+</html>

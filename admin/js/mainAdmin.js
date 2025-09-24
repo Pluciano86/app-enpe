@@ -1,11 +1,12 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { getPublicBase } from '/shared/utils.js';
 
 export const supabase = createClient(
   'https://zgjaxanqfkweslkxtayt.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
 );
 
-const baseImageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
+const baseImageUrl = getPublicBase('galeriacomercios');
 
 let todosLosComercios = [];
 let logos = [];
@@ -140,7 +141,7 @@ function filtrarYMostrarComercios() {
   document.querySelectorAll('.btn-editar').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
-      window.location.href = `editarComercio.html?id=${id}`;
+      window.location.href = `/admin/editarComercio.html?id=${id}`;
     });
   });
 

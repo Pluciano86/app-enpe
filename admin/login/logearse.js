@@ -1,4 +1,28 @@
-import { supabase } from '../js/supabaseClient.js';
+import { supabase } from '/shared/supabaseClient.js';
+
+async function actualizarPerfilUsuario(usuarioId, data) {
+  let reintentos = 3;
+  let errorFinal = null;
+
+  for (let i = 0; i < reintentos; i++) {
+    const { error } = await supabase
+      .from('usuarios')
+      .update(data)
+      .eq('id', usuarioId);
+
+    if (!error) {
+      console.log('Perfil actualizado correctamente en intento', i + 1);
+      return true;
+    }
+
+    console.warn('Reintento de update falló:', error.message);
+    errorFinal = error;
+    await new Promise(res => setTimeout(res, 1000));
+  }
+
+  console.error('No se pudo actualizar perfil después de reintentos:', errorFinal);
+  return false;
+}
 
 async function init() {
   const btnMostrarLogin = document.getElementById('btnMostrarLogin');
@@ -17,7 +41,7 @@ async function init() {
   // Redirigir si ya hay sesión activa
   const { data: sessionData } = await supabase.auth.getSession();
   if (sessionData?.session) {
-    window.location.href = '/admin/usuarios/cuentaUsuario.html';
+    window.location.href = '/public/usuarios/cuentaUsuario.html';
     return;
   }
 
@@ -77,7 +101,7 @@ async function init() {
       errorMensaje.textContent = 'Correo o contraseña incorrecta.';
       errorMensaje.classList.remove('hidden');
     } else {
-      window.location.href = '/admin/usuarios/cuentaUsuario.html';
+      window.location.href = '/public/usuarios/cuentaUsuario.html';
     }
   });
 
@@ -92,6 +116,8 @@ async function init() {
     const password = document.getElementById('passwordRegistro').value;
     const confirmar = document.getElementById('confirmarPassword').value;
     const foto = document.getElementById('fotoRegistro').files[0];
+    const telefono = document.getElementById('telefonoRegistro').value.trim();
+    const municipio = document.getElementById('municipio').value;
 
     if (password !== confirmar) {
       errorRegistro.textContent = 'Las contraseñas no coinciden.';
@@ -135,12 +161,10 @@ async function init() {
       }
     }
 
-    // 🧾 Insertar datos en tabla usuarios
-    const { error: errorDB } = await supabase
-      .from('usuarios')
-      .insert([{ id: userId, nombre, apellido, imagen }]);
+    const payload = { nombre, apellido, telefono, municipio, imagen };
+    const actualizado = await actualizarPerfilUsuario(userId, payload);
 
-    if (errorDB) {
+    if (!actualizado) {
       errorRegistro.textContent = 'Error guardando datos.';
       errorRegistro.classList.remove('hidden');
       return;
@@ -149,7 +173,7 @@ async function init() {
     // ✅ Login automático después de registrar
     const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
     if (!loginError) {
-      window.location.href = '/admin/usuarios/cuentaUsuario.html';
+      window.location.href = '/public/usuarios/cuentaUsuario.html';
     } else {
       alert('Cuenta creada, pero necesitas iniciar sesión.');
       window.location.reload();
