@@ -1,5 +1,5 @@
 // crearComercio.js
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 const municipioSelect = document.getElementById('municipio');
 const categoriaSelect = document.getElementById('categoria');

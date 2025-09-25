@@ -1,4 +1,4 @@
-import { calcularTiempoEnVehiculo } from '/shared/utils.js';
+import { calcularTiempoEnVehiculo } from '../shared/utils.js';
 
 // Calcula la distancia Haversine entre dos coordenadas
 function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {

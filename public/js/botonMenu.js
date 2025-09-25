@@ -1,5 +1,5 @@
 // botonMenu.js
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 

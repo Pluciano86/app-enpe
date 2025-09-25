@@ -1,5 +1,5 @@
 // listadoEventos.js
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 
 const lista = document.getElementById('listaEventos');

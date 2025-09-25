@@ -1,4 +1,4 @@
-import { getPublicBase, calcularTiempoEnVehiculo, formatearHorario } from '/shared/utils.js';
+import { getPublicBase, calcularTiempoEnVehiculo, formatearHorario } from '../shared/utils.js';
 
 // 📦 Supabase y componentes
 function mostrarMensajeVacio(contenedor, mensaje = 'No se encontraron comercios para los filtros seleccionados.', icono = '📍') {

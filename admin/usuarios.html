@@ -16,7 +16,7 @@
   <!-- Header y Sidebar -->
   <div id="headerContainer"></div>
   <script>
-    fetch('/admin/shared/adminHeader.html')
+    fetch('./shared/adminHeader.html')
       .then(res => res.text())
       .then(html => {
         const container = document.getElementById('headerContainer');

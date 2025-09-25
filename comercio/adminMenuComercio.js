@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from './shared/supabaseClient.js';
 
 function getPublicBase() {
   const segments = location.pathname.split('/');

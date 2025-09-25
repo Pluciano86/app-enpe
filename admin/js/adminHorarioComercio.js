@@ -1,5 +1,5 @@
 // adminHorariosComercio.js
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { idComercio } from './mainAdmin.js';
 
 // Reordenado para que i = 0 sea Lunes y i = 6 sea Domingo

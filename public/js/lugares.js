@@ -4,7 +4,7 @@ function getPublicBase() {
   return nivel !== -1 ? '/public/' : './';
 }  
 
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio } from './mensajesUI.js';
 import { calcularTiemposParaLugares } from './distanciaLugar.js';
 

@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio } from '../js/mensajesUI.js';
 
 const contenedorAlmuerzos = document.getElementById('contenedorAlmuerzos');

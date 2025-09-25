@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 const tablaUsuarios = document.getElementById('tabla-usuarios');
 const tablaMobile = document.getElementById('tabla-mobile');

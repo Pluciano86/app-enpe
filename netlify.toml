@@ -4,3 +4,27 @@
 
 [dev]
   port = 8888
+
+# =======================
+# 🔹 Contexto para Admin
+# =======================
+[context.admin]
+  [context.admin.build]
+    base = "admin"
+    publish = "admin"
+    command = ""
+
+  [context.admin.functions]
+    directory = ""
+
+# =======================
+# 🔹 Contexto para Comercio
+# =======================
+[context.comercio]
+  [context.comercio.build]
+    base = "comercio"
+    publish = "comercio"
+    command = ""
+
+  [context.comercio.functions]
+    directory = ""

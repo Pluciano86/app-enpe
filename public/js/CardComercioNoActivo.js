@@ -1,4 +1,4 @@
-import { getPublicBase, calcularTiempoEnVehiculo } from '/shared/utils.js';
+import { getPublicBase, calcularTiempoEnVehiculo } from '../shared/utils.js';
 
 export function cardComercioNoActivo(comercio) {
   const div = document.createElement('div');

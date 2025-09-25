@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { obtenerMapaCategorias } from './obtenerMapaCategorias.js';
 import { calcularDistancia } from './distanciaLugar.js';
 

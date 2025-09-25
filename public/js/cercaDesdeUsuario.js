@@ -1,6 +1,6 @@
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { cardComercio } from './CardComercio.js';
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 // Ajusta estos IDs según tu Supabase
 const ID_PLAYAS = 1;

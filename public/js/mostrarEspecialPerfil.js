@@ -1,5 +1,5 @@
 
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { obtenerImagenEspecial } from '../../especiales/renderImagenesEspecial.js';
 
 const hoy = new Date().getDay();

@@ -9,7 +9,7 @@ import { cargarHorariosComercio } from './adminHorarioComercio.js';
 import { cargarFeriadosComercio } from './adminFeriadosComercio.js';
 import { cargarAmenidadesComercio } from './adminAmenidadesComercio.js';
 import { cargarCategoriasYSubcategorias } from './adminCategoriasComercio.js';
-import { idComercio, supabase } from '/shared/supabaseClient.js';
+import { idComercio, supabase } from '../shared/supabaseClient.js';
 
 // Cargar datos generales al inicio
 document.addEventListener('DOMContentLoaded', async () => {

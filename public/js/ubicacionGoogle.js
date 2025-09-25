@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 // ✅ Solo se ejecuta si hay ID en URL (usado en perfilComercio.html)
 const idComercio = new URLSearchParams(window.location.search).get('id');

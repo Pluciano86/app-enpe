@@ -1,6 +1,6 @@
 // listadoPlayas.js
 import { obtenerClima } from "./obtenerClima.js";
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { calcularTiemposParaLugares, calcularDistancia } from './distanciaLugar.js';
 import { mostrarMensajeVacio } from './mensajesUI.js';
 

@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { cardComercioSlide } from './cardComercioSlide.js';
 import { cardLugarSlide } from './cardLugarSlide.js';
 import { cardPlayaSlide } from './cardPlayaSlide.js';

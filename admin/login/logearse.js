@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 async function actualizarPerfilUsuario(usuarioId, data) {
   let reintentos = 3;

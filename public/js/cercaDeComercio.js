@@ -1,6 +1,6 @@
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { cardComercio } from './CardComercio.js';
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 export async function mostrarComerciosCercanos(comercioOrigen) {
   const origenCoords = {

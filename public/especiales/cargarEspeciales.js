@@ -1,5 +1,5 @@
 console.log('🚀 Inició cargarEspeciales.js');
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { renderizarEspeciales } from './renderEspeciales.js';
 
 async function cargarEspecialesDelDia() {

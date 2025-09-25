@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 const params = new URLSearchParams(window.location.search);
 const idUsuario = params.get('id');

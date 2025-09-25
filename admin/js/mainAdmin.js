@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-import { getPublicBase } from '/shared/utils.js';
+import { getPublicBase } from '../shared/utils.js';
 
 export const supabase = createClient(
   'https://zgjaxanqfkweslkxtayt.supabase.co',

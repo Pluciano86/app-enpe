@@ -28,7 +28,7 @@ let cuentaHref = '/admin/login/logearse.html';
 
 (async () => {
   try {
-    const { supabase } = await import(`/shared/supabaseClient.js`);
+    const { supabase } = await import(`../shared/supabaseClient.js`);
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error) throw error;
 

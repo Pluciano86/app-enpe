@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 /**
  * Busca la primera imagen del especial desde la tabla imgEspeciales

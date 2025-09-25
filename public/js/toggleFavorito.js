@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!btn || !idComercio) return;
 
   // Verificar sesión
-  const { supabase } = await import('/shared/supabaseClient.js');
+  const { supabase } = await import('../shared/supabaseClient.js');
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 

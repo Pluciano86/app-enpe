@@ -1,5 +1,5 @@
-import { supabase } from '/shared/supabaseClient.js';
-import { calcularTiempoEnVehiculo } from '/shared/utils.js';
+import { supabase } from '../shared/supabaseClient.js';
+import { calcularTiempoEnVehiculo } from '../shared/utils.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';

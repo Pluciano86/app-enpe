@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import readline from 'readline';
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 const GOOGLE_API_KEY = 'AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI';
 const location = '17.9854,-66.6141';

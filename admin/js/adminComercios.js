@@ -1,5 +1,5 @@
 // adminLogoComercio.js
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 function getPublicBase() {
   const nivel = location.pathname.split('/').indexOf('admin');

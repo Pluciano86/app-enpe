@@ -1,4 +1,4 @@
-import { getPublicBase, calcularTiempoEnVehiculo } from '/shared/utils.js';
+import { getPublicBase, calcularTiempoEnVehiculo } from '../shared/utils.js';
 
 function resolveAppBase() {
   const segmentos = location.pathname.split('/');

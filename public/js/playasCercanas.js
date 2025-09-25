@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { cardPlayaSlide } from './cardPlayaSlide.js';
 import { obtenerClima } from './obtenerClima.js';
 import { calcularTiemposParaLugares } from './distanciaLugar.js';

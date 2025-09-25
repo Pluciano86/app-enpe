@@ -1,4 +1,4 @@
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 export async function obtenerMapaCategorias() {
   const { data, error } = await supabase

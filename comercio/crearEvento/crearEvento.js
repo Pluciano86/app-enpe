@@ -1,5 +1,5 @@
 // adminEventos.js
-import { supabase } from '/shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 const form = document.getElementById('formCrearEvento');
 const municipioSelect = document.getElementById('municipio');
