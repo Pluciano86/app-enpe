@@ -431,7 +431,7 @@ async function init() {
   console.log('UID autenticado:', user.id);
   if (error || !session?.user) {
     console.error('🛑 No se pudo obtener el usuario:', error);
-    window.location.href = '/admin/login/logearse.html';
+    window.location.href = '/admin/logearse.html';
     return;
   }
 

@@ -93,12 +93,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       cuentaImagen.src = defaultCuentaImg;
       cuentaTexto.textContent = defaultCuentaTexto;
-      enlaceMiCuenta.href = 'https://admin.enpe-erre.com/login/logearse.html';
+      enlaceMiCuenta.href = 'https://admin.enpe-erre.com/logearse.html';
     }
   } catch (error) {
     console.error('Error verificando sesión:', error);
     cuentaImagen.src = defaultCuentaImg;
     cuentaTexto.textContent = defaultCuentaTexto;
-    enlaceMiCuenta.href = 'https://admin.enpe-erre.com/login/logearse.html';
+    enlaceMiCuenta.href = 'https://admin.enpe-erre.com/logearse.html';
   }
 });
