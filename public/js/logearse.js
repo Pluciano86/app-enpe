@@ -1,5 +1,7 @@
 import { supabase } from '../shared/supabaseClient.js';
 
+const publicBasePath = window.location.pathname.includes('/public/') ? '/public' : '';
+
 async function actualizarPerfilUsuario(usuarioId, data) {
   let reintentos = 3;
   let errorFinal = null;
@@ -41,7 +43,7 @@ async function init() {
   // Redirigir si ya hay sesión activa
   const { data: sessionData } = await supabase.auth.getSession();
   if (sessionData?.session) {
-    window.location.href = '/public/usuarios/cuentaUsuario.html';
+    window.location.href = `${publicBasePath}/usuarios/cuentaUsuario.html`;
     return;
   }
 
@@ -101,7 +103,7 @@ async function init() {
       errorMensaje.textContent = 'Correo o contraseña incorrecta.';
       errorMensaje.classList.remove('hidden');
     } else {
-      window.location.href = '/public/usuarios/cuentaUsuario.html';
+      window.location.href = `${publicBasePath}/usuarios/cuentaUsuario.html`;
     }
   });
 
@@ -173,7 +175,7 @@ async function init() {
     // ✅ Login automático después de registrar
     const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
     if (!loginError) {
-      window.location.href = '/public/usuarios/cuentaUsuario.html';
+      window.location.href = `${publicBasePath}/usuarios/cuentaUsuario.html`;
     } else {
       alert('Cuenta creada, pero necesitas iniciar sesión.');
       window.location.reload();
