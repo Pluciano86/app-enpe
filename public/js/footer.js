@@ -1,3 +1,5 @@
+import { supabase } from '../shared/supabaseClient.js';
+
 const container = document.getElementById('footerContainer');
 
 // Detectar si estamos en Live Server y ajustar ruta base
@@ -22,36 +24,12 @@ const texto = esAlmuerzo ? 'Almuerzos' : 'Happy Hours';
 
 const iconBase = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/appicon/';
 
-let cuentaImg = `${iconBase}profile.svg`;
-let cuentaTexto = `Mi Cuenta`;
-let cuentaHref = '/admin/login/logearse.html';
+const defaultCuentaImg = `${iconBase}profile.svg`;
+const defaultCuentaTexto = 'Mi Cuenta';
 
-(async () => {
-  try {
-    const { supabase } = await import(`../shared/supabaseClient.js`);
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
+function renderFooter() {
+  if (!container) return;
 
-    const user = session?.user;
-    if (user) {
-      const uid = user.id;
-      const { data: perfil } = await supabase
-        .from('usuarios')
-        .select('nombre, imagen')
-        .eq('id', uid)
-        .single();
-
-      if (perfil) {
-        cuentaImg = perfil.imagen || cuentaImg;
-        cuentaTexto = perfil.nombre || user.email.split('@')[0];
-        cuentaHref = '/public/usuarios/cuentaUsuario.html';
-      }
-    }
-  } catch (error) {
-    console.warn('⚠️ No logueado o Supabase no disponible:', error.message);
-  }
-
-  // Generar el footer
   container.innerHTML = `
     <footer class="fixed bottom-0 left-0 right-0 z-50 bg-[#231F20] text-white border-t border-gray-700" style="padding-bottom: env(safe-area-inset-bottom);">
       <nav class="flex justify-around py-2">
@@ -67,14 +45,60 @@ let cuentaHref = '/admin/login/logearse.html';
           <img src="${iconBase}deadline.svg" class="w-8 h-8 mb-1" alt="Eventos">
           Eventos
         </a>
-        <a href="${cuentaHref}" class="flex flex-col items-center text-sm font-extralight w-1/4">
+        <a id="enlaceMiCuenta" href="#" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img 
-            src="${cuentaImg}" 
-            class="w-8 h-8 mb-1 ${cuentaImg.includes('profile.svg') ? '' : 'rounded-full object-cover'}" 
+            id="footerImagen"
+            src="${defaultCuentaImg}"
+            class="w-8 h-8 mb-1 rounded-full object-cover"
             alt="Cuenta">
-          ${cuentaTexto}
+          <span id="footerTexto">${defaultCuentaTexto}</span>
         </a>
       </nav>
     </footer>
   `;
-})();
+}
+
+renderFooter();
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const enlaceMiCuenta = document.getElementById('enlaceMiCuenta');
+  const cuentaImagen = document.getElementById('footerImagen');
+  const cuentaTexto = document.getElementById('footerTexto');
+
+  if (!enlaceMiCuenta) return;
+
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) throw error;
+
+    if (session?.user) {
+      const user = session.user;
+      enlaceMiCuenta.href = '/usuarios/cuentaUsuario.html';
+
+      const { data: perfil, error: perfilError } = await supabase
+        .from('usuarios')
+        .select('nombre, imagen')
+        .eq('id', user.id)
+        .single();
+
+      if (!perfilError && perfil) {
+        if (perfil.imagen) {
+          cuentaImagen.src = perfil.imagen;
+          cuentaImagen.classList.add('rounded-full', 'object-cover');
+        }
+        cuentaTexto.textContent = perfil.nombre || user.email.split('@')[0];
+      } else {
+        cuentaTexto.textContent = user.email.split('@')[0];
+      }
+    } else {
+      cuentaImagen.src = defaultCuentaImg;
+      cuentaTexto.textContent = defaultCuentaTexto;
+      enlaceMiCuenta.href = 'https://admin.enpe-erre.com/login/logearse.html';
+    }
+  } catch (error) {
+    console.error('Error verificando sesión:', error);
+    cuentaImagen.src = defaultCuentaImg;
+    cuentaTexto.textContent = defaultCuentaTexto;
+    enlaceMiCuenta.href = 'https://admin.enpe-erre.com/login/logearse.html';
+  }
+});
