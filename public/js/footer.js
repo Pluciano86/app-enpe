@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (session?.user) {
       const user = session.user;
-      enlaceMiCuenta.href = '/usuarios/cuentaUsuario.html';
+      enlaceMiCuenta.href = `${base}usuarios/cuentaUsuario.html`;
 
       const { data: perfil, error: perfilError } = await supabase
         .from('usuarios')
