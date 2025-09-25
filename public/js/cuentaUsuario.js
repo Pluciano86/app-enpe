@@ -2,6 +2,8 @@ import { supabase } from '../shared/supabaseClient.js';
 import { obtenerMapaCategorias } from './obtenerMapaCategorias.js';
 import { calcularDistancia } from './distanciaLugar.js';
 
+const publicBasePath = window.location.pathname.includes('/public/') ? '/public' : '';
+
 // Verificar sesión activa antes de permitir updates
 async function verificarSesion() {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -87,7 +89,7 @@ function mostrarFavoritos(lista) {
     const card = document.createElement('div');
     card.className = 'flex items-center justify-between gap-3 bg-white rounded-lg shadow p-3 cursor-pointer hover:bg-gray-50 transition';
     card.addEventListener('click', () => {
-      window.location.href = `/public/perfilComercio.html?id=${item.id}`;
+    window.location.href = `${publicBasePath}/perfilComercio.html?id=${item.id}`;
     });
 
     const infoWrapper = document.createElement('div');
@@ -431,7 +433,7 @@ async function init() {
   console.log('UID autenticado:', user.id);
   if (error || !session?.user) {
     console.error('🛑 No se pudo obtener el usuario:', error);
-    window.location.href = `${window.location.origin}/logearse.html`;
+    window.location.href = `${publicBasePath}/logearse.html`;
     return;
   }
 
@@ -602,7 +604,7 @@ formEditar?.addEventListener('submit', async (e) => {
 btnLogout?.addEventListener('click', async () => {
   if (!confirm('¿Deseas cerrar sesión?')) return;
   await supabase.auth.signOut();
-  window.location.href = '/index.html';
+  window.location.href = `${publicBasePath}/index.html`;
 });
 
 init();

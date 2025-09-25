@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   btn.addEventListener('click', async () => {
     if (!usuarioId) {
       alert(`Para añadir a este comercio a favoritos debes iniciar sesión.`);
-      window.location.href = `${window.location.origin}/logearse.html`;
+      const publicBasePath = window.location.pathname.includes('/public/') ? '/public' : '';
+      window.location.href = `${publicBasePath}/logearse.html`;
       return;
     }
 
