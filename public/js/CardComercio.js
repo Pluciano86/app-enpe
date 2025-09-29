@@ -1,8 +1,8 @@
 import { getPublicBase, calcularTiempoEnVehiculo } from '../shared/utils.js';
 
 function resolveAppBase() {
-  const segmentos = location.pathname.split('/');
-  return segmentos.includes('admin') ? '/public/' : './';
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  return isLocal ? '/public/' : '/';
 }
 
 export function cardComercio(comercio) {

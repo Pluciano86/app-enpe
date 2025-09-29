@@ -1,8 +1,8 @@
 // lugares.js
 function getPublicBase() {
-  const nivel = location.pathname.split('/').indexOf('admin');
-  return nivel !== -1 ? '/public/' : './';
-}  
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  return isLocal ? '/public/' : '/';
+}
 
 import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio } from './mensajesUI.js';

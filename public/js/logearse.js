@@ -1,6 +1,35 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { togglePassword } from './togglePassword.js';
 
-const publicBasePath = window.location.pathname.includes('/public/') ? '/public' : '';
+const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+const basePath = isLocal ? '/public' : '';
+const origin = window.location.origin;
+const resetRedirectTo = `${origin}${basePath}/nuevaPassword.html`;
+
+window.__supabaseResetRedirect = resetRedirectTo;
+const socialRedirectUrl = `${origin}${basePath}/usuarios/cuentaUsuario.html`;
+
+async function loginWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: socialRedirectUrl }
+  });
+
+  if (error) {
+    console.error('Error loginWithGoogle:', error.message);
+  }
+}
+
+async function loginWithFacebook() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'facebook',
+    options: { redirectTo: socialRedirectUrl }
+  });
+
+  if (error) {
+    console.error('Error loginWithFacebook:', error.message);
+  }
+}
 
 async function actualizarPerfilUsuario(usuarioId, data) {
   let reintentos = 3;
@@ -34,16 +63,18 @@ async function init() {
   const btnMostrarRegistro = document.getElementById('btnMostrarRegistro');
   const formRegistro = document.getElementById('formRegistro');
   const errorRegistro = document.getElementById('errorRegistro');
+  const linksRecuperacion = document.getElementById('linksRecuperacion');
 
   const fotoInput = document.getElementById('fotoRegistro');
-  const previewFoto = document.createElement('img');
-  previewFoto.className = 'w-16 h-16 rounded-full object-cover mt-2 mx-auto hidden';
-  fotoInput?.parentNode?.appendChild(previewFoto);
+  const avatarPreview = document.getElementById('avatarPreview');
+  const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+  const avatarText = document.getElementById('avatarText');
+  const previewFoto = document.getElementById('previewFoto');
 
   // Redirigir si ya hay sesión activa
   const { data: sessionData } = await supabase.auth.getSession();
   if (sessionData?.session) {
-    window.location.href = `${publicBasePath}/usuarios/cuentaUsuario.html`;
+    window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
     return;
   }
 
@@ -53,6 +84,7 @@ async function init() {
     btnMostrarLogin.classList.add('hidden');
     formRegistro.classList.add('hidden');
     btnMostrarRegistro.classList.remove('hidden');
+    linksRecuperacion?.classList.remove('hidden');
   });
 
   // Mostrar Registro
@@ -61,20 +93,32 @@ async function init() {
     btnMostrarRegistro.classList.add('hidden');
     formLogin.classList.add('hidden');
     btnMostrarLogin.classList.remove('hidden');
+    linksRecuperacion?.classList.add('hidden');
   });
 
-  // Mostrar/Ocultar contraseñas
-  document.querySelectorAll('.toggle-password').forEach(icon => {
-    icon.addEventListener('click', () => {
-      const targetId = icon.getAttribute('data-target');
-      const input = document.getElementById(targetId);
-      if (input) {
-        input.type = input.type === 'password' ? 'text' : 'password';
-        icon.classList.toggle('fa-eye');
-        icon.classList.toggle('fa-eye-slash');
+  togglePassword('passwordLogin', 'togglePasswordLogin');
+  togglePassword('passwordRegistro', 'togglePasswordRegistro');
+  togglePassword('confirmarPassword', 'toggleConfirmarPassword');
+
+  const socialButtons = document.querySelectorAll('[data-login-provider]');
+  socialButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const provider = button.getAttribute('data-login-provider');
+      if (provider === 'google') {
+        loginWithGoogle();
+      }
+      if (provider === 'facebook') {
+        loginWithFacebook();
       }
     });
   });
+
+  const triggerAvatarPicker = () => {
+    fotoInput?.click();
+  };
+
+  avatarPreview?.addEventListener('click', triggerAvatarPicker);
+  avatarText?.addEventListener('click', triggerAvatarPicker);
 
   // Preview de imagen
   fotoInput?.addEventListener('change', () => {
@@ -84,8 +128,12 @@ async function init() {
       reader.onload = () => {
         previewFoto.src = reader.result;
         previewFoto.classList.remove('hidden');
+        avatarPlaceholder?.classList.add('hidden');
       };
       reader.readAsDataURL(file);
+    } else {
+      previewFoto?.classList.add('hidden');
+      avatarPlaceholder?.classList.remove('hidden');
     }
   });
 
@@ -103,7 +151,7 @@ async function init() {
       errorMensaje.textContent = 'Correo o contraseña incorrecta.';
       errorMensaje.classList.remove('hidden');
     } else {
-      window.location.href = `${publicBasePath}/usuarios/cuentaUsuario.html`;
+      window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
     }
   });
 
@@ -128,10 +176,10 @@ async function init() {
     }
 
     // 🔒 Desactivar confirmación de email
-   const { data: signup, error: errorSignup } = await supabase.auth.signUp({
-  email,
-  password
-});
+    const { data: signup, error: errorSignup } = await supabase.auth.signUp({
+      email,
+      password
+    });
 
     if (errorSignup || !signup?.user?.id) {
       errorRegistro.textContent = 'Error creando la cuenta.';
@@ -175,7 +223,7 @@ async function init() {
     // ✅ Login automático después de registrar
     const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
     if (!loginError) {
-      window.location.href = `${publicBasePath}/usuarios/cuentaUsuario.html`;
+      window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
     } else {
       alert('Cuenta creada, pero necesitas iniciar sesión.');
       window.location.reload();

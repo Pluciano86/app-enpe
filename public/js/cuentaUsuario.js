@@ -2,7 +2,9 @@ import { supabase } from '../shared/supabaseClient.js';
 import { obtenerMapaCategorias } from './obtenerMapaCategorias.js';
 import { calcularDistancia } from './distanciaLugar.js';
 
-const publicBasePath = window.location.pathname.includes('/public/') ? '/public' : '';
+const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+const basePath = isLocal ? '/public' : '';
+
 
 // Verificar sesión activa antes de permitir updates
 async function verificarSesion() {
@@ -89,7 +91,7 @@ function mostrarFavoritos(lista) {
     const card = document.createElement('div');
     card.className = 'flex items-center justify-between gap-3 bg-white rounded-lg shadow p-3 cursor-pointer hover:bg-gray-50 transition';
     card.addEventListener('click', () => {
-    window.location.href = `${publicBasePath}/perfilComercio.html?id=${item.id}`;
+      window.location.href = `${basePath}/perfilComercio.html?id=${item.id}`;
     });
 
     const infoWrapper = document.createElement('div');
@@ -241,15 +243,170 @@ async function cargarPerfil(uid) {
     .from('usuarios')
     .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio')
     .eq('id', uid)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('🛑 No se pudo cargar el perfil:', error);
-    alert('No se pudo cargar tu perfil.');
     return null;
   }
 
-  return data;
+  return data ?? null;
+}
+
+function mapMetadataToPerfil(user) {
+  if (!user) return {};
+  const metadata = user.user_metadata || {};
+
+  const displayName = metadata.full_name || metadata.name || metadata.display_name || '';
+  const posibleNombre = metadata.first_name || metadata.given_name || displayName;
+  const posibleApellido = metadata.last_name || metadata.family_name || '';
+
+  let nombre = posibleNombre;
+  let apellido = posibleApellido;
+
+  if (!apellido && displayName && displayName.includes(' ')) {
+    const partes = displayName.trim().split(/\s+/);
+    nombre = partes[0];
+    apellido = partes.length > 1 ? partes.slice(1).join(' ') : '';
+  }
+
+  const telefono = metadata.phone_number || metadata.phone || '';
+  const imagen = metadata.avatar_url || metadata.picture || '';
+
+  return {
+    nombre: nombre || '',
+    apellido: apellido || '',
+    telefono: telefono || '',
+    imagen: imagen || ''
+  };
+}
+
+async function subirAvatarDesdeUrl(url, userId) {
+  if (!url || !userId) return null;
+
+  try {
+    const respuesta = await fetch(url, { mode: 'cors' });
+    if (!respuesta.ok) {
+      console.warn('⚠️ No se pudo descargar la imagen de perfil desde OAuth:', respuesta.status, url);
+      return null;
+    }
+
+    const blob = await respuesta.blob();
+    if (!blob.size) {
+      console.warn('⚠️ La imagen descargada está vacía.');
+      return null;
+    }
+
+    const extension = (blob.type?.split('/')?.[1] || 'jpg').split(';')[0];
+    const nombreArchivo = `usuarios/${userId}_${Date.now()}.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('imagenesusuarios')
+      .upload(nombreArchivo, blob, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: blob.type || 'image/jpeg'
+      });
+
+    if (uploadError) {
+      console.error('🛑 Error subiendo avatar desde OAuth:', uploadError.message);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from('imagenesusuarios')
+      .getPublicUrl(nombreArchivo);
+
+    return data?.publicUrl || null;
+  } catch (error) {
+    console.error('🛑 Excepción subiendo avatar desde OAuth:', error);
+    return null;
+  }
+}
+
+async function crearPerfilSiNoExiste(user) {
+  if (!user?.id) return null;
+
+  const metadataPerfil = mapMetadataToPerfil(user);
+  const perfilExistente = await cargarPerfil(user.id);
+
+  if (perfilExistente) {
+    const updatePayload = {};
+
+    if (!perfilExistente.nombre && metadataPerfil.nombre) {
+      updatePayload.nombre = metadataPerfil.nombre;
+    }
+
+    if (!perfilExistente.apellido && metadataPerfil.apellido) {
+      updatePayload.apellido = metadataPerfil.apellido;
+    }
+
+    if (!perfilExistente.telefono && metadataPerfil.telefono) {
+      updatePayload.telefono = metadataPerfil.telefono;
+    }
+
+    if (!perfilExistente.imagen && metadataPerfil.imagen) {
+      const subida = await subirAvatarDesdeUrl(metadataPerfil.imagen, user.id);
+      if (subida) {
+        updatePayload.imagen = subida;
+      }
+    }
+
+    if (Object.keys(updatePayload).length > 0) {
+      console.log('Actualizando perfil existente con metadata OAuth', updatePayload);
+      const { data, error } = await supabase
+        .from('usuarios')
+        .update(updatePayload)
+        .eq('id', user.id)
+        .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio')
+        .maybeSingle();
+
+      if (error) {
+        console.error('🛑 No se pudo actualizar el perfil existente:', error);
+        return perfilExistente;
+      }
+
+      return data ?? perfilExistente;
+    }
+
+    return perfilExistente;
+  }
+
+  let imagenFinal = metadataPerfil.imagen || '';
+
+  if (imagenFinal) {
+    const subida = await subirAvatarDesdeUrl(imagenFinal, user.id);
+    if (subida) {
+      imagenFinal = subida;
+    }
+  }
+
+  const payload = {
+    id: user.id,
+    email: user.email,
+    nombre: metadataPerfil.nombre,
+    apellido: metadataPerfil.apellido,
+    telefono: metadataPerfil.telefono,
+    imagen: imagenFinal
+  };
+
+  console.log('Ejecutando operación insert en tabla usuarios', payload);
+  const { data, error } = await supabase
+    .from('usuarios')
+    .insert([payload])
+    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio')
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === '23505') {
+      console.warn('⚠️ Perfil ya existía, reintentando carga.');
+      return await cargarPerfil(user.id);
+    }
+    console.error('🛑 No se pudo crear el perfil del usuario:', error);
+    return null;
+  }
+
+  return data ?? null;
 }
 
 async function asegurarMapasCategoriaSubcategoria() {
@@ -428,23 +585,27 @@ async function cargarYMostrarFavoritos() {
 
 async function init() {
   const { data: session, error } = await supabase.auth.getUser();
-  // ✅ Debug temporal para verificar UID autenticado
-  const { data: { user } } = await supabase.auth.getUser();
-  console.log('UID autenticado:', user.id);
+  if (session?.user) {
+    console.log('UID autenticado:', session.user.id);
+  }
   if (error || !session?.user) {
     console.error('🛑 No se pudo obtener el usuario:', error);
-    window.location.href = `${publicBasePath}/logearse.html`;
+    window.location.href = `${basePath}/logearse.html`;
     return;
   }
 
-  const uid = session.user.id;
-  usuarioId = uid;
+  const authUser = session.user;
+  usuarioId = authUser.id;
 
-  perfilOriginal = await cargarPerfil(uid);
-  if (!perfilOriginal) return;
+  perfilOriginal = await crearPerfilSiNoExiste(authUser);
+  if (!perfilOriginal) {
+    alert('No se pudo cargar tu perfil. Intenta iniciar sesión nuevamente.');
+    window.location.href = `${basePath}/logearse.html`;
+    return;
+  }
 
   const nombreCompleto = `${perfilOriginal.nombre || ''} ${perfilOriginal.apellido || ''}`.trim();
-  nombreUsuario.textContent = nombreCompleto || session.user.email;
+  nombreUsuario.textContent = nombreCompleto || authUser.email;
 
   inputNombre.value = perfilOriginal.nombre || '';
   inputApellido.value = perfilOriginal.apellido || '';
@@ -456,11 +617,11 @@ async function init() {
   fotoPerfil.src = imagenURL;
   imagenActual.src = imagenURL;
 
-  const fecha = perfilOriginal.creado_en || session.user.created_at;
+  const fecha = perfilOriginal.creado_en || authUser.created_at;
   fechaRegistro.textContent = `Activo desde ${formatearFecha(fecha)}`;
 
   if (emailUsuario) {
-    emailUsuario.textContent = perfilOriginal.email || session.user.email || 'Sin correo';
+    emailUsuario.textContent = perfilOriginal.email || authUser.email || 'Sin correo';
   }
 
   if (municipioUsuario) {
@@ -604,7 +765,7 @@ formEditar?.addEventListener('submit', async (e) => {
 btnLogout?.addEventListener('click', async () => {
   if (!confirm('¿Deseas cerrar sesión?')) return;
   await supabase.auth.signOut();
-  window.location.href = `${publicBasePath}/index.html`;
+  window.location.href = `${basePath}/index.html`;
 });
 
 init();

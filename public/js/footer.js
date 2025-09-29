@@ -5,6 +5,8 @@ const container = document.getElementById('footerContainer');
 // Detectar si estamos en Live Server y ajustar ruta base
 const isLiveServer = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
 const ruta = location.pathname;
+const loginPath = isLiveServer ? '/public/logearse.html' : '/logearse.html';
+const cuentaPath = isLiveServer ? '/public/usuarios/cuentaUsuario.html' : '/usuarios/cuentaUsuario.html';
 
 let nivel = 0;
 if (isLiveServer && ruta.includes('/public/')) {
@@ -14,7 +16,6 @@ if (isLiveServer && ruta.includes('/public/')) {
 }
 
 const base = nivel === 0 ? './' : '../'.repeat(nivel);
-const publicBasePath = ruta.includes('/public/') ? '/public' : '';
 
 // Otros valores
 const hora = new Date().getHours();
@@ -46,7 +47,7 @@ function renderFooter() {
           <img src="${iconBase}deadline.svg" class="w-8 h-8 mb-1" alt="Eventos">
           Eventos
         </a>
-        <a id="enlaceMiCuenta" href="${publicBasePath}/logearse.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
+        <a id="enlaceMiCuenta" href="${loginPath}" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img 
             id="footerImagen"
             src="${defaultCuentaImg}"
@@ -74,13 +75,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (session?.user) {
       const user = session.user;
-      enlaceMiCuenta.href = `${publicBasePath}/usuarios/cuentaUsuario.html`;
+      enlaceMiCuenta.href = cuentaPath;
 
       const { data: perfil, error: perfilError } = await supabase
         .from('usuarios')
         .select('nombre, imagen')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!perfilError && perfil) {
         if (perfil.imagen) {
@@ -94,12 +95,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       cuentaImagen.src = defaultCuentaImg;
       cuentaTexto.textContent = defaultCuentaTexto;
-      enlaceMiCuenta.href = `${publicBasePath}/logearse.html`;
+      enlaceMiCuenta.href = loginPath;
     }
   } catch (error) {
     console.error('Error verificando sesión:', error);
     cuentaImagen.src = defaultCuentaImg;
     cuentaTexto.textContent = defaultCuentaTexto;
-    enlaceMiCuenta.href = `${publicBasePath}/logearse.html`;
+    enlaceMiCuenta.href = loginPath;
   }
 });

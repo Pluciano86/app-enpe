@@ -1,10 +1,7 @@
 import { supabase } from './shared/supabaseClient.js';
 
 function getPublicBase() {
-  const segments = location.pathname.split('/');
-  const isAdmin = segments.includes('admin');
-  const isComercio = segments.includes('comercio');
-  return isAdmin || isComercio ? '/public/' : './';
+  return '/';
 }
 
 const idComercio = new URLSearchParams(window.location.search).get('id');

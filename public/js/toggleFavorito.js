@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btn = document.getElementById('btnFavorito');
   const icono = btn?.querySelector('i');
   const texto = btn?.querySelector('span');
+  const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+  const basePath = isLocal ? '/public' : '';
 
   const idComercio = new URLSearchParams(window.location.search).get('id');
   let usuarioId = null;
@@ -31,8 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   btn.addEventListener('click', async () => {
     if (!usuarioId) {
       alert(`Para añadir a este comercio a favoritos debes iniciar sesión.`);
-      const publicBasePath = window.location.pathname.includes('/public/') ? '/public' : '';
-      window.location.href = `${publicBasePath}/logearse.html`;
+      window.location.href = `${basePath}/logearse.html`;
       return;
     }
 

@@ -1,5 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { mostrarMensajeVacio } from '/public/js/mensajesUI.js';
+import { mostrarMensajeVacio } from '/js/mensajesUI.js';
 
 const contenedorAlmuerzos = document.getElementById('contenedorAlmuerzos');
 const contenedorHappy = document.getElementById('contenedorHappy');

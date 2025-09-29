@@ -2,8 +2,7 @@
 import { supabase } from '../shared/supabaseClient.js';
 
 function getPublicBase() {
-  const nivel = location.pathname.split('/').indexOf('admin');
-  return nivel !== -1 ? '/public/' : './';
+  return '/';
 }
 
 export async function guardarLogoSiAplica() {
