@@ -20,14 +20,14 @@ async function loginWithGoogle() {
   }
 }
 
-async function loginWithFacebook() {
+async function loginWithMicrosoft() {
   const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'facebook',
+    provider: 'azure',
     options: { redirectTo: socialRedirectUrl }
   });
 
   if (error) {
-    console.error('Error loginWithFacebook:', error.message);
+    console.error('Error loginWithMicrosoft:', error.message);
   }
 }
 
@@ -64,12 +64,17 @@ async function init() {
   const formRegistro = document.getElementById('formRegistro');
   const errorRegistro = document.getElementById('errorRegistro');
   const linksRecuperacion = document.getElementById('linksRecuperacion');
+  const linkMostrarRegistro = document.getElementById('linkMostrarRegistro');
+  const linkMostrarLogin = document.getElementById('linkMostrarLogin');
+  const btnGoogleTop = document.getElementById('btnGoogleTop');
+  const btnMicrosoftTop = document.getElementById('btnMicrosoftTop');
 
   const fotoInput = document.getElementById('fotoRegistro');
   const avatarPreview = document.getElementById('avatarPreview');
   const avatarPlaceholder = document.getElementById('avatarPlaceholder');
   const avatarText = document.getElementById('avatarText');
   const previewFoto = document.getElementById('previewFoto');
+  const consentimientoSms = document.getElementById('consentimientoSms');
 
   // Redirigir si ya hay sesión activa
   const { data: sessionData } = await supabase.auth.getSession();
@@ -79,22 +84,31 @@ async function init() {
   }
 
   // Mostrar Login
-  btnMostrarLogin?.addEventListener('click', () => {
+  const mostrarLogin = () => {
     formLogin.classList.remove('hidden');
     btnMostrarLogin.classList.add('hidden');
     formRegistro.classList.add('hidden');
     btnMostrarRegistro.classList.remove('hidden');
     linksRecuperacion?.classList.remove('hidden');
-  });
+    btnGoogleTop?.classList.add('hidden');
+    btnMicrosoftTop?.classList.add('hidden');
+  };
 
   // Mostrar Registro
-  btnMostrarRegistro?.addEventListener('click', () => {
+  const mostrarRegistro = () => {
     formRegistro.classList.remove('hidden');
     btnMostrarRegistro.classList.add('hidden');
     formLogin.classList.add('hidden');
-    btnMostrarLogin.classList.remove('hidden');
     linksRecuperacion?.classList.add('hidden');
-  });
+    btnGoogleTop?.classList.remove('hidden');
+    btnMicrosoftTop?.classList.remove('hidden');
+    btnMostrarLogin?.classList.add('hidden');
+  };
+
+  btnMostrarLogin?.addEventListener('click', mostrarLogin);
+  btnMostrarRegistro?.addEventListener('click', mostrarRegistro);
+  linkMostrarRegistro?.addEventListener('click', mostrarRegistro);
+  linkMostrarLogin?.addEventListener('click', mostrarLogin);
 
   togglePassword('passwordLogin', 'togglePasswordLogin');
   togglePassword('passwordRegistro', 'togglePasswordRegistro');
@@ -107,8 +121,8 @@ async function init() {
       if (provider === 'google') {
         loginWithGoogle();
       }
-      if (provider === 'facebook') {
-        loginWithFacebook();
+      if (provider === 'azure') {
+        loginWithMicrosoft();
       }
     });
   });
@@ -168,6 +182,20 @@ async function init() {
     const foto = document.getElementById('fotoRegistro').files[0];
     const telefono = document.getElementById('telefonoRegistro').value.trim();
     const municipio = document.getElementById('municipio').value;
+    const notificarText = consentimientoSms?.checked ?? true;
+
+    const telefonoRegex = /^\d{3}-\d{3}-\d{4}$/;
+    if (telefono && !telefonoRegex.test(telefono)) {
+      errorRegistro.textContent = 'Ingresa un teléfono válido con el formato 787-123-4567.';
+      errorRegistro.classList.remove('hidden');
+      return;
+    }
+
+    if (password.length < 6) {
+      errorRegistro.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+      errorRegistro.classList.remove('hidden');
+      return;
+    }
 
     if (password !== confirmar) {
       errorRegistro.textContent = 'Las contraseñas no coinciden.';
@@ -211,7 +239,7 @@ async function init() {
       }
     }
 
-    const payload = { nombre, apellido, telefono, municipio, imagen };
+    const payload = { nombre, apellido, telefono, municipio, imagen, notificartext: notificarText };
     const actualizado = await actualizarPerfilUsuario(userId, payload);
 
     if (!actualizado) {

@@ -61,6 +61,29 @@ let searchQuery = '';
 let userCoords = null;
 let huboErrorCargandoFavoritos = false;
 
+async function restaurarSesionDesdeHash() {
+  const hash = window.location.hash;
+  if (!hash || !hash.includes('access_token')) return;
+
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+
+  if (!accessToken || !refreshToken) return;
+
+  const { error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken
+  });
+
+  if (error) {
+    console.error('🛑 Error restaurando sesión OAuth:', error);
+    return;
+  }
+
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
 function formatearFecha(fechaISO) {
   if (!fechaISO) return '--';
   const fecha = new Date(fechaISO);
@@ -241,7 +264,7 @@ async function cargarPerfil(uid) {
   console.log('Ejecutando operación select en tabla usuarios', { filtro: { id: uid } });
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio')
+    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
     .eq('id', uid)
     .maybeSingle();
 
@@ -352,13 +375,17 @@ async function crearPerfilSiNoExiste(user) {
       }
     }
 
+    if (perfilExistente.notificartext === null || perfilExistente.notificartext === undefined) {
+      updatePayload.notificartext = true;
+    }
+
     if (Object.keys(updatePayload).length > 0) {
       console.log('Actualizando perfil existente con metadata OAuth', updatePayload);
       const { data, error } = await supabase
         .from('usuarios')
         .update(updatePayload)
         .eq('id', user.id)
-        .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio')
+        .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
         .maybeSingle();
 
       if (error) {
@@ -387,14 +414,15 @@ async function crearPerfilSiNoExiste(user) {
     nombre: metadataPerfil.nombre,
     apellido: metadataPerfil.apellido,
     telefono: metadataPerfil.telefono,
-    imagen: imagenFinal
+    imagen: imagenFinal,
+    notificartext: true
   };
 
   console.log('Ejecutando operación insert en tabla usuarios', payload);
   const { data, error } = await supabase
     .from('usuarios')
     .insert([payload])
-    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio')
+    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
     .maybeSingle();
 
   if (error) {
@@ -584,6 +612,8 @@ async function cargarYMostrarFavoritos() {
 }
 
 async function init() {
+  await restaurarSesionDesdeHash();
+
   const { data: session, error } = await supabase.auth.getUser();
   if (session?.user) {
     console.log('UID autenticado:', session.user.id);
