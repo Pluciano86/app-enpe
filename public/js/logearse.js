@@ -7,7 +7,9 @@ const origin = window.location.origin;
 const resetRedirectTo = `${origin}${basePath}/nuevaPassword.html`;
 
 window.__supabaseResetRedirect = resetRedirectTo;
-const socialRedirectUrl = `${origin}${basePath}/usuarios/cuentaUsuario.html`;
+const socialRedirectUrl = isLocal
+  ? `${origin}/public/cuentaUsuario.html`
+  : 'https://test.enpe-erre.com/cuentaUsuario.html';
 
 async function loginWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
