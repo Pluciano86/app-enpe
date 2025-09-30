@@ -20,16 +20,6 @@ async function loginWithGoogle() {
   }
 }
 
-async function loginWithMicrosoft() {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'azure',
-    options: { redirectTo: socialRedirectUrl }
-  });
-
-  if (error) {
-    console.error('Error loginWithMicrosoft:', error.message);
-  }
-}
 
 async function actualizarPerfilUsuario(usuarioId, data) {
   let reintentos = 3;
@@ -67,7 +57,6 @@ async function init() {
   const linkMostrarRegistro = document.getElementById('linkMostrarRegistro');
   const linkMostrarLogin = document.getElementById('linkMostrarLogin');
   const btnGoogleTop = document.getElementById('btnGoogleTop');
-  const btnMicrosoftTop = document.getElementById('btnMicrosoftTop');
 
   const fotoInput = document.getElementById('fotoRegistro');
   const avatarPreview = document.getElementById('avatarPreview');
@@ -75,6 +64,9 @@ async function init() {
   const avatarText = document.getElementById('avatarText');
   const previewFoto = document.getElementById('previewFoto');
   const consentimientoSms = document.getElementById('consentimientoSms');
+  const telefonoInput = document.getElementById('telefonoRegistro');
+  const passwordRegistroInput = document.getElementById('passwordRegistro');
+  const passwordRegistroMensaje = document.getElementById('passwordRegistroMensaje');
 
   // Redirigir si ya hay sesión activa
   const { data: sessionData } = await supabase.auth.getSession();
@@ -91,7 +83,6 @@ async function init() {
     btnMostrarRegistro.classList.remove('hidden');
     linksRecuperacion?.classList.remove('hidden');
     btnGoogleTop?.classList.add('hidden');
-    btnMicrosoftTop?.classList.add('hidden');
   };
 
   // Mostrar Registro
@@ -101,7 +92,6 @@ async function init() {
     formLogin.classList.add('hidden');
     linksRecuperacion?.classList.add('hidden');
     btnGoogleTop?.classList.remove('hidden');
-    btnMicrosoftTop?.classList.remove('hidden');
     btnMostrarLogin?.classList.add('hidden');
   };
 
@@ -110,20 +100,40 @@ async function init() {
   linkMostrarRegistro?.addEventListener('click', mostrarRegistro);
   linkMostrarLogin?.addEventListener('click', mostrarLogin);
 
+  const formatearTelefono = (digits = '') => {
+    if (!digits) return '';
+    if (digits.length <= 3) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  };
+
+  telefonoInput?.addEventListener('input', () => {
+    const soloDigitos = telefonoInput.value.replace(/\D/g, '').slice(0, 10);
+    telefonoInput.dataset.digits = soloDigitos;
+    telefonoInput.value = formatearTelefono(soloDigitos);
+  });
+
+  passwordRegistroInput?.addEventListener('input', () => {
+    const valida = passwordRegistroInput.value.length >= 6;
+    if (!valida) {
+      passwordRegistroInput.classList.add('border-red-500');
+      passwordRegistroInput.classList.remove('border-transparent');
+      passwordRegistroMensaje?.classList.remove('hidden');
+    } else {
+      passwordRegistroInput.classList.remove('border-red-500');
+      passwordRegistroInput.classList.add('border-transparent');
+      passwordRegistroMensaje?.classList.add('hidden');
+    }
+  });
+
   togglePassword('passwordLogin', 'togglePasswordLogin');
   togglePassword('passwordRegistro', 'togglePasswordRegistro');
   togglePassword('confirmarPassword', 'toggleConfirmarPassword');
 
-  const socialButtons = document.querySelectorAll('[data-login-provider]');
+  const socialButtons = document.querySelectorAll('[data-login-provider="google"]');
   socialButtons.forEach(button => {
     button.addEventListener('click', () => {
-      const provider = button.getAttribute('data-login-provider');
-      if (provider === 'google') {
-        loginWithGoogle();
-      }
-      if (provider === 'azure') {
-        loginWithMicrosoft();
-      }
+      loginWithGoogle();
     });
   });
 
@@ -180,18 +190,14 @@ async function init() {
     const password = document.getElementById('passwordRegistro').value;
     const confirmar = document.getElementById('confirmarPassword').value;
     const foto = document.getElementById('fotoRegistro').files[0];
-    const telefono = document.getElementById('telefonoRegistro').value.trim();
+    const telefonoDigits = telefonoInput?.dataset.digits || telefonoInput?.value.replace(/\D/g, '') || '';
     const municipio = document.getElementById('municipio').value;
     const notificarText = consentimientoSms?.checked ?? true;
 
-    const telefonoRegex = /^\d{3}-\d{3}-\d{4}$/;
-    if (telefono && !telefonoRegex.test(telefono)) {
-      errorRegistro.textContent = 'Ingresa un teléfono válido con el formato 787-123-4567.';
-      errorRegistro.classList.remove('hidden');
-      return;
-    }
-
     if (password.length < 6) {
+      passwordRegistroMensaje?.classList.remove('hidden');
+      passwordRegistroInput?.classList.add('border-red-500');
+      passwordRegistroInput?.classList.remove('border-transparent');
       errorRegistro.textContent = 'La contraseña debe tener al menos 6 caracteres.';
       errorRegistro.classList.remove('hidden');
       return;
@@ -199,6 +205,12 @@ async function init() {
 
     if (password !== confirmar) {
       errorRegistro.textContent = 'Las contraseñas no coinciden.';
+      errorRegistro.classList.remove('hidden');
+      return;
+    }
+
+    if (telefonoDigits.length !== 10) {
+      errorRegistro.textContent = 'Por favor, introduce un número válido de 10 dígitos.';
       errorRegistro.classList.remove('hidden');
       return;
     }
@@ -239,7 +251,7 @@ async function init() {
       }
     }
 
-    const payload = { nombre, apellido, telefono, municipio, imagen, notificartext: notificarText };
+    const payload = { nombre, apellido, telefono: telefonoDigits, municipio, imagen, notificartext: notificarText };
     const actualizado = await actualizarPerfilUsuario(userId, payload);
 
     if (!actualizado) {
