@@ -8,8 +8,8 @@ const resetRedirectTo = `${origin}${basePath}/nuevaPassword.html`;
 
 window.__supabaseResetRedirect = resetRedirectTo;
 const socialRedirectUrl = isLocal
-  ? `${origin}/public/cuentaUsuario.html`
-  : 'https://test.enpe-erre.com/cuentaUsuario.html';
+  ? `${origin}/public/usuarios/cuentaUsuario.html`
+  : 'https://test.enpe-erre.com/usuarios/cuentaUsuario.html';
 
 async function loginWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
