@@ -44,17 +44,54 @@ let eventos = [];
 let eventoEnEdicion = null;
 let fechasModal = [];
 
-function formatFecha(fecha) {
-  try {
-    const d = new Date(`${fecha}T00:00:00`);
-    return d.toLocaleDateString('es-PR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-  } catch (e) {
-    return fecha;
+function capitalizarPalabra(texto = '') {
+  if (!texto) return '';
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function estilizarFechaExtendida(fechaLocale = '') {
+  if (!fechaLocale) return '';
+  const [primeraParte, ...resto] = fechaLocale.split(', ');
+  const primera = capitalizarPalabra(primeraParte);
+  let restoTexto = resto.join(', ');
+
+  if (restoTexto) {
+    restoTexto = restoTexto.replace(/ de ([a-záéíóúñ]+)/gi, (_, palabra) => ` de ${capitalizarPalabra(palabra)}`);
+    restoTexto = restoTexto.replace(/\sde\s(\d{4})$/i, ' $1');
   }
+
+  return restoTexto ? `${primera}, ${restoTexto}` : primera;
+}
+
+function formatFecha(fecha) {
+  if (!fecha) return 'Sin fecha';
+  const [year, month, day] = String(fecha).split('-').map(Number);
+  if ([year, month, day].some((value) => Number.isNaN(value))) return 'Sin fecha';
+  const dateObj = new Date(Date.UTC(year, month - 1, day));
+  const base = dateObj.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+  return estilizarFechaExtendida(base);
 }
 
 function formatHora(hora) {
-  return hora ? hora.slice(0, 5) : '--:--';
+  if (!hora) return '';
+  const [hourPart, minutePart] = String(hora).split(':');
+  const hour = Number(hourPart);
+  const minute = Number(minutePart);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return '';
+  const dateObj = new Date(Date.UTC(1970, 0, 1, hour, minute));
+  const base = dateObj.toLocaleTimeString('es-ES', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'UTC'
+  });
+  return base.toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
 }
 
 function formatFechasListado(fechas) {
@@ -62,8 +99,29 @@ function formatFechasListado(fechas) {
   return fechas
     .slice()
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
-    .map((item) => `${formatFecha(item.fecha)} · ${formatHora(item.horainicio)}`)
+    .map((item) => {
+      const fechaTexto = formatFecha(item.fecha);
+      const horaTexto = formatHora(item.horainicio);
+      return horaTexto ? `${fechaTexto} · ${horaTexto}` : fechaTexto;
+    })
     .join('<br />');
+}
+
+function obtenerProximaFechaEvento(fechas = []) {
+  if (!Array.isArray(fechas) || fechas.length === 0) return null;
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  const ordenadas = [...fechas].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  return ordenadas.find((item) => item.fecha >= hoyISO) || ordenadas[ordenadas.length - 1] || null;
+}
+
+function obtenerPartesFecha(fechaStr) {
+  const completa = formatFecha(fechaStr);
+  if (!completa || completa === 'Sin fecha') return null;
+  const [weekday, resto] = completa.split(', ');
+  return {
+    weekday: weekday || completa,
+    resto: resto || ''
+  };
 }
 
 async function limpiarEventosExpirados() {
@@ -106,7 +164,7 @@ async function limpiarEventosExpirados() {
 async function cargarCatalogos() {
   const [municipiosResp, categoriasResp] = await Promise.all([
     supabase.from('Municipios').select('id, nombre').order('nombre'),
-    supabase.from('categoriaEventos').select('id, nombre').order('nombre')
+    supabase.from('categoriaEventos').select('id, nombre, icono').order('nombre')
   ]);
 
   municipioMap.clear();
@@ -124,7 +182,10 @@ async function cargarCatalogos() {
   filtroCategoria.innerHTML = '<option value="">Todas las categorías</option>';
   selectCategoria.innerHTML = '<option value="">Selecciona...</option>';
   (categoriasResp.data ?? []).forEach((categoria) => {
-    categoriaMap.set(categoria.id, categoria.nombre);
+    categoriaMap.set(categoria.id, {
+      nombre: categoria.nombre,
+      icono: categoria.icono || ''
+    });
     const option = `<option value="${categoria.id}">${categoria.nombre}</option>`;
     filtroCategoria.insertAdjacentHTML('beforeend', option);
     selectCategoria.insertAdjacentHTML('beforeend', option);
@@ -132,10 +193,12 @@ async function cargarCatalogos() {
 }
 
 function normalizarEvento(evento, fechas) {
+  const categoriaInfo = categoriaMap.get(evento.categoria) || { nombre: '—', icono: '' };
   return {
     ...evento,
     municipioNombre: municipioMap.get(evento.municipio_id) || '—',
-    categoriaNombre: categoriaMap.get(evento.categoria) || '—',
+    categoriaNombre: categoriaInfo.nombre,
+    categoriaIcono: categoriaInfo.icono,
     fechas: (fechas || []).map((item) => ({
       idevento: item.idevento,
       fecha: item.fecha,
@@ -177,6 +240,11 @@ function renderEventos(lista) {
 
   lista.forEach((evento) => {
     const estadoBadge = `<span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${evento.activo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">${evento.activo ? 'Activo' : 'Inactivo'}</span>`;
+    const proximaFecha = obtenerProximaFechaEvento(evento.fechas);
+    const fechaDetalle = proximaFecha ? obtenerPartesFecha(proximaFecha.fecha) : null;
+    const horaDestacada = proximaFecha?.horainicio ? formatHora(proximaFecha.horainicio) : '';
+    const categoriaIconoHtml = evento.categoriaIcono ? `<i class="fas ${evento.categoriaIcono}"></i>` : '';
+    const costoTexto = evento.gratis ? 'Gratis' : (evento.costo || 'No disponible');
 
     const fila = document.createElement('tr');
     fila.innerHTML = `
@@ -196,17 +264,36 @@ function renderEventos(lista) {
     const card = document.createElement('article');
     card.className = 'bg-white rounded-lg shadow p-4 flex flex-col justify-between';
     card.innerHTML = `
-      <div class="space-y-2">
-        <header class="flex items-start justify-between gap-2">
-          <div>
-            <h3 class="text-lg font-semibold text-gray-800">${evento.nombre}</h3>
-            <p class="text-sm text-gray-500">${evento.municipioNombre} · ${evento.categoriaNombre}</p>
+      <div class="space-y-3">
+        <header class="flex items-start justify-between gap-3">
+          <div class="flex-1 flex flex-col items-center text-center gap-2">
+            <h3 class="flex items-center justify-center text-center text-lg font-bold text-gray-800 leading-snug line-clamp-2 h-12">${evento.nombre}</h3>
+            <div class="flex items-center justify-center gap-1 text-sm text-orange-500">
+              ${categoriaIconoHtml}
+              <span>${evento.categoriaNombre}</span>
+            </div>
           </div>
           ${estadoBadge}
         </header>
-        <div class="text-sm text-gray-600 leading-snug">${formatFechasListado(evento.fechas)}</div>
+        <div class="space-y-2 text-sm">
+          ${fechaDetalle ? `
+            <div class="flex flex-col items-center justify-center gap-0 text-red-600 font-medium leading-tight">
+              <span>${fechaDetalle.weekday}</span>
+              <span>${fechaDetalle.resto}</span>
+            </div>
+          ` : `
+            <div class="flex items-center justify-center gap-2 text-red-600 font-medium leading-tight">Sin fecha</div>
+          `}
+          ${horaDestacada ? `<div class="flex items-center justify-center gap-2 text-red-600">${horaDestacada}</div>` : ''}
+          <div class="flex items-center justify-center gap-2 font-medium" style="color:#23B4E9;">
+            <i class="fas fa-map-pin"></i>
+            <span>${evento.municipioNombre}</span>
+          </div>
+          <div class="text-green-600 font-semibold">Costo: ${costoTexto}</div>
+        </div>
+        <div class="text-xs text-gray-500 leading-snug border-t border-gray-100 pt-2">${formatFechasListado(evento.fechas)}</div>
       </div>
-      <footer class="flex flex-wrap gap-3 text-sm pt-2 border-t border-gray-100 mt-2">
+      <footer class="flex flex-wrap gap-3 text-sm pt-3 border-t border-gray-100 mt-3">
         <button data-accion="editar" data-id="${evento.id}" class="text-blue-600 hover:text-blue-800">Editar</button>
         <button data-accion="toggle" data-id="${evento.id}" class="text-yellow-600 hover:text-yellow-800">${evento.activo ? 'Desactivar' : 'Activar'}</button>
         <button data-accion="eliminar" data-id="${evento.id}" class="text-red-600 hover:text-red-800">Eliminar</button>
@@ -284,7 +371,7 @@ function renderFechasModal() {
   listadoFechasModal.innerHTML = fechasModal
     .map((item, index) => {
       const horaInput = checkMismaHora.checked
-        ? `<span class="text-sm text-gray-600">${formatHora(item.horainicio)}</span>`
+        ? `<span class="text-sm text-gray-600">${formatHora(item.horainicio) || '--:--'}</span>`
         : `<input type="time" data-index="${index}" class="modal-hora border rounded px-3 py-1 w-28" value="${item.horainicio || ''}" />`;
 
       return `

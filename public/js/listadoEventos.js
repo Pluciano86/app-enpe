@@ -19,10 +19,14 @@ const cerrarModal = document.getElementById('cerrarModal');
 const modalImagen = document.getElementById('modalImagen');
 const modalTitulo = document.getElementById('modalTitulo');
 const modalDescripcion = document.getElementById('modalDescripcion');
-const modalFecha = document.getElementById('modalFecha');
+const modalFechaPrincipal = document.getElementById('modalFechaPrincipal');
+const modalHoraPrincipal = document.getElementById('modalHoraPrincipal');
+const modalVerFechas = document.getElementById('modalVerFechas');
+const modalFechasListado = document.getElementById('modalFechasListado');
 const modalLugar = document.getElementById('modalLugar');
 const modalDireccion = document.getElementById('modalDireccion');
 const modalBoletos = document.getElementById('modalBoletos');
+const modalCosto = document.getElementById('modalCosto');
 
 // Estado
 let eventos = [];
@@ -32,6 +36,14 @@ let filtroHoy = false;
 let filtroSemana = false;
 let filtroGratis = false;
 let renderVersion = 0;
+let modalFechasExpandido = false;
+
+modalVerFechas.addEventListener('click', () => {
+  modalFechasExpandido = !modalFechasExpandido;
+  modalFechasListado.classList.toggle('hidden', !modalFechasExpandido);
+  modalVerFechas.textContent = modalFechasExpandido ? 'Ocultar fechas' : 'Ver todas las fechas';
+  modalVerFechas.setAttribute('aria-expanded', String(modalFechasExpandido));
+});
 
 const cleanupCarousels = (container) => {
   if (!container) return;
@@ -98,13 +110,6 @@ function eventoEstaEnSemana(evento) {
     const fecha = new Date(`${item.fecha}T00:00:00`);
     return fecha >= inicioSemana && fecha <= finSemana;
   });
-}
-
-function formatearBloqueFechas(evento) {
-  if (!Array.isArray(evento.fechas) || evento.fechas.length === 0) return 'Sin fechas';
-  return ordenarFechas(evento.fechas)
-    .map((item) => `${formatearFecha(item.fecha)} · ${formatearHora(item.horainicio) || '--:--'}`)
-    .join('<br />');
 }
 
 async function cargarEventos() {
@@ -205,9 +210,15 @@ async function renderizarEventos() {
   for (let i = 0; i < filtrados.length; i++) {
     const evento = filtrados[i];
     const proxima = obtenerProximaFecha(evento);
-    const fechaTexto = proxima ? formatearFecha(proxima.fecha) : 'Sin fecha';
+    const fechaDetalle = proxima ? obtenerPartesFecha(proxima.fecha) : null;
     const horaTexto = proxima?.horainicio ? formatearHora(proxima.horainicio) : '';
-    const iconoCategoria = evento.categoriaIcono ? `<i class="fas ${evento.categoriaIcono} mr-1"></i>` : '';
+    const iconoCategoria = evento.categoriaIcono ? `<i class="fas ${evento.categoriaIcono}"></i>` : '';
+    const costoRaw = evento.costo != null ? String(evento.costo).trim() : '';
+    const costoTexto = evento.gratis
+      ? 'Gratis'
+      : costoRaw
+        ? (costoRaw.toLowerCase().startsWith('costo') ? costoRaw : `Costo: ${costoRaw}`)
+        : 'Costo no disponible';
     const div = document.createElement('div');
     div.className = 'bg-white rounded shadow hover:shadow-lg transition overflow-hidden cursor-pointer flex flex-col';
     div.innerHTML = `
@@ -215,15 +226,28 @@ async function renderizarEventos() {
         <img src="${evento.imagen}?v=${evento.id}" class="absolute inset-0 w-full h-full object-cover blur-md scale-110" alt="" />
         <img src="${evento.imagen}?v=${evento.id}" class="relative z-10 w-full h-full object-contain" alt="${evento.nombre}" />
       </div>
-      <div class="p-3 flex-1 flex flex-col text-center justify-between">
-        <h3 class="text-base font-medium mb-1 line-clamp-2">${evento.nombre}</h3>
-        <div class="text-xs text-gray-500 mb-1">${iconoCategoria}${evento.categoriaNombre || ''}</div>
-        <div class="text-sm mb-1 leading-tight">
-          ${fechaTexto}
-          ${horaTexto ? `<span class="block text-xs text-gray-500">${horaTexto}</span>` : ''}
+      <div class="p-3 flex flex-col flex-1">
+        <div class="flex flex-col gap-2 flex-1">
+          <h3 class="flex items-center justify-center text-center leading-tight text-lg font-bold line-clamp-2 h-12">${evento.nombre}</h3>
+          <div class="flex items-center justify-center gap-1 text-sm text-orange-500">
+            ${iconoCategoria}
+            <span>${evento.categoriaNombre || ''}</span>
+          </div>
+          ${fechaDetalle ? `
+            <div class="flex flex-col items-center justify-center gap-0 text-sm text-red-600 font-medium leading-tight">
+              <span>${fechaDetalle.weekday}</span>
+              <span>${fechaDetalle.resto}</span>
+            </div>
+          ` : `
+            <div class="flex items-center justify-center gap-1 text-sm text-red-600 font-medium leading-tight">Sin fecha</div>
+          `}
+          ${horaTexto ? `<div class="flex items-center justify-center gap-1 text-sm text-red-600 leading-tight">${horaTexto}</div>` : ''}
+          <div class="flex items-center justify-center gap-1 text-sm font-medium" style="color:#23B4E9;">
+            <i class="fa-solid fa-map-pin"></i>
+            <span>${evento.municipioNombre}</span>
+          </div>
         </div>
-        <div class="text-sm mb-1"><i class="fa-solid fa-map-pin mr-1 text-pink-600"></i> ${evento.municipioNombre}</div>
-        <div class="text-sm font-bold ${evento.gratis ? 'text-green-600' : 'text-black'}">${evento.costo}</div>
+        <div class="mt-3 text-sm font-semibold text-green-600 flex items-center justify-center">${costoTexto}</div>
       </div>
     `;
     div.addEventListener('click', () => abrirModal(evento));
@@ -258,18 +282,101 @@ async function renderizarEventos() {
 }
 
 function abrirModal(evento) {
-  modalImagen.src = evento.imagen;
-  modalTitulo.textContent = evento.nombre;
-  modalDescripcion.textContent = evento.descripcion || '';
-  modalFecha.innerHTML = `📅<br>${formatearBloqueFechas(evento)}`;
-  modalLugar.textContent = `📍 ${evento.lugar}`;
-  modalDireccion.textContent = evento.direccion;
-  if (evento.enlaceBoletos) {
-    modalBoletos.href = evento.enlaceBoletos;
+  const fechas = Array.isArray(evento.fechas) ? ordenarFechas(evento.fechas) : [];
+  const primeraFecha = fechas[0] || null;
+
+  modalImagen.src = evento.imagen || 'https://placehold.co/400x500?text=Evento';
+  modalImagen.alt = `Imagen de ${evento.nombre || 'Evento'}`;
+  modalTitulo.textContent = evento.nombre || '';
+
+  if (evento.descripcion) {
+    modalDescripcion.textContent = evento.descripcion;
+    modalDescripcion.classList.remove('hidden');
+  } else {
+    modalDescripcion.textContent = '';
+    modalDescripcion.classList.add('hidden');
+  }
+
+  modalFechaPrincipal.innerHTML = '';
+  modalFechaPrincipal.classList.toggle('hidden', false);
+  if (primeraFecha) {
+    const partes = obtenerPartesFecha(primeraFecha.fecha);
+    if (partes) {
+      modalFechaPrincipal.innerHTML = `<div>${partes.weekday}</div><div>${partes.resto}</div>`;
+    } else {
+      modalFechaPrincipal.textContent = formatearFecha(primeraFecha.fecha);
+    }
+  } else {
+    modalFechaPrincipal.textContent = 'Sin fecha';
+  }
+
+  const horaPrincipal = primeraFecha?.horainicio ? formatearHora(primeraFecha.horainicio) : '';
+  modalHoraPrincipal.textContent = horaPrincipal;
+  modalHoraPrincipal.classList.toggle('hidden', !horaPrincipal);
+
+  modalFechasListado.innerHTML = '';
+  let mostrarToggle = false;
+  if (fechas.length > 1) {
+    mostrarToggle = true;
+    modalFechasListado.innerHTML = fechas
+      .map((item) => {
+        const partes = obtenerPartesFecha(item.fecha);
+        const fechaTexto = partes ? `${partes.weekday} · ${partes.resto}` : formatearFecha(item.fecha);
+        const horaTexto = item.horainicio ? formatearHora(item.horainicio) : '';
+        return `<div>${fechaTexto}${horaTexto ? ` • ${horaTexto}` : ''}</div>`;
+      })
+      .join('');
+  }
+
+  modalFechasExpandido = false;
+  modalFechasListado.classList.toggle('hidden', true);
+  modalVerFechas.classList.toggle('hidden', !mostrarToggle);
+  modalVerFechas.textContent = 'Ver todas las fechas';
+  modalVerFechas.setAttribute('aria-expanded', 'false');
+
+  if (evento.lugar) {
+    modalLugar.textContent = evento.lugar;
+    modalLugar.classList.remove('hidden');
+  } else {
+    modalLugar.textContent = '';
+    modalLugar.classList.add('hidden');
+  }
+
+  if (evento.direccion) {
+    modalDireccion.textContent = evento.direccion;
+    modalDireccion.classList.remove('hidden');
+  } else {
+    modalDireccion.textContent = '';
+    modalDireccion.classList.add('hidden');
+  }
+
+  console.log('Modal evento', evento);
+  const costoNumerico = Number.isFinite(Number(evento.costo)) ? Number(evento.costo) : NaN;
+  if (evento.costo === null || (Number.isFinite(costoNumerico) && costoNumerico === 0)) {
+    modalCosto.textContent = 'Gratis';
+    modalBoletos.href = '#';
+    modalBoletos.classList.add('hidden');
+  } else if (Number.isFinite(costoNumerico) && costoNumerico > 0) {
+    modalCosto.textContent = `Costo: $${costoNumerico.toFixed(2)}`;
+    const urlBoletos = evento.urlBoletos || evento.enlaceboletos || '#';
+    modalBoletos.href = urlBoletos || '#';
+    modalBoletos.textContent = 'Comprar boletos';
     modalBoletos.classList.remove('hidden');
   } else {
-    modalBoletos.classList.add('hidden');
+    const costoBase = evento.costo != null ? String(evento.costo).trim() : '';
+    modalCosto.textContent = costoBase ? costoBase : 'Costo no disponible';
+    const urlBoletos = evento.urlBoletos || evento.enlaceboletos || '#';
+    modalBoletos.href = urlBoletos || '#';
+    modalBoletos.textContent = 'Comprar boletos';
+    if (urlBoletos && urlBoletos !== '#') {
+      modalBoletos.classList.remove('hidden');
+    } else {
+      modalBoletos.classList.add('hidden');
+    }
   }
+
+  modalCosto.classList.toggle('hidden', !modalCosto.textContent);
+
   modal.classList.remove('hidden');
 }
 
@@ -278,27 +385,64 @@ modal.addEventListener('click', (e) => {
   if (e.target === modal) modal.classList.add('hidden');
 });
 
+function capitalizarPalabra(texto = '') {
+  if (!texto) return '';
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function estilizarFechaExtendida(fechaLocale = '') {
+  if (!fechaLocale) return '';
+  const [primeraParte, ...resto] = fechaLocale.split(', ');
+  const primera = capitalizarPalabra(primeraParte);
+  let restoTexto = resto.join(', ');
+
+  if (restoTexto) {
+    restoTexto = restoTexto.replace(/ de ([a-záéíóúñ]+)/gi, (_, palabra) => ` de ${capitalizarPalabra(palabra)}`);
+    restoTexto = restoTexto.replace(/\sde\s(\d{4})$/i, ' $1');
+  }
+
+  return restoTexto ? `${primera}, ${restoTexto}` : primera;
+}
+
 function formatearFecha(fechaStr) {
   if (!fechaStr) return 'Sin fecha';
   const [year, month, day] = fechaStr.split('-').map(Number);
-  const fecha = new Date(Date.UTC(year, month - 1, day, 12));
-  return fecha.toLocaleDateString('es-PR', {
-    weekday: 'short',
+  if ([year, month, day].some((value) => Number.isNaN(value))) return 'Sin fecha';
+  const fecha = new Date(Date.UTC(year, month - 1, day));
+  const base = fecha.toLocaleDateString('es-ES', {
+    weekday: 'long',
     day: 'numeric',
-    month: 'short',
-    year: 'numeric'
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
   });
+  return estilizarFechaExtendida(base);
 }
 
 function formatearHora(horaStr) {
   if (!horaStr) return '';
-  const [hour, minute] = horaStr.split(':').map(Number);
+  const [hourPart, minutePart] = horaStr.split(':');
+  const hour = Number(hourPart);
+  const minute = Number(minutePart);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return '';
   const fecha = new Date(Date.UTC(1970, 0, 1, hour, minute));
-  return fecha.toLocaleTimeString('es-PR', {
+  const base = fecha.toLocaleTimeString('es-ES', {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
+    timeZone: 'UTC'
   });
+  return base.toLowerCase().replace(/\s+/g, '').replace(/\./g, '');
+}
+
+function obtenerPartesFecha(fechaStr) {
+  const completa = formatearFecha(fechaStr);
+  if (!completa || completa === 'Sin fecha') return null;
+  const [weekday, resto] = completa.split(', ');
+  return {
+    weekday: weekday || completa,
+    resto: resto || ''
+  };
 }
 
 async function cargarFiltros() {
