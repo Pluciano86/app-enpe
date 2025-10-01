@@ -5,13 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Crear Evento</title>
   <script src="https://kit.fontawesome.com/your-free-kit.js" crossorigin="anonymous"></script>
-  <script type="module" src="./crearEvento.js" defer></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"/>
 </head>
 <body class="bg-gray-50 p-6">
-  <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-6">
+  <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-md p-6">
     <h1 class="text-2xl font-bold mb-4">Crear Nuevo Evento</h1>
-    <form id="formCrearEvento" class="space-y-4">
+    <form id="formCrearEvento" class="space-y-6">
       <div>
         <label class="block font-medium">Nombre del Evento</label>
         <input required type="text" name="nombre" class="w-full border rounded px-3 py-2"/>
@@ -22,16 +21,34 @@
         <textarea required name="descripcion" rows="3" class="w-full border rounded px-3 py-2"></textarea>
       </div>
 
-      <div class="flex gap-4">
-        <div class="flex-1">
-          <label class="block font-medium">Fecha</label>
-          <input required type="date" name="fecha" class="w-full border rounded px-3 py-2"/>
+      <section class="space-y-3">
+        <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="block font-medium">Fechas del Evento</p>
+            <p class="text-sm text-gray-500">Selecciona una o varias fechas y asigna una hora de inicio para cada una.</p>
+          </div>
+          <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" id="mismaHora" class="form-checkbox h-4 w-4 text-blue-600">
+            Usar la misma hora en todas las fechas
+          </label>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div>
+            <label for="nuevaFecha" class="block text-sm font-semibold text-gray-700">Fecha</label>
+            <input type="date" id="nuevaFecha" class="w-full border rounded px-3 py-2" />
+          </div>
+          <div>
+            <label for="nuevaHora" class="block text-sm font-semibold text-gray-700">Hora de inicio</label>
+            <input type="time" id="nuevaHora" class="w-full border rounded px-3 py-2" />
+          </div>
+          <button type="button" id="btnAgregarFecha" class="bg-slate-900 text-white px-4 py-2 rounded hover:bg-slate-800">
+            Agregar fecha
+          </button>
         </div>
-        <div class="flex-1">
-          <label class="block font-medium">Hora</label>
-          <input required type="time" name="hora" class="w-full border rounded px-3 py-2"/>
-        </div>
-      </div>
+
+        <div id="listaFechas" class="bg-gray-50 border border-gray-200 rounded-lg divide-y divide-gray-200 hidden"></div>
+      </section>
 
       <div class="flex items-center gap-2">
         <input type="checkbox" id="gratis" name="gratis" class="form-checkbox h-5 w-5 text-blue-600">
@@ -72,10 +89,11 @@
         <input type="url" name="enlaceBoletos" class="w-full border rounded px-3 py-2"/>
       </div>
 
-      <div>
+      <section class="space-y-2">
         <label class="block font-medium">Imagen del Evento</label>
         <input required type="file" name="imagen" accept="image/*" class="w-full"/>
-      </div>
+        <p class="text-xs text-gray-500">Se admiten archivos JPG o PNG de hasta 5 MB.</p>
+      </section>
 
       <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
         Guardar Evento
