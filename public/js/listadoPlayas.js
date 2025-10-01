@@ -3,6 +3,7 @@ import { obtenerClima } from "./obtenerClima.js";
 import { supabase } from '../shared/supabaseClient.js';
 import { calcularTiemposParaLugares, calcularDistancia } from './distanciaLugar.js';
 import { mostrarMensajeVacio } from './mensajesUI.js';
+import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 
 const inputBuscar = document.getElementById("inputBuscar");
 const selectCosta = document.getElementById("selectCosta");
@@ -19,19 +20,85 @@ let usuarioLat = null;
 let usuarioLon = null;
 let renderID = 0;
 
-navigator.geolocation.getCurrentPosition(
-  async (pos) => {
-    usuarioLat = pos.coords.latitude;
-    usuarioLon = pos.coords.longitude;
-    await cargarPlayas();
-    await calcularTiempos();
-    renderizarPlayas();
-  },
-  async () => {
-    await cargarPlayas();
-    renderizarPlayas();
+const cleanupCarousels = (container) => {
+  if (!container) return;
+  container
+    .querySelectorAll(`[data-banner-carousel="true"]`)
+    .forEach(destroyCarousel);
+};
+
+async function renderTopBannerPlayas() {
+  const seccionFiltros = document.querySelector('section.p-4');
+  if (!seccionFiltros) return;
+
+  let topContainer = document.querySelector('[data-banner-slot="top-playas"]');
+  if (!topContainer) {
+    topContainer = document.createElement('div');
+    topContainer.dataset.bannerSlot = 'top-playas';
+    seccionFiltros.parentNode?.insertBefore(topContainer, seccionFiltros);
+  } else {
+    cleanupCarousels(topContainer);
+    topContainer.innerHTML = '';
   }
-);
+
+  const banner = await createGlobalBannerElement({ intervalMs: 5000, slotName: 'banner-top' });
+  if (banner) {
+    topContainer.appendChild(banner);
+    topContainer.classList.remove('hidden');
+  } else {
+    topContainer.classList.add('hidden');
+  }
+}
+
+async function crearBannerElemento(slotName = 'banner-inline') {
+  try {
+    return await createGlobalBannerElement({ intervalMs: 5000, slotName });
+  } catch (error) {
+    console.error('Error creando banner global:', error);
+    return null;
+  }
+}
+
+async function inicializarPlayas({ lat, lon } = {}) {
+  if (typeof mostrarLoader === 'function') {
+    await mostrarLoader();
+  }
+
+  try {
+    if (typeof lat === 'number' && typeof lon === 'number') {
+      usuarioLat = lat;
+      usuarioLon = lon;
+    }
+
+    await cargarPlayas();
+
+    if (typeof usuarioLat === 'number' && typeof usuarioLon === 'number') {
+      await calcularTiempos();
+    }
+
+    renderizarPlayas();
+  } finally {
+    if (typeof ocultarLoader === 'function') {
+      await ocultarLoader();
+    }
+  }
+}
+
+if ('geolocation' in navigator) {
+  navigator.geolocation.getCurrentPosition(
+    async (pos) => {
+      await inicializarPlayas({
+        lat: pos.coords.latitude,
+        lon: pos.coords.longitude
+      });
+    },
+    async () => {
+      await inicializarPlayas();
+    }
+  );
+} else {
+  inicializarPlayas();
+}
 
 async function cargarPlayas() {
   const { data, error } = await supabase.from("playas").select("*");
@@ -56,7 +123,7 @@ async function cargarPlayas() {
 }
 
 async function calcularTiempos() {
-  if (!usuarioLat || !usuarioLon) return;
+  if (typeof usuarioLat !== 'number' || typeof usuarioLon !== 'number') return;
   todasLasPlayas = await calcularTiemposParaLugares(todasLasPlayas, {
     lat: usuarioLat,
     lon: usuarioLon
@@ -76,7 +143,12 @@ selectMunicipio.addEventListener("change", renderizarPlayas);
 
 async function renderizarPlayas() {
   const currentID = ++renderID;
-  contenedor.innerHTML = "";
+  try {
+    await renderTopBannerPlayas();
+    if (currentID !== renderID) return;
+
+    cleanupCarousels(contenedor);
+    contenedor.innerHTML = "";
 
   const texto = inputBuscar.value.toLowerCase();
   const costa = selectCosta.value;
@@ -118,9 +190,14 @@ async function renderizarPlayas() {
     </div>
   </div>
 `;
+
+    const bannerFinal = await crearBannerElemento('banner-bottom');
+    if (currentID !== renderID) return;
+    if (bannerFinal) contenedor.appendChild(bannerFinal);
+    return;
   } 
 
-  if (usuarioLat && usuarioLon) {
+  if (typeof usuarioLat === 'number' && typeof usuarioLon === 'number') {
     filtradas = filtradas
       .filter(p => p.latitud && p.longitud)
       .map(p => {
@@ -130,13 +207,18 @@ async function renderizarPlayas() {
       .sort((a, b) => a._distancia - b._distancia);
   }
 
+  const cards = [];
+
   for (const playa of filtradas) {
     if (currentID !== renderID) return;
 
     const clone = template.content.cloneNode(true);
 
-    clone.querySelector(".imagen").src = playa.portada || "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
-    clone.querySelector(".imagen").alt = `Imagen de ${playa.nombre}`;
+    const imagenEl = clone.querySelector(".imagen");
+    if (imagenEl) {
+      imagenEl.src = playa.portada || "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
+      imagenEl.alt = `Imagen de ${playa.nombre}`;
+    }
     clone.querySelector(".nombre").textContent = playa.nombre;
     clone.querySelector(".municipio").textContent = playa.municipio || "";
 
@@ -145,26 +227,25 @@ async function renderizarPlayas() {
     if (playa.snorkel) clone.querySelector(".icon-snorkel")?.classList.remove("hidden");
 
     const iconTransporte = clone.querySelector(".icon-transporte");
-
-if (playa.bote) {
-  iconTransporte.innerHTML = `
-    <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
-      <span><i class="fas fa-ship text-[#9c9c9c]"></i></span>
-      <span class="text-center leading-snug">Acceso en bote</span>
-    </div>`;
-} else {
-  iconTransporte.innerHTML = `
-    <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
-      <span><i class="fas fa-car text-[#9c9c9c]"></i></span>
-      <span class="text-center leading-snug">${playa.tiempoVehiculo || ""}</span>
-    </div>`;
-}
+    if (iconTransporte) {
+      if (playa.bote) {
+        iconTransporte.innerHTML = `
+          <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
+            <span><i class="fas fa-ship text-[#9c9c9c]"></i></span>
+            <span class="text-center leading-snug">Acceso en bote</span>
+          </div>`;
+      } else {
+        iconTransporte.innerHTML = `
+          <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
+            <span><i class="fas fa-car text-[#9c9c9c]"></i></span>
+            <span class="text-center leading-snug">${playa.tiempoVehiculo || ""}</span>
+          </div>`;
+      }
+    }
 
     const estadoClima = clone.querySelector(".estado-clima");
     const iconClima = clone.querySelector(".icon-clima");
     const viento = clone.querySelector(".viento");
-
-    contenedor.appendChild(clone);
 
     obtenerClima(playa.latitud, playa.longitud).then(clima => {
       if (renderID !== currentID) return;
@@ -182,6 +263,45 @@ if (playa.bote) {
         if (viento) viento.innerHTML = `<i class="fas fa-wind text-gray-400"></i> Viento de: ${clima.viento}`;
       }
     });
+
+    cards.push(clone);
+  }
+
+  const fragment = document.createDocumentFragment();
+  let cartasEnFila = 0;
+  let totalFilas = 0;
+
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i];
+    fragment.appendChild(card);
+    cartasEnFila += 1;
+
+    const esUltimaCarta = i === cards.length - 1;
+    const filaCompleta = cartasEnFila === 2 || esUltimaCarta;
+
+    if (filaCompleta) {
+      totalFilas += 1;
+      cartasEnFila = 0;
+
+      const debeInsertarIntermedio = totalFilas % 4 === 0 && !esUltimaCarta;
+      if (debeInsertarIntermedio) {
+        const bannerIntermedio = await crearBannerElemento('banner-inline');
+        if (currentID !== renderID) return;
+        if (bannerIntermedio) fragment.appendChild(bannerIntermedio);
+      }
+    }
+  }
+
+  const debeAgregarFinal = totalFilas === 0 || totalFilas % 4 !== 0;
+  if (debeAgregarFinal) {
+    const bannerFinal = await crearBannerElemento('banner-bottom');
+    if (currentID !== renderID) return;
+    if (bannerFinal) fragment.appendChild(bannerFinal);
+  }
+
+  contenedor.appendChild(fragment);
+  } catch (error) {
+    console.error('Error al renderizar playas:', error);
   }
 }
 

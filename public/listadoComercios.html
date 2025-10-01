@@ -14,41 +14,13 @@
     body { font-family: 'Kanit', sans-serif; }
   </style>
 
-<style>
-@keyframes moverLogo {
-  0% {
-    transform: translateX(-150%) scale(1);
-    opacity: 0;
-  }
-  25% {
-    transform: translateX(0%) scale(1.1);
-    opacity: 1;
-  }
-  50% {
-    transform: translateX(20%) scale(1);
-    opacity: 1;
-  }
-  75% {
-    transform: translateX(0%) scale(1.1);
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(-150%) scale(1);
-    opacity: 0;
-  }
-}
-
-.animate-logo {
-  animation: moverLogo 2s ease-in-out infinite;
-}
-</style>
-
 
 </head>
 <body class="bg-white text-gray-800 pb-24">
 
   <!-- Header -->
 <div id="headerContainer"></div>
+<script src="../shared/loader.js"></script>
 <script type="module" src="./js/header.js"></script>
 
   <!-- Título y buscador -->
@@ -134,29 +106,12 @@
   </span>
 </div>
 
-  <div id="loaderLogo" class="flex justify-center items-center h-32">
-  <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Favicon.svg"
-       alt="Cargando..."
-       class="animate-logo w-20 h-20" />
-</div>
-
   <!-- Listado de Comercios -->
  <section id="app" class="px-8 py-6 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-3"></section>
 
 
 
  <br><br>
-
- <style>
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  .slow-spin {
-    animation: spin 6s linear infinite;
-  }
-</style>
 
   <!-- Footer -->
 <div id="footerContainer"></div>

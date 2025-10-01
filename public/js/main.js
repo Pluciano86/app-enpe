@@ -18,13 +18,7 @@ import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 //import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
-
-function mostrarLoader() {
-  document.getElementById('loaderLogo')?.classList.remove('hidden');
-}
-function ocultarLoader() {
-  document.getElementById('loaderLogo')?.classList.add('hidden');
-}
+import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -239,11 +233,55 @@ function normalizarTexto(texto) {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
+function cleanupCarousels(container) {
+  if (!container) return;
+  container
+    .querySelectorAll(`[data-banner-carousel="true"]`)
+    .forEach(destroyCarousel);
+}
 
-function aplicarFiltrosYRedibujar() {
-  console.log("🟡 Aplicando filtros con:", filtrosActivos);
-  const contenedor = document.getElementById('app');
-  contenedor.innerHTML = '';
+
+async function renderTopBanner() {
+  const seccionFiltros = document.querySelector('section.p-4');
+  if (!seccionFiltros) return;
+
+  let topContainer = document.querySelector('[data-banner-slot="top-app"]');
+  if (!topContainer) {
+    topContainer = document.createElement('div');
+    topContainer.dataset.bannerSlot = 'top-app';
+    seccionFiltros.parentNode?.insertBefore(topContainer, seccionFiltros);
+  } else {
+    cleanupCarousels(topContainer);
+    topContainer.innerHTML = '';
+  }
+
+  const banner = await createGlobalBannerElement({ intervalMs: 5000, slotName: 'banner-top' });
+  if (banner) {
+    topContainer.appendChild(banner);
+    topContainer.classList.remove('hidden');
+  } else {
+    topContainer.classList.add('hidden');
+  }
+}
+
+async function crearBannerElemento(slotName = 'banner-inline') {
+  try {
+    return await createGlobalBannerElement({ intervalMs: 5000, slotName });
+  } catch (error) {
+    console.error('Error creando banner global:', error);
+    return null;
+  }
+}
+
+async function aplicarFiltrosYRedibujar() {
+  try {
+    console.log('🟡 Aplicando filtros con:', filtrosActivos);
+
+    await renderTopBanner();
+
+    const contenedor = document.getElementById('app');
+    cleanupCarousels(contenedor);
+    contenedor.innerHTML = '';
 
   let filtrados = listaOriginal;
 
@@ -326,16 +364,51 @@ function aplicarFiltrosYRedibujar() {
     filtrosDiv.appendChild(tag);
   }
 
-  if (filtrados.length === 0) {
-    mostrarMensajeVacio(contenedor);
-    return;
-  }
+    if (filtrados.length === 0) {
+      mostrarMensajeVacio(contenedor);
+      const bannerFinal = await crearBannerElemento('banner-bottom');
+      if (bannerFinal) contenedor.appendChild(bannerFinal);
+      return;
+    }
 
-  for (const comercio of filtrados) {
-    const card = comercio.activoEnPeErre
-      ? cardComercio(comercio)
-      : cardComercioNoActivo(comercio);
-    contenedor.appendChild(card);
+    const fragment = document.createDocumentFragment();
+
+    let cartasEnFila = 0;
+    let totalFilas = 0;
+
+    for (let i = 0; i < filtrados.length; i++) {
+      const comercio = filtrados[i];
+      const card = comercio.activoEnPeErre
+        ? cardComercio(comercio)
+        : cardComercioNoActivo(comercio);
+
+      fragment.appendChild(card);
+      cartasEnFila += 1;
+
+      const esUltimaCarta = i === filtrados.length - 1;
+      const filaCompleta = cartasEnFila === 2 || esUltimaCarta;
+
+      if (filaCompleta) {
+        totalFilas += 1;
+        cartasEnFila = 0;
+
+        const debeInsertarIntermedio = totalFilas % 4 === 0 && !esUltimaCarta;
+        if (debeInsertarIntermedio) {
+          const bannerIntermedio = await crearBannerElemento('banner-inline');
+          if (bannerIntermedio) fragment.appendChild(bannerIntermedio);
+        }
+      }
+    }
+
+    const debeAgregarFinal = totalFilas === 0 || totalFilas % 4 !== 0;
+    if (debeAgregarFinal) {
+      const bannerFinal = await crearBannerElemento('banner-bottom');
+      if (bannerFinal) fragment.appendChild(bannerFinal);
+    }
+
+    contenedor.appendChild(fragment);
+  } catch (error) {
+    console.error('Error al redibujar comercios:', error);
   }
 }
 
@@ -428,44 +501,53 @@ navigator.geolocation.getCurrentPosition(async (pos) => {
   const selectMunicipio = document.getElementById('filtro-municipio');
   if (selectMunicipio) selectMunicipio.value = municipioDetectado;
 
-
-ocultarLoader();
-
+  await cargarComerciosConOrden();
+}, async () => {
   await cargarComerciosConOrden();
 });
 
 async function cargarComerciosConOrden() {
-  console.log("🔄 Orden seleccionado:", filtrosActivos.orden);
-
-  // Solo recarga comercios (no toca tiempos)
-  await cargarComercios();
-
-if (filtrosActivos.orden === 'ubicacion') {
-  listaOriginal.sort((a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity));
-} else if (filtrosActivos.orden === 'az') {
-  listaOriginal.sort((a, b) => a.nombre.localeCompare(b.nombre));
-} else if (filtrosActivos.orden === 'recientes') {
-  listaOriginal.sort((a, b) => b.id - a.id);
-}
-
-  // Reordenar si destacados está activo
-  if (filtrosActivos.destacadosPrimero) {
-    const activos = listaOriginal.filter(c => c.activoEnPeErre);
-    const inactivos = listaOriginal.filter(c => !c.activoEnPeErre);
-
-    activos.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
-    inactivos.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
-
-    listaOriginal = [...activos, ...inactivos];
+  if (typeof mostrarLoader === 'function') {
+    await mostrarLoader();
   }
 
-  if (filtrosActivos.comerciosPorPlato?.length > 0) {
-    listaOriginal = listaOriginal.filter(c =>
-      filtrosActivos.comerciosPorPlato.includes(c.id)
-    );
-  }
+  try {
+    console.log("🔄 Orden seleccionado:", filtrosActivos.orden);
 
-  aplicarFiltrosYRedibujar();
+    // Solo recarga comercios (no toca tiempos)
+    await cargarComercios();
+
+    if (filtrosActivos.orden === 'ubicacion') {
+      listaOriginal.sort((a, b) => (a.distanciaKm ?? Infinity) - (b.distanciaKm ?? Infinity));
+    } else if (filtrosActivos.orden === 'az') {
+      listaOriginal.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    } else if (filtrosActivos.orden === 'recientes') {
+      listaOriginal.sort((a, b) => b.id - a.id);
+    }
+
+    // Reordenar si destacados está activo
+    if (filtrosActivos.destacadosPrimero) {
+      const activos = listaOriginal.filter(c => c.activoEnPeErre);
+      const inactivos = listaOriginal.filter(c => !c.activoEnPeErre);
+
+      activos.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
+      inactivos.sort((a, b) => (a.minutosCrudos ?? Infinity) - (b.minutosCrudos ?? Infinity));
+
+      listaOriginal = [...activos, ...inactivos];
+    }
+
+    if (filtrosActivos.comerciosPorPlato?.length > 0) {
+      listaOriginal = listaOriginal.filter(c =>
+        filtrosActivos.comerciosPorPlato.includes(c.id)
+      );
+    }
+
+    aplicarFiltrosYRedibujar();
+  } finally {
+    if (typeof ocultarLoader === 'function') {
+      await ocultarLoader();
+    }
+  }
 }
 
 async function cargarMunicipios() {

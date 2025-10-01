@@ -1,6 +1,7 @@
 // listadoEventos.js
 import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
+import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 
 const lista = document.getElementById('listaEventos');
 const filtroMunicipio = document.getElementById('filtroMunicipio');
@@ -30,6 +31,46 @@ let categorias = {};
 let filtroHoy = false;
 let filtroSemana = false;
 let filtroGratis = false;
+let renderVersion = 0;
+
+const cleanupCarousels = (container) => {
+  if (!container) return;
+  container
+    .querySelectorAll(`[data-banner-carousel="true"]`)
+    .forEach(destroyCarousel);
+};
+
+async function renderTopBannerEventos() {
+  const filtrosSection = document.querySelector('section.p-4');
+  if (!filtrosSection) return;
+
+  let topContainer = document.querySelector('[data-banner-slot="top-eventos"]');
+  if (!topContainer) {
+    topContainer = document.createElement('div');
+    topContainer.dataset.bannerSlot = 'top-eventos';
+    filtrosSection.parentNode?.insertBefore(topContainer, filtrosSection);
+  } else {
+    cleanupCarousels(topContainer);
+    topContainer.innerHTML = '';
+  }
+
+  const banner = await createGlobalBannerElement({ intervalMs: 5000, slotName: 'banner-top' });
+  if (banner) {
+    topContainer.appendChild(banner);
+    topContainer.classList.remove('hidden');
+  } else {
+    topContainer.classList.add('hidden');
+  }
+}
+
+async function crearBannerElemento(slotName = 'banner-inline') {
+  try {
+    return await createGlobalBannerElement({ intervalMs: 5000, slotName });
+  } catch (error) {
+    console.error('Error creando banner global:', error);
+    return null;
+  }
+}
 
 async function cargarEventos() {
   mostrarCargando(lista);
@@ -51,15 +92,20 @@ async function cargarEventos() {
     categoriaNombre: e.categoriaEventos?.nombre || ''
   }));
 
-  renderizarEventos();
+  await renderizarEventos();
 }
 
 function normalizarTexto(texto) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-function renderizarEventos() {
+async function renderizarEventos() {
+  const currentRender = ++renderVersion;
+  await renderTopBannerEventos();
+  if (currentRender !== renderVersion) return;
+
   lista.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 px-2';
+  cleanupCarousels(lista);
   lista.innerHTML = '';
 
   const texto = normalizarTexto(busquedaNombre.value.trim());
@@ -106,29 +152,62 @@ function renderizarEventos() {
   // Sin resultados
   if (filtrados.length === 0) {
     mostrarMensajeVacio(lista, 'No se encontraron eventos para los filtros seleccionados.', '🗓️');
+    const bannerFinal = await crearBannerElemento('banner-bottom');
+    if (currentRender !== renderVersion) return;
+    if (bannerFinal) lista.appendChild(bannerFinal);
     return;
   }
 
-  // Mostrar tarjetas
-  filtrados.forEach(e => {
+  const fragment = document.createDocumentFragment();
+  let cartasEnFila = 0;
+  let totalFilas = 0;
+
+  for (let i = 0; i < filtrados.length; i++) {
+    const evento = filtrados[i];
     const div = document.createElement('div');
     div.className = 'bg-white rounded shadow hover:shadow-lg transition overflow-hidden cursor-pointer flex flex-col';
     div.innerHTML = `
       <div class="aspect-[4/5] w-full overflow-hidden bg-gray-200 relative">
-        <img src="${e.imagen}?v=${e.id}" class="absolute inset-0 w-full h-full object-cover blur-md scale-110" alt="" />
-        <img src="${e.imagen}?v=${e.id}" class="relative z-10 w-full h-full object-contain" alt="${e.nombre}" />
+        <img src="${evento.imagen}?v=${evento.id}" class="absolute inset-0 w-full h-full object-cover blur-md scale-110" alt="" />
+        <img src="${evento.imagen}?v=${evento.id}" class="relative z-10 w-full h-full object-contain" alt="${evento.nombre}" />
       </div>
       <div class="p-3 flex-1 flex flex-col text-center justify-between">
-        <h3 class="text-base font-medium mb-1 line-clamp-2">${e.nombre}</h3>
-        <div class="text-xs text-gray-500 mb-1">${e.categoriaNombre || ''}</div>
-        <div class="text-sm mb-1"><i class="fa-solid fa-calendar-days mr-1 text-sky-600"></i> ${formatearFecha(e.fecha)}</div>
-        <div class="text-sm mb-1"><i class="fa-solid fa-map-pin mr-1 text-pink-600"></i> ${e.municipioNombre}</div>
-        <div class="text-sm font-bold ${e.gratis ? 'text-green-600' : 'text-black'}">${e.costo}</div>
+        <h3 class="text-base font-medium mb-1 line-clamp-2">${evento.nombre}</h3>
+        <div class="text-xs text-gray-500 mb-1">${evento.categoriaNombre || ''}</div>
+        <div class="text-sm mb-1"><i class="fa-solid fa-calendar-days mr-1 text-sky-600"></i> ${formatearFecha(evento.fecha)}</div>
+        <div class="text-sm mb-1"><i class="fa-solid fa-map-pin mr-1 text-pink-600"></i> ${evento.municipioNombre}</div>
+        <div class="text-sm font-bold ${evento.gratis ? 'text-green-600' : 'text-black'}">${evento.costo}</div>
       </div>
     `;
-    div.addEventListener('click', () => abrirModal(e));
-    lista.appendChild(div);
-  });
+    div.addEventListener('click', () => abrirModal(evento));
+    fragment.appendChild(div);
+
+    cartasEnFila += 1;
+
+    const esUltimaCarta = i === filtrados.length - 1;
+    const filaCompleta = cartasEnFila === 2 || esUltimaCarta;
+
+    if (filaCompleta) {
+      totalFilas += 1;
+      cartasEnFila = 0;
+
+      const debeInsertarIntermedio = totalFilas % 4 === 0 && !esUltimaCarta;
+      if (debeInsertarIntermedio) {
+        const bannerIntermedio = await crearBannerElemento('banner-inline');
+        if (currentRender !== renderVersion) return;
+        if (bannerIntermedio) fragment.appendChild(bannerIntermedio);
+      }
+    }
+  }
+
+  const debeAgregarFinal = totalFilas === 0 || totalFilas % 4 !== 0;
+  if (debeAgregarFinal) {
+    const bannerFinal = await crearBannerElemento('banner-bottom');
+    if (currentRender !== renderVersion) return;
+    if (bannerFinal) fragment.appendChild(bannerFinal);
+  }
+
+  lista.appendChild(fragment);
 }
 
 function abrirModal(evento) {
@@ -204,5 +283,16 @@ btnGratis.addEventListener('change', (e) => {
   renderizarEventos();
 });
 
-cargarFiltros();
-cargarEventos();
+(async function init() {
+  if (typeof mostrarLoader === 'function') {
+    await mostrarLoader();
+  }
+
+  try {
+    await Promise.all([cargarFiltros(), cargarEventos()]);
+  } finally {
+    if (typeof ocultarLoader === 'function') {
+      await ocultarLoader();
+    }
+  }
+})();

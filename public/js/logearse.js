@@ -5,11 +5,9 @@ const isLocal = window.location.hostname === '127.0.0.1' || window.location.host
 const basePath = isLocal ? '/public' : '';
 const origin = window.location.origin;
 const resetRedirectTo = `${origin}${basePath}/nuevaPassword.html`;
+const socialRedirectUrl = `${origin}${basePath}/usuarios/cuentaUsuario.html`;
 
 window.__supabaseResetRedirect = resetRedirectTo;
-const socialRedirectUrl = isLocal
-  ? `${origin}/public/usuarios/cuentaUsuario.html`
-  : 'https://test.enpe-erre.com/usuarios/cuentaUsuario.html';
 
 async function loginWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
@@ -20,6 +18,8 @@ async function loginWithGoogle() {
   if (error) {
     console.error('Error loginWithGoogle:', error.message);
   }
+
+  return { error };
 }
 
 
@@ -134,8 +134,12 @@ async function init() {
 
   const socialButtons = document.querySelectorAll('[data-login-provider="google"]');
   socialButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      loginWithGoogle();
+    button.addEventListener('click', async () => {
+      await mostrarLoader();
+      const { error } = await loginWithGoogle();
+      if (error) {
+        await ocultarLoader();
+      }
     });
   });
 
@@ -171,13 +175,18 @@ async function init() {
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('passwordLogin').value;
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    await mostrarLoader();
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      errorMensaje.textContent = 'Correo o contraseña incorrecta.';
-      errorMensaje.classList.remove('hidden');
-    } else {
-      window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
+      if (error) {
+        errorMensaje.textContent = 'Correo o contraseña incorrecta.';
+        errorMensaje.classList.remove('hidden');
+      } else {
+        window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
+      }
+    } finally {
+      await ocultarLoader();
     }
   });
 
@@ -217,58 +226,63 @@ async function init() {
       return;
     }
 
-    // 🔒 Desactivar confirmación de email
-    const { data: signup, error: errorSignup } = await supabase.auth.signUp({
-      email,
-      password
-    });
+    await mostrarLoader();
+    try {
+      // 🔒 Desactivar confirmación de email
+      const { data: signup, error: errorSignup } = await supabase.auth.signUp({
+        email,
+        password
+      });
 
-    if (errorSignup || !signup?.user?.id) {
-      errorRegistro.textContent = 'Error creando la cuenta.';
-      errorRegistro.classList.remove('hidden');
-      return;
-    }
-
-    const userId = signup.user.id;
-    let imagen = '';
-
-    // 📸 Subir imagen si existe
-    if (foto) {
-      const extension = foto.name.split('.').pop();
-      const nombreArchivo = `usuarios/${userId}_${Date.now()}.${extension}`;
-
-      const { error: errorUpload } = await supabase.storage
-        .from('imagenesusuarios')
-        .upload(nombreArchivo, foto, {
-          cacheControl: '3600',
-          upsert: true,
-          contentType: foto.type
-        });
-
-      if (!errorUpload) {
-        const { data } = supabase.storage
-          .from('imagenesusuarios')
-          .getPublicUrl(nombreArchivo);
-        imagen = data.publicUrl;
+      if (errorSignup || !signup?.user?.id) {
+        errorRegistro.textContent = 'Error creando la cuenta.';
+        errorRegistro.classList.remove('hidden');
+        return;
       }
-    }
 
-    const payload = { nombre, apellido, telefono: telefonoDigits, municipio, imagen, notificartext: notificarText };
-    const actualizado = await actualizarPerfilUsuario(userId, payload);
+      const userId = signup.user.id;
+      let imagen = '';
 
-    if (!actualizado) {
-      errorRegistro.textContent = 'Error guardando datos.';
-      errorRegistro.classList.remove('hidden');
-      return;
-    }
+      // 📸 Subir imagen si existe
+      if (foto) {
+        const extension = foto.name.split('.').pop();
+        const nombreArchivo = `usuarios/${userId}_${Date.now()}.${extension}`;
 
-    // ✅ Login automático después de registrar
-    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-    if (!loginError) {
-      window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
-    } else {
-      alert('Cuenta creada, pero necesitas iniciar sesión.');
-      window.location.reload();
+        const { error: errorUpload } = await supabase.storage
+          .from('imagenesusuarios')
+          .upload(nombreArchivo, foto, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: foto.type
+          });
+
+        if (!errorUpload) {
+          const { data } = supabase.storage
+            .from('imagenesusuarios')
+            .getPublicUrl(nombreArchivo);
+          imagen = data.publicUrl;
+        }
+      }
+
+      const payload = { nombre, apellido, telefono: telefonoDigits, municipio, imagen, notificartext: notificarText };
+      const actualizado = await actualizarPerfilUsuario(userId, payload);
+
+      if (!actualizado) {
+        errorRegistro.textContent = 'Error guardando datos.';
+        errorRegistro.classList.remove('hidden');
+        return;
+      }
+
+      // ✅ Login automático después de registrar
+      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
+      if (!loginError) {
+        window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
+      } else {
+        alert('Cuenta creada, pero necesitas iniciar sesión.');
+        window.location.reload();
+      }
+    } finally {
+      await ocultarLoader();
     }
   });
 }
