@@ -31,7 +31,7 @@ async function renderTopBannerArea() {
     topContainer.innerHTML = '';
   }
 
-  const banner = await createGlobalBannerElement({ intervalMs: 5000, slotName: 'banner-top' });
+  const banner = await createGlobalBannerElement({ intervalMs: 8000, slotName: 'banner-top' });
   if (banner) {
     topContainer.appendChild(banner);
     topContainer.classList.remove('hidden');
@@ -42,7 +42,7 @@ async function renderTopBannerArea() {
 
 async function crearBannerElemento(slotName = 'banner-inline') {
   try {
-    return await createGlobalBannerElement({ intervalMs: 5000, slotName });
+    return await createGlobalBannerElement({ intervalMs: 8000, slotName });
   } catch (error) {
     console.error('Error creando banner global:', error);
     return null;

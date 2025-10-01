@@ -174,7 +174,7 @@ function createCarouselWrapper(slotName, customClassName) {
   wrapper.className = resolvedClass;
 
   const frame = document.createElement('div');
-  frame.className = 'relative aspect-[12/2] overflow-hidden rounded-lg bg-black/5';
+  frame.className = 'relative aspect-[8/3] overflow-hidden rounded-lg bg-black/5';
   wrapper.appendChild(frame);
 
   return { wrapper, frame };
@@ -203,7 +203,7 @@ export function startCarousel(slotName, banners, options = {}) {
     return null;
   }
 
-  const { intervalMs = 5000, wrapperClassName } = options;
+  const { intervalMs = 8000, wrapperClassName } = options;
   const { wrapper, frame } = createCarouselWrapper(slotName, wrapperClassName);
 
   let currentIndex = 0;
@@ -223,7 +223,7 @@ export function startCarousel(slotName, banners, options = {}) {
 
 export async function createGlobalBannerElement(options = {}) {
   const {
-    intervalMs = 5000,
+    intervalMs = 8000,
     slotName = 'banner-inline',
     wrapperClassName
   } = options;
@@ -244,7 +244,7 @@ export async function insertGlobalBannerCarousels(container, options = {}) {
   const banners = await fetchGlobalBanners();
   if (!Array.isArray(banners) || banners.length === 0) return;
 
-  const { frequency = 8, intervalMs = 5000 } = options;
+  const { frequency = 8, intervalMs = 8000 } = options;
 
   const originalChildren = Array.from(target.children);
 

@@ -24,7 +24,6 @@ const bannerTitulo = document.getElementById('bannerTitulo');
 const bannerDescripcion = document.getElementById('bannerDescripcion');
 const bannerImagen = document.getElementById('bannerImagen');
 const bannerVideo = document.getElementById('bannerVideo');
-const bannerVideoUrl = document.getElementById('bannerVideoUrl');
 const bannerFechaInicio = document.getElementById('bannerFechaInicio');
 const bannerFechaFin = document.getElementById('bannerFechaFin');
 const bannerActivo = document.getElementById('bannerActivo');
@@ -46,6 +45,7 @@ let buscarComercioTimeout = null;
 
 const areaMap = new Map();
 const municipioMap = new Map();
+let soportaEstadoColumna = true;
 
 function safeText(texto) {
   return (texto ?? '').toString();
@@ -72,13 +72,73 @@ function formatearRangoFechas(inicio, fin) {
   return `${inicioFmt} – ${finFmt}`;
 }
 
-function slugify(value) {
-  return safeText(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase() || `banner-${Date.now()}`;
+function generarRutaStorage(carpeta, fileName) {
+  const extension = (fileName.split('.').pop() || 'bin').toLowerCase();
+  const stamp = Date.now().toString(36);
+  const random = Math.random().toString(36).slice(2, 8);
+  return `${carpeta}/${stamp}_${random}.${extension}`;
+}
+
+function normalizarBanner(item) {
+  const rawArea = item.idArea ?? item.areaId ?? item.area_id;
+  const rawMunicipio = item.idMunicipio ?? item.municipioId ?? item.municipio_id;
+  const imagenUrl = item.imagenurl ?? item.imagenUrl ?? item.imagen_url ?? item.archivo_url ?? null;
+  const videoUrl = item.videourl ?? item.videoUrl ?? item.video_url ?? null;
+  const urlExterna = item.urlExterna ?? item.urlexterna ?? null;
+  const idComercio = item.idComercio ?? item.idcomercio ?? null;
+
+  const tieneEstado = Object.prototype.hasOwnProperty.call(item, 'estado');
+  if (tieneEstado) {
+    soportaEstadoColumna = true;
+  }
+
+  const estadoRemoto = tieneEstado ? item.estado : null;
+  const subidaEstado = estadoRemoto
+    || (imagenUrl || videoUrl ? 'completado' : 'pendiente');
+
+  return {
+    ...item,
+    imagenUrl,
+    videoUrl,
+    urlExterna,
+    subidaEstado,
+    idComercio: idComercio === null || idComercio === undefined ? null : Number(idComercio),
+    idArea: rawArea === null || rawArea === undefined ? null : Number(rawArea),
+    idMunicipio: rawMunicipio === null || rawMunicipio === undefined ? null : Number(rawMunicipio)
+  };
+}
+
+function actualizarBannerEnMemoria(actualizado) {
+  const index = banners.findIndex(b => b.id === actualizado.id);
+  if (index === -1) return;
+  banners[index] = { ...banners[index], ...actualizado };
+}
+
+function actualizarEstadoSubidaLocal(id, nuevoEstado, extras = {}) {
+  const index = banners.findIndex(b => b.id === id);
+  if (index === -1) return;
+  banners[index] = {
+    ...banners[index],
+    ...extras,
+    subidaEstado: nuevoEstado
+  };
+}
+
+function obtenerBadgeSubida(estado) {
+  if (!estado || estado === 'completado') return '';
+  const estilos = {
+    pendiente: 'bg-amber-100 text-amber-700',
+    procesando: 'bg-sky-100 text-sky-700',
+    error: 'bg-red-100 text-red-700'
+  };
+  const textos = {
+    pendiente: 'Pendiente',
+    procesando: 'Procesando',
+    error: 'Error'
+  };
+  const clase = estilos[estado] ?? 'bg-gray-100 text-gray-600';
+  const texto = textos[estado] ?? estado;
+  return `<span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${clase}">${texto}</span>`;
 }
 
 function toggleSelectorComercio(mostrar) {
@@ -167,7 +227,6 @@ function abrirModal(banner = null) {
     bannerFechaInicio.value = banner.fechaInicio ? banner.fechaInicio.split('T')[0] : '';
     bannerFechaFin.value = banner.fechaFin ? banner.fechaFin.split('T')[0] : '';
     bannerActivo.checked = banner.activo === true;
-    bannerVideoUrl.value = banner.videoUrl || '';
     inputUrlExterna.value = banner.urlExterna || '';
 
     if (banner.idComercio != null) {
@@ -197,7 +256,6 @@ function abrirModal(banner = null) {
     modalTitulo.textContent = 'Nuevo Banner';
     bannerId.value = '';
     toggleCamposTipo('global');
-    bannerVideoUrl.value = '';
     inputUrlExterna.value = '';
     toggleSelectorComercio(false);
   }
@@ -254,17 +312,22 @@ function renderBanners(lista) {
         ? (municipioMap.get(banner.idMunicipio) || '--')
         : 'Global';
 
+    const activoBadge = `<span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${banner.activo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">${banner.activo ? 'Sí' : 'No'}</span>`;
+    const subidaBadge = obtenerBadgeSubida(banner.subidaEstado);
+    const estadoHtml = `
+      <div class="flex flex-col items-center gap-1">
+        ${activoBadge}
+        ${subidaBadge}
+      </div>
+    `;
+
     const fila = document.createElement('tr');
     fila.innerHTML = `
       <td class="px-4 py-3 font-medium text-gray-800">${safeText(banner.titulo)}</td>
       <td class="px-4 py-3 text-gray-600">${formatearTipo(banner.tipo)}</td>
       <td class="px-4 py-3 text-gray-600">${ubicacion}</td>
       <td class="px-4 py-3 text-gray-600">${formatearRangoFechas(banner.fechaInicio, banner.fechaFin)}</td>
-      <td class="px-4 py-3 text-center">
-        <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${banner.activo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">
-          ${banner.activo ? 'Sí' : 'No'}
-        </span>
-      </td>
+      <td class="px-4 py-3 text-center">${estadoHtml}</td>
       <td class="px-4 py-3 text-center space-x-2">
         <button data-accion="editar" data-id="${banner.id}" class="text-blue-600 hover:text-blue-800">Editar</button>
         <button data-accion="toggle" data-id="${banner.id}" class="text-yellow-600 hover:text-yellow-800">${banner.activo ? 'Desactivar' : 'Activar'}</button>
@@ -282,9 +345,12 @@ function renderBanners(lista) {
             <h3 class="text-lg font-semibold text-gray-800">${safeText(banner.titulo)}</h3>
             <p class="text-sm text-gray-500">${formatearTipo(banner.tipo)} · ${ubicacion}</p>
           </div>
-          <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${banner.activo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">
-            ${banner.activo ? 'Activo' : 'Inactivo'}
-          </span>
+          <div class="flex flex-col items-end gap-1">
+            <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${banner.activo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">
+              ${banner.activo ? 'Activo' : 'Inactivo'}
+            </span>
+            ${obtenerBadgeSubida(banner.subidaEstado)}
+          </div>
         </header>
         <p class="text-sm text-gray-600">${formatearRangoFechas(banner.fechaInicio, banner.fechaFin)}</p>
         <footer class="flex flex-wrap gap-3 text-sm pt-2 border-t border-gray-100 mt-2">
@@ -346,24 +412,11 @@ async function cargarBanners() {
 
     if (error) throw error;
 
-    banners = (data ?? []).map(item => {
-      const rawArea = item.idArea ?? item.areaId ?? item.area_id;
-      const rawMunicipio = item.idMunicipio ?? item.municipioId ?? item.municipio_id;
-      const imagenUrl = item.imagenurl ?? item.imagenUrl ?? item.imagen_url ?? item.archivo_url ?? null;
-      const videoUrl = item.videourl ?? item.videoUrl ?? item.video_url ?? null;
-      const urlExterna = item.urlExterna ?? item.urlexterna ?? null;
-      const idComercio = item.idComercio ?? item.idcomercio ?? null;
-
-      return {
-        ...item,
-        imagenUrl,
-        videoUrl,
-        urlExterna,
-        idComercio: idComercio === null || idComercio === undefined ? null : Number(idComercio),
-        idArea: rawArea === null || rawArea === undefined ? null : Number(rawArea),
-        idMunicipio: rawMunicipio === null || rawMunicipio === undefined ? null : Number(rawMunicipio)
-      };
-    });
+    const registros = data ?? [];
+    soportaEstadoColumna = registros.length === 0
+      ? true
+      : registros.some(item => Object.prototype.hasOwnProperty.call(item, 'estado'));
+    banners = registros.map(normalizarBanner);
 
     aplicarFiltros();
   } catch (error) {
@@ -414,11 +467,48 @@ async function handleEliminar(id) {
   }
 }
 
-async function subirArchivo(file, carpeta) {
-  const extension = (file.name.split('.').pop() || 'bin').toLowerCase();
-  const path = `${carpeta}/${slugify(bannerTitulo.value)}_${Date.now()}.${extension}`;
+async function compressImage(file, options = {}) {
+  if (!file || !file.type.startsWith('image/')) return file;
+  if (typeof createImageBitmap !== 'function') return file;
 
-  console.log('[adminBanners] Subiendo archivo a:', path);
+  const {
+    maxWidth = 1600,
+    maxHeight = 1600,
+    quality = 0.8,
+    mimeType = 'image/jpeg'
+  } = options;
+
+  const bitmap = await createImageBitmap(file);
+  let { width, height } = bitmap;
+  const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+  if (ratio < 1) {
+    width = Math.round(width * ratio);
+    height = Math.round(height * ratio);
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) resolve(result);
+      else reject(new Error('No se pudo comprimir la imagen.'));
+    }, mimeType, quality);
+  });
+
+  const nombreBase = file.name.replace(/\.[^/.]+$/, '');
+  return new File([blob], `${nombreBase}.jpg`, {
+    type: mimeType,
+    lastModified: Date.now()
+  });
+}
+
+async function subirArchivo(file, carpeta) {
+  const path = generarRutaStorage(carpeta, file.name);
 
   const { error } = await supabase.storage
     .from('banners')
@@ -433,19 +523,88 @@ async function subirArchivo(file, carpeta) {
   return data?.publicUrl ?? null;
 }
 
-function validarMedios({ imagenFile, videoFile, videoUrl }) {
+function validarMedios({ imagenFile, videoFile }) {
   const opcionesSeleccionadas = [
     imagenFile ? 1 : 0,
-    videoFile ? 1 : 0,
-    videoUrl ? 1 : 0
+    videoFile ? 1 : 0
   ].reduce((acc, curr) => acc + curr, 0);
 
   if (opcionesSeleccionadas > 1) {
-    throw new Error('Solo se permite una fuente de contenido: imagen, video subido o URL de video.');
+    throw new Error('Solo se permite una fuente de contenido: imagen o video subido.');
   }
 
   if (!bannerEnEdicion && opcionesSeleccionadas === 0) {
-    throw new Error('Debes subir una imagen, un video o proporcionar una URL de video.');
+    throw new Error('Debes subir una imagen o un video.');
+  }
+}
+
+async function procesarSubidaMedios(banner, imagenFile, videoFile) {
+  try {
+    if (!imagenFile && !videoFile) {
+      if (soportaEstadoColumna && banner.subidaEstado === 'pendiente') {
+        await supabase.from('banners').update({ estado: 'disponible' }).eq('id', banner.id);
+      }
+      actualizarEstadoSubidaLocal(banner.id, 'completado');
+      aplicarFiltros();
+      return;
+    }
+
+    actualizarEstadoSubidaLocal(banner.id, 'procesando');
+    aplicarFiltros();
+
+    const updatePayload = {};
+
+    if (imagenFile) {
+      const imagenUrl = await subirArchivo(imagenFile, 'banners/imagenes');
+      updatePayload.imagenurl = imagenUrl;
+      updatePayload.videourl = null;
+    }
+
+    if (videoFile) {
+      const videoUrl = await subirArchivo(videoFile, 'banners/videos');
+      updatePayload.videourl = videoUrl;
+      if (!imagenFile) {
+        updatePayload.imagenurl = null;
+      }
+    }
+
+    if (soportaEstadoColumna) {
+      updatePayload.estado = 'disponible';
+    }
+
+    const { data, error } = await supabase
+      .from('banners')
+      .update(updatePayload)
+      .eq('id', banner.id)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const normalizado = {
+      ...normalizarBanner(data),
+      subidaEstado: 'completado'
+    };
+
+    actualizarBannerEnMemoria(normalizado);
+    aplicarFiltros();
+  } catch (error) {
+    console.error('Error completando la subida del banner:', error);
+    actualizarEstadoSubidaLocal(banner.id, 'error');
+    aplicarFiltros();
+
+    if (soportaEstadoColumna) {
+      try {
+        await supabase
+          .from('banners')
+          .update({ estado: 'error' })
+          .eq('id', banner.id);
+      } catch (estadoError) {
+        console.error('No se pudo actualizar el estado del banner tras el error:', estadoError);
+      }
+    }
+
+    alert('Hubo un problema al subir el archivo. Puedes reintentar desde la opción "Editar".');
   }
 }
 
@@ -459,9 +618,8 @@ formBanner.addEventListener('submit', async (event) => {
   const tipo = bannerTipo.value;
   const areaSeleccionada = bannerArea.value || null;
   const municipioSeleccionado = bannerMunicipio.value || null;
-  const imagenFile = bannerImagen.files?.[0] ?? null;
+  let imagenFile = bannerImagen.files?.[0] ?? null;
   const videoFile = bannerVideo.files?.[0] ?? null;
-  const videoUrl = bannerVideoUrl.value.trim();
   const fechaInicio = bannerFechaInicio.value ? new Date(bannerFechaInicio.value).toISOString() : null;
   const fechaFin = bannerFechaFin.value ? new Date(bannerFechaFin.value).toISOString() : null;
   const activo = bannerActivo.checked;
@@ -472,7 +630,15 @@ formBanner.addEventListener('submit', async (event) => {
     if (tipo === 'area' && !areaSeleccionada) throw new Error('Selecciona un área para el banner.');
     if (tipo === 'municipio' && !municipioSeleccionado) throw new Error('Selecciona un municipio para el banner.');
 
-    validarMedios({ imagenFile, videoFile, videoUrl });
+    if (imagenFile) {
+      try {
+        imagenFile = await compressImage(imagenFile);
+      } catch (compressionError) {
+        console.warn('No se pudo comprimir la imagen, se usará el archivo original.', compressionError);
+      }
+    }
+
+    validarMedios({ imagenFile, videoFile });
 
     if (esComercio && !comercioSeleccionadoId) {
       throw new Error('Selecciona un comercio para vincular el banner.');
@@ -492,51 +658,71 @@ formBanner.addEventListener('submit', async (event) => {
       urlExterna: esComercio ? null : urlExternaValor
     };
 
-    let imagenUrl = bannerEnEdicion?.imagenUrl ?? null;
-    let videoFinalUrl = bannerEnEdicion?.videoUrl ?? null;
-
-    if (imagenFile) {
-      imagenUrl = await subirArchivo(imagenFile, 'banners/imagenes');
-      videoFinalUrl = null;
-    }
-
-    if (videoFile) {
-      videoFinalUrl = await subirArchivo(videoFile, 'banners/videos');
-      imagenUrl = null;
-    }
-
-    if (videoUrl) {
-      videoFinalUrl = videoUrl;
-      imagenUrl = null;
-    }
-
-    if (!imagenUrl && !videoFinalUrl) {
-      throw new Error('Debes mantener al menos una imagen o video en el banner.');
-    }
-
-    const datosSupabase = {
-      ...payload,
-      imagenurl: imagenUrl,
-      videourl: videoFinalUrl
-    };
+    const requiereSubida = Boolean(imagenFile || videoFile);
 
     if (typeof mostrarLoader === 'function') await mostrarLoader();
 
     if (bannerEnEdicion) {
-    const { error } = await supabase
-      .from('banners')
-      .update(datosSupabase)
-      .eq('id', bannerEnEdicion.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from('banners')
-        .insert([datosSupabase]);
-      if (error) throw error;
-    }
+      const updatePayload = { ...payload };
+      if (requiereSubida) {
+        updatePayload.imagenurl = imagenFile ? null : bannerEnEdicion.imagenUrl ?? null;
+        updatePayload.videourl = videoFile ? null : bannerEnEdicion.videoUrl ?? null;
+        if (soportaEstadoColumna) updatePayload.estado = 'pendiente';
+      }
 
-    await cargarBanners();
-    cerrarModal();
+      const { data, error } = await supabase
+        .from('banners')
+        .update(updatePayload)
+        .eq('id', bannerEnEdicion.id)
+        .select()
+        .maybeSingle();
+
+      if (error) throw error;
+
+      let normalizado = normalizarBanner(data);
+      if (requiereSubida) {
+        normalizado = { ...normalizado, subidaEstado: 'pendiente' };
+      }
+
+      actualizarBannerEnMemoria(normalizado);
+      aplicarFiltros();
+      cerrarModal();
+
+      if (requiereSubida) {
+        procesarSubidaMedios(normalizado, imagenFile, videoFile);
+      }
+    } else {
+      const insertPayload = {
+        ...payload,
+        imagenurl: requiereSubida ? null : null,
+        videourl: requiereSubida ? null : null
+      };
+      if (soportaEstadoColumna) {
+        insertPayload.estado = requiereSubida ? 'pendiente' : 'disponible';
+      }
+
+      const { data, error } = await supabase
+        .from('banners')
+        .insert([insertPayload])
+        .select()
+        .maybeSingle();
+
+      if (error) throw error;
+
+      let normalizado = normalizarBanner(data);
+      normalizado = {
+        ...normalizado,
+        subidaEstado: requiereSubida ? 'pendiente' : 'completado'
+      };
+
+      banners.unshift(normalizado);
+      aplicarFiltros();
+      cerrarModal();
+
+      if (requiereSubida) {
+        procesarSubidaMedios(normalizado, imagenFile, videoFile);
+      }
+    }
   } catch (error) {
     console.error('Error guardando banner:', error);
     errorBanner.textContent = error.message || 'Ocurrió un error al guardar.';
