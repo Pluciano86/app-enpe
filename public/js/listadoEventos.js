@@ -234,14 +234,14 @@ async function renderizarEventos() {
             <span>${evento.categoriaNombre || ''}</span>
           </div>
           ${fechaDetalle ? `
-            <div class="flex flex-col items-center justify-center gap-0 text-sm text-red-600 font-medium leading-tight">
+            <div class="flex flex-col items-center justify-center gap-0 text-base text-red-600 font-medium leading-tight">
               <span>${fechaDetalle.weekday}</span>
               <span>${fechaDetalle.resto}</span>
             </div>
           ` : `
             <div class="flex items-center justify-center gap-1 text-sm text-red-600 font-medium leading-tight">Sin fecha</div>
           `}
-          ${horaTexto ? `<div class="flex items-center justify-center gap-1 text-sm text-red-600 leading-tight">${horaTexto}</div>` : ''}
+          ${horaTexto ? `<div class="flex items-center justify-center gap-1 text-sm text-gray-500 leading-tight">${horaTexto}</div>` : ''}
           <div class="flex items-center justify-center gap-1 text-sm font-medium" style="color:#23B4E9;">
             <i class="fa-solid fa-map-pin"></i>
             <span>${evento.municipioNombre}</span>
