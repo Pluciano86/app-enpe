@@ -80,8 +80,7 @@ async function fetchGlobalBanners() {
       .from('banners')
       .select('id, titulo, descripcion, tipo, idArea, idMunicipio, imagenurl, videourl, activo, fechaInicio, fechaFin, created_at, urlExterna, idComercio')
       .eq('tipo', 'global')
-      .eq('activo', true)
-      .order('created_at', { ascending: false });
+      .eq('activo', true);
 
     console.log('[bannerCarousel] fetchGlobalBanners result:', { data, error });
 
@@ -206,7 +205,8 @@ export function startCarousel(slotName, banners, options = {}) {
   const { intervalMs = 8000, wrapperClassName } = options;
   const { wrapper, frame } = createCarouselWrapper(slotName, wrapperClassName);
 
-  let currentIndex = 0;
+  // 🚀 Iniciar en un índice random
+  let currentIndex = Math.floor(Math.random() * banners.length);
   renderSlide(frame, banners[currentIndex]);
 
   if (banners.length > 1) {
@@ -231,6 +231,7 @@ export async function createGlobalBannerElement(options = {}) {
   const banners = await fetchGlobalBanners();
   if (!Array.isArray(banners) || banners.length === 0) return null;
 
+  // 👆 ahora usamos startCarousel que ya arranca en random
   const result = startCarousel(slotName, banners, { intervalMs, wrapperClassName });
   return result?.element ?? null;
 }
