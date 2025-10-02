@@ -20,51 +20,63 @@
   <div id="headerContainer" class="h-16 shrink-0 z-40"></div>
 
   <!-- Controles -->
-  <section class="px-4 md:px-6 py-3 bg-white border-b flex flex-wrap items-center gap-3 shrink-0">
-    <label class="text-sm font-medium">Radio:</label>
-    <input id="radioKm" type="range" min="1" max="25" step="1" value="5" class="w-48 accent-blue-600" />
-    <span id="radioKmLabel" class="text-sm">5 km</span>
-
-    <button id="btnCentrarme"
-      class="ml-auto inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded">
-      <i class="fas fa-location-crosshairs"></i> Centrarme
-    </button>
-
-  </section>
-  <section class="px-4 md:px-6 py-3 bg-white border-b shadow">
-  <div class="flex flex-col md:flex-row md:items-center md:gap-4 gap-3">
-
+  <section class="px-4 md:px-6 py-3 bg-white border-b shadow space-y-3">
+    
     <!-- Searchbox -->
-    <div class="flex items-center border rounded-lg px-3 py-2 w-full md:w-1/3">
+    <div class="flex items-center border rounded-lg px-3 py-2 w-full">
       <i class="fas fa-search text-gray-400 mr-2"></i>
-      <input id="searchNombre" type="text" placeholder="Buscar por nombre..."
+      <input id="searchNombre" type="text" placeholder="Buscar en Comercios..."
         class="flex-1 outline-none text-sm" />
     </div>
 
-    <!-- Categoría -->
-    <select id="filtroCategoria" class="border rounded-lg px-3 py-2 text-sm w-full md:w-1/4">
-      <option value="">Todas las categorías</option>
-    </select>
+    <!-- Filtros -->
+    <div class="grid grid-cols-3 gap-2">
+      <select id="filtroMunicipio" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="">Municipios</option>
+      </select>
+      <select id="filtroCategoria" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="">Todas las categorías</option>
+      </select>
+      <select id="filtroOrden" class="border rounded-lg px-3 py-2 text-sm">
+        <option value="cercania">Cercanía</option>
+        <option value="alfabetico">Alfabético</option>
+        <option value="recientes">Recientes</option>
+      </select>
+    </div>
 
-    <!-- Abierto ahora -->
-    <label class="flex items-center gap-2 text-sm cursor-pointer">
-      <input id="filtroAbierto" type="checkbox" class="toggle-checkbox">
-      <span>Abierto ahora</span>
-    </label>
+    <!-- Toggles -->
+    <div class="flex justify-between items-center text-sm">
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input id="filtroAbierto" type="checkbox" />
+        <span>Abierto ahora</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input id="filtroFavoritos" type="checkbox" />
+        <span>Mis Favoritos</span>
+      </label>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input id="filtroDestacados" type="checkbox" />
+        <span>Destacados Primero</span>
+      </label>
+    </div>
 
-    <!-- Favoritos -->
-    <label class="flex items-center gap-2 text-sm cursor-pointer">
-      <input id="filtroFavoritos" type="checkbox" class="toggle-checkbox">
-      <span>Mis Favoritos</span>
-    </label>
-  </div>
-</section>
+    <!-- Radio -->
+    <div class="flex items-center gap-3">
+      <label for="radioKm" class="text-sm font-medium">Radio:</label>
+      <input id="radioKm" type="range" min="1" max="205" step="1" value="5" class="flex-1 accent-blue-600" />
+      <span id="radioKmLabel" class="text-sm">5 km</span>
+      <button id="btnCentrarme"
+        class="ml-auto inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded">
+        <i class="fas fa-location-crosshairs"></i> Centrarme
+      </button>
+    </div>
+
+  </section>
 
   <!-- Mapa: ocupa todo el espacio libre -->
   <main class="flex-1 relative">
     <div id="map" class="absolute inset-0 w-full h-full pb-1 z-0"></div>
   </main>
-
 
   <!-- Loader -->
   <div id="loader" class="fixed inset-0 bg-black/30 hidden items-center justify-center z-40">
@@ -79,5 +91,14 @@
   <script type="module" src="./js/header.js"></script>
   <script type="module" src="./js/footer.js"></script>
   <script type="module" src="./js/cercaDeMi.js"></script>
+
+  <script>
+    // Actualizar valor del radio dinámicamente
+    const slider = document.getElementById("radioKm");
+    const radioValue = document.getElementById("radioKmLabel");
+    slider.addEventListener("input", () => {
+      radioValue.textContent = `${slider.value} km`;
+    });
+  </script>
 </body>
 </html>
