@@ -1,5 +1,30 @@
 export const SUPABASE_PUBLIC_BASE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public';
 
+const STORAGE_BUCKET = 'galeriacomercios';
+
+// ✅ exportar explícitamente
+export function buildStorageUrl(pathRelativo) {
+  if (!pathRelativo) return null;
+
+  // limpiar espacios y remover "public/" al inicio
+  const limpio = String(pathRelativo).trim().replace(/^public\//i, "");
+
+  // separar en segmentos
+  const segmentos = limpio.split("/").filter(Boolean);
+
+  // normalizar bucket a galeriacomercios
+  if (segmentos[0].toLowerCase() === "galeriacomercios") {
+    segmentos[0] = "galeriacomercios";
+  }
+
+  // codificar cada segmento excepto el bucket
+  const pathNormalizado = segmentos
+    .map((segmento, idx) => (idx === 0 ? segmento : encodeURIComponent(segmento)))
+    .join("/");
+
+  return `${SUPABASE_PUBLIC_BASE}/${pathNormalizado}`;
+}
+
 export function getPublicBase(path = '') {
   const normalized = String(path || '').replace(/^\/+/, '');
   return normalized ? `${SUPABASE_PUBLIC_BASE}/${normalized}` : SUPABASE_PUBLIC_BASE;

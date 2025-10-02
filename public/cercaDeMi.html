@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cerca de mí</title>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS/JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+
+<body class="bg-white text-gray-800 h-screen flex flex-col" style="font-family: 'Kanit', sans-serif;">
+
+  <!-- Header dinámico -->
+  <div id="headerContainer" class="h-16 shrink-0 z-40"></div>
+
+  <!-- Controles -->
+  <section class="px-4 md:px-6 py-3 bg-white border-b flex flex-wrap items-center gap-3 shrink-0">
+    <label class="text-sm font-medium">Radio:</label>
+    <input id="radioKm" type="range" min="1" max="25" step="1" value="5" class="w-48 accent-blue-600" />
+    <span id="radioKmLabel" class="text-sm">5 km</span>
+
+    <button id="btnCentrarme"
+      class="ml-auto inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded">
+      <i class="fas fa-location-crosshairs"></i> Centrarme
+    </button>
+
+  </section>
+  <section class="px-4 md:px-6 py-3 bg-white border-b shadow">
+  <div class="flex flex-col md:flex-row md:items-center md:gap-4 gap-3">
+
+    <!-- Searchbox -->
+    <div class="flex items-center border rounded-lg px-3 py-2 w-full md:w-1/3">
+      <i class="fas fa-search text-gray-400 mr-2"></i>
+      <input id="searchNombre" type="text" placeholder="Buscar por nombre..."
+        class="flex-1 outline-none text-sm" />
+    </div>
+
+    <!-- Categoría -->
+    <select id="filtroCategoria" class="border rounded-lg px-3 py-2 text-sm w-full md:w-1/4">
+      <option value="">Todas las categorías</option>
+    </select>
+
+    <!-- Abierto ahora -->
+    <label class="flex items-center gap-2 text-sm cursor-pointer">
+      <input id="filtroAbierto" type="checkbox" class="toggle-checkbox">
+      <span>Abierto ahora</span>
+    </label>
+
+    <!-- Favoritos -->
+    <label class="flex items-center gap-2 text-sm cursor-pointer">
+      <input id="filtroFavoritos" type="checkbox" class="toggle-checkbox">
+      <span>Mis Favoritos</span>
+    </label>
+  </div>
+</section>
+
+  <!-- Mapa: ocupa todo el espacio libre -->
+  <main class="flex-1 relative">
+    <div id="map" class="absolute inset-0 w-full h-full pb-1 z-0"></div>
+  </main>
+
+
+  <!-- Loader -->
+  <div id="loader" class="fixed inset-0 bg-black/30 hidden items-center justify-center z-40">
+    <div class="bg-white rounded px-4 py-3 shadow text-sm font-medium">Cargando comercios…</div>
+  </div>
+
+  <!-- Footer dinámico -->
+  <div id="footerContainer" class="h-16 shrink-0"></div>
+
+  <!-- Scripts -->
+  <script src="https://kit.fontawesome.com/a2e0e6ad5b.js" crossorigin="anonymous"></script>
+  <script type="module" src="./js/header.js"></script>
+  <script type="module" src="./js/footer.js"></script>
+  <script type="module" src="./js/cercaDeMi.js"></script>
+</body>
+</html>

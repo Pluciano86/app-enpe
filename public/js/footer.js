@@ -39,9 +39,9 @@ function renderFooter() {
           <img src="${iconBase}iconInicio.png" class="w-8 h-8 mb-1" alt="Inicio">
           Inicio
         </a>
-        <a href="${base}especiales/especialesDiarios.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <img src="${iconBase}${icono}" class="w-8 h-8 mb-1" alt="${texto}">
-          ${texto}
+        <a href="${base}cercaDeMi.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
+          <img src="${iconBase}nearby.svg" class="w-8 h-8 mb-1" alt="Cerca de Mi">
+          Cerca de Mi
         </a>
         <a href="${base}listadoEventos.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img src="${iconBase}deadline.svg" class="w-8 h-8 mb-1" alt="Eventos">
