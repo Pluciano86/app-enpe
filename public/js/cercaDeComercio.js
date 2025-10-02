@@ -1,6 +1,8 @@
-import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { cardComercio } from './CardComercio.js';
 import { supabase } from '../shared/supabaseClient.js';
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
+import { calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { calcularDistancia } from './distanciaLugar.js';
 
 export async function mostrarComerciosCercanos(comercioOrigen) {
   const origenCoords = {
@@ -32,7 +34,52 @@ export async function mostrarComerciosCercanos(comercioOrigen) {
   );
 
   // 2. Calcular distancias reales usando API
-  const listaConTiempos = await calcularTiemposParaLista(comerciosConCoords, origenCoords);
+  const listaConTiempos = await Promise.all(comerciosConCoords.map(async (comercio) => {
+    const resultado = await getDrivingDistance(
+      origenCoords.lat,
+      origenCoords.lon,
+      comercio.latitud,
+      comercio.longitud
+    );
+
+    let minutos = null;
+    let texto = null;
+    let distanciaKm = typeof resultado?.distance === 'number'
+      ? resultado.distance / 1000
+      : null;
+
+    if (resultado?.duration != null) {
+      minutos = Math.round(resultado.duration / 60);
+      texto = formatTiempo(resultado.duration);
+    }
+
+    if (texto == null) {
+      const distanciaFallback = distanciaKm ?? calcularDistancia(
+        origenCoords.lat,
+        origenCoords.lon,
+        comercio.latitud,
+        comercio.longitud
+      );
+
+      if (Number.isFinite(distanciaFallback) && distanciaFallback > 0) {
+        distanciaKm = distanciaFallback;
+        const fallbackTiempo = calcularTiempoEnVehiculo(distanciaFallback);
+        minutos = fallbackTiempo.minutos;
+        texto = formatTiempo(fallbackTiempo.minutos * 60);
+      } else {
+        texto = 'Distancia no disponible';
+      }
+    }
+
+    return {
+      ...comercio,
+      minutosCrudos: minutos,
+      tiempoVehiculo: texto,
+      tiempoTexto: texto,
+      distanciaKm,
+      distanciaTexto: Number.isFinite(distanciaKm) ? `${distanciaKm.toFixed(1)} km` : null
+    };
+  }));
 
   // 3. Filtrar los que estén dentro de ~15 minutos (aprox. 5 km)
   const cercanos = listaConTiempos.filter(c =>

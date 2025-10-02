@@ -1,77 +1,63 @@
-export async function calcularTiemposParaLugares(lista, origenCoords) {
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
+
+function formatearMinutosConversacional(min) {
+  if (!Number.isFinite(min)) return null;
+  if (min < 60) return `a ${min} minutos`;
+  const horas = Math.floor(min / 60);
+  const mins = min % 60;
+  let texto = `a ${horas} hora${horas === 1 ? '' : 's'}`;
+  if (mins) texto += ` y ${mins} minutos`;
+  return texto;
+}
+
+export async function calcularTiemposParaLugares(lista, origenCoords = {}) {
+  if (!Array.isArray(lista) || lista.length === 0) return lista;
+
+  const origenLat = Number(origenCoords.lat);
+  const origenLon = Number(origenCoords.lon);
+  const origenValido = Number.isFinite(origenLat) && Number.isFinite(origenLon);
+  if (!origenValido) return lista;
+
   const lugaresValidos = lista.filter(l =>
-    typeof l.latitud === 'number' &&
-    typeof l.longitud === 'number' &&
-    !isNaN(l.latitud) &&
-    !isNaN(l.longitud)
+    Number.isFinite(Number(l.latitud)) &&
+    Number.isFinite(Number(l.longitud))
   );
 
-  if (lugaresValidos.length === 0) return lista;
+  await Promise.all(lugaresValidos.map(async (lugar) => {
+    const destinoLat = Number(lugar.latitud);
+    const destinoLon = Number(lugar.longitud);
+    if (!Number.isFinite(destinoLat) || !Number.isFinite(destinoLon)) return;
 
-  const chunkSize = 20;
-  const chunks = [];
+    const distanciaHaversine = calcularDistancia(origenLat, origenLon, destinoLat, destinoLon);
 
-  for (let i = 0; i < lugaresValidos.length; i += chunkSize) {
-    chunks.push(lugaresValidos.slice(i, i + chunkSize));
-  }
+    const resultado = await getDrivingDistance(origenLat, origenLon, destinoLat, destinoLon);
 
-  const allDurations = [];
+    let minutos = resultado?.duration != null ? Math.round(resultado.duration / 60) : null;
+    let texto = resultado?.duration != null ? formatTiempo(resultado.duration) : null;
+    let distanciaKm = typeof resultado?.distance === 'number'
+      ? resultado.distance / 1000
+      : distanciaHaversine;
 
-  for (const chunk of chunks) {
-    const destinos = chunk.map(l => `${l.latitud},${l.longitud}`);
-    const body = {
-      origen: `${origenCoords.lat},${origenCoords.lon}`,
-      destinos: destinos.join('|'),
-      departure_time: 'now'
-    };
-
-    try {
-      const response = await fetch('https://zgjaxanqfkweslkxtayt.functions.supabase.co/calcular-distancia', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
-        },
-        body: JSON.stringify(body)
-      });
-
-      const result = await response.json();
-      const tiempos = result?.rows?.[0]?.elements || [];
-      allDurations.push(...tiempos);
-    } catch (err) {
-      console.error('❌ Error consultando API para chunk:', err);
-    }
-  }
-
-  lugaresValidos.forEach((lugar, i) => {
-    const duracion = allDurations[i]?.duration?.value || null;
-    let minutos = duracion ? Math.round(duracion / 60) : null;
-
-    if (minutos === null) {
-      // Calcular distancia manual y estimar duración
-      const distanciaKm = calcularDistancia(origenCoords.lat, origenCoords.lon, lugar.latitud, lugar.longitud);
-      let velocidad = 30;
-      if (distanciaKm < 5) velocidad = 30;
-      else if (distanciaKm < 15) velocidad = 45;
-      else if (distanciaKm < 40) velocidad = 60;
-      else velocidad = 75;
-
-      minutos = Math.round((distanciaKm / velocidad) * 60);
+    if (minutos === null && Number.isFinite(distanciaHaversine)) {
+      const velocidad = distanciaHaversine < 5
+        ? 30
+        : distanciaHaversine < 15
+          ? 45
+          : distanciaHaversine < 40
+            ? 60
+            : 75;
+      minutos = Math.round((distanciaHaversine / velocidad) * 60);
+      texto = formatTiempo(minutos * 60);
     }
 
-        function formatearMinutosConversacional(min) {
-      if (min < 60) return `a unos ${min} minutos`;
-      const horas = Math.floor(min / 60);
-      const mins = min % 60;
-      if (mins === 0) return `a ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
-      return `a ${horas} ${horas === 1 ? 'hora' : 'horas'} y ${mins} minutos`;
-    }
+    if (!texto) texto = 'Distancia no disponible';
 
-    const texto = formatearMinutosConversacional(minutos);
     lugar.tiempoTexto = texto;
     lugar.tiempoVehiculo = texto;
     lugar.minutosCrudos = minutos;
-  });
+    lugar.distanciaLugar = distanciaKm;
+    lugar.distanciaTexto = Number.isFinite(distanciaKm) ? `${distanciaKm.toFixed(1)} km` : null;
+  }));
 
   return lista;
 }

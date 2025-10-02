@@ -1,4 +1,5 @@
 import { getPublicBase, calcularTiempoEnVehiculo, formatearHorario } from '../shared/utils.js';
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 
 // 📦 Supabase y componentes
 function mostrarMensajeVacio(contenedor, mensaje = 'No se encontraron comercios para los filtros seleccionados.', icono = '📍') {
@@ -116,10 +117,51 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
   return 6371 * c;
 }
 
-function formatearTiempo(minutos) {
-  return minutos >= 60
-    ? `${Math.floor(minutos / 60)}h ${minutos % 60}min`
-    : `${minutos} min`;
+function crearTextoFallback(distanciaKm) {
+  if (!Number.isFinite(distanciaKm) || distanciaKm <= 0) {
+    return { texto: 'Distancia no disponible', minutos: null, distanciaKm: null, distanciaTexto: null };
+  }
+
+  const { minutos } = calcularTiempoEnVehiculo(distanciaKm);
+  const texto = formatTiempo(minutos * 60);
+  return {
+    texto,
+    minutos,
+    distanciaKm,
+    distanciaTexto: `${distanciaKm.toFixed(1)} km`
+  };
+}
+
+async function resolverTiempoEnVehiculo(origen, destino, distanciaHaversine) {
+  const origenValido = origen && Number.isFinite(origen.lon) && Number.isFinite(origen.lat);
+  const destinoValido = destino && Number.isFinite(destino.lon) && Number.isFinite(destino.lat);
+
+  if (origenValido && destinoValido) {
+    const resultado = await getDrivingDistance(origen.lat, origen.lon, destino.lat, destino.lon);
+    if (resultado?.duration != null) {
+      const distanciaKm = typeof resultado.distance === 'number'
+        ? resultado.distance / 1000
+        : distanciaHaversine ?? null;
+
+      return {
+        texto: formatTiempo(resultado.duration),
+        minutos: Math.round(resultado.duration / 60),
+        distanciaKm,
+        distanciaTexto: typeof distanciaKm === 'number' ? `${distanciaKm.toFixed(1)} km` : null
+      };
+    }
+  }
+
+  if (Number.isFinite(distanciaHaversine)) {
+    return crearTextoFallback(distanciaHaversine);
+  }
+
+  return {
+    texto: 'Distancia no disponible',
+    minutos: null,
+    distanciaKm: distanciaHaversine ?? null,
+    distanciaTexto: Number.isFinite(distanciaHaversine) ? `${distanciaHaversine.toFixed(1)} km` : null
+  };
 }
 
 async function cargarComercios() {
@@ -166,7 +208,12 @@ if (user) {
     productosPorComercio[menu.idComercio].push(producto.nombre);
   }
 
-  listaOriginal = comercios.map(comercio => {
+  const origen = {
+    lat: Number(latUsuario),
+    lon: Number(lonUsuario)
+  };
+
+  listaOriginal = await Promise.all(comercios.map(async (comercio) => {
     const portada = imagenesAll.find(img => img.idComercio === comercio.id && img.portada);
     const logo = imagenesAll.find(img => img.idComercio === comercio.id && img.logo);
     const horario = horariosAll.find(h => h.idComercio === comercio.id);
@@ -191,14 +238,20 @@ if (horario && !horario.cerrado && horario.apertura && horario.cierre) {
   }
 }
 
+    const destino = {
+      lat: Number(comercio.latitud),
+      lon: Number(comercio.longitud)
+    };
+
     let distancia = null;
-    if (latUsuario && lonUsuario && comercio.latitud && comercio.longitud) {
-      distancia = calcularDistancia(latUsuario, lonUsuario, comercio.latitud, comercio.longitud);
+    const origenValido = Number.isFinite(origen.lat) && Number.isFinite(origen.lon);
+    const destinoValido = Number.isFinite(destino.lat) && Number.isFinite(destino.lon);
+
+    if (origenValido && destinoValido) {
+      distancia = calcularDistancia(origen.lat, origen.lon, destino.lat, destino.lon);
     }
 
-    const tiempoVehiculo = (typeof distancia === 'number' && !Number.isNaN(distancia))
-      ? calcularTiempoEnVehiculo(distancia).texto
-      : null;
+    const tiempo = await resolverTiempoEnVehiculo(origen, destino, distancia);
 
     const horarioTexto = horario
       ? formatearHorario(horario.apertura, horario.cierre, horario.cerrado)
@@ -211,11 +264,14 @@ if (horario && !horario.cerrado && horario.apertura && horario.cierre) {
       googleMap: comercio.googleMap,
       pueblo: comercio.municipio,
       abierto,
-      tiempoVehiculo,
+      tiempoVehiculo: tiempo.texto,
+      tiempoTexto: tiempo.texto,
+      minutosCrudos: tiempo.minutos,
       horarioTexto,
       imagenPortada: portada ? `${baseImageUrl}/${portada.imagen}` : '',
       logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
-      distanciaKm: distancia,
+      distanciaKm: tiempo.distanciaKm ?? distancia,
+      distanciaTexto: tiempo.distanciaTexto,
       idCategoria: comercio.idCategoria,
       idSubcategoria: Array.isArray(comercio.idSubcategoria)
         ? comercio.idSubcategoria
@@ -226,7 +282,7 @@ if (horario && !horario.cerrado && horario.apertura && horario.cierre) {
       latitud: comercio.latitud,
       longitud: comercio.longitud
     };
-  });
+  }));
 }
 
 function normalizarTexto(texto) {

@@ -1,5 +1,4 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { calcularTiempoEnVehiculo } from '../shared/utils.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';
@@ -101,9 +100,8 @@ export async function obtenerComercioPorID(idComercio) {
       lon: lonUsuario
     });
 
-    if (conTiempo?.minutosCrudos !== null) {
-      const { texto } = calcularTiempoEnVehiculo(conTiempo.distanciaKm ?? 0);
-      document.getElementById('tiempoVehiculo').innerHTML = `<i class="fas fa-car"></i> Aproximadamente a ${texto}`;
+    if (conTiempo?.tiempoVehiculo) {
+      document.getElementById('tiempoVehiculo').innerHTML = `<i class="fas fa-car"></i> ${conTiempo.tiempoVehiculo}`;
     }
 
     const googleMapsURL = `https://www.google.com/maps/search/?api=1&query=${data.latitud},${data.longitud}`;

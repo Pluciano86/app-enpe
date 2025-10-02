@@ -1,4 +1,5 @@
 import { calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 
 // Calcula la distancia Haversine entre dos coordenadas
 function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
@@ -14,31 +15,53 @@ function calcularDistanciaHaversine(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-export async function calcularTiemposParaLista(lista, origenCoords) {
+export async function calcularTiemposParaLista(lista, origenCoords = {}) {
+  const origenLat = Number(origenCoords.lat);
+  const origenLon = Number(origenCoords.lon);
+  const origenValido = Number.isFinite(origenLat) && Number.isFinite(origenLon);
+
   const lugaresValidos = lista.filter(l =>
-    typeof l.latitud === 'number' &&
-    typeof l.longitud === 'number' &&
-    !isNaN(l.latitud) &&
-    !isNaN(l.longitud)
+    Number.isFinite(Number(l.latitud)) &&
+    Number.isFinite(Number(l.longitud))
   );
 
-  if (lugaresValidos.length === 0) return lista;
+  await Promise.all(lugaresValidos.map(async (lugar) => {
+    const destinoLat = Number(lugar.latitud);
+    const destinoLon = Number(lugar.longitud);
+    if (!Number.isFinite(destinoLat) || !Number.isFinite(destinoLon)) return;
 
-  lugaresValidos.forEach(lugar => {
-    const distanciaKm = calcularDistanciaHaversine(
-      origenCoords.lat,
-      origenCoords.lon,
-      lugar.latitud,
-      lugar.longitud
-    );
+    let distanciaKm = origenValido
+      ? calcularDistanciaHaversine(origenLat, origenLon, destinoLat, destinoLon)
+      : null;
 
-    const { minutos: minutosCrudos, texto } = calcularTiempoEnVehiculo(distanciaKm);
+    let minutosCrudos = null;
+    let texto = null;
 
-    lugar.tiempoVehiculo = minutosCrudos < 60 ? `a unos ${texto}` : `a ${texto}`;
-    lugar.tiempoTexto = lugar.tiempoVehiculo;
+    if (origenValido) {
+      const resultado = await getDrivingDistance(origenLat, origenLon, destinoLat, destinoLon);
+      if (resultado?.duration != null) {
+        minutosCrudos = Math.round(resultado.duration / 60);
+        texto = formatTiempo(resultado.duration);
+        if (typeof resultado.distance === 'number') {
+          distanciaKm = resultado.distance / 1000;
+        }
+      }
+    }
+
+    if (!texto && Number.isFinite(distanciaKm)) {
+      const fallback = calcularTiempoEnVehiculo(distanciaKm);
+      minutosCrudos = fallback.minutos;
+      texto = formatTiempo(fallback.minutos * 60);
+    }
+
+    if (!texto) texto = 'Distancia no disponible';
+
+    lugar.tiempoVehiculo = texto;
+    lugar.tiempoTexto = texto;
     lugar.minutosCrudos = minutosCrudos;
     lugar.distanciaKm = distanciaKm;
-  });
+    lugar.distanciaTexto = Number.isFinite(distanciaKm) ? `${distanciaKm.toFixed(1)} km` : null;
+  }));
 
   return lista;
 }

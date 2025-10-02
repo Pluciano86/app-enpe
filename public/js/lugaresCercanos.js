@@ -1,6 +1,8 @@
-import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { cardLugarSlide } from './cardLugarSlide.js';
 import { supabase } from '../shared/supabaseClient.js';
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
+import { calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { calcularDistancia } from './distanciaLugar.js';
 
 export async function mostrarLugaresCercanos(comercioOrigen) {
   const origenCoords = {
@@ -47,7 +49,52 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
     };
   });
 
-  const lugaresConTiempos = await calcularTiemposParaLista(lugaresConImagen, origenCoords);
+  const lugaresConTiempos = await Promise.all(lugaresConImagen.map(async (lugar) => {
+    const resultado = await getDrivingDistance(
+      origenCoords.lat,
+      origenCoords.lon,
+      lugar.latitud,
+      lugar.longitud
+    );
+
+    let minutos = null;
+    let texto = null;
+    let distanciaKm = typeof resultado?.distance === 'number'
+      ? resultado.distance / 1000
+      : null;
+
+    if (resultado?.duration != null) {
+      minutos = Math.round(resultado.duration / 60);
+      texto = formatTiempo(resultado.duration);
+    }
+
+    if (texto == null) {
+      const distanciaFallback = distanciaKm ?? calcularDistancia(
+        origenCoords.lat,
+        origenCoords.lon,
+        lugar.latitud,
+        lugar.longitud
+      );
+
+      if (Number.isFinite(distanciaFallback) && distanciaFallback > 0) {
+        distanciaKm = distanciaFallback;
+        const fallbackTiempo = calcularTiempoEnVehiculo(distanciaFallback);
+        minutos = fallbackTiempo.minutos;
+        texto = formatTiempo(fallbackTiempo.minutos * 60);
+      } else {
+        texto = 'Distancia no disponible';
+      }
+    }
+
+    return {
+      ...lugar,
+      minutosCrudos: minutos,
+      tiempoVehiculo: texto,
+      tiempoTexto: texto,
+      distanciaKm,
+      distanciaTexto: Number.isFinite(distanciaKm) ? `${distanciaKm.toFixed(1)} km` : null
+    };
+  }));
 
   const cercanos = lugaresConTiempos
     .filter(l => l.minutosCrudos !== null && l.minutosCrudos <= 15)

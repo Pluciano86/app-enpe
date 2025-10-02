@@ -1,5 +1,6 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 
 const PLACEHOLDER_LOGO = 'https://placehold.co/80x80?text=Logo';
 const PLACEHOLDER_PORTADA = 'https://placehold.co/400x200?text=Sin+portada';
@@ -113,20 +114,55 @@ function createComercioIcon(comercio) {
   });
 }
 
+async function adjuntarTiempoManejo(lista = []) {
+  if (!Array.isArray(lista) || lista.length === 0) return [];
+
+  const origenValido = Number.isFinite(userLat) && Number.isFinite(userLon);
+
+  return Promise.all(lista.map(async (comercio) => {
+    const destinoLat = Number(comercio.latitud);
+    const destinoLon = Number(comercio.longitud);
+
+    let tiempoVehiculo = comercio.tiempoVehiculo || null;
+    let minutosCrudos = null;
+    let distanciaKm = Number.isFinite(comercio.distancia_m)
+      ? comercio.distancia_m / 1000
+      : null;
+
+    if (origenValido && Number.isFinite(destinoLat) && Number.isFinite(destinoLon)) {
+      const resultado = await getDrivingDistance(userLat, userLon, destinoLat, destinoLon);
+      if (resultado?.duration != null) {
+        minutosCrudos = Math.round(resultado.duration / 60);
+        tiempoVehiculo = formatTiempo(resultado.duration);
+        distanciaKm = typeof resultado.distance === 'number'
+          ? resultado.distance / 1000
+          : distanciaKm;
+      }
+    }
+
+    if (!tiempoVehiculo && Number.isFinite(distanciaKm)) {
+      const fallback = calcularTiempoEnVehiculo(distanciaKm);
+      minutosCrudos = fallback.minutos;
+      tiempoVehiculo = formatTiempo(fallback.minutos * 60);
+    }
+
+    if (!tiempoVehiculo) tiempoVehiculo = 'Distancia no disponible';
+
+    return {
+      ...comercio,
+      tiempoVehiculo,
+      minutosCrudos,
+      distancia_m: Number.isFinite(distanciaKm) ? distanciaKm * 1000 : comercio.distancia_m
+    };
+  }));
+}
+
 function formatDistancia(comercio) {
+  if (comercio.tiempoVehiculo) return comercio.tiempoVehiculo;
   if (!Number.isFinite(comercio.distancia_m)) return 'Distancia no disponible';
   const km = comercio.distancia_m / 1000;
-  const { minutos } = calcularTiempoEnVehiculo(km);
-
-  if (minutos >= 60) {
-    const horas = Math.floor(minutos / 60);
-    const mins = minutos % 60;
-    const horasTxt = `${horas} hora${horas === 1 ? '' : 's'}`;
-    const minsTxt = mins > 0 ? ` y ${mins} minuto${mins === 1 ? '' : 's'}` : '';
-    return `a ${horasTxt}${minsTxt}`;
-  }
-
-  return `a ${minutos} minuto${minutos === 1 ? '' : 's'}`;
+  const { minutos, texto } = calcularTiempoEnVehiculo(km);
+  return minutos < 60 ? `a ${minutos} minutos` : `a ${texto}`;
 }
 
 function popupHTML(comercio) {
@@ -186,19 +222,11 @@ function popupHTML(comercio) {
 }
 
 function formatoDistanciaPopup(comercio) {
+  if (comercio.tiempoVehiculo) return comercio.tiempoVehiculo;
   if (!Number.isFinite(comercio.distancia_m)) return 'Distancia no disponible';
   const km = comercio.distancia_m / 1000;
-  const { minutos } = calcularTiempoEnVehiculo(km);
-
-  if (minutos >= 60) {
-    const horas = Math.floor(minutos / 60);
-    const mins = minutos % 60;
-    const horasTxt = `${horas} hora${horas === 1 ? '' : 's'}`;
-    const minsTxt = mins > 0 ? ` ${mins} minuto${mins === 1 ? '' : 's'}` : '';
-    return `a ${horasTxt}${minsTxt}`;
-  }
-
-  return `a ${minutos} minuto${minutos === 1 ? '' : 's'}`;
+  const { minutos, texto } = calcularTiempoEnVehiculo(km);
+  return minutos < 60 ? `a ${minutos} minutos` : `a ${texto}`;
 }
 
 function renderMarkers(comercios = []) {
@@ -244,7 +272,8 @@ async function loadNearby() {
       console.info('No se encontraron comercios en el radio seleccionado.');
     }
 
-    renderMarkers(lista);
+    const listaConTiempos = await adjuntarTiempoManejo(lista);
+    renderMarkers(listaConTiempos);
   } finally {
     toggleLoader(false);
   }

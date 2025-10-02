@@ -1,7 +1,9 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { cardPlayaSlide } from './cardPlayaSlide.js';
 import { obtenerClima } from './obtenerClima.js';
-import { calcularTiemposParaLugares } from './distanciaLugar.js';
+import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
+import { calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { calcularDistancia } from './distanciaLugar.js';
 
 export async function mostrarPlayasCercanas(comercio) {
   const contenedor = document.getElementById('sliderPlayasCercanas');
@@ -28,11 +30,52 @@ export async function mostrarPlayasCercanas(comercio) {
 
   if (error || !playas || playas.length === 0) return;
 
-  // Calcular tiempos
-  const conTiempo = await calcularTiemposParaLugares(playas, {
-    lat: comercio.latitud,
-    lon: comercio.longitud
-  });
+  const conTiempo = await Promise.all(playas.map(async (playa) => {
+    const resultado = await getDrivingDistance(
+      comercio.latitud,
+      comercio.longitud,
+      playa.latitud,
+      playa.longitud
+    );
+
+    let minutos = null;
+    let texto = null;
+    let distanciaKm = typeof resultado?.distance === 'number'
+      ? resultado.distance / 1000
+      : null;
+
+    if (resultado?.duration != null) {
+      minutos = Math.round(resultado.duration / 60);
+      texto = formatTiempo(resultado.duration);
+    }
+
+    if (texto == null) {
+      const distanciaFallback = distanciaKm ?? calcularDistancia(
+        comercio.latitud,
+        comercio.longitud,
+        playa.latitud,
+        playa.longitud
+      );
+
+      if (Number.isFinite(distanciaFallback) && distanciaFallback > 0) {
+        distanciaKm = distanciaFallback;
+        const fallbackTiempo = calcularTiempoEnVehiculo(distanciaFallback);
+        minutos = fallbackTiempo.minutos;
+        texto = formatTiempo(fallbackTiempo.minutos * 60);
+      } else {
+        texto = 'Distancia no disponible';
+      }
+    }
+
+    return {
+      ...playa,
+      minutosCrudos: minutos,
+      tiempoVehiculo: texto,
+      tiempoTexto: texto,
+      distanciaKm,
+      distanciaTexto: Number.isFinite(distanciaKm) ? `${distanciaKm.toFixed(1)} km` : null
+    };
+  }));
 
   const filtradas = conTiempo
     .filter(p => p.minutosCrudos !== null && p.minutosCrudos <= 45)
@@ -73,7 +116,7 @@ export async function mostrarPlayasCercanas(comercio) {
         estado: clima?.estado || 'Clima desconocido',
         iconoURL: clima?.iconoURL || ''
       },
-      tiempoTexto: playa.tiempoVehiculo || 'Cercana'
+      tiempoTexto: playa.tiempoTexto || 'Distancia no disponible'
     });
 
     contenedor.appendChild(card);

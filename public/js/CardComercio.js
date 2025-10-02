@@ -13,10 +13,10 @@ export function cardComercio(comercio) {
     w-full max-w-[180px] sm:max-w-[200px] mx-auto
   `;
 
-  let textoTiempoEstimado = '';
-  if (comercio.distanciaKm) {
+  let textoTiempoEstimado = comercio.tiempoVehiculo || comercio.tiempoTexto || '';
+  if (!textoTiempoEstimado && Number.isFinite(comercio.distanciaKm)) {
     const { minutos, texto } = calcularTiempoEnVehiculo(comercio.distanciaKm);
-    textoTiempoEstimado = minutos < 60 ? `a unos ${texto}` : `a ${texto}`;
+    textoTiempoEstimado = minutos < 60 ? `a ${minutos} minutos` : `a ${texto}`;
   }
 
   const portadaUrl = comercio.imagenPortada?.startsWith('http')

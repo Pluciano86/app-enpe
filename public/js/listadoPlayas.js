@@ -201,7 +201,10 @@ async function renderizarPlayas() {
     filtradas = filtradas
       .filter(p => p.latitud && p.longitud)
       .map(p => {
-        const d = calcularDistancia(usuarioLat, usuarioLon, p.latitud, p.longitud);
+        const distanciaCampo = Number(p.distanciaLugar);
+        const d = Number.isFinite(distanciaCampo)
+          ? distanciaCampo
+          : calcularDistancia(usuarioLat, usuarioLon, p.latitud, p.longitud);
         return { ...p, _distancia: d };
       })
       .sort((a, b) => a._distancia - b._distancia);
