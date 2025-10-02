@@ -32,21 +32,19 @@ export async function mostrarPlayasCercanas(comercio) {
 
   const conTiempo = await Promise.all(playas.map(async (playa) => {
     const resultado = await getDrivingDistance(
-      comercio.latitud,
-      comercio.longitud,
-      playa.latitud,
-      playa.longitud
+      { lat: comercio.latitud, lng: comercio.longitud },
+      { lat: playa.latitud, lng: playa.longitud }
     );
 
     let minutos = null;
     let texto = null;
-    let distanciaKm = typeof resultado?.distance === 'number'
-      ? resultado.distance / 1000
+    let distanciaKm = typeof resultado?.distancia === 'number'
+      ? resultado.distancia / 1000
       : null;
 
-    if (resultado?.duration != null) {
-      minutos = Math.round(resultado.duration / 60);
-      texto = formatTiempo(resultado.duration);
+    if (resultado?.duracion != null) {
+      minutos = Math.round(resultado.duracion / 60);
+      texto = formatTiempo(resultado.duracion);
     }
 
     if (texto == null) {
@@ -63,7 +61,7 @@ export async function mostrarPlayasCercanas(comercio) {
         minutos = fallbackTiempo.minutos;
         texto = formatTiempo(fallbackTiempo.minutos * 60);
       } else {
-        texto = 'Distancia no disponible';
+        texto = 'N/D';
       }
     }
 
@@ -116,7 +114,7 @@ export async function mostrarPlayasCercanas(comercio) {
         estado: clima?.estado || 'Clima desconocido',
         iconoURL: clima?.iconoURL || ''
       },
-      tiempoTexto: playa.tiempoTexto || 'Distancia no disponible'
+      tiempoTexto: playa.tiempoTexto || 'N/D'
     });
 
     contenedor.appendChild(card);

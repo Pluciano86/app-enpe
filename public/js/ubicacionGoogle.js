@@ -32,12 +32,15 @@ export async function mostrarTiempoIndividual(id) {
     const destinoLat = Number(data.latitud);
     const destinoLon = Number(data.longitud);
 
-    let texto = 'Distancia no disponible';
+    let texto = 'N/D';
 
     if (Number.isFinite(destinoLat) && Number.isFinite(destinoLon)) {
-      const resultado = await getDrivingDistance(origenLat, origenLon, destinoLat, destinoLon);
-      if (resultado?.duration != null) {
-        texto = formatTiempo(resultado.duration);
+      const resultado = await getDrivingDistance(
+        { lat: origenLat, lng: origenLon },
+        { lat: destinoLat, lng: destinoLon }
+      );
+      if (resultado?.duracion != null) {
+        texto = formatTiempo(resultado.duracion);
       } else {
         const distanciaLinea = calcularTiempoEnVehiculo(
           Math.max(0, calcularDistanciaFallback(origenLat, origenLon, destinoLat, destinoLon))

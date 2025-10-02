@@ -38,12 +38,15 @@ export async function calcularTiemposParaLista(lista, origenCoords = {}) {
     let texto = null;
 
     if (origenValido) {
-      const resultado = await getDrivingDistance(origenLat, origenLon, destinoLat, destinoLon);
-      if (resultado?.duration != null) {
-        minutosCrudos = Math.round(resultado.duration / 60);
-        texto = formatTiempo(resultado.duration);
-        if (typeof resultado.distance === 'number') {
-          distanciaKm = resultado.distance / 1000;
+      const resultado = await getDrivingDistance(
+        { lat: origenLat, lng: origenLon },
+        { lat: destinoLat, lng: destinoLon }
+      );
+      if (resultado?.duracion != null) {
+        minutosCrudos = Math.round(resultado.duracion / 60);
+        texto = formatTiempo(resultado.duracion);
+        if (typeof resultado.distancia === 'number') {
+          distanciaKm = resultado.distancia / 1000;
         }
       }
     }
@@ -54,7 +57,7 @@ export async function calcularTiemposParaLista(lista, origenCoords = {}) {
       texto = formatTiempo(fallback.minutos * 60);
     }
 
-    if (!texto) texto = 'Distancia no disponible';
+    if (!texto) texto = 'N/D';
 
     lugar.tiempoVehiculo = texto;
     lugar.tiempoTexto = texto;

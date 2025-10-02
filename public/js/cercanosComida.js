@@ -33,21 +33,19 @@ export async function mostrarCercanosComida(comercioOrigen) {
 
   const listaConTiempos = await Promise.all(comerciosConCoords.map(async (comercio) => {
     const resultado = await getDrivingDistance(
-      origenCoords.lat,
-      origenCoords.lon,
-      comercio.latitud,
-      comercio.longitud
+      { lat: origenCoords.lat, lng: origenCoords.lon },
+      { lat: comercio.latitud, lng: comercio.longitud }
     );
 
     let minutos = null;
     let texto = null;
-    let distanciaKm = typeof resultado?.distance === 'number'
-      ? resultado.distance / 1000
+    let distanciaKm = typeof resultado?.distancia === 'number'
+      ? resultado.distancia / 1000
       : null;
 
-    if (resultado?.duration != null) {
-      minutos = Math.round(resultado.duration / 60);
-      texto = formatTiempo(resultado.duration);
+    if (resultado?.duracion != null) {
+      minutos = Math.round(resultado.duracion / 60);
+      texto = formatTiempo(resultado.duracion);
     }
 
     if (texto == null) {
@@ -64,7 +62,7 @@ export async function mostrarCercanosComida(comercioOrigen) {
         minutos = fallbackTiempo.minutos;
         texto = formatTiempo(fallbackTiempo.minutos * 60);
       } else {
-        texto = 'Distancia no disponible';
+        texto = 'N/D';
       }
     }
 

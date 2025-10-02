@@ -100,8 +100,14 @@ async function cargarNombreCategoria() {
   }
 
   if (icono && data.icono) {
+  if (data.icono.startsWith('<i')) {
+    // Caso: ya guardaste el HTML completo
     icono.innerHTML = data.icono;
+  } else {
+    // Caso: guardaste solo la clase, ej. "fa-utensils"
+    icono.innerHTML = `<i class="fas ${data.icono}"></i>`;
   }
+}
 
   if (input) {
     input.placeholder = `Buscar en ${data.nombre}`;
@@ -119,7 +125,7 @@ function calcularDistancia(lat1, lon1, lat2, lon2) {
 
 function crearTextoFallback(distanciaKm) {
   if (!Number.isFinite(distanciaKm) || distanciaKm <= 0) {
-    return { texto: 'Distancia no disponible', minutos: null, distanciaKm: null, distanciaTexto: null };
+    return { texto: 'N/D', minutos: null, distanciaKm: null, distanciaTexto: null };
   }
 
   const { minutos } = calcularTiempoEnVehiculo(distanciaKm);
@@ -137,15 +143,18 @@ async function resolverTiempoEnVehiculo(origen, destino, distanciaHaversine) {
   const destinoValido = destino && Number.isFinite(destino.lon) && Number.isFinite(destino.lat);
 
   if (origenValido && destinoValido) {
-    const resultado = await getDrivingDistance(origen.lat, origen.lon, destino.lat, destino.lon);
-    if (resultado?.duration != null) {
-      const distanciaKm = typeof resultado.distance === 'number'
-        ? resultado.distance / 1000
+    const resultado = await getDrivingDistance(
+      { lat: origen.lat, lng: origen.lon },
+      { lat: destino.lat, lng: destino.lon }
+    );
+    if (resultado?.duracion != null) {
+      const distanciaKm = typeof resultado.distancia === 'number'
+        ? resultado.distancia / 1000
         : distanciaHaversine ?? null;
 
       return {
-        texto: formatTiempo(resultado.duration),
-        minutos: Math.round(resultado.duration / 60),
+        texto: formatTiempo(resultado.duracion),
+        minutos: Math.round(resultado.duracion / 60),
         distanciaKm,
         distanciaTexto: typeof distanciaKm === 'number' ? `${distanciaKm.toFixed(1)} km` : null
       };
@@ -157,7 +166,7 @@ async function resolverTiempoEnVehiculo(origen, destino, distanciaHaversine) {
   }
 
   return {
-    texto: 'Distancia no disponible',
+    texto: 'N/D',
     minutos: null,
     distanciaKm: distanciaHaversine ?? null,
     distanciaTexto: Number.isFinite(distanciaHaversine) ? `${distanciaHaversine.toFixed(1)} km` : null

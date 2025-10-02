@@ -30,12 +30,15 @@ export async function calcularTiemposParaLugares(lista, origenCoords = {}) {
 
     const distanciaHaversine = calcularDistancia(origenLat, origenLon, destinoLat, destinoLon);
 
-    const resultado = await getDrivingDistance(origenLat, origenLon, destinoLat, destinoLon);
+    const resultado = await getDrivingDistance(
+      { lat: origenLat, lng: origenLon },
+      { lat: destinoLat, lng: destinoLon }
+    );
 
-    let minutos = resultado?.duration != null ? Math.round(resultado.duration / 60) : null;
-    let texto = resultado?.duration != null ? formatTiempo(resultado.duration) : null;
-    let distanciaKm = typeof resultado?.distance === 'number'
-      ? resultado.distance / 1000
+    let minutos = resultado?.duracion != null ? Math.round(resultado.duracion / 60) : null;
+    let texto = resultado?.duracion != null ? formatTiempo(resultado.duracion) : null;
+    let distanciaKm = typeof resultado?.distancia === 'number'
+      ? resultado.distancia / 1000
       : distanciaHaversine;
 
     if (minutos === null && Number.isFinite(distanciaHaversine)) {
@@ -50,7 +53,7 @@ export async function calcularTiemposParaLugares(lista, origenCoords = {}) {
       texto = formatTiempo(minutos * 60);
     }
 
-    if (!texto) texto = 'Distancia no disponible';
+    if (!texto) texto = 'N/D';
 
     lugar.tiempoTexto = texto;
     lugar.tiempoVehiculo = texto;

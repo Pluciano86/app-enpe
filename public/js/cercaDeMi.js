@@ -130,12 +130,15 @@ async function adjuntarTiempoManejo(lista = []) {
       : null;
 
     if (origenValido && Number.isFinite(destinoLat) && Number.isFinite(destinoLon)) {
-      const resultado = await getDrivingDistance(userLat, userLon, destinoLat, destinoLon);
-      if (resultado?.duration != null) {
-        minutosCrudos = Math.round(resultado.duration / 60);
-        tiempoVehiculo = formatTiempo(resultado.duration);
-        distanciaKm = typeof resultado.distance === 'number'
-          ? resultado.distance / 1000
+      const resultado = await getDrivingDistance(
+        { lat: userLat, lng: userLon },
+        { lat: destinoLat, lng: destinoLon }
+      );
+      if (resultado?.duracion != null) {
+        minutosCrudos = Math.round(resultado.duracion / 60);
+        tiempoVehiculo = formatTiempo(resultado.duracion);
+        distanciaKm = typeof resultado.distancia === 'number'
+          ? resultado.distancia / 1000
           : distanciaKm;
       }
     }
@@ -146,7 +149,7 @@ async function adjuntarTiempoManejo(lista = []) {
       tiempoVehiculo = formatTiempo(fallback.minutos * 60);
     }
 
-    if (!tiempoVehiculo) tiempoVehiculo = 'Distancia no disponible';
+    if (!tiempoVehiculo) tiempoVehiculo = 'N/D';
 
     return {
       ...comercio,
@@ -159,7 +162,7 @@ async function adjuntarTiempoManejo(lista = []) {
 
 function formatDistancia(comercio) {
   if (comercio.tiempoVehiculo) return comercio.tiempoVehiculo;
-  if (!Number.isFinite(comercio.distancia_m)) return 'Distancia no disponible';
+  if (!Number.isFinite(comercio.distancia_m)) return 'N/D';
   const km = comercio.distancia_m / 1000;
   const { minutos, texto } = calcularTiempoEnVehiculo(km);
   return minutos < 60 ? `a ${minutos} minutos` : `a ${texto}`;
@@ -223,7 +226,7 @@ function popupHTML(comercio) {
 
 function formatoDistanciaPopup(comercio) {
   if (comercio.tiempoVehiculo) return comercio.tiempoVehiculo;
-  if (!Number.isFinite(comercio.distancia_m)) return 'Distancia no disponible';
+  if (!Number.isFinite(comercio.distancia_m)) return 'N/D';
   const km = comercio.distancia_m / 1000;
   const { minutos, texto } = calcularTiempoEnVehiculo(km);
   return minutos < 60 ? `a ${minutos} minutos` : `a ${texto}`;
