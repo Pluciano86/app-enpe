@@ -1,76 +1,76 @@
-const climaMap = {
-  0: "0",
-  1: "1",
-  2: "2",
-  3: "3",
-  45: "45",
-  48: "45",  // Mismo ícono para niebla con escarcha
-  51: "51",
-  53: "53",
-  55: "55",
-  61: "61",
-  63: "63",
-  65: "65",
-  80: "61",
-  81: "63",
-  82: "65",
-  95: "95",
-  96: "95",
-  99: "95"
-};
+// public/js/obtenerClima.js
+const API_KEY = "2c1d54239e886b97ed52ac446c3ae948"; // Clave de OpenWeatherMap
 
+/**
+ * Obtiene información del clima actual a partir de coordenadas.
+ * @param {number} lat - Latitud
+ * @param {number} lon - Longitud
+ * @returns {Promise<object|null>} Datos del clima o null si falla
+ */
 export async function obtenerClima(lat, lon) {
+  if (!lat || !lon) {
+    console.warn("⚠️ Coordenadas no disponibles para obtener el clima");
+    return null;
+  }
+
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&lang=es&appid=${API_KEY}`;
+
   try {
-    const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,is_day&daily=sunrise,sunset&timezone=auto`
-    );
-    const data = await res.json();
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
 
-    const code = data.current.weather_code;
-    const isDay = data.current.is_day === 1;
-    const vientoMph = (data.current.wind_speed_10m * 0.621371).toFixed(1);
+    const data = await response.json();
 
-    // Ruta del ícono SVG según código y si es de noche
-    const iconCode = climaMap[code] ?? "0";
-    const suffix = isDay ? "" : "n";
-    const iconoURL = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/${iconCode}${suffix}.svg`;
+    // === Datos principales ===
+    const temperatura = `${Math.round(data.main.temp)}°C`;
+    const min = `${Math.round(data.main.temp_min)}°C`;
+    const max = `${Math.round(data.main.temp_max)}°C`;
+    const viento = `${Math.round(data.wind.speed)} mph`;
+    const humedad = `${data.main.humidity}%`;
+    const estado = (data.weather?.[0]?.description || "Sin datos").toUpperCase();
+    const icono = data.weather?.[0]?.icon || "01d";
 
-    return {
-      iconoURL,
-      estado: obtenerNombreEstado(code),
-      viento: `${vientoMph} mph`
-    };
+    // === Asignar icono desde tu bucket de Supabase ===
+    const iconoURL = obtenerIconoClima(icono);
 
-  } catch (error) {
-    console.error("Error obteniendo clima:", error);
-    return {
-      iconoURL: "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/0.svg",
-      estado: "Desconocido",
-      viento: null
-    };
+    return { temperatura, min, max, viento, humedad, estado, iconoURL };
+  } catch (err) {
+    console.error("❌ Error al obtener clima:", err.message);
+    return null;
   }
 }
 
-function obtenerNombreEstado(code) {
-  const nombres = {
-    0: "Clima Perfecto",
-    1: "Pocas Nubes",
-    2: "Poco Nublado",
-    3: "Nublado",
-    45: "Niebla",
-    48: "Niebla con escarcha",
-    51: "Llovizna",
-    53: "Llovizna",
-    55: "Llovizna Densa",
-    61: "Lluvia Ligera",
-    63: "Lluvia",
-    65: "Lluvia Fuerte",
-    80: "Chubascos",
-    81: "Chubascos",
-    82: "Chubascos",
-    95: "Tormenta",
-    96: "Tormenta con granizo",
-    99: "Tormenta Fuerte"
+/**
+ * Devuelve la URL del ícono correspondiente según el código del clima.
+ * Los archivos SVG se encuentran en: /imagenesapp/enpr/
+ */
+function obtenerIconoClima(icono) {
+  if (!icono) return null;
+
+  const base =
+    "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/";
+
+  const mapa = {
+    "01d": "1.svg",   // Cielo despejado (día)
+    "01n": "1n.svg",  // Cielo despejado (noche)
+    "02d": "2.svg",   // Parcialmente nublado (día)
+    "02n": "2n.svg",  // Parcialmente nublado (noche)
+    "03d": "3.svg",   // Nublado
+    "03n": "3.svg",
+    "04d": "45.svg",  // Nubes densas
+    "04n": "45.svg",
+    "09d": "61.svg",  // Lluvia ligera
+    "09n": "61.svg",
+    "10d": "53.svg",  // Lluvia moderada
+    "10n": "53.svg",
+    "11d": "95.svg",  // Tormentas
+    "11n": "95.svg",
+    "13d": "55.svg",  // Nieve
+    "13n": "55.svg",
+    "50d": "51.svg",  // Neblina
+    "50n": "51n.svg",
   };
-  return nombres[code] ?? "Desconocido";
+
+  const archivo = mapa[icono] || "1.svg";
+  return `${base}${archivo}`;
 }

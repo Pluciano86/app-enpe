@@ -150,161 +150,201 @@ async function renderizarPlayas() {
     cleanupCarousels(contenedor);
     contenedor.innerHTML = "";
 
-  const texto = inputBuscar.value.toLowerCase();
-  const costa = selectCosta.value;
-  const municipio = selectMunicipio.value;
-  const filtrarNadar = checkNadar.checked;
-  const filtrarSurfear = checkSurfear.checked;
-  const filtrarSnorkel = checkSnorkel.checked;
+    const texto = inputBuscar.value.toLowerCase();
+    const costa = selectCosta.value;
+    const municipio = selectMunicipio.value;
+    const filtrarNadar = checkNadar.checked;
+    const filtrarSurfear = checkSurfear.checked;
+    const filtrarSnorkel = checkSnorkel.checked;
 
-  let filtradas = todasLasPlayas.filter((p) => {
-    const coincideNombre = p.nombre.toLowerCase().includes(texto);
-    const coincideCosta = costa ? p.costa === costa : true;
-    const coincideMunicipio = municipio ? p.municipio === municipio : true;
-    const pasaFiltroNadar = !filtrarNadar || Boolean(p.nadar);
-    const pasaFiltroSurfear = !filtrarSurfear || Boolean(p.surfear);
-    const pasaFiltroSnorkel = !filtrarSnorkel || Boolean(p.snorkel);
-    return coincideNombre && coincideCosta && coincideMunicipio &&
-           pasaFiltroNadar && pasaFiltroSurfear && pasaFiltroSnorkel;
-  });
+    let filtradas = todasLasPlayas.filter((p) => {
+      const coincideNombre = p.nombre.toLowerCase().includes(texto);
+      const coincideCosta = costa ? p.costa === costa : true;
+      const coincideMunicipio = municipio ? p.municipio === municipio : true;
+      const pasaFiltroNadar = !filtrarNadar || Boolean(p.nadar);
+      const pasaFiltroSurfear = !filtrarSurfear || Boolean(p.surfear);
+      const pasaFiltroSnorkel = !filtrarSnorkel || Boolean(p.snorkel);
+      return (
+        coincideNombre &&
+        coincideCosta &&
+        coincideMunicipio &&
+        pasaFiltroNadar &&
+        pasaFiltroSurfear &&
+        pasaFiltroSnorkel
+      );
+    });
 
     if (filtradas.length === 0) {
-    const filtrosActivos = [];
-    if (texto) filtrosActivos.push(`nombre "${texto}"`);
-    if (costa) filtrosActivos.push(`costa "${costa}"`);
-    if (municipio) filtrosActivos.push(`municipio "${municipio}"`);
-    if (filtrarNadar) filtrosActivos.push("aptas para nadar");
-    if (filtrarSurfear) filtrosActivos.push("aptas para surfear");
-    if (filtrarSnorkel) filtrosActivos.push("aptas para snorkel");
+      const filtrosActivos = [];
+      if (texto) filtrosActivos.push(`nombre "${texto}"`);
+      if (costa) filtrosActivos.push(`costa "${costa}"`);
+      if (municipio) filtrosActivos.push(`municipio "${municipio}"`);
+      if (filtrarNadar) filtrosActivos.push("aptas para nadar");
+      if (filtrarSurfear) filtrosActivos.push("aptas para surfear");
+      if (filtrarSnorkel) filtrosActivos.push("aptas para snorkel");
 
-    const mensaje = filtrosActivos.length > 0
-      ? `No se encontraron playas que coincidan con ${filtrosActivos.join(", ")}.`
-      : "No se encontraron playas para mostrar.";
+      const mensaje =
+        filtrosActivos.length > 0
+          ? `No se encontraron playas que coincidan con ${filtrosActivos.join(", ")}.`
+          : "No se encontraron playas para mostrar.";
 
-    contenedor.innerHTML = `
-  <div class="col-span-full flex justify-center items-center py-12">
-    <div class="w-full max-w-xs text-center text-gray-600 px-4">
-      <div class="text-5xl mb-2 animate-bounce">🏖️</div>
-      <p class="text-lg font-medium leading-tight mb-1">${mensaje}</p>
-      <p class="text-sm text-gray-400">Prueba cambiar los filtros o intenta otra búsqueda.</p>
-    </div>
-  </div>
-`;
+      contenedor.innerHTML = `
+        <div class="col-span-full flex justify-center items-center py-12">
+          <div class="w-full max-w-xs text-center text-gray-600 px-4">
+            <div class="text-5xl mb-2 animate-bounce">🏖️</div>
+            <p class="text-lg font-medium leading-tight mb-1">${mensaje}</p>
+            <p class="text-sm text-gray-400">Prueba cambiar los filtros o intenta otra búsqueda.</p>
+          </div>
+        </div>
+      `;
 
-    const bannerFinal = await crearBannerElemento('banner-bottom');
-    if (currentID !== renderID) return;
-    if (bannerFinal) contenedor.appendChild(bannerFinal);
-    return;
-  } 
-
-  if (typeof usuarioLat === 'number' && typeof usuarioLon === 'number') {
-    filtradas = filtradas
-      .filter(p => p.latitud && p.longitud)
-      .map(p => {
-        const distanciaCampo = Number(p.distanciaLugar);
-        const d = Number.isFinite(distanciaCampo)
-          ? distanciaCampo
-          : calcularDistancia(usuarioLat, usuarioLon, p.latitud, p.longitud);
-        return { ...p, _distancia: d };
-      })
-      .sort((a, b) => a._distancia - b._distancia);
-  }
-
-  const cards = [];
-
-  for (const playa of filtradas) {
-    if (currentID !== renderID) return;
-
-    const clone = template.content.cloneNode(true);
-
-    const imagenEl = clone.querySelector(".imagen");
-    if (imagenEl) {
-      imagenEl.src = playa.portada || "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
-      imagenEl.alt = `Imagen de ${playa.nombre}`;
+      const bannerFinal = await crearBannerElemento("banner-bottom");
+      if (currentID !== renderID) return;
+      if (bannerFinal) contenedor.appendChild(bannerFinal);
+      return;
     }
-    clone.querySelector(".nombre").textContent = playa.nombre;
-    clone.querySelector(".municipio").textContent = playa.municipio || "";
 
-    if (playa.nadar) clone.querySelector(".icon-nadar")?.classList.remove("hidden");
-    if (playa.surfear) clone.querySelector(".icon-surfear")?.classList.remove("hidden");
-    if (playa.snorkel) clone.querySelector(".icon-snorkel")?.classList.remove("hidden");
+    if (typeof usuarioLat === "number" && typeof usuarioLon === "number") {
+      filtradas = filtradas
+        .filter((p) => p.latitud && p.longitud)
+        .map((p) => {
+          const distanciaCampo = Number(p.distanciaLugar);
+          const d = Number.isFinite(distanciaCampo)
+            ? distanciaCampo
+            : calcularDistancia(usuarioLat, usuarioLon, p.latitud, p.longitud);
+          return { ...p, _distancia: d };
+        })
+        .sort((a, b) => a._distancia - b._distancia);
+    }
 
-    const iconTransporte = clone.querySelector(".icon-transporte");
-    if (iconTransporte) {
-      if (playa.bote) {
-        iconTransporte.innerHTML = `
-          <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
-            <span><i class="fas fa-ship text-[#9c9c9c]"></i></span>
-            <span class="text-center leading-snug">Acceso en bote</span>
-          </div>`;
-      } else {
-        iconTransporte.innerHTML = `
-          <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
-            <span><i class="fas fa-car text-[#9c9c9c]"></i></span>
-            <span class="text-center leading-snug">${playa.tiempoVehiculo || ""}</span>
-          </div>`;
+    const cards = [];
+
+    for (const playa of filtradas) {
+      if (currentID !== renderID) return;
+
+      const clone = template.content.cloneNode(true);
+
+     // === Imagen de la playa (desde la columna 'imagen') ===
+const imagenEl = clone.querySelector(".imagen");
+if (imagenEl) {
+  imagenEl.src =
+    playa.imagen && playa.imagen.trim() !== ""
+      ? playa.imagen.trim()
+      : "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
+
+  imagenEl.alt = `Imagen de ${playa.nombre}`;
+  imagenEl.loading = "lazy";
+
+  // Si la imagen falla al cargar → usar placeholder
+  imagenEl.onerror = () => {
+    imagenEl.src =
+      "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
+  };
+}
+
+      // CLICK en la tarjeta (root del template)
+      const root = clone.firstElementChild; // es el <div class="text-center bg-white ...">
+      if (root) {
+        root.classList.add("cursor-pointer", "hover:scale-[1.02]", "transition");
+        root.addEventListener("click", () => {
+          window.location.href = `perfilPlaya.html?id=${playa.id}`;
+        });
       }
-    }
 
-    const estadoClima = clone.querySelector(".estado-clima");
-    const iconClima = clone.querySelector(".icon-clima");
-    const viento = clone.querySelector(".viento");
+      // Nombre / Municipio (sin ?. a la izquierda)
+      const nombreEl = clone.querySelector(".nombre");
+      if (nombreEl) nombreEl.textContent = playa.nombre;
 
-    obtenerClima(playa.latitud, playa.longitud).then(clima => {
-      if (renderID !== currentID) return;
+      const municipioEl = clone.querySelector(".municipio");
+      if (municipioEl) municipioEl.textContent = playa.municipio || "";
 
-      if (clima) {
+      // Aptitudes
+      const snorkelFlagCard = (playa.snorkeling ?? playa.snorkel) === true;
+      const iconNadar = clone.querySelector(".icon-nadar");
+      const iconSurf = clone.querySelector(".icon-surfear");
+      const iconSnork = clone.querySelector(".icon-snorkel");
+      if (playa.nadar && iconNadar) iconNadar.classList.remove("hidden");
+      if (playa.surfear && iconSurf) iconSurf.classList.remove("hidden");
+      if (snorkelFlagCard && iconSnork) iconSnork.classList.remove("hidden");
+
+      // Transporte / tiempo
+      const iconTransporte = clone.querySelector(".icon-transporte");
+      if (iconTransporte) {
+        if (playa.bote) {
+          iconTransporte.innerHTML = `
+            <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
+              <span><i class="fas fa-ship text-[#9c9c9c]"></i></span>
+              <span class="text-center leading-snug">Acceso en bote</span>
+            </div>`;
+        } else {
+          iconTransporte.innerHTML = `
+            <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
+              <span><i class="fas fa-car text-[#9c9c9c]"></i></span>
+              <span class="text-center leading-snug">${playa.tiempoVehiculo || ""}</span>
+            </div>`;
+        }
+      }
+
+      // Clima
+      const estadoClima = clone.querySelector(".estado-clima");
+      const iconClima = clone.querySelector(".icon-clima");
+      const viento = clone.querySelector(".viento");
+
+      obtenerClima(playa.latitud, playa.longitud).then((clima) => {
+        if (renderID !== currentID) return;
+        if (!clima) return;
+
         if (estadoClima) estadoClima.textContent = clima.estado;
         if (iconClima) {
           const img = document.createElement("img");
           img.src = clima.iconoURL;
           img.alt = clima.estado;
-          img.classList.add("w-6", "h-6", "inline", "mr-1");
+          img.className = "w-6 h-6 inline mr-1";
           iconClima.innerHTML = "";
           iconClima.appendChild(img);
         }
-        if (viento) viento.innerHTML = `<i class="fas fa-wind text-gray-400"></i> Viento de: ${clima.viento}`;
-      }
-    });
+        if (viento)
+          viento.innerHTML = `<i class="fas fa-wind text-gray-400"></i> Viento de: ${clima.viento}`;
+      });
 
-    cards.push(clone);
-  }
+      cards.push(clone);
+    }
 
-  const fragment = document.createDocumentFragment();
-  let cartasEnFila = 0;
-  let totalFilas = 0;
+    const fragment = document.createDocumentFragment();
+    let cartasEnFila = 0;
+    let totalFilas = 0;
 
-  for (let i = 0; i < cards.length; i++) {
-    const card = cards[i];
-    fragment.appendChild(card);
-    cartasEnFila += 1;
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i];
+      fragment.appendChild(card);
+      cartasEnFila += 1;
 
-    const esUltimaCarta = i === cards.length - 1;
-    const filaCompleta = cartasEnFila === 2 || esUltimaCarta;
+      const esUltimaCarta = i === cards.length - 1;
+      const filaCompleta = cartasEnFila === 2 || esUltimaCarta;
 
-    if (filaCompleta) {
-      totalFilas += 1;
-      cartasEnFila = 0;
+      if (filaCompleta) {
+        totalFilas += 1;
+        cartasEnFila = 0;
 
-      const debeInsertarIntermedio = totalFilas % 4 === 0 && !esUltimaCarta;
-      if (debeInsertarIntermedio) {
-        const bannerIntermedio = await crearBannerElemento('banner-inline');
-        if (currentID !== renderID) return;
-        if (bannerIntermedio) fragment.appendChild(bannerIntermedio);
+        const debeInsertarIntermedio = totalFilas % 4 === 0 && !esUltimaCarta;
+        if (debeInsertarIntermedio) {
+          const bannerIntermedio = await crearBannerElemento("banner-inline");
+          if (currentID !== renderID) return;
+          if (bannerIntermedio) fragment.appendChild(bannerIntermedio);
+        }
       }
     }
-  }
 
-  const debeAgregarFinal = totalFilas === 0 || totalFilas % 4 !== 0;
-  if (debeAgregarFinal) {
-    const bannerFinal = await crearBannerElemento('banner-bottom');
-    if (currentID !== renderID) return;
-    if (bannerFinal) fragment.appendChild(bannerFinal);
-  }
+    const debeAgregarFinal = totalFilas === 0 || totalFilas % 4 !== 0;
+    if (debeAgregarFinal) {
+      const bannerFinal = await crearBannerElemento("banner-bottom");
+      if (currentID !== renderID) return;
+      if (bannerFinal) fragment.appendChild(bannerFinal);
+    }
 
-  contenedor.appendChild(fragment);
+    contenedor.appendChild(fragment);
   } catch (error) {
-    console.error('Error al renderizar playas:', error);
+    console.error("Error al renderizar playas:", error);
   }
 }
 
