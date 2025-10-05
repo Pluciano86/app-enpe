@@ -87,6 +87,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         ? `${municipioText} – ${costaText}`
         : municipioText || costaText;
 
+    // === Dirección ===
+const direccionSpan = document.getElementById("direccionPlaya");
+if (direccionSpan) {
+  direccionSpan.textContent =
+    data.direccion?.trim() || "Dirección no disponible";
+}
+
     // === Aptitudes ===
     const aptitudesContainer = document.getElementById("aptitudesContainer");
     aptitudesContainer.innerHTML = "";
