@@ -86,18 +86,13 @@ export async function mostrarPlayasCercanas(comercio) {
 
   for (const playa of filtradas) {
     // 🔍 Obtener imagen de portada desde la tabla imagenesPlayas
-    let imagenURL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg';
+    // ✅ Usar directamente la URL guardada en la columna 'imagen' de la tabla playas
+const imagenURL =
+  playa.imagen && playa.imagen.trim() !== ""
+    ? playa.imagen.trim()
+    : "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
 
-    const { data: imgData, error: errorImg } = await supabase
-      .from('imagenesPlayas')
-      .select('imagen')
-      .eq('idPlaya', playa.id)
-      .eq('portada', true)
-      .single();
-
-    if (imgData?.imagen) {
-      imagenURL = imgData.imagen;
-    }
+console.log(`🧠 Imagen final usada para ${playa.nombre}:`, imagenURL);
 
     console.log(`🧪 Imagen usada para ${playa.nombre}:`, imagenURL);
 

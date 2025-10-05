@@ -55,7 +55,7 @@ function obtenerIconoClima(icono) {
     "01n": "1n.svg",  // Cielo despejado (noche)
     "02d": "2.svg",   // Parcialmente nublado (día)
     "02n": "2n.svg",  // Parcialmente nublado (noche)
-    "03d": "3.svg",   // Nublado
+    "03d": "2.svg",   // Nublado
     "03n": "3.svg",
     "04d": "45.svg",  // Nubes densas
     "04n": "45.svg",

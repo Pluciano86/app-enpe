@@ -1,38 +1,41 @@
 // public/js/cardPlayaSlide.js
+const PLACEHOLDER_PLAYA =
+  "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
+
 export function cardPlayaSlide(playa) {
-  const {
-    nombre,
-    municipio,
-    tiempoTexto = "",
-    imagen,
-    clima = {}
-  } = playa;
+  const { id, nombre, municipio, tiempoTexto = "", imagen, clima = {} } = playa;
 
-  const card = document.createElement("div");
-  card.className = `
-    block w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative 
-  `.trim();
+  // 🪶 Crear el enlace contenedor
+  const card = document.createElement("a");
+  card.href = `perfilPlaya.html?id=${id}`;
+  card.className =
+    "block w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative transition-transform hover:scale-[1.02] active:scale-[0.98]";
 
-  // 🔹 Imagen (usa la columna 'imagen'; si no existe, usa placeholder)
-  const urlImagen =
+  // 🧩 Validar imagen
+  const imagenURL =
     imagen && imagen.trim() !== ""
       ? imagen.trim()
-      : "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
+      : PLACEHOLDER_PLAYA;
 
-  console.log("🧪 Imagen detectada:", urlImagen);
-
+  // 🧱 Estructura HTML
   card.innerHTML = `
+    <!-- Imagen -->
     <div class="w-full h-24 relative bg-gray-200">
-      <img
-        src="${urlImagen}"
-        alt="Imagen de ${nombre}"
-        class="w-full h-full object-cover"
+      <img 
+        src="${imagenURL}" 
+        alt="Imagen de ${nombre}" 
+        class="w-full h-full object-cover" 
         loading="lazy"
-        onerror="this.src='https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg'"
+        onerror="this.src='${PLACEHOLDER_PLAYA}'"
       />
     </div>
+
+    <!-- Información -->
     <div class="pt-2 px-2 pb-2 text-center">
-      <h3 class="text-sm font-semibold leading-tight h-10 overflow-hidden text-ellipsis line-clamp-2">${nombre}</h3>
+      <h3 class="text-sm font-semibold leading-tight h-10 overflow-hidden text-ellipsis line-clamp-2">
+        ${nombre || "Playa sin nombre"}
+      </h3>
+
       <div class="flex justify-center items-center gap-1 text-sm text-gray-600 mt-1">
         ${
           clima.iconoURL
@@ -41,10 +44,12 @@ export function cardPlayaSlide(playa) {
         }
         <span>${clima.estado || ""}</span>
       </div>
+
       <div class="flex items-center justify-center gap-1 text-[11px] text-gray-600 mt-1">
         <i class="fas fa-map-pin text-sky-600"></i>
-        <span>${municipio}</span>
+        <span>${municipio || ""}</span>
       </div>
+
       <div class="flex items-start justify-center gap-1 text-[11px] text-gray-600 mt-1">
         <i class="fas fa-car text-red-500 mt-[2px]"></i>
         <span>${tiempoTexto || "N/A"}</span>
