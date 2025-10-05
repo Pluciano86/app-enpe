@@ -338,112 +338,211 @@ async function crearBannerElemento(slotName = 'banner-inline') {
   }
 }
 
+// 📍 Obtener coordenadas del usuario
+async function obtenerCoordenadasUsuario() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+}
+
+
 async function aplicarFiltrosYRedibujar() {
   try {
-    console.log('🟡 Aplicando filtros con:', filtrosActivos);
+    console.log("🟡 Aplicando filtros con:", filtrosActivos);
 
     await renderTopBanner();
 
-    const contenedor = document.getElementById('app');
+    const contenedor = document.getElementById("app");
     cleanupCarousels(contenedor);
-    contenedor.innerHTML = '';
+    contenedor.innerHTML = "";
 
-  let filtrados = listaOriginal;
+    let filtrados = listaOriginal;
 
-  const texto = normalizarTexto(filtrosActivos.textoBusqueda.trim());
-  if (texto) {
-    filtrados = filtrados.filter(c =>
-      normalizarTexto(c.nombre).includes(texto) ||
-      (c.platos && c.platos.some(p => normalizarTexto(p).includes(texto)))
-    );
-  }
-
-  if (filtrosActivos.comerciosPorPlato?.length > 0) {
-    filtrados = filtrados.filter(c => filtrosActivos.comerciosPorPlato.includes(c.id));
-  }
-
-  const hayBusquedaNombre = filtrosActivos.textoBusqueda?.trim().length >= 3;
-  const hayBusquedaPlato = filtrosActivos.comerciosPorPlato?.length > 0;
-
-  // ✅ Ocultar chip de municipio si hay búsqueda
-  const chipMunicipio = document.getElementById('chipMunicipioActivo');
-  if (chipMunicipio) {
-    chipMunicipio.classList.toggle('hidden', hayBusquedaNombre || hayBusquedaPlato);
-  }
-
-  // ✅ Aplicar filtro por municipio solo si no hay búsqueda
-  if (filtrosActivos.municipio && !hayBusquedaNombre && !hayBusquedaPlato) {
-    filtrados = filtrados.filter(c => c.pueblo === filtrosActivos.municipio);
-  }
-
-  if (filtrosActivos.subcategoria) {
-    filtrados = filtrados.filter(c =>
-      Array.isArray(c.idSubcategoria) &&
-      c.idSubcategoria.includes(parseInt(filtrosActivos.subcategoria))
-    );
-  }
-
-  if (filtrosActivos.abiertoAhora) {
-    filtrados = filtrados.filter(c => c.abierto === true);
-  }
-
-  if (filtrosActivos.favoritos) {
-    filtrados = filtrados.filter(c => c.favorito === true);
-  }
-
-// ✅ Mostrar filtros activos (sin duplicado)
-const filtrosDiv = document.getElementById('filtros-activos');
-filtrosDiv.innerHTML = '';
-filtrosDiv.className = 'text-center mt-3';
-
-// 🔹 Eliminar posibles duplicados (como "en Municipio ✱")
-document.querySelectorAll('#filtros-activos .bg-gray-100').forEach(el => el.remove());
-
-const categoriaCruda = document.getElementById('tituloCategoria')?.textContent || 'Resultados';
-const categoriaNombre =
-  categoriaCruda.charAt(0).toUpperCase() + categoriaCruda.slice(1).toLowerCase();
-
-const total = filtrados.length;
-const municipioActivo = filtrosActivos?.municipio || '';
-
-const labelTotal = document.createElement('div');
-labelTotal.className = 'inline-block text-gray-800 text-[15px] font-medium';
-
-if (total === 0) {
-  labelTotal.textContent = `No se encontraron ${categoriaNombre} ${
-    municipioActivo ? `en tu ubicación actual` : ''
-  }`;
-} else {
-  labelTotal.textContent = `${total} ${categoriaNombre} ${
-    municipioActivo ? `en tu ubicación actual en ${municipioActivo}` : ''
-  }`;
-}
-
-
-filtrosDiv.appendChild(labelTotal);
-
-// 🔹 Si hay municipio activo, mostrar botón azul
-if (municipioActivo) {
-  const btnEliminar = document.createElement('button');
-  btnEliminar.innerHTML = `✕ ${municipioActivo}`;
-  btnEliminar.className =
-    'ml-3 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded hover:bg-blue-200 transition-all';
-  btnEliminar.addEventListener('click', () => {
-    filtrosActivos.municipio = '';
-    const selectMunicipio = document.getElementById('filtro-municipio');
-    if (selectMunicipio) selectMunicipio.value = '';
-    cargarComerciosConOrden();
-  });
-  filtrosDiv.appendChild(btnEliminar);
-}
-
-    if (filtrados.length === 0) {
-      mostrarMensajeVacio(contenedor);
-      const bannerFinal = await crearBannerElemento('banner-bottom');
-      if (bannerFinal) contenedor.appendChild(bannerFinal);
-      return;
+    const texto = normalizarTexto(filtrosActivos.textoBusqueda.trim());
+    if (texto) {
+      filtrados = filtrados.filter(
+        (c) =>
+          normalizarTexto(c.nombre).includes(texto) ||
+          (c.platos && c.platos.some((p) => normalizarTexto(p).includes(texto)))
+      );
     }
 
+    if (filtrosActivos.comerciosPorPlato?.length > 0) {
+      filtrados = filtrados.filter((c) =>
+        filtrosActivos.comerciosPorPlato.includes(c.id)
+      );
+    }
+
+    const hayBusquedaNombre = filtrosActivos.textoBusqueda?.trim().length >= 3;
+    const hayBusquedaPlato = filtrosActivos.comerciosPorPlato?.length > 0;
+
+    // ✅ Ocultar chip de municipio si hay búsqueda
+    const chipMunicipio = document.getElementById("chipMunicipioActivo");
+    if (chipMunicipio) {
+      chipMunicipio.classList.toggle("hidden", hayBusquedaNombre || hayBusquedaPlato);
+    }
+
+    // ✅ Aplicar filtro por municipio solo si no hay búsqueda
+    if (filtrosActivos.municipio && !hayBusquedaNombre && !hayBusquedaPlato) {
+      filtrados = filtrados.filter((c) => c.pueblo === filtrosActivos.municipio);
+    }
+
+    if (filtrosActivos.subcategoria) {
+      filtrados = filtrados.filter(
+        (c) =>
+          Array.isArray(c.idSubcategoria) &&
+          c.idSubcategoria.includes(parseInt(filtrosActivos.subcategoria))
+      );
+    }
+
+    if (filtrosActivos.abiertoAhora) {
+      filtrados = filtrados.filter((c) => c.abierto === true);
+    }
+
+    if (filtrosActivos.favoritos) {
+      filtrados = filtrados.filter((c) => c.favorito === true);
+    }
+
+    // ✅ Mostrar filtros activos (sin duplicado)
+    const filtrosDiv = document.getElementById("filtros-activos");
+    filtrosDiv.innerHTML = "";
+    filtrosDiv.className = "text-center mt-3";
+
+    document.querySelectorAll("#filtros-activos .bg-gray-100").forEach((el) => el.remove());
+
+    const categoriaCruda =
+      document.getElementById("tituloCategoria")?.textContent || "Resultados";
+    const categoriaNombre =
+      categoriaCruda.charAt(0).toUpperCase() + categoriaCruda.slice(1).toLowerCase();
+
+    const total = filtrados.length;
+    const municipioActivo = filtrosActivos?.municipio || "";
+
+    const labelTotal = document.createElement("div");
+    labelTotal.className =
+      "inline-block text-gray-800 text-[15px] font-medium text-center w-full";
+
+    // 🧩 Mostrar texto según resultados
+    if (total === 0) {
+      labelTotal.textContent = `No se encontraron ${categoriaNombre} ${
+        municipioActivo ? `en tu ubicación actual` : ""
+      }`;
+
+      // 🔹 Botón azul con municipio activo
+      if (municipioActivo) {
+        const btnMunicipio = document.createElement("button");
+        btnMunicipio.innerHTML = `✕ ${municipioActivo}`;
+        btnMunicipio.className =
+          "ml-2 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition";
+        btnMunicipio.addEventListener("click", () => {
+          filtrosActivos.municipio = "";
+          const selectMunicipio = document.getElementById("filtro-municipio");
+          if (selectMunicipio) selectMunicipio.value = "";
+          cargarComerciosConOrden();
+        });
+        labelTotal.appendChild(btnMunicipio);
+      }
+
+      filtrosDiv.appendChild(labelTotal);
+
+      // ⚡ Mostrar comercios cercanos automáticamente (solo si búsqueda por ubicación)
+      if (municipioActivo && !hayBusquedaNombre && !hayBusquedaPlato) {
+        console.log("🔍 Mostrando comercios cercanos...");
+        try {
+          const coordsUsuario = await obtenerCoordenadasUsuario();
+          if (coordsUsuario) {
+            let cercanos = listaOriginal
+              .filter(
+                (c) =>
+                  c.latitud &&
+                  c.longitud &&
+                  calcularDistancia(
+                    coordsUsuario.lat,
+                    coordsUsuario.lon,
+                    c.latitud,
+                    c.longitud
+                  ) <= 40
+              )
+              .map((c) => ({
+                ...c,
+                distanciaKm: calcularDistancia(
+                  coordsUsuario.lat,
+                  coordsUsuario.lon,
+                  c.latitud,
+                  c.longitud
+                ),
+              }))
+              .sort((a, b) => a.distanciaKm - b.distanciaKm);
+
+            if (cercanos.length > 0) {
+  // Crear el texto de sugerencia
+  const sugerenciasDiv = document.createElement("div");
+  sugerenciasDiv.className = "text-center mt-4 text-gray-700 font-medium";
+  sugerenciasDiv.innerHTML = `
+    <p class="text-base font-normal">
+     ${categoriaNombre} cerca de ${municipioActivo}:
+    </p>
+  `;
+
+  // 👉 Insertar el texto justo debajo del mensaje "No se encontraron..."
+  const mensajeNoResultados = document.querySelector('#filtros-activos');
+  if (mensajeNoResultados && mensajeNoResultados.parentElement) {
+    mensajeNoResultados.parentElement.insertBefore(
+      sugerenciasDiv,
+      mensajeNoResultados.nextSibling
+    );
+  }
+
+  // Mostrar hasta 10 lugares cercanos
+  cercanos.slice(0, 10).forEach((comercio) => {
+    const card = comercio.activoEnPeErre
+      ? cardComercio(comercio)
+      : cardComercioNoActivo(comercio);
+    contenedor.appendChild(card);
+  });
+}
+          }
+        } catch (error) {
+          console.error("Error al mostrar comercios cercanos:", error.message);
+        }
+      }
+
+      const bannerFinal = await crearBannerElemento("banner-bottom");
+      if (bannerFinal) contenedor.appendChild(bannerFinal);
+      return;
+    } else {
+      labelTotal.textContent = `${total} ${categoriaNombre} ${
+        municipioActivo ? `en tu ubicación actual en` : ""
+      }`;
+
+      // 🔹 Botón azul
+      if (municipioActivo) {
+        const btnEliminar = document.createElement("button");
+        btnEliminar.innerHTML = `✕ ${municipioActivo}`;
+        btnEliminar.className =
+          "ml-3 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition-all";
+        btnEliminar.addEventListener("click", () => {
+          filtrosActivos.municipio = "";
+          const selectMunicipio = document.getElementById("filtro-municipio");
+          if (selectMunicipio) selectMunicipio.value = "";
+          cargarComerciosConOrden();
+        });
+        labelTotal.appendChild(btnEliminar);
+      }
+
+      filtrosDiv.appendChild(labelTotal);
+    }
+
+    // 🧱 Redibujar resultados
     const fragment = document.createDocumentFragment();
 
     let cartasEnFila = 0;
@@ -467,7 +566,7 @@ if (municipioActivo) {
 
         const debeInsertarIntermedio = totalFilas % 4 === 0 && !esUltimaCarta;
         if (debeInsertarIntermedio) {
-          const bannerIntermedio = await crearBannerElemento('banner-inline');
+          const bannerIntermedio = await crearBannerElemento("banner-inline");
           if (bannerIntermedio) fragment.appendChild(bannerIntermedio);
         }
       }
@@ -475,15 +574,16 @@ if (municipioActivo) {
 
     const debeAgregarFinal = totalFilas === 0 || totalFilas % 4 !== 0;
     if (debeAgregarFinal) {
-      const bannerFinal = await crearBannerElemento('banner-bottom');
+      const bannerFinal = await crearBannerElemento("banner-bottom");
       if (bannerFinal) fragment.appendChild(bannerFinal);
     }
 
     contenedor.appendChild(fragment);
   } catch (error) {
-    console.error('Error al redibujar comercios:', error);
+    console.error("Error al redibujar comercios:", error);
   }
 }
+
 
 // Utilidad para tags de filtro
 function crearTagFiltro(texto, onClick) {
