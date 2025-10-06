@@ -5,6 +5,17 @@ import { cardPlayaSlide } from './cardPlayaSlide.js';
 import { cardEventoSlide } from './cardEventoSlide.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
+import { cardComida } from './cardComida.js';
+
+async function renderLugaresParaComer(comercios) {
+  const contenedor = document.getElementById('sliderCercanosComida');
+  contenedor.innerHTML = '';
+
+  for (const comercio of comercios.filter(c => c.activo === true)) {
+    const card = await cardComida(comercio);
+    if (card) contenedor.appendChild(card);
+  }
+}
 
 let municipioSeleccionado = null;
 let nombreAreaActual = '';
@@ -302,7 +313,7 @@ async function cargarTodoDesdeCoords() {
       }
     }
 
-    await cargarPorTipo('Comercios', idArea, 'sliderCercanosComida', cardComercioSlide);
+   
     await cargarPorTipo('LugaresTuristicos', idArea, 'sliderCercanosLugares', cardLugarSlide);
     await cargarPorTipo('playas', idArea, 'sliderPlayasCercanas', cardPlayaSlide);
     await cargarPorTipo('eventos', idArea, 'sliderEventos', cardEventoSlide);

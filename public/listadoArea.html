@@ -33,14 +33,18 @@
 
 
   <main class="text-center">
-<section id="cercanosComidaContainer" class="hidden mt-8">
-  <h2 class="text-2xl mb-4">Lugares para Comer </h2>
-  <div id="sliderCercanosComida" class="flex gap-4 overflow-x-auto px-2"></div>
+<section id="cercanosComidaContainer" class="mt-8">
+  <h2 class="text-2xl mb-4">Lugares para Comer</h2>
+  <div id="gridComida"
+       class="grid grid-cols-3 sm:grid-cols-4 gap-2 px-3 transition-transform duration-700 ease-in-out">
+  </div>
 </section>
 
 <section id="cercanosPlayasContainer" class="hidden mt-8">
   <h2 class="text-2xl mb-4">Chequea las Playas del Área </h2>
-  <div id="sliderPlayasCercanas" class="flex gap-4 overflow-x-auto px-2"></div>
+  <div id="gridComida"
+     class="grid grid-cols-3 sm:grid-cols-4 gap-2 px-3 transition-transform duration-700 ease-in-out">
+</div>
 </section>
 
 <section id="cercanosLugaresContainer" class="hidden mt-6">
@@ -61,14 +65,17 @@
 <script type="module" src="js/footer.js"></script>
 
 <script type="module" src="./js/listadoArea.js"></script>
+<script type="module" src="./js/cardComida.js"></script>
 <script type="module" src="./js/cardComercioSlide.js"></script>
 <script type="module" src="./js/cardLugarSlide.js"></script>
 <script type="module" src="./js/cardPlayaSlide.js"></script>
 <script type="module" src="./js/cardEventoSlide.js"></script>
 
+
+
 <script type="module">
-  import { cargarCercanosDesdeUsuario } from './js/cercaDesdeUsuario.js';
-  cargarCercanosDesdeUsuario();
+  import { mostrarGridComida } from './js/gridComida.js';
+  mostrarGridComida();
 </script>
 
 
