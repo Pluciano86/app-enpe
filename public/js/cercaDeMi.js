@@ -4,17 +4,10 @@ import { calcularTiempoEnVehiculo } from '../shared/utils.js';
 import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 import { cardComercio } from './CardComercio.js';
 
-// 🧩 Función corregida para traer la imagen del usuario desde Supabase Storage
+// 🧩 Muestra el marcador del usuario con su foto de perfil
 async function crearIconoUsuario(idUsuario) {
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('imagen')
-    .eq('id', idUsuario)
-    .single();
-
-  // Si hay error o no tiene imagen, usa genérica
-  if (error || !data?.imagen) {
-    return L.divIcon({
+  const crearIcono = (src) =>
+    L.divIcon({
       className: 'user-marker',
       html: `
         <div style="
@@ -25,7 +18,7 @@ async function crearIconoUsuario(idUsuario) {
           border: 3px solid white;
           box-shadow: 0 0 10px rgba(0,0,0,0.3);
         ">
-          <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+          <img src="${src}"
                style="width:100%;height:100%;object-fit:cover;" />
         </div>
       `,
@@ -33,31 +26,23 @@ async function crearIconoUsuario(idUsuario) {
       iconAnchor: [24, 48],
       popupAnchor: [0, -40],
     });
+
+  const FALLBACK_IMG = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+  if (!idUsuario) return crearIcono(FALLBACK_IMG);
+
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('imagen')
+    .eq('id', idUsuario)
+    .single();
+
+  const imagenPerfil = typeof data?.imagen === 'string' ? data.imagen.trim() : '';
+
+  if (error || !imagenPerfil) {
+    return crearIcono(FALLBACK_IMG);
   }
 
-  // ✅ Generar la URL pública completa desde Supabase Storage
-  const { data: publicUrl } = supabase.storage
-    .from('imagenesusuarios') // o el bucket donde está guardada la imagen de usuarios
-    .getPublicUrl(data.imagen);
-
-  return L.divIcon({
-    className: 'user-marker',
-    html: `
-      <div style="
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        overflow: hidden;
-        border: 3px solid white;
-        box-shadow: 0 0 10px rgba(0,0,0,0.3);
-      ">
-        <img src="${publicUrl.publicUrl}" style="width:100%;height:100%;object-fit:cover;" />
-      </div>
-    `,
-    iconSize: [48, 48],
-    iconAnchor: [24, 48],
-    popupAnchor: [0, -40],
-  });
+  return crearIcono(imagenPerfil);
 }
 const PLACEHOLDER_LOGO =
   'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgLogoNoDisponible.jpg';
@@ -89,6 +74,17 @@ function toggleLoader(show) {
   if (!$loader) return;
   $loader.classList.toggle('hidden', !show);
   $loader.classList.toggle('flex', show);
+}
+
+async function obtenerIdUsuarioActual() {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    return data?.session?.user?.id || null;
+  } catch (err) {
+    console.warn('⚠️ No se pudo obtener la sesión del usuario actual:', err?.message || err);
+    return null;
+  }
 }
 
 // 👇 Añade esto junto a las utilidades (arriba del archivo)
@@ -211,7 +207,7 @@ async function obtenerInfoBasica(idComercio) {
 
   try {
     const { data, error } = await supabase
-      .from('comercios') // 👈 en minúsculas
+      .from('Comercios') // 👈 en minúsculas
       .select(`
         id,
         municipio,
@@ -399,8 +395,9 @@ async function renderMarkers(comercios = []) {
 
 const comercioAdaptado = {
   ...comercio,
-  abierto: comercio.abiertoAhora,          // el campo que espera la tarjeta
-  pueblo : (comercio.municipio || '').trim() || 'Sin pueblo', // 👈 aquí
+  abierto: comercio.abiertoAhora,
+  municipio: comercio.municipio ?? null,
+  pueblo: '',
 };
 
 
@@ -430,28 +427,23 @@ if (horarioContainer) {
   }
 }
 
-// 🏙️ Insertar el municipio si existe
-if (comercioAdaptado.municipio) {
-  const municipioContainer = cardNode.querySelector('.text-blue-500, .municipio-info');
+// 🏙️ Inserta el municipio directo de la tabla (sin fallbacks)
+cardNode.querySelector('div[class*="text-[#23b4e9]"]')?.remove();
+cardNode.querySelector('.municipio-info')?.remove();
 
-  // Si ya existe un contenedor para el municipio
-  if (municipioContainer) {
-    municipioContainer.innerHTML = `
-      <i class="fas fa-map-marker-alt text-blue-500 mr-1"></i>
-      ${comercioAdaptado.municipio}
-    `;
+const municipioTexto = typeof comercio.municipio === 'string' ? comercio.municipio.trim() : '';
+if (municipioTexto) {
+  const municipioEl = document.createElement('div');
+  municipioEl.className = 'flex items-center justify-center gap-1 text-[#23b4e9] text-sm font-medium municipio-info';
+  municipioEl.innerHTML = `
+    <i class="fas fa-map-pin"></i> ${municipioTexto}
+  `;
+
+  const anchorNombre = cardNode.querySelector('a[href*="perfilComercio.html"]');
+  if (anchorNombre) {
+    anchorNombre.insertAdjacentElement('afterend', municipioEl);
   } else {
-    // Si no existe, lo añadimos debajo del horario
-    const horarioContainer = cardNode.querySelector('.flex.justify-center.items-center');
-    if (horarioContainer) {
-      const municipioEl = document.createElement('div');
-      municipioEl.className = 'text-blue-500 font-medium municipio-info flex items-center justify-center gap-1 mb-1';
-      municipioEl.innerHTML = `
-        <i class="fas fa-map-marker-alt text-blue-500"></i>
-        ${comercioAdaptado.municipio}
-      `;
-      horarioContainer.insertAdjacentElement('afterend', municipioEl);
-    }
+    cardNode.insertBefore(municipioEl, cardNode.firstChild);
   }
 }
 
@@ -514,7 +506,7 @@ const idsSinMunicipio = lista
 let municipiosExtra = [];
 if (idsSinMunicipio.length) {
   const { data } = await supabase
-    .from('comercios')
+    .from('Comercios')
     .select('id, municipio')
     .in('id', idsSinMunicipio);
 
@@ -524,11 +516,12 @@ if (idsSinMunicipio.length) {
 // ✅ Une los resultados en memoria
 const listaConMunicipio = lista.map(c => {
   const extra = municipiosExtra.find(x => x.id === c.id);
-  return { ...c, municipio: c.municipio || extra?.municipio || 'Sin municipio' };
+  const municipioBase = c.municipio ?? extra?.municipio ?? null;
+  return { ...c, municipio: municipioBase };
 });
 
     // 1) Base
-    const listaBase = Array.isArray(data) ? data : [];
+    const listaBase = listaConMunicipio;
 
     // 2) 💡 Inyectar portada desde la tabla Comercios
     const listaConPortadas = await inyectarPortadas(listaBase);
@@ -549,17 +542,26 @@ async function locateUser() {
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
-      userLat = pos.coords.latitude;
-      userLon = pos.coords.longitude;
+      try {
+        userLat = pos.coords.latitude;
+        userLon = pos.coords.longitude;
 
-      map.setView([userLat, userLon], 13);
+        map.setView([userLat, userLon], 13);
 
-      // marcador del usuario
-     const iconoUsuario = await crearIconoUsuario(1); // ⚠️ Reemplaza 1 por el idUsuario real si lo tienes en variable
-userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+        if (userMarker) {
+          map.removeLayer(userMarker);
+        }
 
-      await loadNearby();
-      toggleLoader(false);
+        const idUsuario = await obtenerIdUsuarioActual();
+        const iconoUsuario = await crearIconoUsuario(idUsuario);
+        userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+
+        await loadNearby();
+      } catch (err) {
+        console.error('⚠️ Error posicionando al usuario:', err);
+      } finally {
+        toggleLoader(false);
+      }
     },
     () => toggleLoader(false),
     { enableHighAccuracy: true }
