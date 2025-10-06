@@ -12,6 +12,7 @@
   <!-- Leaflet CSS/JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 
 <body class="bg-white text-gray-800 h-screen flex flex-col" style="font-family: 'Kanit', sans-serif;">
@@ -100,5 +101,87 @@
       radioValue.textContent = `${slider.value} km`;
     });
   </script>
+
+  <style>
+  /* === Logo en el pin === */
+  .marker-wrapper {
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.25);
+    background: white;
+  }
+
+  .marker-logo img {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid white;
+  }
+
+  /* === Popup limpio sin márgenes extras === */
+  .leaflet-popup-content {
+    margin: 0 !important;
+    width: auto !important;
+  }
+
+  .leaflet-popup-content-wrapper {
+    border-radius: 20px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .leaflet-popup-tip-container {
+    display: none !important; /* ocultar la flechita del popup */
+  }
+
+  /* === Tarjeta interna === */
+  .popup-comercio {
+    width: 280px; /* igual al ancho del card original */
+    border-radius: 20px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .popup-comercio .card-comercio {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 20px;
+  }
+
+ /* 🔧 Corrige el botón de teléfono dentro del popup */
+.leaflet-popup-content .card-comercio a[href^="tel:"],
+.leaflet-popup-content .card-comercio button[href^="tel:"] {
+  color: #ffffff !important;
+  background-color: #dc2626 !important; /* rojo igual al del listado */
+  border: none !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  padding: 10px 22px !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  transition: opacity 0.2s ease !important;
+  line-height: 1 !important;
+}
+
+/* 🔹 Asegura color blanco en texto e ícono dentro del botón */
+.leaflet-popup-content .card-comercio a[href^="tel:"] *,
+.leaflet-popup-content .card-comercio a[href^="tel:"] i,
+.leaflet-popup-content .card-comercio a[href^="tel:"] span {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* 🔹 Efecto hover */
+.leaflet-popup-content .card-comercio a[href^="tel:"]:hover {
+  opacity: 0.9 !important;
+}
+</style>
 </body>
 </html>
