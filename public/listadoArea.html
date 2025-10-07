@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,140 +7,78 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  
   <style>
     body { font-family: 'Kanit', sans-serif; }
+    #modalComida {
+    backdrop-filter: blur(4px);
+    transition: opacity 0.2s ease;
+  }
     
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
   <!-- Header -->
-<div id="headerContainer"></div>
-<script src="./js/loader.js"></script>
-<script type="module" src="js/header.js"></script>
+  <div id="headerContainer"></div>
+  <script src="./js/loader.js"></script>
+  <script type="module" src="js/header.js"></script>
 
   <header class="bg-white shadow px-4 py-4 sticky top-0 z-10">
     <h1 class="text-2xl text-center font-bold">Descubre por Área</h1>
   </header>
 
-<section class="py-6">
-  <h2 class="text-xl font-normal text-center mb-4">Municipios del Área Sur</h2>
-
-  <!-- Dropdown de municipios -->
-  <div class="flex justify-center">
-    <div class="relative inline-block w-64">
-      <select id="dropdownMunicipios"
-        class="w-full appearance-none border border-gray-300 rounded-xl px-4 py-2 text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#23b4e9] focus:border-[#23b4e9]">
-        <option value="">Selecciona un municipio...</option>
-        <option value="Arroyo">Arroyo</option>
-        <option value="Coamo">Coamo</option>
-        <option value="Guánica">Guánica</option>
-        <option value="Guayama">Guayama</option>
-        <option value="Guayanilla">Guayanilla</option>
-        <option value="Juana Díaz">Juana Díaz</option>
-        <option value="Patillas">Patillas</option>
-        <option value="Peñuelas">Peñuelas</option>
-        <option value="Ponce">Ponce</option>
-        <option value="Salinas">Salinas</option>
-        <option value="Santa Isabel">Santa Isabel</option>
-        <option value="Villalba">Villalba</option>
-        <option value="Yauco">Yauco</option>
-      </select>
-
-      <!-- Icono de flecha -->
-      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
-        <i class="fas fa-chevron-down text-sm"></i>
+  <section class="py-6">
+    <h2 class="text-xl font-normal text-center mb-4">Municipios del Área</h2>
+    <div class="flex justify-center">
+      <div class="relative inline-block w-64">
+        <select id="dropdownMunicipios"
+          class="w-full appearance-none border border-gray-300 rounded-xl px-4 py-2 text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#23b4e9] focus:border-[#23b4e9]">
+          <option value="">Selecciona un municipio...</option>
+        </select>
+        <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+          <i class="fas fa-chevron-down text-sm"></i>
+        </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<div id="volverAreaContainer" class="text-center mt-4"></div>
+  <div id="volverAreaContainer" class="text-center mt-4"></div>
 
   <main class="text-center mb-36">
-<section id="cercanosComidaContainer" class="mt-8">
-  <h2 class="text-2xl mb-4">Lugares para Comer</h2>
-  <div id="gridComida"
-       class="grid grid-cols-3 sm:grid-cols-4 gap-2 px-3 transition-transform duration-700 ease-in-out">
-  </div>
-</section>
 
+    <section id="cercanosComidaContainer" class="mt-8">
+      <h2 class="text-2xl mb-4">Lugares para Comer</h2>
+      <div id="gridComida" class="grid grid-cols-2 sm:grid-cols-4 gap-2 px-3 transition-transform duration-700 ease-in-out"></div>
+    </section>
 
-<!-- Carrusel de Eventos -->
-<section class="text-center my-6 px-4">
-  <h2 class="text-2xl font-medium mb-4">CHEQUEA LOS PRÓXIMOS EVENTOS</h2>
-  <div id="eventosCarousel"></div>
-</section>
-
-<!-- SwiperJS CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
-
-<!-- SwiperJS JS -->
-<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
-<!-- Tu script del carrusel -->
-<script type="module">
-  import { renderEventosCarousel } from "./js/eventosCarousel.js";
-  
-  document.addEventListener("DOMContentLoaded", () => {
-    renderEventosCarousel("eventosCarousel");
-  });
-</script>
-
-  </main>
-
-
-    <!-- Footer -->
-<div id="footerContainer"></div>
-<script type="module" src="js/footer.js"></script>
-
-<script type="module" src="./js/listadoArea.js"></script>
-<script type="module" src="./js/cardComida.js"></script>
-<script type="module" src="./js/cardComercioSlide.js"></script>
-<script type="module" src="./js/cardLugarSlide.js"></script>
-<script type="module" src="./js/cardPlayaSlide.js"></script>
-<script type="module" src="./js/cardEventoSlide.js"></script>
-
-
-
-<script type="module">
-  import { mostrarGridComida } from './js/gridComida.js';
-  mostrarGridComida();
-</script>
-
-<!-- Modal -->
-<div id="modalEvento" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden px-4 py-6">
-  <div class="bg-white rounded-lg shadow-lg w-[95%] h-[72%] 
-              overflow-y-auto relative">
-    <!-- header -->
+    <div id="modalComida" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg w-[95%] max-w-5xl h-[80%] overflow-y-auto relative flex flex-col">
     <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
-      <h2 id="modalTitulo" class="flex-1 text-center text-2xl font-medium"></h2>
-      <button id="cerrarModal" 
-              class="text-white hover:text-gray-300 text-5xl font-extralight leading-none ml-2">&times;</button>
+      <h2 class="text-xl font-medium">Todos los lugares para comer</h2>
+      <button id="cerrarModalComida" class="text-white hover:text-gray-300 text-4xl leading-none">&times;</button>
     </div>
-    
-    <!-- contenido -->
-    <div class="flex-1 overflow-y-auto px-4 pb-6 pt-4 space-y-2 text-center">
-      <!-- imagen -->
-      <div class="w-full overflow-hidden rounded-lg bg-gray-200 aspect-[4/5]">
-        <img id="modalImagen" src="" alt="Imagen evento" class="w-full h-full object-cover" />
-      </div>
-      
-      <p id="modalDescripcion" class="text-sm text-justify text-gray-700"></p>
-      <div id="modalFechaPrincipal" class="text-2xl text-red-600 font-semibold leading-5 space-y-1"></div>
-      <div id="modalHoraPrincipal" class="text-2xl text-gray-600 font-medium"></div>
-      <button id="modalVerFechas" type="button" class="text-gray-500 text-base font-medium underline hidden"></button>
-      <div id="modalFechasListado" class="hidden text-base text-gray-600 space-y-1"></div>
-      <div id="modalLugar" class="text-2xl font-semibold text-gray-700"></div>
-      <div id="modalDireccion" class="text-medium space-y-0 text-gray-500"></div>
-      <div id="modalCosto" class="text-3xl font-medium text-green-600"></div>
-      <a id="modalBoletos" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-full">Comprar boletos</a>
-    </div>
+    <div id="gridComidaModal" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4"></div>
   </div>
 </div>
 
+    <!-- Carrusel de Eventos -->
+    <section class="text-center my-6 px-4">
+      <h2 class="text-2xl font-medium mb-4">CHEQUEA LOS PRÓXIMOS EVENTOS</h2>
+      <div id="eventosCarousel"></div>
+    </section>
 
+  </main>
+
+  <!-- Footer -->
+  <div id="footerContainer"></div>
+  <script type="module" src="js/footer.js"></script>
+
+  <!-- Scripts principales -->
+  <script type="module" src="./js/listadoArea.js"></script>
+  <script type="module" src="./js/gridComida.js"></script>
+  <script type="module" src="./js/cardLugarSlide.js"></script>
+  <script type="module" src="./js/cardPlayaSlide.js"></script>
+  <script type="module" src="./js/cardEventoSlide.js"></script>
 
 </body>
 </html>

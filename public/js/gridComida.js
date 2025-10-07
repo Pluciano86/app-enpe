@@ -1,203 +1,232 @@
+// ✅ gridComida.js - versión funcional con botón "Ver más"
 import { supabase } from '../shared/supabaseClient.js';
 
-export async function mostrarGridComida() {
-  const contenedor =
-    document.getElementById('gridComida') ||
-    document.getElementById('sliderCercanosComida');
+async function mostrarGridComida({ idArea, idMunicipio }) {
+  const grid = document.getElementById("gridComida");
+  if (!grid) return;
 
-  if (!contenedor) return;
-  contenedor.innerHTML = '<p class="text-gray-500 text-sm">Cargando lugares...</p>';
+  grid.innerHTML = `<p class="text-gray-400 text-center col-span-full animate-pulse">Cargando lugares...</p>`;
 
   try {
-    // 🔹 Obtener idArea desde la URL
-    const params = new URLSearchParams(window.location.search);
-    const idArea = parseInt(params.get('idArea'));
+    // 🔹 Categorías que cuentan como "Lugares para Comer"
+    // 🔹 Cargar IDs de categorías de comida dinámicamente
+const { data: categorias, error: errorCat } = await supabase
+  .from("Categorias")
+  .select("id, nombre")
+  .in("nombre", ["Restaurantes", "Bares", "Food Trucks", "Coffee Shops", "Panaderías"]);
 
-    // 🔹 Comercios activos de categorías de comida
-    const { data: comercios, error: errorComercios } = await supabase
-      .from('Comercios')
-      .select('id, nombre, municipio, logo, activo, idCategoria, idArea')
-      .or('idCategoria.cs.{1},idCategoria.cs.{2},idCategoria.cs.{3},idCategoria.cs.{4}')
-      .eq('activo', true)
-      .eq('idArea', idArea);
+if (errorCat) {
+  console.warn("⚠️ Error cargando categorías de comida:", errorCat);
+}
 
-    if (errorComercios) throw errorComercios;
+const categoriasComida = categorias?.map(c => c.id) || [];
+
+    // 🔹 Buscar comercios activos (sin repetir sucursales)
+    let query = supabase
+      .from("Comercios")
+      .select("id, nombre, municipio, idArea, idMunicipio, activo, tieneSucursales, idCategoria")
+      .eq("activo", true);
+
+    // 🔹 Filtrar por ubicación
+    if (idMunicipio) query = query.eq("idMunicipio", idMunicipio);
+    else if (idArea) query = query.eq("idArea", idArea);
+
+    // 🔹 Incluir comercios que tengan al menos una categoría de comida
+    query = query.or(
+      categoriasComida
+        .map(catId => `idCategoria.cs.{${catId}}`) // `.cs` = contains en arrays
+        .join(',')
+    );
+
+    // 🔹 Ejecutar query
+    const { data: comercios, error } = await query;
+    console.log("🍽 Comercios encontrados:", comercios?.length, comercios);
+    if (error) throw error;
+
     if (!comercios?.length) {
-      contenedor.innerHTML = '<p class="text-gray-500 text-sm">No hay lugares disponibles.</p>';
+      grid.innerHTML = `<p class="text-gray-500">No hay lugares disponibles.</p>`;
       return;
     }
 
-    // 🔹 Evitar repetir comercios con sucursales
-    const unicos = [];
+    // 🔹 Filtrar comercios únicos (solo una sucursal visible)
+    const comerciosUnicos = [];
     const nombresVistos = new Set();
     for (const c of comercios) {
-      const clave = c.nombre.trim().toLowerCase();
-      if (!nombresVistos.has(clave)) {
-        nombresVistos.add(clave);
-        unicos.push(c);
+      const nombreKey = c.nombre.trim().toLowerCase();
+      if (!nombresVistos.has(nombreKey)) {
+        comerciosUnicos.push(c);
+        nombresVistos.add(nombreKey);
       }
     }
 
-    // 🔹 Mapa rápido por id
-    const porId = new Map(unicos.map(c => [c.id, c]));
-
-    // 🔹 Todas las imágenes no-logo de esos comercios
-    const ids = unicos.map(c => c.id);
+    // 🔹 Obtener todas las imágenes (excepto las que son logo)
     const { data: imagenes, error: errorImgs } = await supabase
-      .from('imagenesComercios')
-      .select('idComercio, imagen, logo')
-      .in('idComercio', ids)
-      .eq('logo', false);
+      .from("imagenesComercios")
+      .select("imagen, idComercio, logo")
+      .in("idComercio", comerciosUnicos.map(c => c.id))
+      .neq("logo", true);
 
     if (errorImgs) throw errorImgs;
+
     if (!imagenes?.length) {
-      contenedor.innerHTML = '<p class="text-gray-500 text-sm">No hay fotos disponibles.</p>';
+      grid.innerHTML = `<p class="text-gray-500">No hay imágenes disponibles.</p>`;
       return;
     }
 
-    // 🔹 Crear tiles con 1 imagen por comercio (sin repetir sucursales)
-    const tiles = imagenes
-      .map(img => {
-        const c = porId.get(img.idComercio);
-        if (!c) return null;
-        return {
-          id: c.id,
-          nombre: c.nombre,
-          municipio: c.municipio || '',
-          logo: c.logo || null,
-          imagen: img.imagen,
-        };
-      })
-      .filter(Boolean)
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 12);
+    // 🔹 Aleatorizar imágenes
+    const imagenesRandom = imagenes.sort(() => Math.random() - 0.5);
 
-    // 🔹 Render
-    const STORAGE = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public';
-    contenedor.innerHTML = '';
+    // 🔹 Base URL
+    const baseURL =
+      "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/";
 
-    tiles.forEach(tile => {
-      const imgUrl = tile.imagen?.startsWith('http')
-        ? tile.imagen
-        : `${STORAGE}/galeriacomercios/${tile.imagen}`;
+    // 🔹 Mostrar primeras 12 imágenes
+    const primeras = imagenesRandom.slice(0, 12);
+    const restantes = imagenesRandom.slice(12);
 
-      const logoUrl = tile.logo?.startsWith?.('http')
-        ? tile.logo
-        : `${STORAGE}/galeriacomercios/${tile.logo || 'NoActivoLogo.png'}`;
+    grid.innerHTML = "";
 
-      const a = document.createElement('a');
-      a.href = `perfilComercio.html?id=${tile.id}`;
-      a.className = 'relative overflow-hidden rounded-xl shadow-md aspect-square';
+    for (const img of primeras) {
+      const comercio = comerciosUnicos.find(c => c.id === img.idComercio);
+      if (!comercio) continue;
 
-      a.innerHTML = `
-        <img src="${imgUrl}" alt="${tile.nombre}"
-             class="w-full h-full object-cover"
-             onerror="this.src='${STORAGE}/imagenesapp/NoActivoPortada.jpg'"/>
-        <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/70 to-transparent px-2 py-1 flex items-center gap-1 text-white text-xs">
-          <img src="${logoUrl}" class="w-10 h-10 rounded-full bg-white border border-white object-cover shadow" />
-          <span class="truncate">${tile.municipio}</span>
+      // Buscar logo del comercio
+      const { data: logoData } = await supabase
+        .from("imagenesComercios")
+        .select("imagen")
+        .eq("idComercio", comercio.id)
+        .eq("logo", true)
+        .maybeSingle();
+
+      const logoURL = logoData
+        ? `${baseURL}${logoData.imagen}`
+        : "https://placehold.co/40x40?text=Logo";
+
+      const card = document.createElement("a");
+      card.href = `perfilComercio.html?id=${comercio.id}`;
+      card.className =
+        "relative block overflow-hidden rounded-xl shadow hover:scale-[1.03] transition-transform bg-white";
+
+      card.innerHTML = `
+         <img src="${baseURL + img.imagen}" alt="${comercio.nombre}"
+           class="w-full h-40 object-cover" />
+      <div class="absolute bottom-0 left-0 w-full p-2 flex items-end justify-start bg-gradient-to-t from-black/80 via-black/30 to-transparent">
+        <img src="${logoURL}" alt="logo"
+             class="w-9 h-9 rounded-full border border-white mr-2 object-cover bg-white" />
+        <div class="leading-tight justify-items-start text-white text-[11px]">
+          <p class="font-medium truncate max-w-[140px]">${comercio.nombre}</p>
+          <p class="text-[11px] text-white">${comercio.municipio}</p>
         </div>
+      </div>
       `;
 
-      contenedor.appendChild(a);
-    });
-
-    // 🔹 Botón "Ver más..."
-    const btnVerMas = document.createElement('button');
-    btnVerMas.textContent = 'Ver más...';
-    btnVerMas.className = `
-  block mx-auto mt-6 mb-4 
-  px-8 py-3 bg-[#0F172A] text-white font-medium 
-  rounded-xl shadow hover:bg-[#1E293B] 
-  transition-all duration-200 text-center
-`;
-
-    if (contenedor.classList.contains('grid')) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'col-span-full flex justify-center';
-      wrapper.appendChild(btnVerMas);
-      contenedor.appendChild(wrapper);
-    } else {
-      contenedor.appendChild(btnVerMas);
+      grid.appendChild(card);
     }
 
-    // 🔹 Crear modal oculto
-    const modal = document.createElement('div');
-    modal.id = 'modalGridComida';
-    modal.className = `
-      fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden
-    `;
-    modal.innerHTML = `
-      <div class="bg-white rounded-2xl max-w-5xl w-[95%] max-h-[90vh] overflow-y-auto p-4 relative">
-        <button id="cerrarModalGridComida"
-          class="absolute top-2 right-2 bg-black text-white rounded-full w-8 h-8 flex items-center justify-center text-lg">✕</button>
-        <h2 class="text-xl font-semibold text-center mb-4">Todos los lugares para comer</h2>
-        <div id="gridModalComida" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    // 🔹 Acción al presionar "Ver más"
-    btnVerMas.addEventListener('click', () => {
-      const gridModal = document.getElementById('gridModalComida');
-      gridModal.innerHTML = '';
-
-      const todas = imagenes
-        .map(img => {
-          const c = porId.get(img.idComercio);
-          if (!c) return null;
-          return {
-            id: c.id,
-            nombre: c.nombre,
-            municipio: c.municipio || '',
-            logo: c.logo || null,
-            imagen: img.imagen,
-          };
-        })
-        .filter(Boolean)
-        .sort(() => 0.5 - Math.random());
-
-      todas.forEach(tile => {
-        const imgUrl = tile.imagen?.startsWith('http')
-          ? tile.imagen
-          : `${STORAGE}/galeriacomercios/${tile.imagen}`;
-        const logoUrl = tile.logo?.startsWith?.('http')
-          ? tile.logo
-          : `${STORAGE}/galeriacomercios/${tile.logo || 'NoActivoLogo.png'}`;
-
-        const a = document.createElement('a');
-        a.href = `perfilComercio.html?id=${tile.id}`;
-        a.className = 'relative overflow-hidden rounded-xl shadow-md aspect-square';
-
-        a.innerHTML = `
-          <img src="${imgUrl}" alt="${tile.nombre}"
-               class="w-full h-full object-cover rounded-xl"
-               onerror="this.src='${STORAGE}/imagenesapp/NoActivoPortada.jpg'"/>
-          <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-white text-xs">
-            <div class="font-semibold truncate">${tile.nombre}</div>
-            <div class="flex items-center gap-1 mt-0.5">
-              <img src="${logoUrl}" class="w-6 h-6 rounded-full bg-white border border-white object-cover shadow" />
-              <span class="truncate">${tile.municipio}</span>
-            </div>
-          </div>
-        `;
-        gridModal.appendChild(a);
+    // 🔹 Botón “Ver más...”
+    if (restantes.length > 0) {
+      const btnVerMas = document.createElement("button");
+      btnVerMas.textContent = "Ver más...";
+      btnVerMas.className =
+        "block mx-auto mt-6 bg-[#0B132B] hover:bg-[#1C2541] text-white font-semibold py-2 px-8 rounded-lg shadow";
+      
+      // ✅ Conexión garantizada con modal
+      btnVerMas.addEventListener("click", () => {
+        console.log("🟢 Click detectado en 'Ver más'");
+        mostrarModalImagenes(restantes, comerciosUnicos, baseURL);
       });
 
-      modal.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-    });
-
-    // 🔹 Cerrar modal
-    modal.addEventListener('click', (e) => {
-      if (e.target.id === 'modalGridComida' || e.target.id === 'cerrarModalGridComida') {
-        modal.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-      }
-    });
-
+      grid.appendChild(btnVerMas);
+    }
   } catch (err) {
-    console.error('⚠️ Error mostrando lugares para comer:', err);
-    contenedor.innerHTML = '<p class="text-red-500 text-sm">Error cargando lugares.</p>';
+    console.error("❌ Error cargando imágenes:", err);
+    grid.innerHTML = `<p class="text-red-500">Error al cargar los lugares.</p>`;
   }
 }
+
+/* ===========================================================
+   🔹 Modal - Versión funcional con blur, fade y cierre externo
+   =========================================================== */
+function mostrarModalImagenes(imagenes, comercios, baseURL) {
+  const modal = document.getElementById("modalComida");
+  const gridModal = document.getElementById("gridComidaModal");
+  const cerrar = document.getElementById("cerrarModalComida");
+
+  if (!modal || !gridModal) {
+    console.warn("⚠️ Modal o contenedor no encontrados en el DOM");
+    return;
+  }
+
+  gridModal.innerHTML = "";
+  modal.classList.remove("hidden");
+  modal.classList.add("flex", "animate-fadeIn");
+
+  // Generar galería completa
+  imagenes.forEach(async (img) => {
+    const comercio = comercios.find(c => c.id === img.idComercio);
+    if (!comercio) return;
+
+    // 🔹 Buscar logo del comercio
+    const { data: logoData } = await supabase
+      .from("imagenesComercios")
+      .select("imagen")
+      .eq("idComercio", comercio.id)
+      .eq("logo", true)
+      .maybeSingle();
+
+    const logoURL = logoData
+      ? `${baseURL}${logoData.imagen}`
+      : "https://placehold.co/40x40?text=Logo";
+
+    // 🔹 Crear tarjeta
+    const card = document.createElement("a");
+    card.href = `perfilComercio.html?id=${comercio.id}`;
+    card.className =
+      "relative block overflow-hidden rounded-xl shadow hover:scale-[1.02] transition-transform bg-white";
+
+    card.innerHTML = `
+      <img src="${baseURL + img.imagen}" alt="${comercio.nombre}"
+           class="w-full h-40 object-cover" />
+      <div class="absolute bottom-0 left-0 w-full p-2 flex items-end justify-start bg-gradient-to-t from-black/80 via-black/30 to-transparent">
+        <img src="${logoURL}" alt="logo"
+             class="w-9 h-9 rounded-full border border-white mr-2 object-cover bg-white" />
+        <div class="leading-tight justify-items-start text-white text-[11px]">
+          <p class="font-medium truncate max-w-[140px]">${comercio.nombre}</p>
+          <p class="text-[11px] text-white">${comercio.municipio}</p>
+        </div>
+      </div>
+    `;
+
+    gridModal.appendChild(card);
+  });
+
+  // ✅ Cerrar modal con botón o clic fuera
+  if (cerrar) cerrar.onclick = () => cerrarModalAnimado(modal);
+  modal.onclick = (e) => { if (e.target === modal) cerrarModalAnimado(modal); };
+}
+
+// 🔹 Animación de cierre
+function cerrarModalAnimado(modal) {
+  modal.classList.remove("animate-fadeIn");
+  modal.classList.add("animate-fadeOut");
+
+  setTimeout(() => {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex", "animate-fadeOut");
+  }, 200);
+}
+
+// 🔹 Inyectar animaciones
+const style = document.createElement("style");
+style.textContent = `
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.97);} to { opacity: 1; transform: scale(1);} }
+@keyframes fadeOut { from { opacity: 1; transform: scale(1);} to { opacity: 0; transform: scale(0.97);} }
+.animate-fadeIn { animation: fadeIn 0.25s ease forwards; }
+.animate-fadeOut { animation: fadeOut 0.2s ease forwards; }
+`;
+document.head.appendChild(style);
+
+// 🔹 Escuchar evento del área
+window.addEventListener("areaCargada", (e) => {
+  mostrarGridComida(e.detail);
+});
