@@ -32,11 +32,11 @@ const categoriasComida = categorias?.map(c => c.id) || [];
     else if (idArea) query = query.eq("idArea", idArea);
 
     // 🔹 Incluir comercios que tengan al menos una categoría de comida
-    query = query.or(
-      categoriasComida
-        .map(catId => `idCategoria.cs.{${catId}}`) // `.cs` = contains en arrays
-        .join(',')
-    );
+if (categoriasComida.length > 0) {
+  // ✅ 'ov' es el alias del operador PostgreSQL '&&' (overlaps)
+  const arrayFiltro = `{${categoriasComida.join(',')}}`;
+  query = query.filter('idCategoria', 'ov', arrayFiltro);
+}
 
     // 🔹 Ejecutar query
     const { data: comercios, error } = await query;
@@ -59,12 +59,24 @@ const categoriasComida = categorias?.map(c => c.id) || [];
       }
     }
 
-    // 🔹 Obtener todas las imágenes (excepto las que son logo)
-    const { data: imagenes, error: errorImgs } = await supabase
-      .from("imagenesComercios")
-      .select("imagen, idComercio, logo")
-      .in("idComercio", comerciosUnicos.map(c => c.id))
-      .neq("logo", true);
+    // 🔹 Obtener todas las imágenes (excepto logos), asegurando que haya IDs válidos
+const idsValidos = comerciosUnicos
+  .map(c => c.id)
+  .filter(id => id !== null && id !== undefined);
+
+if (!idsValidos.length) {
+  console.warn("⚠️ No hay comercios válidos con imágenes");
+  grid.innerHTML = `<p class="text-gray-500">No hay lugares disponibles.</p>`;
+  return;
+}
+
+const { data: imagenes, error: errorImgs } = await supabase
+  .from("imagenesComercios")
+  .select("imagen, idComercio, logo")
+  .in("idComercio", idsValidos)
+  .or("logo.is.false,logo.is.null");
+
+if (errorImgs) throw errorImgs;
 
     if (errorImgs) throw errorImgs;
 
@@ -73,8 +85,23 @@ const categoriasComida = categorias?.map(c => c.id) || [];
       return;
     }
 
-    // 🔹 Aleatorizar imágenes
-    const imagenesRandom = imagenes.sort(() => Math.random() - 0.5);
+    // 🔹 Mezcla inteligente para evitar imágenes consecutivas del mismo comercio
+function mezclarInteligente(arr) {
+  let intentos = 0;
+  let resultado = [];
+  
+  do {
+    intentos++;
+    resultado = [...arr].sort(() => Math.random() - 0.5);
+  } while (
+    intentos < 10 && 
+    resultado.some((img, i) => i > 0 && img.idComercio === resultado[i - 1].idComercio)
+  );
+
+  return resultado;
+}
+
+const imagenesRandom = mezclarInteligente(imagenes);
 
     // 🔹 Base URL
     const baseURL =
@@ -123,21 +150,28 @@ const categoriasComida = categorias?.map(c => c.id) || [];
       grid.appendChild(card);
     }
 
-    // 🔹 Botón “Ver más...”
-    if (restantes.length > 0) {
-      const btnVerMas = document.createElement("button");
-      btnVerMas.textContent = "Ver más...";
-      btnVerMas.className =
-        "block mx-auto mt-6 bg-[#0B132B] hover:bg-[#1C2541] text-white font-semibold py-2 px-8 rounded-lg shadow";
-      
-      // ✅ Conexión garantizada con modal
-      btnVerMas.addEventListener("click", () => {
-        console.log("🟢 Click detectado en 'Ver más'");
-        mostrarModalImagenes(restantes, comerciosUnicos, baseURL);
-      });
+    // 🔹 Botón “Ver más...” perfectamente centrado
+if (restantes.length > 0) {
+  // Contenedor para centrar
+  const btnContainer = document.createElement("div");
+  btnContainer.className = "col-span-full flex justify-center items-center w-full mt-6";
 
-      grid.appendChild(btnVerMas);
-    }
+  // Botón “Ver más...”
+  const btnVerMas = document.createElement("button");
+  btnVerMas.textContent = "Ver más...";
+  btnVerMas.className =
+    "bg-[#0B132B] hover:bg-[#1C2541] text-white font-semibold py-2 px-8 rounded-lg shadow transition";
+
+  // Acción al hacer clic
+  btnVerMas.addEventListener("click", () => {
+    console.log("🟢 Click detectado en 'Ver más'");
+    mostrarModalImagenes(restantes, comerciosUnicos, baseURL);
+  });
+
+  // Insertar el botón centrado dentro del grid
+  btnContainer.appendChild(btnVerMas);
+  grid.appendChild(btnContainer);
+}
   } catch (err) {
     console.error("❌ Error cargando imágenes:", err);
     grid.innerHTML = `<p class="text-red-500">Error al cargar los lugares.</p>`;
