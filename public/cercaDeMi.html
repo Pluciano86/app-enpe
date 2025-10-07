@@ -20,59 +20,80 @@
   <!-- Header dinámico -->
   <div id="headerContainer" class="h-16 shrink-0 z-40"></div>
 
-  <!-- Controles -->
-  <section class="px-4 md:px-6 py-3 bg-white border-b shadow space-y-3">
-    
-    <!-- Searchbox -->
-    <div class="flex items-center border rounded-lg px-3 py-2 w-full">
-      <i class="fas fa-search text-gray-400 mr-2"></i>
-      <input id="searchNombre" type="text" placeholder="Buscar en Comercios..."
-        class="flex-1 outline-none text-sm" />
-    </div>
+ <!-- 🔍 Controles del mapa -->
+<section class="px-4 md:px-6 py-3 bg-white text-center border-b shadow space-y-4">
 
-    <!-- Filtros -->
-    <div class="grid grid-cols-3 gap-2">
-      <select id="filtroMunicipio" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Municipios</option>
-      </select>
-      <select id="filtroCategoria" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="">Todas las categorías</option>
-      </select>
-      <select id="filtroOrden" class="border rounded-lg px-3 py-2 text-sm">
-        <option value="cercania">Cercanía</option>
-        <option value="alfabetico">Alfabético</option>
-        <option value="recientes">Recientes</option>
-      </select>
-    </div>
+  <h2 class="text-2xl font-medium mb-4">COMERCIOS CERCA DE MI</h2>
+  <!-- 🔹 Searchbox -->
+  <div class="flex justify-center">
+    <label class="flex items-center gap-2 border border-gray-200 rounded-xl shadow-sm px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-blue-500 w-full max-w-md">
+      <i class="fas fa-search text-gray-400"></i>
+      <input
+        id="searchNombre"
+        type="text"
+        placeholder="Buscar comercios o descripciones"
+        class="flex-1 text-sm outline-none bg-transparent"
+      />
+    </label>
+  </div>
 
-    <!-- Toggles -->
-    <div class="flex justify-between items-center text-sm">
-      <label class="flex items-center gap-2 cursor-pointer">
-        <input id="filtroAbierto" type="checkbox" />
-        <span>Abierto ahora</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer">
-        <input id="filtroFavoritos" type="checkbox" />
-        <span>Mis Favoritos</span>
-      </label>
-      <label class="flex items-center gap-2 cursor-pointer">
-        <input id="filtroDestacados" type="checkbox" />
-        <span>Destacados Primero</span>
-      </label>
-    </div>
+  <!-- 🔹 Categorías rápidas 
+<div class="px-4 -mx-4 overflow-x-auto pb-2 mt-2">
+  <div id="categoriaFiltrosRow" class="flex gap-4 min-w-max justify-center"></div>
+</div> 
+          -->
 
-    <!-- Radio -->
-    <div class="flex items-center gap-3">
-      <label for="radioKm" class="text-sm font-medium">Radio:</label>
-      <input id="radioKm" type="range" min="1" max="205" step="1" value="5" class="flex-1 accent-blue-600" />
-      <span id="radioKmLabel" class="text-sm">5 km</span>
-      <button id="btnCentrarme"
-        class="ml-auto inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded">
-        <i class="fas fa-location-crosshairs"></i> Centrarme
-      </button>
-    </div>
+<!-- 🔹 Toggles + Centrarme -->
+<div class="flex flex-wrap items-center justify-center gap-6 text-sm">
+  <!-- 🟢 Abierto Ahora -->
+  <label class="flex items-center gap-2 cursor-pointer select-none">
+    <span class="relative inline-flex items-center">
+      <input id="filtroAbierto" type="checkbox" class="sr-only peer" />
+      <span class="w-11 h-6 bg-gray-300 rounded-full transition-colors peer-checked:bg-green-500"></span>
+      <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
+    </span>
+    <span class="font-medium text-gray-800">Abierto ahora</span>
+  </label>
 
-  </section>
+  <!-- 🟣 Mis Favoritos -->
+  <label class="flex items-center gap-2 cursor-pointer select-none">
+    <span class="relative inline-flex items-center">
+      <input id="filtroFavoritos" type="checkbox" class="sr-only peer" />
+      <span class="w-11 h-6 bg-gray-300 rounded-full transition-colors peer-checked:bg-purple-600"></span>
+      <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
+    </span>
+    <span class="font-medium text-gray-800">Mis Favoritos</span>
+  </label>
+
+  <!-- 🔵 Botón Centrarme -->
+  <button
+    id="btnCentrarme"
+    class="inline-flex items-center gap-2 bg-[#23b4e9] hover:bg-[#1da4d4] text-white text-sm font-semibold px-3 py-2 rounded"
+  >
+    <i class="fas fa-location-crosshairs"></i> Centrarme
+  </button>
+</div>
+
+<!-- 🔹 Radio (en millas) -->
+<div class="flex flex-col items-center justify-center mt-3 space-y-2">
+  <p class="text-xs text-gray-500 text-center">
+    Ajusta el radio para ampliar o reducir el perímetro de búsqueda.
+  </p>
+  <div class="flex items-center justify-center gap-3">
+    <label for="radioKm" class="text-sm font-medium">Radio (mi):</label>
+    <input
+      id="radioKm"
+      type="range"
+      min="1"
+      max="100"
+      step="1"
+      value="5"
+      class="w-60 accent-[#23b4e9]"
+    />
+    <span id="radioKmLabel" class="text-sm">5 mi</span>
+  </div>
+</div>
+</section>
 
   <!-- Mapa: ocupa todo el espacio libre -->
   <main class="flex-1 relative">
