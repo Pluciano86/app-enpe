@@ -24,15 +24,39 @@
     <h1 class="text-2xl text-center font-bold">Descubre por Área</h1>
   </header>
 
-  <section class="py-6">
-  <h2 class="text-xl font-normal text-center mb-4">Municipios del Área</h2>
-  <div id="gridMunicipios" class="flex flex-wrap justify-center px-2">
-    <!-- Aquí se insertan los municipios con JS -->
+<section class="py-6">
+  <h2 class="text-xl font-normal text-center mb-4">Municipios del Área Sur</h2>
+
+  <!-- Dropdown de municipios -->
+  <div class="flex justify-center">
+    <div class="relative inline-block w-64">
+      <select id="dropdownMunicipios"
+        class="w-full appearance-none border border-gray-300 rounded-xl px-4 py-2 text-gray-700 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#23b4e9] focus:border-[#23b4e9]">
+        <option value="">Selecciona un municipio...</option>
+        <option value="Arroyo">Arroyo</option>
+        <option value="Coamo">Coamo</option>
+        <option value="Guánica">Guánica</option>
+        <option value="Guayama">Guayama</option>
+        <option value="Guayanilla">Guayanilla</option>
+        <option value="Juana Díaz">Juana Díaz</option>
+        <option value="Patillas">Patillas</option>
+        <option value="Peñuelas">Peñuelas</option>
+        <option value="Ponce">Ponce</option>
+        <option value="Salinas">Salinas</option>
+        <option value="Santa Isabel">Santa Isabel</option>
+        <option value="Villalba">Villalba</option>
+        <option value="Yauco">Yauco</option>
+      </select>
+
+      <!-- Icono de flecha -->
+      <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+        <i class="fas fa-chevron-down text-sm"></i>
+      </div>
+    </div>
   </div>
 </section>
 
-
-  <main class="text-center">
+  <main class="text-center mb-36">
 <section id="cercanosComidaContainer" class="mt-8">
   <h2 class="text-2xl mb-4">Lugares para Comer</h2>
   <div id="gridComida"
@@ -40,25 +64,30 @@
   </div>
 </section>
 
-<section id="cercanosPlayasContainer" class="hidden mt-8">
-  <h2 class="text-2xl mb-4">Chequea las Playas del Área </h2>
-  <div id="gridComida"
-     class="grid grid-cols-3 sm:grid-cols-4 gap-2 px-3 transition-transform duration-700 ease-in-out">
-</div>
-</section>
-
-<section id="cercanosLugaresContainer" class="hidden mt-6">
-  <h2 class="text-2xl mb-2 px-4">Descubre estos Lugares de Interés del Área</h2>
-  <div id="sliderCercanosLugares" class="flex gap-4 px-4 overflow-x-auto"></div>
-</section>
-
 <!-- Eventos Cercanos -->
-<section id="eventosContainer" class="hidden mt-10">
-  <h2 class="text-2xl mb-4 px-4">Eventos del Área</h2>
-  <div id="sliderEventos" class="flex gap-4 overflow-x-auto px-4 pb-2"></div>
+<!-- Carrusel de Eventos -->
+<section class="text-center my-6 px-4">
+  <h2 class="text-2xl font-medium mb-4">CHEQUEA LOS PRÓXIMOS EVENTOS</h2>
+  <div id="eventosCarousel"></div>
 </section>
+
+<!-- SwiperJS CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<!-- SwiperJS JS -->
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<!-- Tu script del carrusel -->
+<script type="module">
+  import { renderEventosCarousel } from "./js/eventosCarousel.js"; <!-- ajusta la ruta aquí -->
+  
+  document.addEventListener("DOMContentLoaded", () => {
+    renderEventosCarousel("eventosCarousel");
+  });
+</script>
+
   </main>
-  <br><br><br>
+
 
     <!-- Footer -->
 <div id="footerContainer"></div>
