@@ -61,11 +61,27 @@
   </div>
 </div>
 
-    <!-- Carrusel de Eventos -->
-    <section class="text-center my-6 px-4">
-      <h2 class="text-2xl font-medium mb-4">CHEQUEA LOS PRÓXIMOS EVENTOS</h2>
-      <div id="eventosCarousel"></div>
-    </section>
+<!-- Carrusel de Eventos -->
+<section class="text-center my-6 px-4">
+  <h2 class="text-2xl font-medium mb-4">CHEQUEA LOS PRÓXIMOS EVENTOS</h2>
+  <div id="eventosCarousel"></div>
+</section>
+
+<!-- SwiperJS CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
+<!-- SwiperJS JS -->
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<!-- Render del Carrusel -->
+<script type="module">
+  import { renderEventosCarousel } from "./js/eventosCarousel.js";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    // Llamada especial solo para listadoArea con 2 slides por vista
+    renderEventosCarousel("eventosCarousel", { slidesPerView: 2 });
+  });
+</script>
 
   </main>
 

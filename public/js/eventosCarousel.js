@@ -61,21 +61,32 @@ export async function renderEventosCarousel(containerId) {
     </div>
   `;
 
-  // Inicializar Swiper
-  const swiper = new Swiper(container.querySelector(".swiper"), {
-    loop: true,
-    autoplay: {
-      delay: 2500,
-      disableOnInteraction: false,
-    },
-    speed: 800,
-    slidesPerView: 3,
-    spaceBetween: 16,
-    breakpoints: {
-      640: { slidesPerView: 4, spaceBetween: 20 },
-      1024: { slidesPerView: 5, spaceBetween: 24 },
-    },
-  });
+  // 🔹 Detectar si estamos en listadoArea.html
+const esListadoArea = window.location.pathname.includes("listadoArea.html");
+
+// 🔹 Inicializar Swiper con configuración adaptada
+const swiper = new Swiper(container.querySelector(".swiper"), {
+  loop: true,
+  autoplay: {
+    delay: 2500,
+    disableOnInteraction: false,
+  },
+  speed: 800,
+
+  // 👇 Cambia slidesPerView dependiendo de la página
+  slidesPerView: esListadoArea ? 2 : 3,
+  spaceBetween: esListadoArea ? 20 : 16,
+
+  breakpoints: esListadoArea
+    ? {
+        640: { slidesPerView: 2, spaceBetween: 24 },
+        1024: { slidesPerView: 2.3, spaceBetween: 28 },
+      }
+    : {
+        640: { slidesPerView: 4, spaceBetween: 20 },
+        1024: { slidesPerView: 5, spaceBetween: 24 },
+      },
+});
 
   // 🔹 Click en evento → abrirModal con datos completos
   container.querySelectorAll(".swiper-slide").forEach((slide) => {
