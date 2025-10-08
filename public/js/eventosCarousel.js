@@ -100,7 +100,7 @@ const swiper = new Swiper(container.querySelector(".swiper"), {
   speed: 900,
 
   // 👇 Tamaño base (móvil)
-  slidesPerView: esListadoArea ? 1.5 : 1,
+  slidesPerView: esListadoArea ? 2 : 2,
   spaceBetween: esListadoArea ? 18 : 14,
 
   // 👇 Tamaños por ancho de pantalla
