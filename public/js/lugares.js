@@ -90,7 +90,7 @@ function crearCardLugar(lugar) {
   div.innerHTML = `
     <div class="relative">
       <img src="${lugar.portada}" alt="Portada de ${lugar.nombre}" class="w-full h-40 object-cover" />
-      <a href="${getPublicBase()}perfilComercio.html?id=${comercio.id}"  class="relative w-full flex flex-col items-center no-underline">
+    <a href="${getPublicBase()}perfilLugar.html?id=${lugar.id}" class="relative w-full flex flex-col items-center no-underline">
         <div class="relative h-12 w-full">
           <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
             <h3 class="${lugar.nombre.length > 25 ? 'text-lg' : 'text-xl'} font-medium text-[#424242] z-30 mt-2 leading-[0.9] text-center">

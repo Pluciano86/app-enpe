@@ -1,37 +1,42 @@
+// cardLugarSlide.js
 export function cardLugarSlide(lugar) {
   const {
+    id,
     nombre,
     municipio,
-    tiempoTexto = '',
+    imagen,
+    tiempoTexto = "a 3 minutos"
   } = lugar;
 
-  const card = document.createElement("div");
+  const card = document.createElement("a");
+  card.href = `perfilLugar.html?id=${id}`;
   card.className = `
-    block w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative
+    block w-80 sm:w-96 shrink-0 rounded-lg overflow-hidden  bg-white relative
+    hover:scale-[1.02] transition-transform
   `.trim();
 
-  const urlImagen = lugar.imagen || 'https://placehold.co/200x120?text=Lugar';
-
   card.innerHTML = `
-    <div class="w-full h-24 relative bg-gray-200">
-      <img src="${urlImagen}" alt="Imagen de ${nombre}" class="w-full h-full object-cover" />
+    <!-- Imagen del lugar -->
+    <div class="w-full h-42 relative bg-gray-200">
+      <img src="${imagen || 'https://placehold.co/300x200?text=Lugar'}" alt="${nombre}" class="w-full h-full object-cover" />
     </div>
-    <div class="pt-2 px-2 pb-2 text-center">
-      <h3 class="text-sm font-semibold leading-tight h-10 overflow-hidden text-ellipsis line-clamp-2">${nombre}</h3>
-      <div class="flex items-center justify-center gap-1 text-[11px] text-gray-600 mt-1">
-        <i class="fas fa-map-pin text-sky-600"></i>
-        <span>${municipio}</span>
-      </div>
-      <div class="flex items-start justify-center gap-1 text-[11px] text-gray-600 mt-1">
-  <i class="fas fa-car text-red-500 mt-[2px]"></i>
-        <span>${tiempoTexto || 'N/A'}</span>
+
+    <!-- Info -->
+    <div class="pt-2 pb-2 text-center">
+      <!-- Nombre -->
+      <h3 class="text-lg font-medium text-gray-800 truncate px-2 leading-tight">${nombre}</h3>
+
+      <!-- Municipio y tiempo -->
+      <div class="flex justify-around items-center gap-2 text-sm mt-1 text-gray-500">
+        <span class="flex items-center gap-1 text-[#23b4e9] font-normal">
+         <i class="fas fa-map-pin"></i> ${municipio}
+        </span>
+        <span class="flex items-center gap-1 text-gray-400 font-normal">
+          <i class="fa-solid fa-car text-gray-400"></i> ${tiempoTexto}
+        </span>
       </div>
     </div>
   `;
-
-  card.addEventListener("click", () => {
-    window.location.href = `perfilComercio.html?id=${lugar.id}`;
-  });
 
   return card;
 }

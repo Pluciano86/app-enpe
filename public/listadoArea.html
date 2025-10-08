@@ -70,6 +70,13 @@
 </script>
 
 
+<!-- Lugares Turísticos -->
+<section class="text-center my-8 px-4 w-full">
+  <h2 class="text-2xl font-medium mb-4">LUGARES PA' VISITAR</h2>
+  <div id="lugaresCarousel"></div>
+</section>
+
+
     <section id="cercanosComidaContainer" class="mt-8">
       <h2 class="text-2xl mb-4">¿HAMBRE? CHEQUEA ESTOS PLATOS 🤤</h2>
       <div id="gridComida" class="grid grid-cols-2 sm:grid-cols-4 gap-2 px-3 transition-transform duration-700 ease-in-out"></div>
@@ -129,6 +136,11 @@
   <!-- Footer -->
   <div id="footerContainer"></div>
   <script type="module" src="js/footer.js"></script>
+
+  <script type="module">
+  import { renderLugaresCarousel } from "./js/lugaresCarousel.js";
+  renderLugaresCarousel("lugaresCarousel");
+</script>
 
   <!-- Scripts principales -->
   <script type="module" src="./js/listadoArea.js"></script>
