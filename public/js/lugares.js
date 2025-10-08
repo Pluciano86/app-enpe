@@ -1,3 +1,8 @@
+// 🔧 Loader eliminado: funciones vacías para evitar errores
+function mostrarLoader() {}
+function ocultarLoader() {}
+
+
 // lugares.js
 function getPublicBase() {
   const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';

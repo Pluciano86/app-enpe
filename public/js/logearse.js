@@ -22,7 +22,6 @@ async function loginWithGoogle() {
   return { error };
 }
 
-
 async function actualizarPerfilUsuario(usuarioId, data) {
   let reintentos = 3;
   let errorFinal = null;
@@ -132,25 +131,21 @@ async function init() {
   togglePassword('passwordRegistro', 'togglePasswordRegistro');
   togglePassword('confirmarPassword', 'toggleConfirmarPassword');
 
+  // 🔹 Login con Google
   const socialButtons = document.querySelectorAll('[data-login-provider="google"]');
   socialButtons.forEach(button => {
     button.addEventListener('click', async () => {
-      await mostrarLoader();
       const { error } = await loginWithGoogle();
-      if (error) {
-        await ocultarLoader();
-      }
+      if (error) console.error(error);
     });
   });
 
-  const triggerAvatarPicker = () => {
-    fotoInput?.click();
-  };
-
+  // 🔹 Avatar Picker
+  const triggerAvatarPicker = () => fotoInput?.click();
   avatarPreview?.addEventListener('click', triggerAvatarPicker);
   avatarText?.addEventListener('click', triggerAvatarPicker);
 
-  // Preview de imagen
+  // 🔹 Preview de imagen
   fotoInput?.addEventListener('change', () => {
     const file = fotoInput.files[0];
     if (file) {
@@ -167,7 +162,7 @@ async function init() {
     }
   });
 
-  // Login
+  // 🔹 Login
   formLogin?.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorMensaje.classList.add('hidden');
@@ -175,22 +170,22 @@ async function init() {
     const email = document.getElementById('emailLogin').value;
     const password = document.getElementById('passwordLogin').value;
 
-    await mostrarLoader();
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-
       if (error) {
-        errorMensaje.textContent = 'Correo o contraseña incorrecta.';
+        errorMensaje.textContent = "Email o contraseña incorrectos.";
         errorMensaje.classList.remove('hidden');
       } else {
         window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
       }
-    } finally {
-      await ocultarLoader();
+    } catch (err) {
+      console.error("Error al iniciar sesión:", err);
+      errorMensaje.textContent = "Error al intentar iniciar sesión.";
+      errorMensaje.classList.remove('hidden');
     }
   });
 
-  // Registro
+  // 🔹 Registro
   formRegistro?.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorRegistro.classList.add('hidden');
@@ -226,9 +221,7 @@ async function init() {
       return;
     }
 
-    await mostrarLoader();
     try {
-      // 🔒 Desactivar confirmación de email
       const { data: signup, error: errorSignup } = await supabase.auth.signUp({
         email,
         password
@@ -273,7 +266,6 @@ async function init() {
         return;
       }
 
-      // ✅ Login automático después de registrar
       const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
       if (!loginError) {
         window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
@@ -281,8 +273,10 @@ async function init() {
         alert('Cuenta creada, pero necesitas iniciar sesión.');
         window.location.reload();
       }
-    } finally {
-      await ocultarLoader();
+    } catch (err) {
+      console.error("Error en registro:", err);
+      errorRegistro.textContent = "Error al crear la cuenta.";
+      errorRegistro.classList.remove('hidden');
     }
   });
 }

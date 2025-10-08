@@ -106,7 +106,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
       // 👇 Tamaños por ancho de pantalla
       breakpoints: esListadoArea
         ? {
-            640: { slidesPerView: 2, spaceBetween: 20 },   // listadoArea → 2 por fila
+            640: { slidesPerView: 2, spaceBetween: 22 },   // listadoArea → 2 por fila
             1024: { slidesPerView: 2.2, spaceBetween: 24 }, // desktop
           }
         : {
