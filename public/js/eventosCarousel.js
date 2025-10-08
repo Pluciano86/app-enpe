@@ -88,32 +88,32 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
     `;
 
     // 🔹 Detectar si estamos en listadoArea.html
-const esListadoArea = window.location.pathname.includes("listadoArea.html");
+    const esListadoArea = window.location.pathname.includes("listadoArea.html");
 
-// 🔹 Inicializar Swiper con configuración adaptada
-const swiper = new Swiper(container.querySelector(".swiper"), {
-  loop: true,
-  autoplay: {
-    delay: 2500,
-    disableOnInteraction: false,
-  },
-  speed: 900,
-
-  // 👇 Tamaño base (móvil)
-  slidesPerView: esListadoArea ? 2 : 2,
-  spaceBetween: esListadoArea ? 18 : 14,
-
-  // 👇 Tamaños por ancho de pantalla
-  breakpoints: esListadoArea
-    ? {
-        640: { slidesPerView: 2, spaceBetween: 20 },   // en listadoArea → 2 por fila
-        1024: { slidesPerView: 2.2, spaceBetween: 24 }, // desktop (un poco más anchas)
-      }
-    : {
-        640: { slidesPerView: 3, spaceBetween: 16 },   // en index → 3 por fila
-        1024: { slidesPerView: 3.3, spaceBetween: 20 }, // desktop (ligeramente más pequeñas)
+    // 🔹 Inicializar Swiper con configuración adaptada
+    new Swiper(container.querySelector(".swiper"), {
+      loop: true,
+      autoplay: {
+        delay: 2500,
+        disableOnInteraction: false,
       },
-});
+      speed: 900,
+
+      // 👇 Tamaño base (móvil)
+      slidesPerView: esListadoArea ? 2 : 3,
+      spaceBetween: esListadoArea ? 18 : 14,
+
+      // 👇 Tamaños por ancho de pantalla
+      breakpoints: esListadoArea
+        ? {
+            640: { slidesPerView: 2, spaceBetween: 20 },   // listadoArea → 2 por fila
+            1024: { slidesPerView: 2.2, spaceBetween: 24 }, // desktop
+          }
+        : {
+            640: { slidesPerView: 3, spaceBetween: 16 },   // index → 3 por fila
+            1024: { slidesPerView: 3.3, spaceBetween: 20 }, // desktop
+          },
+    });
 
     // 🔸 Click → abrir modal con datos completos
     container.querySelectorAll(".swiper-slide").forEach((slide) => {
@@ -123,6 +123,20 @@ const swiper = new Swiper(container.querySelector(".swiper"), {
         if (evento) abrirModal(evento);
       });
     });
+
+    // ✅ Botón “Ver más eventos”
+    const btnContainer = document.createElement("div");
+    btnContainer.className = "flex justify-center mt-6 w-full";
+
+    const btnVerMas = document.createElement("a");
+    btnVerMas.href = "listadoEventos.html";
+    btnVerMas.textContent = "Ver más eventos";
+    btnVerMas.className =
+      "bg-[#0B132B] hover:bg-[#1C2541] text-white font-semibold py-2 px-8 rounded-lg shadow transition";
+
+    btnContainer.appendChild(btnVerMas);
+    container.appendChild(btnContainer);
+
   } catch (err) {
     console.error("❌ Error cargando eventos:", err);
     container.innerHTML = `

@@ -1,5 +1,11 @@
-<div id="loaderLogo" class="flex justify-center items-center h-screen w-screen fixed top-0 left-0 bg-black bg-opacity-70 z-50 hidden">
-  <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Favicon.svg"
-       alt="Cargando..."
-       class="animate-logo w-24 h-24" />
+<div id="enpr-loader-overlay"
+  class="fixed inset-0 flex items-center justify-center backdrop-blur-md bg-black/10 z-[9999] transition-opacity duration-700 ease-out opacity-0"
+  role="status"
+  aria-live="polite"
+  aria-label="Cargando En Pe Erre">
+  <img
+    src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Favicon.svg"
+    alt="Logo En Pe Erre girando"
+    class="w-20 h-20 drop-shadow-lg"
+    style="animation: enpr-loader-spin 3.5s linear infinite;" />
 </div>
