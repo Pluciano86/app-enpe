@@ -79,7 +79,7 @@ export async function renderComidaCarousel(containerId) {
                     <div class="absolute bottom-0 left-0 w-full p-2 flex items-end justify-start bg-gradient-to-t from-black/80 via-black/30 to-transparent">
                       <img src="${logoURL}" alt="logo"
                            class="w-9 h-9 rounded-full border border-white mr-2 object-cover bg-white" />
-                      <div class="leading-tight text-white text-[11px]">
+                      <div class="leading-tight justify-items-start text-white text-[11px]">
                         <p class="font-medium truncate max-w-[140px]">${comercio.nombre}</p>
                         <p class="text-[10px] text-gray-300">${comercio.municipio}</p>
                       </div>
