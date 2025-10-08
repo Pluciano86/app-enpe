@@ -1,5 +1,5 @@
 # =======================
-# 🔹 Configuración base (App pública)
+# 🔹 Configuración global por defecto (App pública)
 # =======================
 [build]
   publish = "public"
@@ -10,17 +10,22 @@
   port = 8888
 
 # =======================
-# 🔹 Contexto para ADMIN
+# 🔹 Contexto: admin.enpe-erre.com
 # =======================
-[context."admin.enpe-erre.com"]
-  [context."admin.enpe-erre.com".build]
-    publish = "admin"
-    command = ""
+[context.production.environment]
+  URL = "https://admin.enpe-erre.com"
+
+[[redirects]]
+  from = "https://admin.enpe-erre.com/*"
+  to = "/admin/:splat"
+  status = 200
+  force = true
 
 # =======================
-# 🔹 Contexto para COMERCIO
+# 🔹 Contexto: comercio.enpe-erre.com
 # =======================
-[context."comercio.enpe-erre.com"]
-  [context."comercio.enpe-erre.com".build]
-    publish = "comercio"
-    command = ""
+[[redirects]]
+  from = "https://comercio.enpe-erre.com/*"
+  to = "/comercio/:splat"
+  status = 200
+  force = true
