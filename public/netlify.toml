@@ -1,6 +1,7 @@
 [build]
-  publish = "public"
-  functions = ""
+  publish = "."
 
-[dev]
-  port = 8890
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
