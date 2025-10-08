@@ -87,29 +87,33 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
       </div>
     `;
 
-    // 🔸 Detectar si estamos en listadoArea.html
-    const esListadoArea = window.location.pathname.includes("listadoArea.html");
+    // 🔹 Detectar si estamos en listadoArea.html
+const esListadoArea = window.location.pathname.includes("listadoArea.html");
 
-    // 🔸 Inicializar Swiper con configuración adaptada
-    const swiper = new Swiper(container.querySelector(".swiper"), {
-      loop: true,
-      autoplay: {
-        delay: 2500,
-        disableOnInteraction: false,
+// 🔹 Inicializar Swiper con configuración adaptada
+const swiper = new Swiper(container.querySelector(".swiper"), {
+  loop: true,
+  autoplay: {
+    delay: 2500,
+    disableOnInteraction: false,
+  },
+  speed: 900,
+
+  // 👇 Tamaño base (móvil)
+  slidesPerView: esListadoArea ? 2 : 2.3,
+  spaceBetween: esListadoArea ? 18 : 14,
+
+  // 👇 Tamaños por ancho de pantalla
+  breakpoints: esListadoArea
+    ? {
+        640: { slidesPerView: 2, spaceBetween: 20 },   // en listadoArea → 2 por fila
+        1024: { slidesPerView: 2.2, spaceBetween: 24 }, // desktop (un poco más anchas)
+      }
+    : {
+        640: { slidesPerView: 3, spaceBetween: 16 },   // en index → 3 por fila
+        1024: { slidesPerView: 3.3, spaceBetween: 20 }, // desktop (ligeramente más pequeñas)
       },
-      speed: 800,
-      slidesPerView: esListadoArea ? 2 : 3,
-      spaceBetween: esListadoArea ? 20 : 16,
-      breakpoints: esListadoArea
-        ? {
-            640: { slidesPerView: 2, spaceBetween: 24 },
-            1024: { slidesPerView: 2.3, spaceBetween: 28 },
-          }
-        : {
-            640: { slidesPerView: 4, spaceBetween: 20 },
-            1024: { slidesPerView: 5, spaceBetween: 24 },
-          },
-    });
+});
 
     // 🔸 Click → abrir modal con datos completos
     container.querySelectorAll(".swiper-slide").forEach((slide) => {

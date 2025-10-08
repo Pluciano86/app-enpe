@@ -70,7 +70,7 @@ export async function renderComidaCarousel(containerId) {
 
               return `
                 <div class="swiper-slide cursor-pointer">
-                  <a href="perfilComercio.html?id=${comercio.id}" class="block relative w-full aspect-[4/5] overflow-hidden rounded-lg bg-gray-100 shadow">
+                  <a href="perfilComercio.html?id=${comercio.id}" class="block relative w-full aspect-[3/2] overflow-hidden rounded-lg bg-gray-100 shadow">
                     <img src="${baseURL + img.imagen}"
                          alt="${comercio.nombre}"
                          class="w-full h-full object-cover" />
@@ -101,7 +101,7 @@ export async function renderComidaCarousel(containerId) {
         reverseDirection: true, // 👈 mueve el loop en sentido contrario
       },
       speed: 900,
-      slidesPerView: 3,
+      slidesPerView: 1.5,
       spaceBetween: 16,
       direction: "horizontal",
       breakpoints: {
