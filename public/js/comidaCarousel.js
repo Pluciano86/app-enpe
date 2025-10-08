@@ -80,8 +80,7 @@ export async function renderComidaCarousel(containerId) {
                       <img src="${logoURL}" alt="logo"
                            class="w-9 h-9 rounded-full border border-white mr-2 object-cover bg-white" />
                       <div class="leading-tight justify-items-start text-white text-[11px]">
-                        <p class="font-medium truncate max-w-[140px]">${comercio.nombre}</p>
-                        <p class="text-[10px] text-gray-300">${comercio.municipio}</p>
+                        <p class="text-sm text-white">${comercio.municipio}</p>
                       </div>
                     </div>
                   </a>
