@@ -1,30 +1,26 @@
+# =======================
+# 🔹 Configuración base (App pública)
+# =======================
 [build]
   publish = "public"
   functions = "netlify/functions"
+  command = ""
 
 [dev]
   port = 8888
 
 # =======================
-# 🔹 Contexto para Admin
+# 🔹 Contexto para ADMIN
 # =======================
-[context.admin]
-  [context.admin.build]
-    base = "admin"
+[context."admin.enpe-erre.com"]
+  [context."admin.enpe-erre.com".build]
     publish = "admin"
     command = ""
 
-  [context.admin.functions]
-    directory = ""
-
 # =======================
-# 🔹 Contexto para Comercio
+# 🔹 Contexto para COMERCIO
 # =======================
-[context.comercio]
-  [context.comercio.build]
-    base = "comercio"
+[context."comercio.enpe-erre.com"]
+  [context."comercio.enpe-erre.com".build]
     publish = "comercio"
     command = ""
-
-  [context.comercio.functions]
-    directory = ""
