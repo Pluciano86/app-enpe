@@ -56,7 +56,7 @@ export async function renderLugaresCarousel(containerId) {
       reverseDirection: true, // ← desliza de izquierda a derecha
     },
     speed: 900,
-    slidesPerView: 1.4, // 👈 se ven 2.2 tarjetas por slide
+    slidesPerView: 1.2, // 👈 se ven 2.2 tarjetas por slide
     spaceBetween: 3,
     breakpoints: {
       640: { slidesPerView: 2, spaceBetween: 20 },
