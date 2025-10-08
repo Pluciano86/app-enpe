@@ -74,6 +74,15 @@
     <p class="mt-4 text-sm"">Ver todas las Categorías...</p>
   </section>
 
+
+
+<!-- Carrusel de Lugares para Comer -->
+<section class="text-center my-6 px-4">
+  <h2 class="text-2xl font-medium mb-4">¡AQUÍ EN PE ERRE SE COME BIEN!</h2>
+  <div id="comidaCarousel"></div>
+</section>
+
+
 <!-- Carrusel de Eventos -->
 <section class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4">CHEQUEA LOS PRÓXIMOS EVENTOS</h2>
@@ -94,6 +103,19 @@
     renderEventosCarousel("eventosCarousel");
   });
 </script>
+
+
+<script type="module">
+  import { renderComidaCarousel } from "./js/comidaCarousel.js";
+  import { renderEventosCarousel } from "./js/eventosCarousel.js";
+
+  document.addEventListener("DOMContentLoaded", () => {
+    renderComidaCarousel("comidaCarousel");
+    renderEventosCarousel("eventosCarousel");
+  });
+</script>
+
+
 
   <!-- Video Card -->
 <section class="relative h-[260px] overflow-hidden">

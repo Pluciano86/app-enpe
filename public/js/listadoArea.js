@@ -2,6 +2,7 @@ import { supabase } from '../shared/supabaseClient.js';
 import { cardLugarSlide } from './cardLugarSlide.js';
 import { cardPlayaSlide } from './cardPlayaSlide.js';
 import { cardEventoSlide } from './cardEventoSlide.js';
+import { renderEventosCarousel } from "./eventosCarousel.js";
 
 let municipioSeleccionado = null;
 let nombreAreaActual = '';
@@ -79,6 +80,7 @@ async function cargarTodo() {
 
   await mostrarNombreArea(idArea, municipioSeleccionado);
   await cargarDropdownMunicipios(idArea, municipioSeleccionado);
+  await renderEventosCarousel("eventosCarousel", { idArea, idMunicipio });
 
   // 🔹 Disparar evento para que gridComida.js sepa qué cargar
   window.dispatchEvent(new CustomEvent('areaCargada', {
