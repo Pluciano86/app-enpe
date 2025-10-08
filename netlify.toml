@@ -1,31 +1,11 @@
 # =======================
-# 🔹 Configuración global por defecto (App pública)
+# 🔹 Configuración base neutral (sin forzar carpeta)
 # =======================
-[build]
-  publish = "public"
-  functions = "netlify/functions"
-  command = ""
 
+[build]
+  command = ""
+  publish = ""
+
+# Puerto local opcional
 [dev]
   port = 8888
-
-# =======================
-# 🔹 Contexto: admin.enpe-erre.com
-# =======================
-[context.production.environment]
-  URL = "https://admin.enpe-erre.com"
-
-[[redirects]]
-  from = "https://admin.enpe-erre.com/*"
-  to = "/admin/:splat"
-  status = 200
-  force = true
-
-# =======================
-# 🔹 Contexto: comercio.enpe-erre.com
-# =======================
-[[redirects]]
-  from = "https://comercio.enpe-erre.com/*"
-  to = "/comercio/:splat"
-  status = 200
-  force = true

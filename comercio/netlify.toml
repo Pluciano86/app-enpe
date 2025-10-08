@@ -1,10 +1,8 @@
-# =======================
-# 🔹 PANEL COMERCIO (comercio.enpe-erre.com)
-# =======================
 [build]
-  publish = "comercio"
-  functions = "netlify/functions"
   command = ""
+  publish = "."
 
-[dev]
-  port = 8888
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
