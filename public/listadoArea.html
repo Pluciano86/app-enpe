@@ -46,20 +46,6 @@
 
   <main class="text-center mb-36">
 
-    <section id="cercanosComidaContainer" class="mt-8">
-      <h2 class="text-2xl mb-4">¿HAMBRE? CHEQUEA ESTOS PLATOS 🤤</h2>
-      <div id="gridComida" class="grid grid-cols-2 sm:grid-cols-4 gap-2 px-3 transition-transform duration-700 ease-in-out"></div>
-    </section>
-
-    <div id="modalComida" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
-  <div class="bg-white rounded-lg shadow-lg w-[95%] max-w-5xl h-[80%] overflow-y-auto relative flex flex-col">
-    <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
-      <h2 class="text-xl font-medium">Todos los lugares para comer</h2>
-      <button id="cerrarModalComida" class="text-white hover:text-gray-300 text-4xl leading-none">&times;</button>
-    </div>
-    <div id="gridComidaModal" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4"></div>
-  </div>
-</div>
 
 <!-- Carrusel de Eventos -->
 <section class="text-center my-6 px-4">
@@ -82,6 +68,24 @@
     renderEventosCarousel("eventosCarousel", { slidesPerView: 2 });
   });
 </script>
+
+
+    <section id="cercanosComidaContainer" class="mt-8">
+      <h2 class="text-2xl mb-4">¿HAMBRE? CHEQUEA ESTOS PLATOS 🤤</h2>
+      <div id="gridComida" class="grid grid-cols-2 sm:grid-cols-4 gap-2 px-3 transition-transform duration-700 ease-in-out"></div>
+    </section>
+
+    <div id="modalComida" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
+  <div class="bg-white rounded-lg shadow-lg w-[95%] max-w-5xl h-[80%] overflow-y-auto relative flex flex-col">
+    <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
+      <h2 class="text-xl font-medium">Todos los lugares para comer</h2>
+      <button id="cerrarModalComida" class="text-white hover:text-gray-300 text-4xl leading-none">&times;</button>
+    </div>
+    <div id="gridComidaModal" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4"></div>
+  </div>
+</div>
+
+
 
 </main>
 

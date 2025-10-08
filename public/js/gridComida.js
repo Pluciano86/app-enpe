@@ -108,7 +108,7 @@ const imagenesRandom = mezclarInteligente(imagenes);
       "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/";
 
     // 🔹 Mostrar primeras 12 imágenes
-    const primeras = imagenesRandom.slice(0, 12);
+    const primeras = imagenesRandom.slice(0, 6);
     const restantes = imagenesRandom.slice(12);
 
     grid.innerHTML = "";
