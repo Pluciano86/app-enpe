@@ -112,76 +112,65 @@ async function verificarSiEsSucursal() {
 }
 
 // Función para cargar campos de texto
+// ✅ Versión simplificada y segura para producción
 async function cargarDatosGenerales() {
   const { data, error } = await supabase
     .from('Comercios')
-    .select(
-      `
-        *,
-        ComercioCategorias (
-          idCategoria
-        ),
-        ComercioSubcategorias (
-          idSubcategoria
-        )
-      `
-    )
+    .select('*')
     .eq('id', idComercio)
     .maybeSingle();
 
   if (error || !data) {
-    console.error('Error cargando datos generales:', error);
+    console.error('❌ Error cargando datos generales:', error);
     return;
   }
 
-  categoriaFallbackActual = toNonEmptyString(data.categoria);
-  subcategoriaFallbackActual = toNonEmptyString(data.subCategorias);
+  console.log('✅ Datos del comercio cargados:', data);
 
+  // Fallbacks
+  categoriaFallbackActual = data.categoria || 'Sin categoría';
+  subcategoriaFallbackActual = data.subCategorias || 'Sin subcategoría';
+
+  // Llenar los campos del formulario
   const campos = [
-    'nombre', 'telefono', 'direccion', 'latitud', 'longitud',
-    'whatsapp', 'facebook', 'instagram', 'tiktok', 'webpage',
-    'descripcion', 'colorPrimario', 'colorSecundario'
+    'nombre',
+    'telefono',
+    'direccion',
+    'latitud',
+    'longitud',
+    'whatsapp',
+    'facebook',
+    'instagram',
+    'tiktok',
+    'webpage',
+    'descripcion',
+    'colorPrimario',
+    'colorSecundario'
   ];
 
-  campos.forEach(id => {
+  campos.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.value = data[id] || '';
   });
 
+  // Municipio
   if (data.idMunicipio) {
     const select = document.getElementById('municipio');
     if (select) select.value = String(data.idMunicipio);
   }
 
-  const categoriasRel = Array.isArray(data.ComercioCategorias) ? data.ComercioCategorias : [];
-  const subcategoriasRel = Array.isArray(data.ComercioSubcategorias) ? data.ComercioSubcategorias : [];
-
-  const categoriasDesdeRel = categoriasRel
-    .map((rel) => Number(rel?.idCategoria))
-    .filter((id) => !Number.isNaN(id));
-  const subcategoriasDesdeRel = subcategoriasRel
-    .map((rel) => Number(rel?.idSubcategoria))
-    .filter((id) => !Number.isNaN(id));
-
-  const categoriasLegacy = Array.isArray(data.idCategoria)
+  // Guardar categorías/subcategorías (si las hay como arrays en la tabla)
+  window.categoriasSeleccionadas = Array.isArray(data.idCategoria)
     ? data.idCategoria
-    : data.idCategoria !== null && data.idCategoria !== undefined
+    : data.idCategoria
     ? [data.idCategoria]
     : [];
 
-  const subcategoriasLegacy = Array.isArray(data.idSubcategoria)
+  window.subcategoriasSeleccionadas = Array.isArray(data.idSubcategoria)
     ? data.idSubcategoria
-    : data.idSubcategoria !== null && data.idSubcategoria !== undefined
+    : data.idSubcategoria
     ? [data.idSubcategoria]
     : [];
-
-  window.categoriasSeleccionadas = categoriasDesdeRel.length
-    ? categoriasDesdeRel
-    : categoriasLegacy.map((id) => Number(id)).filter((id) => !Number.isNaN(id));
-
-  window.subcategoriasSeleccionadas = subcategoriasDesdeRel.length
-    ? subcategoriasDesdeRel
-    : subcategoriasLegacy.map((id) => Number(id)).filter((id) => !Number.isNaN(id));
 }
 
 // Evento para guardar cambios
