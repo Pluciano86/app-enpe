@@ -116,54 +116,45 @@ async function verificarSiEsSucursal() {
 async function cargarDatosGenerales() {
   console.log('🟡 Iniciando carga de datos generales para comercio:', idComercio);
 
-  const { data, error } = await supabase
+  // 1️⃣ Consulta principal (campos directos)
+  const { data: comercio, error: errorComercio } = await supabase
     .from('Comercios')
-    .select(`
-      id,
-      nombre,
-      telefono,
-      direccion,
-      latitud,
-      longitud,
-      idMunicipio,
-      municipio,
-      idArea,
-      area,
-      whatsapp,
-      facebook,
-      instagram,
-      tiktok,
-      webpage,
-      descripcion,
-      colorPrimario,
-      colorSecundario,
-      categoria,
-      subCategorias,
-      ComercioCategorias ( idCategoria ),
-      ComercioSubcategorias ( idSubcategoria )
-    `)
+    .select(
+      'id, nombre, telefono, direccion, latitud, longitud, idMunicipio, municipio, idArea, area, whatsapp, facebook, instagram, tiktok, webpage, descripcion, colorPrimario, colorSecundario, categoria, subCategorias'
+    )
     .eq('id', idComercio)
     .maybeSingle();
 
-  console.log('📥 Resultado Supabase:', { data, error });
-
-  if (error) {
-    console.error('❌ Error cargando datos generales:', error);
+  if (errorComercio) {
+    console.error('❌ Error cargando comercio:', errorComercio);
     alert('Error al cargar los datos generales. Revisa la consola.');
     return;
   }
 
-  if (!data) {
-    console.warn('⚠️ No se encontró el comercio con ese ID.');
-    alert('No se encontró información para este comercio.');
+  if (!comercio) {
+    alert('⚠️ No se encontró el comercio con ese ID.');
     return;
   }
 
-  console.log('✅ Comercio cargado:', data);
+  console.log('✅ Datos generales cargados:', comercio);
 
-  categoriaFallbackActual = data.categoria || 'Sin categoría';
-  subcategoriaFallbackActual = data.subCategorias || 'Sin subcategoría';
+  // 2️⃣ Cargar relaciones (categorías y subcategorías)
+  const { data: relCategorias } = await supabase
+    .from('ComercioCategorias')
+    .select('idCategoria')
+    .eq('idComercio', idComercio);
 
+  const { data: relSubcategorias } = await supabase
+    .from('ComercioSubcategorias')
+    .select('idSubcategoria')
+    .eq('idComercio', idComercio);
+
+  console.log('🔗 Relaciones:', {
+    categorias: relCategorias,
+    subcategorias: relSubcategorias
+  });
+
+  // 3️⃣ Rellenar los campos del formulario
   const campos = [
     'nombre',
     'telefono',
@@ -183,24 +174,25 @@ async function cargarDatosGenerales() {
   campos.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
-      el.value = data[id] || '';
-      console.log(`🟢 Campo cargado: ${id} →`, data[id]);
+      el.value = comercio[id] || '';
+      console.log(`🟢 Campo cargado: ${id} →`, comercio[id]);
     }
   });
 
-  if (data.idMunicipio) {
+  // 4️⃣ Municipio
+  if (comercio.idMunicipio) {
     const select = document.getElementById('municipio');
     if (select) {
-      select.value = String(data.idMunicipio);
-      console.log('🏙️ Municipio cargado:', data.idMunicipio);
+      select.value = String(comercio.idMunicipio);
+      console.log('🏙️ Municipio cargado:', comercio.idMunicipio);
     }
   }
 
-  // Log de relaciones
-  console.log('🔗 Relaciones:', {
-    ComercioCategorias: data.ComercioCategorias,
-    ComercioSubcategorias: data.ComercioSubcategorias,
-  });
+  // 5️⃣ Guardar relaciones globales
+  window.categoriasSeleccionadas = (relCategorias || []).map((r) => r.idCategoria);
+  window.subcategoriasSeleccionadas = (relSubcategorias || []).map((r) => r.idSubcategoria);
+
+  console.log('✅ Carga completa de datos y relaciones lista.');
 }
 // Evento para guardar cambios
 const btnGuardar = document.getElementById('btn-guardar');
