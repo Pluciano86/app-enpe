@@ -958,7 +958,7 @@ if (municipioTexto) {
   const municipioEl = document.createElement('div');
   municipioEl.className = 'flex items-center gap-1 justify-center text-[#23b4e9] text-sm font-medium municipio-info';
   municipioEl.innerHTML = `
-    <i class="fas fa-location-dot"></i> ${municipioTexto}
+    <i class="fas fa-map-pin"></i> ${municipioTexto}
   `;
 
   const anchorNombre = cardNode.querySelector('a[href*="perfilComercio.html"]');
@@ -1017,6 +1017,79 @@ async function loadNearby() {
   p_radio_m: radioMetros,
 });
 if (error) throw error;
+
+async function loadNearby() {
+  if (typeof userLat !== 'number' || typeof userLon !== 'number') return;
+
+  const radioMiles = Number($radio?.value ?? 5) || 5;
+  const radioMetros = Math.max(0.5, radioMiles) * 1609.34;
+  toggleLoader(true);
+
+  try {
+    const { data, error } = await supabase.rpc('comercios_cerca_v2', {
+      p_lat: userLat,
+      p_lon: userLon,
+      p_radio_m: radioMetros,
+    });
+    if (error) throw error;
+
+    // ✅ Enriquecer resultados con Categorías y Subcategorías reales
+    const idsComercios = data.map((c) => c.id);
+
+    // 🔹 Categorías
+    const { data: categoriasData } = await supabase
+      .from('ComercioCategorias')
+      .select(`
+        idComercio,
+        idCategoria,
+        categoria:Categorias ( nombre )
+      `)
+      .in('idComercio', idsComercios);
+
+    // 🔹 Subcategorías
+    const { data: subcatsData } = await supabase
+      .from('ComercioSubcategorias')
+      .select(`
+        idComercio,
+        idSubcategoria,
+        subcategoria:subCategoria ( nombre )
+      `)
+      .in('idComercio', idsComercios);
+
+    // 🔹 Agrupar por comercio
+    const categoriasPorComercio = {};
+    categoriasData?.forEach((c) => {
+      if (!categoriasPorComercio[c.idComercio])
+        categoriasPorComercio[c.idComercio] = [];
+      categoriasPorComercio[c.idComercio].push(c.categoria?.nombre);
+    });
+
+    const subcategoriasPorComercio = {};
+    subcatsData?.forEach((s) => {
+      if (!subcategoriasPorComercio[s.idComercio])
+        subcategoriasPorComercio[s.idComercio] = [];
+      subcategoriasPorComercio[s.idComercio].push(s.subcategoria?.nombre);
+    });
+
+    // 🔹 Combinar todo
+    const listaEnriquecida = data.map((c) => ({
+      ...c,
+      categoriasNombre: categoriasPorComercio[c.id] || [],
+      subcategoriasNombre: subcategoriasPorComercio[c.id] || [],
+    }));
+
+    // ⚙️ Reemplaza la lista base original
+    const listaBase = listaEnriquecida;
+
+    // 🔹 Resto del código original (para pintar los resultados)
+    // ... continúa desde aquí con tu renderizado original ...
+
+  } catch (err) {
+    console.error('❌ Error al cargar comercios cercanos:', err);
+  } finally {
+    toggleLoader(false);
+  }
+}
 
 const lista = Array.isArray(data) ? data : [];
 

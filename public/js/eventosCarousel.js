@@ -100,7 +100,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
       speed: 900,
 
       // 👇 Tamaño base (móvil)
-      slidesPerView: esListadoArea ? 2 : 3,
+      slidesPerView: esListadoArea ? 1.4 : 2,
       spaceBetween: esListadoArea ? 18 : 14,
 
       // 👇 Tamaños por ancho de pantalla

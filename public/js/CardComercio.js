@@ -44,11 +44,16 @@ export function cardComercio(comercio) {
         class="w-full h-20 object-cover" />
 
       <!-- Logo y nombre con enlace -->
-      <a href="${resolveAppBase()}perfilComercio.html?id=${comercio.id}" class="relative w-full flex flex-col items-center pt-9 mt-6 no-underline">
-        <img src="${logoUrl}" alt="Logo de ${comercio.nombre}"
-          class="w-24 h-24 rounded-full absolute left-1/2 -top-10 transform -translate-x-1/2 
-                 bg-white object-contain shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)] 
-                 border-4 border-white z-20" />
+    <a href="${resolveAppBase()}perfilComercio.html?id=${comercio.id}" 
+   class="relative w-full flex flex-col items-center pt-9 mt-6 no-underline">
+
+  <img 
+    src="${comercio.logo || 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgLogoNoDisponible.jpg'}" 
+    alt="Logo de ${comercio.nombre}"
+    class="w-24 h-24 rounded-full absolute left-1/2 -top-10 transform -translate-x-1/2 
+           bg-white object-contain shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)] 
+           border-4 border-white z-20" 
+  />
 
         <div class="relative h-12 w-full">
           <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
