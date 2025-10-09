@@ -114,24 +114,37 @@ async function verificarSiEsSucursal() {
 // Función para cargar campos de texto
 // ✅ Versión simplificada y segura para producción
 async function cargarDatosGenerales() {
+  console.log('🟡 Iniciando carga de datos generales para comercio:', idComercio);
+
   const { data, error } = await supabase
     .from('Comercios')
-    .select('*')
+    .select(`
+      *,
+      ComercioCategorias ( idCategoria ),
+      ComercioSubcategorias ( idSubcategoria )
+    `)
     .eq('id', idComercio)
     .maybeSingle();
 
-  if (error || !data) {
+  console.log('📥 Resultado Supabase:', { data, error });
+
+  if (error) {
     console.error('❌ Error cargando datos generales:', error);
+    alert('Error al cargar los datos generales. Revisa la consola.');
     return;
   }
 
-  console.log('✅ Datos del comercio cargados:', data);
+  if (!data) {
+    console.warn('⚠️ No se encontró el comercio con ese ID.');
+    alert('No se encontró información para este comercio.');
+    return;
+  }
 
-  // Fallbacks
+  console.log('✅ Comercio cargado:', data);
+
   categoriaFallbackActual = data.categoria || 'Sin categoría';
   subcategoriaFallbackActual = data.subCategorias || 'Sin subcategoría';
 
-  // Llenar los campos del formulario
   const campos = [
     'nombre',
     'telefono',
@@ -150,27 +163,25 @@ async function cargarDatosGenerales() {
 
   campos.forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.value = data[id] || '';
+    if (el) {
+      el.value = data[id] || '';
+      console.log(`🟢 Campo cargado: ${id} →`, data[id]);
+    }
   });
 
-  // Municipio
   if (data.idMunicipio) {
     const select = document.getElementById('municipio');
-    if (select) select.value = String(data.idMunicipio);
+    if (select) {
+      select.value = String(data.idMunicipio);
+      console.log('🏙️ Municipio cargado:', data.idMunicipio);
+    }
   }
 
-  // Guardar categorías/subcategorías (si las hay como arrays en la tabla)
-  window.categoriasSeleccionadas = Array.isArray(data.idCategoria)
-    ? data.idCategoria
-    : data.idCategoria
-    ? [data.idCategoria]
-    : [];
-
-  window.subcategoriasSeleccionadas = Array.isArray(data.idSubcategoria)
-    ? data.idSubcategoria
-    : data.idSubcategoria
-    ? [data.idSubcategoria]
-    : [];
+  // Log para relaciones
+  console.log('🔗 Relaciones:', {
+    ComercioCategorias: data.ComercioCategorias,
+    ComercioSubcategorias: data.ComercioSubcategorias,
+  });
 }
 
 // Evento para guardar cambios
