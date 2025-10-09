@@ -18,6 +18,24 @@
       .then(res => res.text())
       .then(html => {
         document.getElementById("headerContainer").innerHTML = html;
+
+        // Activar toggle del menú móvil una vez cargado el header
+        const toggleBtn = document.getElementById("menuToggle");
+        const sidebar = document.getElementById("adminSidebar");
+        const overlay = document.getElementById("sidebarOverlay");
+
+        if (toggleBtn && sidebar && overlay) {
+          toggleBtn.addEventListener("click", () => {
+            const isHidden = sidebar.classList.contains("-translate-x-full");
+            sidebar.classList.toggle("-translate-x-full");
+            overlay.classList.toggle("hidden", !isHidden);
+          });
+
+          overlay.addEventListener("click", () => {
+            sidebar.classList.add("-translate-x-full");
+            overlay.classList.add("hidden");
+          });
+        }
       })
       .catch(err => console.error('Error cargando header admin:', err));
   </script>

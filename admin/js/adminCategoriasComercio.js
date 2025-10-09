@@ -10,8 +10,15 @@ window.categoriasSeleccionadas = [];
 window.subcategoriasSeleccionadas = [];
 
 async function cargarCategorias() {
-  const { data } = await supabase.from('Categorias').select('id, nombre').order('nombre');
-  categorias = data;
+  if (!categorias.length) {
+    const { data, error } = await supabase.from('Categorias').select('id, nombre').order('nombre');
+    if (error) {
+      console.error('Error cargando categorías:', error);
+      categorias = [];
+    } else {
+      categorias = data || [];
+    }
+  }
   const contenedor = document.getElementById('opcionesCategorias');
   if (!contenedor) return;
 
@@ -44,13 +51,26 @@ async function cargarCategorias() {
 }
 
 async function cargarSubcategorias() {
-  const { data } = await supabase.from('subCategoria').select('id, nombre, idCategoria').order('nombre');
-  subcategorias = data;
+  if (!subcategorias.length) {
+    const { data, error } = await supabase
+      .from('subCategoria')
+      .select('id, nombre, idCategoria')
+      .order('nombre');
+    if (error) {
+      console.error('Error cargando subcategorías:', error);
+      subcategorias = [];
+    } else {
+      subcategorias = data || [];
+    }
+  }
   const contenedor = document.getElementById('opcionesSubcategorias');
   if (!contenedor) return;
 
   contenedor.innerHTML = '';
-  const filtradas = subcategorias.filter(sc => window.categoriasSeleccionadas.includes(sc.idCategoria));
+  const categoriasSeleccionadas = (window.categoriasSeleccionadas || []).map(Number);
+  const filtradas = subcategorias.filter(sc =>
+    categoriasSeleccionadas.includes(Number(sc.idCategoria))
+  );
   filtradas.forEach(sub => {
     const checked = window.subcategoriasSeleccionadas.includes(sub.id) ? 'checked' : '';
     const div = document.createElement('div');
@@ -106,10 +126,64 @@ window.removerSubcategoria = function(id) {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const { data: comercio } = await supabase.from('Comercios').select('*').eq('id', idComercio).single();
-  if (comercio) {
-    window.categoriasSeleccionadas = comercio.idCategoria || [];
-    window.subcategoriasSeleccionadas = comercio.idSubcategoria || [];
+  try {
+    const { data: comercio, error } = await supabase
+      .from('Comercios')
+      .select(
+        `
+          idCategoria,
+          idSubcategoria,
+          ComercioCategorias (
+            idCategoria
+          ),
+          ComercioSubcategorias (
+            idSubcategoria
+          )
+        `
+      )
+      .eq('id', idComercio)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error obteniendo categorías del comercio:', error);
+    }
+
+    if (comercio) {
+      const categoriasRel = Array.isArray(comercio.ComercioCategorias) ? comercio.ComercioCategorias : [];
+      const subcategoriasRel = Array.isArray(comercio.ComercioSubcategorias)
+        ? comercio.ComercioSubcategorias
+        : [];
+
+      const categoriasDesdeRel = categoriasRel
+        .map(rel => Number(rel?.idCategoria))
+        .filter(id => !Number.isNaN(id));
+
+      const subcategoriasDesdeRel = subcategoriasRel
+        .map(rel => Number(rel?.idSubcategoria))
+        .filter(id => !Number.isNaN(id));
+
+      const categoriasLegacy = Array.isArray(comercio.idCategoria)
+        ? comercio.idCategoria
+        : comercio.idCategoria !== null && comercio.idCategoria !== undefined
+        ? [comercio.idCategoria]
+        : [];
+
+      const subcategoriasLegacy = Array.isArray(comercio.idSubcategoria)
+        ? comercio.idSubcategoria
+        : comercio.idSubcategoria !== null && comercio.idSubcategoria !== undefined
+        ? [comercio.idSubcategoria]
+        : [];
+
+      window.categoriasSeleccionadas = categoriasDesdeRel.length
+        ? categoriasDesdeRel
+        : categoriasLegacy.map(id => Number(id)).filter(id => !Number.isNaN(id));
+
+      window.subcategoriasSeleccionadas = subcategoriasDesdeRel.length
+        ? subcategoriasDesdeRel
+        : subcategoriasLegacy.map(id => Number(id)).filter(id => !Number.isNaN(id));
+    }
+  } catch (error) {
+    console.error('Error procesando categorías del comercio:', error);
   }
 
   await cargarCategorias();

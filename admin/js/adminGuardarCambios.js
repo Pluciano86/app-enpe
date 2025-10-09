@@ -5,6 +5,45 @@ import { guardarAmenidadesSeleccionadas } from './adminAmenidadesComercio.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
+function normalizarIds(lista) {
+  return (Array.isArray(lista) ? lista : [])
+    .map((id) => Number(id))
+    .filter((id) => !Number.isNaN(id));
+}
+
+async function sincronizarRelacionesComercio(id, categoriasIds, subcategoriasIds) {
+  const categoriaIds = normalizarIds(categoriasIds);
+  const subcategoriaIds = normalizarIds(subcategoriasIds);
+
+  const [eliminarCategorias, eliminarSubcategorias] = await Promise.all([
+    supabase.from('ComercioCategorias').delete().eq('idComercio', id),
+    supabase.from('ComercioSubcategorias').delete().eq('idComercio', id),
+  ]);
+
+  if (eliminarCategorias.error) throw eliminarCategorias.error;
+  if (eliminarSubcategorias.error) throw eliminarSubcategorias.error;
+
+  if (categoriaIds.length) {
+    const { error } = await supabase.from('ComercioCategorias').insert(
+      categoriaIds.map((categoriaId) => ({
+        idComercio: id,
+        idCategoria: categoriaId,
+      }))
+    );
+    if (error) throw error;
+  }
+
+  if (subcategoriaIds.length) {
+    const { error } = await supabase.from('ComercioSubcategorias').insert(
+      subcategoriaIds.map((subcategoriaId) => ({
+        idComercio: id,
+        idSubcategoria: subcategoriaId,
+      }))
+    );
+    if (error) throw error;
+  }
+}
+
 document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   e.preventDefault();
   console.log('👉 Guardar Cambios presionado');
@@ -27,44 +66,62 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   await guardarLogoSiAplica();
   console.log('✅ Logo procesado');
 
+  const categoriasSeleccionadas = normalizarIds(window.categoriasSeleccionadas);
+  const subcategoriasSeleccionadas = normalizarIds(window.subcategoriasSeleccionadas);
+
   console.log('📝 Datos a actualizar:', {
-    nombre, direccion, telefono, whatsapp, descripcion,
-    municipio, facebook, instagram, tiktok, webpage,
-    colorPrimario, colorSecundario,
-    idCategoria: window.categoriasSeleccionadas,
-    idSubcategoria: window.subcategoriasSeleccionadas
+    nombre,
+    direccion,
+    telefono,
+    whatsapp,
+    descripcion,
+    municipio,
+    facebook,
+    instagram,
+    tiktok,
+    webpage,
+    colorPrimario,
+    colorSecundario,
+    categoriasSeleccionadas,
+    subcategoriasSeleccionadas,
   });
 
-  const { error: errorUpdate } = await supabase
-    .from('Comercios')
-    .update({
-  nombre,
-  direccion,
-  telefono,
-  whatsapp,
-  descripcion,
-  idMunicipio: municipio,
-  facebook,
-  instagram,
-  tiktok,
-  webpage,
-  colorPrimario,
-  colorSecundario,
-  latitud: document.getElementById('latitud')?.value,
-  longitud: document.getElementById('longitud')?.value,
-  idCategoria: window.categoriasSeleccionadas || [],
-  idSubcategoria: window.subcategoriasSeleccionadas || []
-})
-    .eq('id', idComercio);
+  try {
+    const { error: errorUpdate } = await supabase
+      .from('Comercios')
+      .update({
+        nombre,
+        direccion,
+        telefono,
+        whatsapp,
+        descripcion,
+        idMunicipio: municipio,
+        facebook,
+        instagram,
+        tiktok,
+        webpage,
+        colorPrimario,
+        colorSecundario,
+        latitud: document.getElementById('latitud')?.value,
+        longitud: document.getElementById('longitud')?.value,
+        categoria: categoriasSeleccionadas.length ? null : 'Sin categoría',
+        subCategorias: subcategoriasSeleccionadas.length ? null : 'Sin subcategoría',
+      })
+      .eq('id', idComercio);
 
-  console.log('📦 Categorías:', window.categoriasSeleccionadas);
-  console.log('📦 Subcategorías:', window.subcategoriasSeleccionadas);
+    if (errorUpdate) {
+      throw errorUpdate;
+    }
 
-  if (errorUpdate) {
+    await sincronizarRelacionesComercio(idComercio, categoriasSeleccionadas, subcategoriasSeleccionadas);
+  } catch (error) {
     alert('❌ Error al actualizar la información básica');
-    console.error('🚫 Error Supabase (Comercios):', errorUpdate);
+    console.error('🚫 Error actualizando comercio:', error);
     return;
   }
+
+  console.log('📦 Categorías:', categoriasSeleccionadas);
+  console.log('📦 Subcategorías:', subcategoriasSeleccionadas);
 
   console.log('✅ Información básica actualizada');
 

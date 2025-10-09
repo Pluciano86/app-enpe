@@ -11,6 +11,56 @@ import { cargarAmenidadesComercio } from './adminAmenidadesComercio.js';
 import { cargarCategoriasYSubcategorias } from './adminCategoriasComercio.js';
 import { idComercio, supabase } from '../shared/supabaseClient.js';
 
+let categoriaFallbackActual = '';
+let subcategoriaFallbackActual = '';
+
+function toNonEmptyString(value) {
+  if (typeof value === 'string') return value.trim();
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function normalizarIds(lista) {
+  return (Array.isArray(lista) ? lista : [])
+    .map((id) => Number(id))
+    .filter((id) => !Number.isNaN(id));
+}
+
+async function sincronizarRelacionesComercio(id, categoriasIds, subcategoriasIds) {
+  const categoriaIds = normalizarIds(categoriasIds);
+  const subcategoriaIds = normalizarIds(subcategoriasIds);
+
+  const [eliminarCategorias, eliminarSubcategorias] = await Promise.all([
+    supabase.from('ComercioCategorias').delete().eq('idComercio', id),
+    supabase.from('ComercioSubcategorias').delete().eq('idComercio', id),
+  ]);
+
+  if (eliminarCategorias.error) throw eliminarCategorias.error;
+  if (eliminarSubcategorias.error) throw eliminarSubcategorias.error;
+
+  if (categoriaIds.length) {
+    const { error } = await supabase.from('ComercioCategorias').insert(
+      categoriaIds.map((categoriaId) => ({
+        idComercio: id,
+        idCategoria: categoriaId,
+      }))
+    );
+    if (error) throw error;
+  }
+
+  if (subcategoriaIds.length) {
+    const { error } = await supabase.from('ComercioSubcategorias').insert(
+      subcategoriaIds.map((subcategoriaId) => ({
+        idComercio: id,
+        idSubcategoria: subcategoriaId,
+      }))
+    );
+    if (error) throw error;
+  }
+
+  return { categoriaIds, subcategoriaIds };
+}
+
 // Cargar datos generales al inicio
 document.addEventListener('DOMContentLoaded', async () => {
   await cargarGaleriaComercio();
@@ -28,7 +78,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function cargarDatosGenerales() {
   const { data, error } = await supabase
     .from('Comercios')
-    .select('*')
+    .select(
+      `
+        *,
+        ComercioCategorias (
+          idCategoria
+        ),
+        ComercioSubcategorias (
+          idSubcategoria
+        )
+      `
+    )
     .eq('id', idComercio)
     .maybeSingle();
 
@@ -36,6 +96,9 @@ async function cargarDatosGenerales() {
     console.error('Error cargando datos generales:', error);
     return;
   }
+
+  categoriaFallbackActual = toNonEmptyString(data.categoria);
+  subcategoriaFallbackActual = toNonEmptyString(data.subCategorias);
 
   const campos = [
     'nombre', 'telefono', 'direccion', 'latitud', 'longitud',
@@ -53,13 +116,35 @@ async function cargarDatosGenerales() {
     if (select) select.value = String(data.idMunicipio);
   }
 
-  window.categoriasSeleccionadas = Array.isArray(data.idCategoria)
-    ? data.idCategoria
-    : data.idCategoria !== null ? [data.idCategoria] : [];
+  const categoriasRel = Array.isArray(data.ComercioCategorias) ? data.ComercioCategorias : [];
+  const subcategoriasRel = Array.isArray(data.ComercioSubcategorias) ? data.ComercioSubcategorias : [];
 
-  window.subcategoriasSeleccionadas = Array.isArray(data.idSubcategoria)
+  const categoriasDesdeRel = categoriasRel
+    .map((rel) => Number(rel?.idCategoria))
+    .filter((id) => !Number.isNaN(id));
+  const subcategoriasDesdeRel = subcategoriasRel
+    .map((rel) => Number(rel?.idSubcategoria))
+    .filter((id) => !Number.isNaN(id));
+
+  const categoriasLegacy = Array.isArray(data.idCategoria)
+    ? data.idCategoria
+    : data.idCategoria !== null && data.idCategoria !== undefined
+    ? [data.idCategoria]
+    : [];
+
+  const subcategoriasLegacy = Array.isArray(data.idSubcategoria)
     ? data.idSubcategoria
-    : data.idSubcategoria !== null ? [data.idSubcategoria] : [];
+    : data.idSubcategoria !== null && data.idSubcategoria !== undefined
+    ? [data.idSubcategoria]
+    : [];
+
+  window.categoriasSeleccionadas = categoriasDesdeRel.length
+    ? categoriasDesdeRel
+    : categoriasLegacy.map((id) => Number(id)).filter((id) => !Number.isNaN(id));
+
+  window.subcategoriasSeleccionadas = subcategoriasDesdeRel.length
+    ? subcategoriasDesdeRel
+    : subcategoriasLegacy.map((id) => Number(id)).filter((id) => !Number.isNaN(id));
 }
 
 // Evento para guardar cambios
@@ -81,67 +166,87 @@ btnGuardar.addEventListener('click', async () => {
   const colorPrimario = document.getElementById('colorPrimario').value;
   const colorSecundario = document.getElementById('colorSecundario').value;
 
-  // Obtener municipio y área
-  const { data: municipioData, error: municipioError } = await supabase
-    .from('Municipios')
-    .select('idArea, nombre')
-    .eq('id', idMunicipio)
-    .single();
+  btnGuardar.disabled = true;
 
-  if (municipioError || !municipioData?.idArea) {
-    alert('❌ Error obteniendo el área del municipio.');
-    console.error(municipioError);
-    return;
-  }
+  try {
+    const { data: municipioData, error: municipioError } = await supabase
+      .from('Municipios')
+      .select('idArea, nombre')
+      .eq('id', idMunicipio)
+      .single();
 
-  const idArea = municipioData.idArea;
-  const nombreMunicipio = municipioData.nombre;
+    if (municipioError || !municipioData?.idArea) {
+      throw municipioError || new Error('Municipio sin área asociada.');
+    }
 
-  const { data: areaData, error: areaError } = await supabase
-    .from('Area')
-    .select('nombre')
-    .eq('idArea', idArea)
-    .single();
+    const idArea = municipioData.idArea;
+    const nombreMunicipio = municipioData.nombre;
 
-  if (areaError || !areaData?.nombre) {
-    alert('❌ Error obteniendo el nombre del área.');
-    console.error(areaError);
-    return;
-  }
+    const { data: areaData, error: areaError } = await supabase
+      .from('Area')
+      .select('nombre')
+      .eq('idArea', idArea)
+      .single();
 
-  const nombreArea = areaData.nombre;
+    if (areaError || !areaData?.nombre) {
+      throw areaError || new Error('No se pudo obtener el nombre del área.');
+    }
 
-  // Actualizar datos en Supabase
-  const { error: updateError } = await supabase
-    .from('Comercios')
-    .update({
-      nombre,
-      telefono,
-      direccion,
-      latitud,
-      longitud,
-      idMunicipio,
-      municipio: nombreMunicipio,
-      idArea,
-      area: nombreArea,
-      whatsapp,
-      facebook,
-      instagram,
-      tiktok,
-      webpage,
-      descripcion,
-      colorPrimario,
-      colorSecundario
-    })
-    .eq('id', idComercio);
+    const nombreArea = areaData.nombre;
 
-  if (updateError) {
+    const categoriasSeleccionadas = normalizarIds(window.categoriasSeleccionadas);
+    const subcategoriasSeleccionadas = normalizarIds(window.subcategoriasSeleccionadas);
+
+    const categoriaFallback =
+      categoriasSeleccionadas.length === 0 ? categoriaFallbackActual || 'Sin categoría' : null;
+    const subcategoriaFallback =
+      subcategoriasSeleccionadas.length === 0 ? subcategoriaFallbackActual || 'Sin subcategoría' : null;
+
+    const { error: updateError } = await supabase
+      .from('Comercios')
+      .update({
+        nombre,
+        telefono,
+        direccion,
+        latitud,
+        longitud,
+        idMunicipio,
+        municipio: nombreMunicipio,
+        idArea,
+        area: nombreArea,
+        whatsapp,
+        facebook,
+        instagram,
+        tiktok,
+        webpage,
+        descripcion,
+        colorPrimario,
+        colorSecundario,
+        categoria: categoriaFallback,
+        subCategorias: subcategoriaFallback,
+      })
+      .eq('id', idComercio);
+
+    if (updateError) throw updateError;
+
+    const { categoriaIds, subcategoriaIds } = await sincronizarRelacionesComercio(
+      idComercio,
+      categoriasSeleccionadas,
+      subcategoriasSeleccionadas
+    );
+
+    await guardarLogoSiAplica();
+
+    categoriaFallbackActual =
+      categoriaIds.length === 0 ? categoriaFallback || 'Sin categoría' : categoriaFallbackActual;
+    subcategoriaFallbackActual =
+      subcategoriaIds.length === 0 ? subcategoriaFallback || 'Sin subcategoría' : subcategoriaFallbackActual;
+
+    alert('✅ Comercio actualizado correctamente');
+  } catch (error) {
+    console.error('❌ Error actualizando comercio:', error);
     alert('❌ Error actualizando comercio');
-    console.error(updateError);
-    return;
+  } finally {
+    btnGuardar.disabled = false;
   }
-
-  await guardarLogoSiAplica();
-
-  alert('✅ Comercio actualizado correctamente');
 });

@@ -5,6 +5,9 @@ const municipioSelect = document.getElementById('municipio');
 const categoriaSelect = document.getElementById('categoria');
 const subcategoriaSelect = document.getElementById('subcategoria');
 const crearBtn = document.getElementById('crearBtn');
+let categoriasDisponibles = [];
+let subcategoriasDisponibles = [];
+let subcategoriasCargadas = false;
 
 export async function cargarMunicipios() {
   const { data, error } = await supabase
@@ -23,14 +26,22 @@ export async function cargarMunicipios() {
 }
 
 export async function cargarCategorias() {
-  const { data, error } = await supabase
-    .from('Categorias')
-    .select('id, nombre')
-    .order('nombre');
+  if (categoriasDisponibles.length === 0) {
+    const { data, error } = await supabase
+      .from('Categorias')
+      .select('id, nombre')
+      .order('nombre');
 
-  if (error) return console.error('❌ Error cargando categorías:', error);
+    if (error) {
+      console.error('❌ Error cargando categorías:', error);
+      return;
+    }
 
-  data.forEach((cat) => {
+    categoriasDisponibles = data || [];
+  }
+
+  categoriaSelect.innerHTML = '<option value="">Seleccionar Categoría</option>';
+  categoriasDisponibles.forEach((cat) => {
     const opt = document.createElement('option');
     opt.value = cat.id;
     opt.textContent = cat.nombre;
@@ -40,26 +51,34 @@ export async function cargarCategorias() {
 
 export async function cargarSubcategorias() {
   const idCategoria = parseInt(categoriaSelect.value);
+  subcategoriaSelect.innerHTML = '<option value="">Seleccionar Subcategoría</option>';
   if (isNaN(idCategoria)) {
-    subcategoriaSelect.innerHTML = '<option value="">Seleccionar Subcategoría</option>';
     return;
   }
 
-  const { data, error } = await supabase
-    .from('subCategoria')
-    .select('id, nombre')
-    .eq('idCategoria', idCategoria)
-    .order('nombre');
+  if (!subcategoriasCargadas) {
+    const { data, error } = await supabase
+      .from('subCategoria')
+      .select('id, nombre, idCategoria')
+      .order('nombre');
 
-  if (error) return console.error('❌ Error cargando subcategorías:', error);
+    if (error) {
+      console.error('❌ Error cargando subcategorías:', error);
+      return;
+    }
 
-  subcategoriaSelect.innerHTML = '<option value="">Seleccionar Subcategoría</option>';
-  data.forEach((sub) => {
-    const opt = document.createElement('option');
-    opt.value = sub.id;
-    opt.textContent = sub.nombre;
-    subcategoriaSelect.appendChild(opt);
-  });
+    subcategoriasDisponibles = data || [];
+    subcategoriasCargadas = true;
+  }
+
+  subcategoriasDisponibles
+    .filter((sub) => String(sub.idCategoria) === String(idCategoria))
+    .forEach((sub) => {
+      const opt = document.createElement('option');
+      opt.value = sub.id;
+      opt.textContent = sub.nombre;
+      subcategoriaSelect.appendChild(opt);
+    });
 }
 
 categoriaSelect.addEventListener('change', cargarSubcategorias);
@@ -74,7 +93,7 @@ crearBtn.addEventListener('click', async () => {
   const latitud = parseFloat(document.getElementById('latitud').value);
   const longitud = parseFloat(document.getElementById('longitud').value);
 
-  if (!nombre || !telefono || !direccion || isNaN(idMunicipio) || isNaN(idCategoria)) {
+  if (!nombre || !direccion || isNaN(idMunicipio) || isNaN(idCategoria)) {
     alert('Faltan campos obligatorios.');
     return;
   }
@@ -108,29 +127,85 @@ if (areaError || !areaData?.nombre) {
 
 const nombreArea = areaData.nombre;
 
-  const { error: insertError } = await supabase.from('Comercios').insert({
-  nombre,
-  telefono,
-  direccion,
-  idMunicipio,
-  municipio: nombreMunicipio,
-  idCategoria: isNaN(idCategoria) ? [] : [idCategoria],  // 👈 En array
-  idSubcategoria: isNaN(idSubcategoria) ? [] : [idSubcategoria], // 👈 En array también
-  latitud,
-  longitud,
-  idArea,
-  area: nombreArea,  
-  activo: true
-});
+  const categoriaIds = Number.isNaN(idCategoria) ? [] : [idCategoria];
+  const subcategoriaIds = Number.isNaN(idSubcategoria) ? [] : [idSubcategoria];
+  const categoriaTexto =
+    categoriaIds.length && categoriaSelect.selectedOptions.length
+      ? categoriaSelect.selectedOptions[0].textContent.trim()
+      : null;
+  const subcategoriaTexto =
+    subcategoriaIds.length && subcategoriaSelect.selectedOptions.length
+      ? subcategoriaSelect.selectedOptions[0].textContent.trim()
+      : null;
 
-  if (insertError) {
+  let nuevoComercioId = null;
+  crearBtn.disabled = true;
+
+  try {
+    const { data: comercioInsertado, error: insertError } = await supabase
+      .from('Comercios')
+      .insert({
+        nombre,
+        telefono: telefono || null,
+        direccion,
+        idMunicipio,
+        municipio: nombreMunicipio,
+        latitud,
+        longitud,
+        idArea,
+        area: nombreArea,
+        categoria: categoriaTexto,
+        subCategorias: subcategoriaTexto,
+        activo: false,
+      })
+      .select('id')
+      .single();
+
+    if (insertError || !comercioInsertado?.id) {
+      throw insertError || new Error('No se pudo obtener el ID del comercio recién creado.');
+    }
+
+    nuevoComercioId = comercioInsertado.id;
+
+    if (categoriaIds.length) {
+      const { error: errorCategoriasRelacion } = await supabase.from('ComercioCategorias').insert(
+        categoriaIds.map((categoriaId) => ({
+          idComercio: nuevoComercioId,
+          idCategoria: categoriaId,
+        }))
+      );
+      if (errorCategoriasRelacion) {
+        throw errorCategoriasRelacion;
+      }
+    }
+
+    if (subcategoriaIds.length) {
+      const { error: errorSubcategoriasRelacion } = await supabase.from('ComercioSubcategorias').insert(
+        subcategoriaIds.map((subcategoriaId) => ({
+          idComercio: nuevoComercioId,
+          idSubcategoria: subcategoriaId,
+        }))
+      );
+      if (errorSubcategoriasRelacion) {
+        throw errorSubcategoriasRelacion;
+      }
+    }
+
+    alert('✅ Comercio creado exitosamente');
+    location.href = 'adminComercios.html';
+  } catch (error) {
+    console.error('❌ Error creando comercio:', error);
+    if (nuevoComercioId) {
+      try {
+        await supabase.from('Comercios').delete().eq('id', nuevoComercioId);
+      } catch (rollbackError) {
+        console.error('⚠️ Error intentando revertir el comercio creado:', rollbackError);
+      }
+    }
     alert('❌ Error creando comercio');
-    console.error(insertError);
-    return;
+  } finally {
+    crearBtn.disabled = false;
   }
-
-  alert('✅ Comercio creado exitosamente');
-  location.href = 'adminComercios.html';
 });
 
 cargarMunicipios();

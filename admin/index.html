@@ -346,17 +346,115 @@
     }
 
     function parseDelimitedList(value) {
-      if (!value) return [];
+      if (typeof value !== "string") return [];
       return value
         .split(",")
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0);
     }
 
-    function extractCommerceCategories(categoria, subCategorias) {
+    function toNonEmptyString(value) {
+      if (typeof value === "string") return value.trim();
+      if (value === null || value === undefined) return "";
+      return String(value).trim();
+    }
+
+    function buildIdNameMap(records) {
+      const map = new Map();
+      (records || []).forEach(({ id, nombre }) => {
+        if (id === undefined || id === null) return;
+        const label = toNonEmptyString(nombre);
+        if (label) {
+          map.set(String(id), label);
+        }
+      });
+      return map;
+    }
+
+    async function getCategoryMap() {
+      if (categoryNameById) return categoryNameById;
+      if (!categoryMapPromise) {
+        categoryMapPromise = supabase
+          .from("Categorias")
+          .select("id, nombre")
+          .then(({ data, error }) => {
+            if (error) throw error;
+            categoryNameById = buildIdNameMap(data);
+            return categoryNameById;
+          })
+          .catch((err) => {
+            categoryNameById = null;
+            throw err;
+          })
+          .finally(() => {
+            categoryMapPromise = null;
+          });
+      }
+      return categoryMapPromise;
+    }
+
+    async function getSubcategoryMap() {
+      if (subcategoryNameById) return subcategoryNameById;
+      if (!subcategoryMapPromise) {
+        subcategoryMapPromise = supabase
+          .from("subCategoria")
+          .select("id, nombre")
+          .then(({ data, error }) => {
+            if (error) throw error;
+            subcategoryNameById = buildIdNameMap(data);
+            return subcategoryNameById;
+          })
+          .catch((err) => {
+            subcategoryNameById = null;
+            throw err;
+          })
+          .finally(() => {
+            subcategoryMapPromise = null;
+          });
+      }
+      return subcategoryMapPromise;
+    }
+
+    function getRelationLabel(entry, nestedKeyCandidates, idKey, fallbackMap) {
+      if (!entry || typeof entry !== "object") return "";
+      for (const key of nestedKeyCandidates) {
+        const nested = entry[key];
+        const label = toNonEmptyString(nested?.nombre);
+        if (label) return label;
+      }
+      const relationId = entry[idKey];
+      if (relationId !== undefined && relationId !== null && fallbackMap instanceof Map) {
+        const label = fallbackMap.get(String(relationId));
+        if (label) return label;
+      }
+      return "";
+    }
+
+    function extractCommerceCategories(commerce, categoryMap, subcategoryMap) {
       const categories = new Set();
-      parseDelimitedList(categoria).forEach((entry) => categories.add(entry));
-      parseDelimitedList(subCategorias).forEach((entry) => categories.add(entry));
+
+      const categoryRelations = Array.isArray(commerce?.ComercioCategorias) ? commerce.ComercioCategorias : [];
+      categoryRelations.forEach((relation) => {
+        const label = getRelationLabel(relation, ["categoria", "Categoria", "Categorias"], "idCategoria", categoryMap);
+        if (label) categories.add(label);
+      });
+
+      const subcategoryRelations = Array.isArray(commerce?.ComercioSubcategorias)
+        ? commerce.ComercioSubcategorias
+        : [];
+      subcategoryRelations.forEach((relation) => {
+        const label = getRelationLabel(
+          relation,
+          ["subcategoria", "Subcategoria", "subCategoria"],
+          "idSubcategoria",
+          subcategoryMap
+        );
+        if (label) categories.add(label);
+      });
+
+      parseDelimitedList(commerce?.categoria).forEach((entry) => categories.add(entry));
+      parseDelimitedList(commerce?.subCategorias).forEach((entry) => categories.add(entry));
+
       if (categories.size === 0) {
         categories.add(UNKNOWN_CATEGORY_LABEL);
       }
@@ -461,6 +559,10 @@
     let userMunicipalityChartInstance = null;
     let userAgeChartInstance = null;
     let userRecords = [];
+    let categoryNameById = null;
+    let subcategoryNameById = null;
+    let categoryMapPromise = null;
+    let subcategoryMapPromise = null;
 
     const LOCALE = "es-PR";
     const weekdayFormatter = new Intl.DateTimeFormat(LOCALE, { weekday: "short" });
@@ -1192,24 +1294,54 @@ console.log("📅 range:", range);
 
     async function initializeCommerceCard() {
       try {
-        const { data: commerceData, error: commerceError } = await supabase
-          .from("Comercios")
-          .select("id, nombre, activo, municipio, idMunicipio, categoria, subCategorias, created_at");
+        const [categoryMap, subcategoryMap, commerceResponse] = await Promise.all([
+          getCategoryMap(),
+          getSubcategoryMap(),
+          supabase
+            .from("Comercios")
+            .select(
+              `
+              id,
+              nombre,
+              activo,
+              municipio,
+              idMunicipio,
+              categoria,
+              subCategorias,
+              created_at,
+              ComercioCategorias (
+                idCategoria,
+                categoria:Categorias (
+                  id,
+                  nombre
+                )
+              ),
+              ComercioSubcategorias (
+  idSubcategoria,
+  subcategoria:subCategoria (
+    id,
+    nombre
+  )
+)
+            `
+            ),
+        ]);
 
+        const { data: commerceData, error: commerceError } = commerceResponse;
         if (commerceError) throw commerceError;
 
         commerceRecords = (commerceData || [])
           .map((item) => {
-            const municipioTexto = (item.municipio || "").toString().trim();
+            const municipioTexto = toNonEmptyString(item?.municipio);
             const municipioName = municipioTexto.length ? municipioTexto : UNKNOWN_MUNICIPALITY_LABEL;
 
-            const createdAt = item.created_at ? new Date(item.created_at) : null;
+            const createdAt = item?.created_at ? new Date(item.created_at) : null;
 
             return {
-              activo: Boolean(item.activo),
+              activo: Boolean(item?.activo),
               createdAt,
               municipioName,
-              categories: extractCommerceCategories(item.categoria, item.subCategorias),
+              categories: extractCommerceCategories(item, categoryMap, subcategoryMap),
             };
           })
           .filter((item) => item.createdAt instanceof Date && !Number.isNaN(item.createdAt.getTime()));

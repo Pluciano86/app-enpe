@@ -213,45 +213,6 @@ fetch("./shared/adminHeader.html")
   }
 </script>
 
-<script type="module">
-  // mainAdmin.js extendido para editarComercio.html y adminComercios.html
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-export const supabase = createClient(
-  'https://zgjaxanqfkweslkxtayt.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
-);
-
-export const baseImageUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios';
-
-let todosLosComercios = [];
-let logos = [];
-let categorias = [];
-let municipios = [];
-
-export const idComercio = new URLSearchParams(window.location.search).get('id');
-
-export async function cargarDatosComercio() {
-  const { data, error } = await supabase.from('Comercios').select('*').eq('id', idComercio).single();
-  if (error) return alert('Error cargando comercio');
-
-  for (const key in data) {
-    const el = document.getElementById(key);
-    if (el) {
-      if (key.includes("color") && (!data[key] || !/^#[0-9A-Fa-f]{6}$/.test(data[key]))) {
-        el.value = '#000000';
-      } else {
-        el.value = data[key] || '';
-      }
-    }
-  }
-
-  if (data.idMunicipio) document.getElementById('municipio').value = String(data.idMunicipio);
-  window.categoriasSeleccionadas = data.idCategoria || [];
-  window.subcategoriasSeleccionadas = data.idSubcategoria || [];
-}
-</script>
-
 <!-- ✅ Script: Carga los horarios del comercio por día de la semana -->
 <script type="module">
   import { supabase } from './shared/supabaseClient.js';
