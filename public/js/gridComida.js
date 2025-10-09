@@ -23,23 +23,39 @@ const categoriasComida = categorias?.map(c => c.id) || [];
 
     // 🔹 Buscar comercios activos (sin repetir sucursales)
     let query = supabase
-      .from("Comercios")
-      .select("id, nombre, municipio, idArea, idMunicipio, activo, tieneSucursales, idCategoria")
-      .eq("activo", true);
+  .from("Comercios")
+  .select(`
+    id,
+    nombre,
+    municipio,
+    idArea,
+    idMunicipio,
+    activo,
+    tieneSucursales,
+    ComercioCategorias (
+      idCategoria
+    )
+  `)
+  .eq("activo", true);
 
     // 🔹 Filtrar por ubicación
     if (idMunicipio) query = query.eq("idMunicipio", idMunicipio);
     else if (idArea) query = query.eq("idArea", idArea);
 
-    // 🔹 Incluir comercios que tengan al menos una categoría de comida
-if (categoriasComida.length > 0) {
-  // ✅ 'ov' es el alias del operador PostgreSQL '&&' (overlaps)
-  const arrayFiltro = `{${categoriasComida.join(',')}}`;
-  query = query.filter('idCategoria', 'ov', arrayFiltro);
-}
 
     // 🔹 Ejecutar query
     const { data: comercios, error } = await query;
+    if (error) throw error;
+
+// 🔹 Filtrar comercios que tengan alguna categoría de comida
+const comerciosFiltrados = comercios.filter(c =>
+  c.ComercioCategorias?.some(cc => categoriasComida.includes(cc.idCategoria))
+);
+
+if (comerciosFiltrados.length === 0) {
+  grid.innerHTML = `<p class="text-gray-500 text-center">No hay lugares disponibles.</p>`;
+  return;
+}
     console.log("🍽 Comercios encontrados:", comercios?.length, comercios);
     if (error) throw error;
 

@@ -84,9 +84,11 @@
     <div id="modalComida" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center z-50">
   <div class="bg-white rounded-lg shadow-lg w-[95%] max-w-5xl h-[80%] overflow-y-auto relative flex flex-col">
     <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
-      <h2 class="text-xl font-medium">Todos los lugares para comer</h2>
-      <button id="cerrarModalComida" class="text-white hover:text-gray-300 text-4xl leading-none">&times;</button>
-    </div>
+  <div class="flex-1 text-center">
+    <h2 class="text-xl font-medium">Todos los lugares para comer</h2>
+  </div>
+  <button id="cerrarModalComida" class="text-white hover:text-gray-300 text-4xl leading-none ml-2">&times;</button>
+</div>
     <div id="gridComidaModal" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-4"></div>
   </div>
 </div>

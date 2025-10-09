@@ -59,6 +59,91 @@ const filtrosActivos = {
   comerciosPorPlato: []
 };
 
+const UNKNOWN_CATEGORY_LABEL = 'Sin categoría';
+const UNKNOWN_SUBCATEGORY_LABEL = 'Sin subcategoría';
+
+function toNonEmptyString(value) {
+  if (typeof value === 'string') return value.trim();
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function parseDelimitedList(value) {
+  if (typeof value !== 'string') return [];
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function normalizarRelacionesComercio(comercio) {
+  const categoriaIdSet = new Set();
+  const categoriaNombreSet = new Set();
+  const subcategoriaIdSet = new Set();
+  const subcategoriaNombreSet = new Set();
+
+  const categoriasRel = Array.isArray(comercio?.ComercioCategorias) ? comercio.ComercioCategorias : [];
+  categoriasRel.forEach((rel) => {
+    const relId = rel?.idCategoria ?? rel?.categoria?.id;
+    if (relId !== null && relId !== undefined && relId !== '') {
+      const numericId = Number(relId);
+      if (!Number.isNaN(numericId)) categoriaIdSet.add(numericId);
+    }
+    const nombre = toNonEmptyString(rel?.categoria?.nombre);
+    if (nombre) categoriaNombreSet.add(nombre);
+  });
+
+  const subcategoriasRel = Array.isArray(comercio?.ComercioSubcategorias)
+    ? comercio.ComercioSubcategorias
+    : [];
+  subcategoriasRel.forEach((rel) => {
+    const relId = rel?.idSubcategoria ?? rel?.subcategoria?.id;
+    if (relId !== null && relId !== undefined && relId !== '') {
+      const numericId = Number(relId);
+      if (!Number.isNaN(numericId)) subcategoriaIdSet.add(numericId);
+    }
+    const nombre = toNonEmptyString(rel?.subcategoria?.nombre);
+    if (nombre) subcategoriaNombreSet.add(nombre);
+  });
+
+  const legacyCategorias = Array.isArray(comercio?.idCategoria)
+    ? comercio.idCategoria
+    : comercio?.idCategoria !== null && comercio?.idCategoria !== undefined
+    ? [comercio.idCategoria]
+    : [];
+  legacyCategorias.forEach((id) => {
+    const numericId = Number(id);
+    if (!Number.isNaN(numericId)) categoriaIdSet.add(numericId);
+  });
+
+  const legacySubcategorias = Array.isArray(comercio?.idSubcategoria)
+    ? comercio.idSubcategoria
+    : comercio?.idSubcategoria !== null && comercio?.idSubcategoria !== undefined
+    ? [comercio.idSubcategoria]
+    : [];
+  legacySubcategorias.forEach((id) => {
+    const numericId = Number(id);
+    if (!Number.isNaN(numericId)) subcategoriaIdSet.add(numericId);
+  });
+
+  parseDelimitedList(comercio?.categoria).forEach((nombre) => categoriaNombreSet.add(nombre));
+  parseDelimitedList(comercio?.subCategorias).forEach((nombre) => subcategoriaNombreSet.add(nombre));
+
+  const categoriaDisplay =
+    categoriaNombreSet.size > 0 ? Array.from(categoriaNombreSet).join(', ') : UNKNOWN_CATEGORY_LABEL;
+  const subcategoriaDisplay =
+    subcategoriaNombreSet.size > 0 ? Array.from(subcategoriaNombreSet).join(', ') : UNKNOWN_SUBCATEGORY_LABEL;
+
+  return {
+    categoriaIds: Array.from(categoriaIdSet),
+    subcategoriaIds: Array.from(subcategoriaIdSet),
+    categoriaNombres: Array.from(categoriaNombreSet),
+    subcategoriaNombres: Array.from(subcategoriaNombreSet),
+    categoriaDisplay,
+    subcategoriaDisplay,
+  };
+}
+
 
 function actualizarEtiquetaSubcategoria(nombreCategoria) {
   const label = document.querySelector('label[for="filtro-subcategoria"]');
@@ -174,13 +259,54 @@ async function resolverTiempoEnVehiculo(origen, destino, distanciaHaversine) {
 }
 
 async function cargarComercios() {
-  let query = supabase.from('Comercios').select('*');
+  
+  let query = supabase
+    .from('Comercios')
+    .select(
+      `
+        *,
+        ComercioCategorias (
+          idCategoria,
+          categoria:Categorias (
+            id,
+            nombre
+          )
+        ),
+        ComercioSubcategorias (
+          idSubcategoria,
+          subcategoria:subCategoria (
+            id,
+            nombre
+          )
+        )
+      `
+    );
   if (idCategoriaDesdeURL) {
-    query = query.overlaps('idCategoria', [idCategoriaDesdeURL]);
+    query = query.eq('ComercioCategorias.idCategoria', idCategoriaDesdeURL);
   }
 
   const { data: comercios, error } = await query;
-  if (error || !comercios?.length) return;
+  if (error) {
+    console.error('Error cargando comercios:', error);
+    return;
+  }
+
+  const comerciosNormalizados = (comercios || []).map((comercio) => ({
+    ...comercio,
+    ...normalizarRelacionesComercio(comercio),
+  }));
+
+  const comerciosFiltrados =
+    idCategoriaDesdeURL != null
+      ? comerciosNormalizados.filter((comercio) =>
+          Array.isArray(comercio.categoriaIds) && comercio.categoriaIds.includes(Number(idCategoriaDesdeURL))
+        )
+      : comerciosNormalizados;
+
+  if (!comerciosFiltrados.length) {
+    listaOriginal = [];
+    return;
+  }
 
   const { data: imagenesAll } = await supabase
     .from('imagenesComercios')
@@ -222,7 +348,7 @@ if (user) {
     lon: Number(lonUsuario)
   };
 
-  listaOriginal = await Promise.all(comercios.map(async (comercio) => {
+  listaOriginal = await Promise.all(comerciosFiltrados.map(async (comercio) => {
     const portada = imagenesAll.find(img => img.idComercio === comercio.id && img.portada);
     const logo = imagenesAll.find(img => img.idComercio === comercio.id && img.logo);
     const horario = horariosAll.find(h => h.idComercio === comercio.id);
@@ -281,10 +407,14 @@ if (horario && !horario.cerrado && horario.apertura && horario.cierre) {
       logo: logo ? `${baseImageUrl}/${logo.imagen}` : '',
       distanciaKm: tiempo.distanciaKm ?? distancia,
       distanciaTexto: tiempo.distanciaTexto,
-      idCategoria: comercio.idCategoria,
-      idSubcategoria: Array.isArray(comercio.idSubcategoria)
-        ? comercio.idSubcategoria
-        : [parseInt(comercio.idSubcategoria)],
+      categoriaIds: Array.isArray(comercio.categoriaIds) ? comercio.categoriaIds : [],
+      categoriaNombres: Array.isArray(comercio.categoriaNombres) ? comercio.categoriaNombres : [],
+      categoriaDisplay: comercio.categoriaDisplay || UNKNOWN_CATEGORY_LABEL,
+      subcategoriaIds: Array.isArray(comercio.subcategoriaIds) ? comercio.subcategoriaIds : [],
+      subcategoriaNombres: Array.isArray(comercio.subcategoriaNombres)
+        ? comercio.subcategoriaNombres
+        : [],
+      subcategoriaDisplay: comercio.subcategoriaDisplay || UNKNOWN_SUBCATEGORY_LABEL,
       activoEnPeErre: comercio.activo === true,
       favorito: favoritosUsuario.includes(comercio.id),
       platos: productosPorComercio[comercio.id] || [],
@@ -397,10 +527,11 @@ async function aplicarFiltrosYRedibujar() {
     }
 
     if (filtrosActivos.subcategoria) {
+      const subcategoriaFiltro = Number(filtrosActivos.subcategoria);
       filtrados = filtrados.filter(
         (c) =>
-          Array.isArray(c.idSubcategoria) &&
-          c.idSubcategoria.includes(parseInt(filtrosActivos.subcategoria))
+          Array.isArray(c.subcategoriaIds) &&
+          c.subcategoriaIds.includes(subcategoriaFiltro)
       );
     }
 
@@ -769,7 +900,14 @@ function actualizarResumenFiltros() {
     // Aplicar los mismos filtros que en aplicarFiltrosYRedibujar
     if (filtrosActivos.textoBusqueda && !normalizarTexto(c.nombre).includes(normalizarTexto(filtrosActivos.textoBusqueda))) return false;
     if (filtrosActivos.municipio && c.pueblo !== filtrosActivos.municipio) return false;
-    if (filtrosActivos.subcategoria && c.idSubcategoria !== parseInt(filtrosActivos.subcategoria)) return false;
+    if (
+      filtrosActivos.subcategoria &&
+      !(
+        Array.isArray(c.subcategoriaIds) &&
+        c.subcategoriaIds.includes(Number(filtrosActivos.subcategoria))
+      )
+    )
+      return false;
     if (filtrosActivos.abiertoAhora && !c.abierto) return false;
     return true;
   });

@@ -13,30 +13,59 @@ export async function renderComidaCarousel(containerId) {
   const categoriasComida = [1, 2, 3, 4, 5]; // IDs reales en Supabase
 
   try {
-    // 🔸 Buscar comercios activos con alguna categoría de comida
-    const { data: comercios, error: comerciosError } = await supabase
-      .from("Comercios")
-      .select("id, nombre, municipio, idCategoria, activo")
-      .eq("activo", true)
-      .overlaps("idCategoria", categoriasComida)
-      .limit(50);
-
-    if (comerciosError) throw comerciosError;
-    if (!comercios?.length) {
-      container.innerHTML = `<p class="text-gray-500 text-center">No hay lugares disponibles</p>`;
+    // ⚠️ Validación: si no hay categorías definidas
+    if (!categoriasComida || categoriasComida.length === 0) {
+      console.warn("⚠️ No hay categorías de comida definidas.");
+      container.innerHTML = `<p class="text-gray-500 text-center">No hay categorías disponibles.</p>`;
       return;
     }
 
+// 🔸 Buscar comercios activos con alguna categoría de comida (nueva versión relacional)
+const { data: comercios, error: comerciosError } = await supabase
+  .from("Comercios")
+  .select(`
+    id,
+    nombre,
+    municipio,
+    activo,
+    ComercioCategorias (
+      idCategoria
+    )
+  `)
+  .eq("activo", true)
+  .limit(50);
+
+if (comerciosError) throw comerciosError;
+
+// 🔹 Filtrar comercios por las categorías de comida
+const comerciosFiltrados = comercios.filter((c) =>
+  c.ComercioCategorias?.some((cc) =>
+    categoriasComida.includes(cc.idCategoria)
+  )
+);
+
+if (comerciosFiltrados.length === 0) {
+  container.innerHTML = `<p class="text-gray-500 text-center">No hay lugares disponibles</p>`;
+  return;
+}
+
     // 🔸 Obtener imágenes (no logos)
+    const idsComercios = comercios.map((c) => c.id).filter(Boolean);
+    if (idsComercios.length === 0) {
+      console.warn("⚠️ Comercios sin IDs válidos.");
+      container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes disponibles.</p>`;
+      return;
+    }
+
     const { data: imagenes, error: imgError } = await supabase
       .from("imagenesComercios")
       .select("imagen, idComercio, logo")
-      .in("idComercio", comercios.map((c) => c.id))
+      .in("idComercio", idsComercios)
       .neq("logo", true);
 
     if (imgError) throw imgError;
-    if (!imagenes?.length) {
-      container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes disponibles</p>`;
+    if (!imagenes || imagenes.length === 0) {
+      container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes disponibles.</p>`;
       return;
     }
 
@@ -98,7 +127,7 @@ export async function renderComidaCarousel(containerId) {
       autoplay: {
         delay: 2500,
         disableOnInteraction: false,
-        reverseDirection: true, // 👈 mueve el loop en sentido contrario
+        reverseDirection: true,
       },
       speed: 900,
       slidesPerView: 1.5,
