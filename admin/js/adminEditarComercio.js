@@ -119,7 +119,26 @@ async function cargarDatosGenerales() {
   const { data, error } = await supabase
     .from('Comercios')
     .select(`
-      *,
+      id,
+      nombre,
+      telefono,
+      direccion,
+      latitud,
+      longitud,
+      idMunicipio,
+      municipio,
+      idArea,
+      area,
+      whatsapp,
+      facebook,
+      instagram,
+      tiktok,
+      webpage,
+      descripcion,
+      colorPrimario,
+      colorSecundario,
+      categoria,
+      subCategorias,
       ComercioCategorias ( idCategoria ),
       ComercioSubcategorias ( idSubcategoria )
     `)
@@ -177,13 +196,12 @@ async function cargarDatosGenerales() {
     }
   }
 
-  // Log para relaciones
+  // Log de relaciones
   console.log('🔗 Relaciones:', {
     ComercioCategorias: data.ComercioCategorias,
     ComercioSubcategorias: data.ComercioSubcategorias,
   });
 }
-
 // Evento para guardar cambios
 const btnGuardar = document.getElementById('btn-guardar');
 btnGuardar.addEventListener('click', async () => {
