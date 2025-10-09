@@ -1,33 +1,31 @@
 // adminGaleriaComercio.js
 import { supabase } from '../shared/supabaseClient.js';
 const idComercio = new URLSearchParams(window.location.search).get('id');
-
-// 🔤 Limpia strings para rutas seguras
-function limpiarRuta(texto) {
-  return texto
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")  // elimina tildes
-    .replace(/ñ/g, "n")               // reemplaza ñ
-    .replace(/[^a-zA-Z0-9 ]/g, "")    // remueve símbolos
-    .trim()
-    .replace(/\s+/g, "-")             // espacios por guiones
-    .toLowerCase();
-}
-
-// Capitaliza la primera letra
-function capitalizar(texto) {
-  return texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase();
-}
+const idComercioNumero = Number(idComercio);
+const idComercioDB = Number.isFinite(idComercioNumero)
+  ? idComercioNumero
+  : (() => {
+      const parsed = Number.parseInt(idComercio, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    })();
+const BUCKET = 'galeriacomercios';
+const PUBLIC_PREFIX = '/storage/v1/object/public/galeriacomercios/';
 
 export async function cargarGaleriaComercio() {
   const contenedor = document.getElementById('galeria-comercio');
   if (!contenedor) return;
   contenedor.innerHTML = 'Cargando...';
 
+  if (!Number.isFinite(idComercioDB)) {
+    console.warn('ID de comercio inválido. No se puede cargar la galería.');
+    contenedor.innerHTML = 'No se pudo cargar la galería.';
+    return;
+  }
+
   const { data: imagenes, error } = await supabase
     .from('imagenesComercios')
     .select('*')
-    .eq('idComercio', idComercio)
+    .eq('idComercio', idComercioDB)
     .or('logo.is.false,logo.is.null');
 
   if (error) {
@@ -43,7 +41,7 @@ export async function cargarGaleriaComercio() {
 
   contenedor.innerHTML = '';
   for (const img of imagenes) {
-    const url = supabase.storage.from('galeriacomercios').getPublicUrl(img.imagen).data.publicUrl;
+    const url = obtenerUrlPublica(img.imagen);
     const div = document.createElement('div');
     div.className = 'relative inline-block m-2';
     div.innerHTML = `
@@ -60,43 +58,72 @@ export async function cargarGaleriaComercio() {
 function activarBotonesGaleria() {
   document.querySelectorAll('[title="Eliminar"]').forEach(btn => {
     btn.addEventListener('click', async () => {
+      if (!Number.isFinite(idComercioDB)) {
+        console.warn('ID de comercio inválido. No se puede eliminar la imagen.');
+        return;
+      }
+
       const id = btn.dataset.id;
       if (!confirm('¿Deseas eliminar esta imagen?')) return;
 
       const { data, error } = await supabase
         .from('imagenesComercios')
-        .select('imagen')
+        .select('imagen, portada')
         .eq('id', id)
         .maybeSingle();
 
-      if (!error && data) {
-        await supabase.storage.from('galeriacomercios').remove([data.imagen]);
-        await supabase.from('imagenesComercios').delete().eq('id', id);
-        await cargarGaleriaComercio();
+      if (error || !data) return;
+
+      const storagePath = obtenerRutaStorage(data.imagen);
+      if (storagePath) {
+        await supabase.storage.from(BUCKET).remove([storagePath]);
       }
+
+      await supabase.from('imagenesComercios').delete().eq('id', id);
+      await sincronizarPortadaPrincipal();
+      await mostrarPortadaEnPreview();
+      await cargarGaleriaComercio();
     });
   });
 
   document.querySelectorAll('[title="Portada"]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const id = btn.dataset.id;
+      if (!Number.isFinite(idComercioDB)) {
+        console.warn('ID de comercio inválido. No se puede actualizar la portada.');
+        return;
+      }
 
-      await supabase.from('imagenesComercios').update({ portada: false }).eq('idComercio', idComercio);
+      const id = btn.dataset.id;
+      const { data: registro } = await supabase
+        .from('imagenesComercios')
+        .select('imagen')
+        .eq('id', id)
+        .maybeSingle();
+
+      await supabase.from('imagenesComercios').update({ portada: false }).eq('idComercio', idComercioDB);
       await supabase.from('imagenesComercios').update({ portada: true }).eq('id', id);
+      if (registro?.imagen) {
+        const portadaUrl = obtenerUrlPublica(registro.imagen);
+        await actualizarPortadaComercio(portadaUrl);
+      }
+      await mostrarPortadaEnPreview();
       await cargarGaleriaComercio();
     });
   });
 }
 
-export async function subirImagenGaleria(file, categoria, municipio, nombre) {
-  const categoriaFmt = limpiarRuta(categoria);
-  const municipioFmt = limpiarRuta(municipio);
-  const nombreFmt = limpiarRuta(nombre);
-  const extension = file.name.split('.').pop();
-  const fileName = `${categoriaFmt}/${municipioFmt}/${nombreFmt}/${Date.now()}.${extension}`;
+export async function subirImagenGaleria(file) {
+  if (!Number.isFinite(idComercioDB)) {
+    console.error('❌ ID de comercio inválido. No se pueden subir imágenes.');
+    alert('No se pudo identificar el comercio para subir la imagen.');
+    return;
+  }
+
+  const extension = obtenerExtension(file.name);
+  const fileName = generarNombreUnico('imagen', extension);
 
   const { error: uploadError } = await supabase.storage
-    .from('galeriacomercios')
+    .from(BUCKET)
     .upload(fileName, file, {
       cacheControl: '3600',
       upsert: false,
@@ -108,19 +135,40 @@ export async function subirImagenGaleria(file, categoria, municipio, nombre) {
     return;
   }
 
-  const { error: dbError } = await supabase.from('imagenesComercios').insert({
-    idComercio,
-    imagen: fileName,
-    logo: false,
-    portada: false
-  });
+  const { data: insertData, error: dbError } = await supabase
+    .from('imagenesComercios')
+    .insert({
+      idComercio: idComercioDB,
+      imagen: fileName,
+      logo: false,
+      portada: false
+    })
+    .select('id, imagen')
+    .maybeSingle();
 
-  if (dbError) {
+  if (dbError || !insertData) {
     console.error('Error guardando en la base de datos:', dbError);
     return;
   }
 
+  const portadaUrl = obtenerUrlPublica(insertData.imagen);
+
+  const { data: portadaActual } = await supabase
+    .from('imagenesComercios')
+    .select('id')
+    .eq('idComercio', idComercioDB)
+    .eq('portada', true)
+    .maybeSingle();
+
+  if (!portadaActual) {
+    await supabase.from('imagenesComercios').update({ portada: true }).eq('id', insertData.id);
+    await actualizarPortadaComercio(portadaUrl);
+    const preview = document.getElementById('portadaPreview');
+    if (preview) preview.src = portadaUrl;
+  }
+
   await cargarGaleriaComercio();
+  await mostrarPortadaEnPreview();
 }
 
 export function activarInteraccionesGaleria() {
@@ -131,7 +179,7 @@ export async function mostrarPortadaEnPreview() {
   const { data, error } = await supabase
     .from('imagenesComercios')
     .select('imagen')
-    .eq('idComercio', idComercio)
+    .eq('idComercio', idComercioDB)
     .eq('portada', true)
     .maybeSingle();
 
@@ -141,9 +189,12 @@ export async function mostrarPortadaEnPreview() {
   }
 
   if (data && data.imagen) {
-    const url = supabase.storage.from('galeriacomercios').getPublicUrl(data.imagen).data.publicUrl;
+    const url = obtenerUrlPublica(data.imagen);
     const preview = document.getElementById('portadaPreview');
     if (preview) preview.src = url;
+  } else {
+    const preview = document.getElementById('portadaPreview');
+    if (preview) preview.removeAttribute('src');
   }
 }
 
@@ -158,31 +209,84 @@ document.addEventListener('DOMContentLoaded', async () => {
       return alert('Selecciona una o más imágenes');
     }
 
-    const categoriaID = window.categoriasSeleccionadas?.[0];
-    const municipioID = document.getElementById('municipio')?.value;
-    const nombre = document.getElementById('nombre')?.value;
-
-    const { data: categoria } = await supabase
-      .from('Categorias')
-      .select('nombre')
-      .eq('id', categoriaID)
-      .maybeSingle();
-
-    const { data: municipio } = await supabase
-      .from('Municipios')
-      .select('nombre')
-      .eq('id', municipioID)
-      .maybeSingle();
-
-    if (!categoria || !municipio || !nombre) {
-      alert('Faltan datos para subir las imágenes');
-      return;
-    }
-
     for (const file of files) {
-      await subirImagenGaleria(file, categoria.nombre, municipio.nombre, nombre);
+      await subirImagenGaleria(file);
     }
 
     alert(`${files.length} imagen${files.length > 1 ? 'es' : ''} subida${files.length > 1 ? 's' : ''} correctamente`);
   });
 });
+
+function obtenerUrlPublica(valor) {
+  if (!valor) return '';
+  const decoded = decodeURIComponent(valor);
+  if (/^https?:\/\//i.test(decoded)) return decoded;
+  const pathNormalizado = normalizarPathStorage(decoded);
+  return supabase.storage.from(BUCKET).getPublicUrl(pathNormalizado).data.publicUrl;
+}
+
+function obtenerRutaStorage(valor) {
+  if (!valor) return null;
+  const decoded = decodeURIComponent(valor);
+  if (/^https?:\/\//i.test(decoded)) {
+    const indice = decoded.indexOf(PUBLIC_PREFIX);
+    if (indice === -1) return null;
+    return decoded.slice(indice + PUBLIC_PREFIX.length);
+  }
+  return normalizarPathStorage(decoded);
+}
+
+async function sincronizarPortadaPrincipal() {
+  const { data: portadaActual } = await supabase
+    .from('imagenesComercios')
+    .select('id, imagen')
+    .eq('idComercio', idComercioDB)
+    .eq('portada', true)
+    .maybeSingle();
+
+  if (portadaActual?.imagen) {
+    const url = obtenerUrlPublica(portadaActual.imagen);
+    await actualizarPortadaComercio(url);
+    return;
+  }
+
+  const { data: primeraImagen } = await supabase
+    .from('imagenesComercios')
+    .select('id, imagen')
+    .eq('idComercio', idComercioDB)
+    .order('id', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (primeraImagen?.id && primeraImagen.imagen) {
+    await supabase.from('imagenesComercios').update({ portada: true }).eq('id', primeraImagen.id);
+    const url = obtenerUrlPublica(primeraImagen.imagen);
+    await actualizarPortadaComercio(url);
+  } else {
+    await actualizarPortadaComercio(null);
+  }
+}
+
+function normalizarPathStorage(path) {
+  return path
+    .replace(/^public\//i, '')
+    .replace(/^galeriacomercios\//i, '');
+}
+
+async function actualizarPortadaComercio(url) {
+  if (!Number.isFinite(idComercioDB)) return;
+  await supabase.from('Comercios').update({ portada: url }).eq('id', idComercioDB);
+}
+
+function generarNombreUnico(prefijo, extension) {
+  const base = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+  return `${prefijo}_${Date.now()}_${base}.${extension}`;
+}
+
+function obtenerExtension(nombreArchivo = '') {
+  const partes = String(nombreArchivo).split('.');
+  if (partes.length <= 1) return 'jpg';
+  return partes.pop().toLowerCase() || 'jpg';
+}

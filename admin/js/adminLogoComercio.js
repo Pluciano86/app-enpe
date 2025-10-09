@@ -2,6 +2,15 @@
 import { supabase } from '../shared/supabaseClient.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
+const idComercioNumero = Number(idComercio);
+const idComercioDB = Number.isFinite(idComercioNumero)
+  ? idComercioNumero
+  : (() => {
+      const parsed = Number.parseInt(idComercio, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    })();
+const BUCKET = 'galeriacomercios';
+const PUBLIC_PREFIX = '/storage/v1/object/public/galeriacomercios/';
 
 // 🔁 Variable global para mantener el archivo seleccionado
 let archivoLogoSeleccionado = null;
@@ -28,17 +37,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Eliminar logo actual
   btnEliminar?.addEventListener('click', async () => {
+    if (!Number.isFinite(idComercioDB)) {
+      console.warn('ID de comercio inválido. No se puede eliminar el logo.');
+      return;
+    }
+
     const { data } = await supabase
       .from('imagenesComercios')
       .select('id, imagen')
-      .eq('idComercio', idComercio)
+      .eq('idComercio', idComercioDB)
       .eq('logo', true)
       .maybeSingle();
 
     if (data) {
-      await supabase.storage.from('galeriacomercios').remove([data.imagen]);
+      const storagePath = obtenerRutaStorage(data.imagen);
+      if (storagePath) {
+        await supabase.storage.from(BUCKET).remove([storagePath]);
+      }
       await supabase.from('imagenesComercios').delete().eq('id', data.id);
-      preview.src = '';
+      if (Number.isFinite(idComercioDB)) {
+        await supabase.from('Comercios').update({ logo: null }).eq('id', idComercioDB);
+      }
+      if (preview) preview.src = '';
+      archivoLogoSeleccionado = null;
     }
   });
 });
@@ -49,6 +70,12 @@ export async function guardarLogoSiAplica() {
 
   if (!archivo) {
     console.log('ℹ️ No se seleccionó un nuevo logo.');
+    return;
+  }
+
+  if (!Number.isFinite(idComercioDB)) {
+    console.error('❌ ID de comercio inválido. No se puede subir el logo.');
+    alert('No se pudo identificar el comercio para guardar el logo.');
     return;
   }
 
@@ -63,32 +90,15 @@ export async function guardarLogoSiAplica() {
     return;
   }
 
-  const nombre = document.getElementById('nombre')?.value.trim();
-  const idCategoria = window.categoriasSeleccionadas?.[0];
-  const idMunicipio = document.getElementById('municipio')?.value;
-
-  const { data: categoria } = await supabase.from('Categorias').select('nombre').eq('id', idCategoria).maybeSingle();
-  const { data: municipio } = await supabase.from('Municipios').select('nombre').eq('id', idMunicipio).maybeSingle();
-
-  if (!categoria || !municipio || !nombre) {
-    alert('Faltan datos para subir el logo');
-    console.warn({ categoria, municipio, nombre });
-    return;
-  }
-
-  const nombreLimpio = limpiarTexto(nombre.toUpperCase());
-  const categoriaLimpia = capitalizar(limpiarTexto(categoria.nombre));
-  const municipioLimpio = capitalizar(limpiarTexto(municipio.nombre));
-  const carpeta = `${categoriaLimpia}/${municipioLimpio}/${nombreLimpio}`;
-  const extension = archivo.name.split('.').pop();
-  const nombreArchivo = `logo_${Date.now()}_${Math.floor(Math.random() * 1000)}.${extension}`;
-  const path = `${carpeta}/${nombreArchivo}`;
+  const extension = obtenerExtension(archivo.name);
+  const nombreArchivo = generarNombreUnico('logo', extension);
+  const path = nombreArchivo;
 
   console.log('📁 Ruta destino en bucket:', path);
 
   try {
     const { error: uploadError } = await supabase.storage
-      .from('galeriacomercios')
+      .from(BUCKET)
       .upload(path, archivo, {
         cacheControl: '3600',
         upsert: true,
@@ -101,14 +111,16 @@ export async function guardarLogoSiAplica() {
       return;
     }
 
-    await supabase.from('imagenesComercios').delete().eq('idComercio', idComercio).eq('logo', true);
+    await supabase.from('imagenesComercios').delete().eq('idComercio', idComercioDB).eq('logo', true);
+
+    const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    const publicUrl = publicData?.publicUrl || construirPublicUrlFallback(path);
 
     const { error: insertError } = await supabase.from('imagenesComercios').insert({
-  idComercio: parseInt(idComercio),
-  imagen: path,
-  logo: true,
-  portada: false,
-});
+      idComercio: idComercioDB,
+      imagen: path,
+      logo: true
+    });
 
     if (insertError) {
       console.error('❌ Error al guardar logo en DB:', insertError);
@@ -116,8 +128,11 @@ export async function guardarLogoSiAplica() {
       return;
     }
 
-    const publicUrl = supabase.storage.from('galeriacomercios').getPublicUrl(path).data.publicUrl;
-    document.getElementById('preview-logo').src = publicUrl;
+    await supabase.from('Comercios').update({ logo: publicUrl }).eq('id', idComercioDB);
+
+    const preview = document.getElementById('preview-logo');
+    if (preview) preview.src = publicUrl;
+    archivoLogoSeleccionado = null;
 
     console.log('✅ Logo subido y registrado correctamente:', path);
   } catch (err) {
@@ -126,16 +141,38 @@ export async function guardarLogoSiAplica() {
   }
 }
 
-// Helpers
-function capitalizar(texto) {
-  return texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase();
+function obtenerRutaStorage(valor) {
+  if (!valor) return null;
+  const decoded = decodeURIComponent(valor);
+  if (/^https?:\/\//i.test(decoded)) {
+    const indice = decoded.indexOf(PUBLIC_PREFIX);
+    if (indice === -1) return null;
+    return decoded.slice(indice + PUBLIC_PREFIX.length);
+  }
+  return normalizarStoragePath(decoded);
 }
 
-function limpiarTexto(texto) {
-  return texto
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[\u2013\u2014]/g, '-') // ← reemplaza guion largo por guion normal
-    .replace(/[^a-zA-Z0-9\-]/g, '-') // ← conserva guiones normales
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+function construirPublicUrlFallback(path) {
+  if (!path) return '';
+  const limpio = normalizarStoragePath(path);
+  return `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/${BUCKET}/${limpio}`;
+}
+
+function normalizarStoragePath(path) {
+  return path
+    .replace(/^public\//i, '')
+    .replace(/^galeriacomercios\//i, '');
+}
+
+function generarNombreUnico(prefijo, extension) {
+  const base = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+  return `${prefijo}_${Date.now()}_${base}.${extension}`;
+}
+
+function obtenerExtension(nombreArchivo = '') {
+  const partes = String(nombreArchivo).split('.');
+  if (partes.length <= 1) return 'jpg';
+  return partes.pop().toLowerCase() || 'jpg';
 }
