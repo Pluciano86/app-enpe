@@ -1,5 +1,6 @@
 // adminCategoriasComercio.js
 import { supabase } from '../shared/supabaseClient.js';
+import { abrirModalNuevaCategoria, abrirModalNuevaSubcategoria } from './adminCategoriasModal.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
@@ -126,6 +127,40 @@ window.removerSubcategoria = function(id) {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const btnNuevaCategoria = document.getElementById('btnNuevaCategoria');
+  const btnNuevaSubcategoria = document.getElementById('btnNuevaSubcategoria');
+
+  btnNuevaCategoria?.addEventListener('click', () => {
+    abrirModalNuevaCategoria({
+      onCreated: async (categoriaCreada) => {
+        if (!categoriaCreada?.id) return;
+        categorias = [];
+        if (!window.categoriasSeleccionadas.includes(categoriaCreada.id)) {
+          window.categoriasSeleccionadas.push(categoriaCreada.id);
+        }
+        await cargarCategorias();
+        await cargarSubcategorias();
+      }
+    });
+  });
+
+  btnNuevaSubcategoria?.addEventListener('click', () => {
+    abrirModalNuevaSubcategoria({
+      onCreated: async (subcategoriaCreada) => {
+        if (!subcategoriaCreada?.id) return;
+        subcategorias = [];
+        const categoriaPadre = Number(subcategoriaCreada.idCategoria);
+        if (Number.isFinite(categoriaPadre) && !window.categoriasSeleccionadas.includes(categoriaPadre)) {
+          window.categoriasSeleccionadas.push(categoriaPadre);
+        }
+        if (!window.subcategoriasSeleccionadas.includes(subcategoriaCreada.id)) {
+          window.subcategoriasSeleccionadas.push(subcategoriaCreada.id);
+        }
+        await cargarSubcategorias();
+      }
+    });
+  });
+
   try {
     const { data: comercio, error } = await supabase
       .from('Comercios')
@@ -187,5 +222,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await cargarCategorias();
+  await cargarSubcategorias();
+});
+
+document.addEventListener('categoria-creada', async (event) => {
+  categorias = [];
+  const nuevaCategoria = event.detail;
+  if (nuevaCategoria?.id && !window.categoriasSeleccionadas.includes(nuevaCategoria.id)) {
+    window.categoriasSeleccionadas.push(nuevaCategoria.id);
+  }
+  await cargarCategorias();
+  await cargarSubcategorias();
+});
+
+document.addEventListener('subcategoria-creada', async (event) => {
+  subcategorias = [];
+  const nuevaSubcategoria = event.detail;
+  const categoriaPadre = Number(nuevaSubcategoria?.idCategoria);
+  if (Number.isFinite(categoriaPadre) && !window.categoriasSeleccionadas.includes(categoriaPadre)) {
+    window.categoriasSeleccionadas.push(categoriaPadre);
+  }
+  if (nuevaSubcategoria?.id && !window.subcategoriasSeleccionadas.includes(nuevaSubcategoria.id)) {
+    window.subcategoriasSeleccionadas.push(nuevaSubcategoria.id);
+  }
   await cargarSubcategorias();
 });

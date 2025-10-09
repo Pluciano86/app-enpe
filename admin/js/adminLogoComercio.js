@@ -9,6 +9,7 @@ const idComercioDB = Number.isFinite(idComercioNumero)
       const parsed = Number.parseInt(idComercio, 10);
       return Number.isFinite(parsed) ? parsed : null;
     })();
+
 const BUCKET = 'galeriacomercios';
 const PUBLIC_PREFIX = '/storage/v1/object/public/galeriacomercios/';
 
@@ -55,16 +56,14 @@ document.addEventListener('DOMContentLoaded', () => {
         await supabase.storage.from(BUCKET).remove([storagePath]);
       }
       await supabase.from('imagenesComercios').delete().eq('id', data.id);
-      if (Number.isFinite(idComercioDB)) {
-        await supabase.from('Comercios').update({ logo: null }).eq('id', idComercioDB);
-      }
+      await supabase.from('Comercios').update({ logo: null }).eq('id', idComercioDB);
       if (preview) preview.src = '';
       archivoLogoSeleccionado = null;
     }
   });
 });
 
-// Función pública para guardar el logo si aplica
+// ✅ Función pública para guardar el logo si aplica
 export async function guardarLogoSiAplica() {
   const archivo = archivoLogoSeleccionado;
 
@@ -111,6 +110,7 @@ export async function guardarLogoSiAplica() {
       return;
     }
 
+    // Eliminar logos anteriores antes de insertar el nuevo
     await supabase.from('imagenesComercios').delete().eq('idComercio', idComercioDB).eq('logo', true);
 
     const { data: publicData } = supabase.storage.from(BUCKET).getPublicUrl(path);
@@ -119,7 +119,8 @@ export async function guardarLogoSiAplica() {
     const { error: insertError } = await supabase.from('imagenesComercios').insert({
       idComercio: idComercioDB,
       imagen: path,
-      logo: true
+      logo: true,
+      portada: false,
     });
 
     if (insertError) {
@@ -141,6 +142,160 @@ export async function guardarLogoSiAplica() {
   }
 }
 
+// ✅ Duplicar logo desde comercio principal
+export async function duplicarLogoDesdePrincipal(comercioId, comercioPrincipalId) {
+  try {
+    if (!comercioPrincipalId) {
+      alert('Este comercio no está vinculado a un principal.');
+      return;
+    }
+
+    // Buscar el logo del comercio principal
+    const { data: principal, error: errLogo } = await supabase
+      .from('Comercios')
+      .select('logo')
+      .eq('id', comercioPrincipalId)
+      .single();
+
+    if (errLogo || !principal?.logo) {
+      alert('El comercio principal no tiene logo registrado.');
+      return;
+    }
+
+    // Actualizar el logo directamente con la URL existente
+    const { error: errUpdate } = await supabase
+      .from('Comercios')
+      .update({ logo: principal.logo })
+      .eq('id', comercioId);
+
+    if (errUpdate) throw errUpdate;
+
+    // Eliminar registro previo (si existía)
+    await supabase.from('imagenesComercios').delete()
+      .eq('idComercio', comercioId)
+      .eq('logo', true);
+
+    // Insertar registro nuevo en imagenesComercios
+    await supabase.from('imagenesComercios').insert({
+      idComercio: comercioId,
+      imagen: principal.logo,
+      logo: true,
+      portada: false,
+    });
+
+    // Actualizar preview
+    const preview = document.getElementById('preview-logo');
+    if (preview) preview.src = principal.logo;
+
+    alert('✅ Logo duplicado exitosamente desde el comercio principal.');
+  } catch (err) {
+    console.error('Error duplicando logo:', err);
+    alert('❌ No se pudo duplicar el logo. Intenta nuevamente.');
+  }
+}
+
+// ✅ Duplicar logo desde otra sucursal (seleccionable)
+document.addEventListener('DOMContentLoaded', async () => {
+  const btnDuplicarLogoSucursal = document.getElementById('btnDuplicarLogoSucursal');
+  const modal = document.getElementById('modalDuplicarLogo');
+  const selectSucursal = document.getElementById('selectSucursalLogo');
+  const btnConfirmar = document.getElementById('btnConfirmarDuplicado');
+  const btnCancelar = document.getElementById('btnCancelarDuplicado');
+
+  if (!btnDuplicarLogoSucursal) return;
+
+  btnDuplicarLogoSucursal.addEventListener('click', async () => {
+    // Mostrar el modal
+    modal.classList.remove('hidden');
+    selectSucursal.innerHTML = `<option value="">Cargando...</option>`;
+
+    // Obtener sucursales relacionadas
+    const { data: relaciones, error } = await supabase
+      .from('ComercioSucursales')
+      .select('comercio_id, sucursal_id');
+
+    if (error || !relaciones?.length) {
+      selectSucursal.innerHTML = `<option value="">No hay sucursales relacionadas</option>`;
+      return;
+    }
+
+    // Buscar comercios relacionados
+    const ids = new Set();
+    relaciones.forEach(rel => {
+      if (rel.comercio_id === idComercioDB) ids.add(rel.sucursal_id);
+      if (rel.sucursal_id === idComercioDB) ids.add(rel.comercio_id);
+    });
+
+    if (!ids.size) {
+      selectSucursal.innerHTML = `<option value="">No hay sucursales relacionadas</option>`;
+      return;
+    }
+
+    const { data: sucursales } = await supabase
+      .from('Comercios')
+      .select('id, nombreSucursal, nombre')
+      .in('id', Array.from(ids));
+
+    if (!sucursales?.length) {
+      selectSucursal.innerHTML = `<option value="">No hay sucursales disponibles</option>`;
+      return;
+    }
+
+    selectSucursal.innerHTML = `<option value="">Selecciona una sucursal...</option>`;
+    sucursales.forEach(s => {
+      const nombre = s.nombreSucursal || s.nombre;
+      const option = document.createElement('option');
+      option.value = s.id;
+      option.textContent = nombre;
+      selectSucursal.appendChild(option);
+    });
+  });
+
+  // Cancelar duplicado
+  btnCancelar.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    selectSucursal.value = '';
+  });
+
+  // Confirmar duplicado
+  btnConfirmar.addEventListener('click', async () => {
+    const sucursalId = Number(selectSucursal.value);
+    if (!sucursalId) {
+      alert('Selecciona una sucursal válida.');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select('logo')
+      .eq('id', sucursalId)
+      .maybeSingle();
+
+    if (error || !data?.logo) {
+      alert('La sucursal seleccionada no tiene logo registrado.');
+      return;
+    }
+
+    const logoUrl = data.logo;
+
+    // Insertar en imágenes y actualizar comercio actual
+    await supabase.from('imagenesComercios').insert({
+      idComercio: idComercioDB,
+      imagen: logoUrl,
+      logo: true,
+      portada: false,
+    });
+
+    await supabase.from('Comercios').update({ logo: logoUrl }).eq('id', idComercioDB);
+
+    const preview = document.getElementById('preview-logo');
+    if (preview) preview.src = logoUrl;
+
+    alert('✅ Logo duplicado correctamente.');
+    modal.classList.add('hidden');
+  });
+});
+
 function obtenerRutaStorage(valor) {
   if (!valor) return null;
   const decoded = decodeURIComponent(valor);
@@ -159,15 +314,14 @@ function construirPublicUrlFallback(path) {
 }
 
 function normalizarStoragePath(path) {
-  return path
-    .replace(/^public\//i, '')
-    .replace(/^galeriacomercios\//i, '');
+  return path.replace(/^public\//i, '').replace(/^galeriacomercios\//i, '');
 }
 
 function generarNombreUnico(prefijo, extension) {
-  const base = typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2);
+  const base =
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
   return `${prefijo}_${Date.now()}_${base}.${extension}`;
 }
 

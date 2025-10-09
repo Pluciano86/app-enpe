@@ -58,11 +58,7 @@ export async function cargarGaleriaComercio() {
 function activarBotonesGaleria() {
   document.querySelectorAll('[title="Eliminar"]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!Number.isFinite(idComercioDB)) {
-        console.warn('ID de comercio inválido. No se puede eliminar la imagen.');
-        return;
-      }
-
+      if (!Number.isFinite(idComercioDB)) return;
       const id = btn.dataset.id;
       if (!confirm('¿Deseas eliminar esta imagen?')) return;
 
@@ -75,9 +71,7 @@ function activarBotonesGaleria() {
       if (error || !data) return;
 
       const storagePath = obtenerRutaStorage(data.imagen);
-      if (storagePath) {
-        await supabase.storage.from(BUCKET).remove([storagePath]);
-      }
+      if (storagePath) await supabase.storage.from(BUCKET).remove([storagePath]);
 
       await supabase.from('imagenesComercios').delete().eq('id', id);
       await sincronizarPortadaPrincipal();
@@ -88,11 +82,7 @@ function activarBotonesGaleria() {
 
   document.querySelectorAll('[title="Portada"]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (!Number.isFinite(idComercioDB)) {
-        console.warn('ID de comercio inválido. No se puede actualizar la portada.');
-        return;
-      }
-
+      if (!Number.isFinite(idComercioDB)) return;
       const id = btn.dataset.id;
       const { data: registro } = await supabase
         .from('imagenesComercios')
@@ -102,10 +92,12 @@ function activarBotonesGaleria() {
 
       await supabase.from('imagenesComercios').update({ portada: false }).eq('idComercio', idComercioDB);
       await supabase.from('imagenesComercios').update({ portada: true }).eq('id', id);
+
       if (registro?.imagen) {
         const portadaUrl = obtenerUrlPublica(registro.imagen);
         await actualizarPortadaComercio(portadaUrl);
       }
+
       await mostrarPortadaEnPreview();
       await cargarGaleriaComercio();
     });
@@ -114,7 +106,6 @@ function activarBotonesGaleria() {
 
 export async function subirImagenGaleria(file) {
   if (!Number.isFinite(idComercioDB)) {
-    console.error('❌ ID de comercio inválido. No se pueden subir imágenes.');
     alert('No se pudo identificar el comercio para subir la imagen.');
     return;
   }
@@ -141,7 +132,7 @@ export async function subirImagenGaleria(file) {
       idComercio: idComercioDB,
       imagen: fileName,
       logo: false,
-      portada: false
+      portada: false,
     })
     .select('id, imagen')
     .maybeSingle();
@@ -188,14 +179,11 @@ export async function mostrarPortadaEnPreview() {
     return;
   }
 
-  if (data && data.imagen) {
-    const url = obtenerUrlPublica(data.imagen);
-    const preview = document.getElementById('portadaPreview');
-    if (preview) preview.src = url;
-  } else {
-    const preview = document.getElementById('portadaPreview');
-    if (preview) preview.removeAttribute('src');
-  }
+  const preview = document.getElementById('portadaPreview');
+  if (!preview) return;
+
+  if (data?.imagen) preview.src = obtenerUrlPublica(data.imagen);
+  else preview.removeAttribute('src');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -204,10 +192,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-subir-imagen')?.addEventListener('click', async () => {
     const input = document.getElementById('nueva-imagen-galeria');
     const files = input?.files;
-
-    if (!files || files.length === 0) {
-      return alert('Selecciona una o más imágenes');
-    }
+    if (!files?.length) return alert('Selecciona una o más imágenes');
 
     for (const file of files) {
       await subirImagenGaleria(file);
@@ -268,9 +253,7 @@ async function sincronizarPortadaPrincipal() {
 }
 
 function normalizarPathStorage(path) {
-  return path
-    .replace(/^public\//i, '')
-    .replace(/^galeriacomercios\//i, '');
+  return path.replace(/^public\//i, '').replace(/^galeriacomercios\//i, '');
 }
 
 async function actualizarPortadaComercio(url) {
@@ -289,4 +272,71 @@ function obtenerExtension(nombreArchivo = '') {
   const partes = String(nombreArchivo).split('.');
   if (partes.length <= 1) return 'jpg';
   return partes.pop().toLowerCase() || 'jpg';
+}
+
+// ✅ Duplicar galería desde comercio principal (optimizada)
+export async function duplicarGaleriaDesdePrincipal(comercioId, comercioPrincipalId) {
+  try {
+    if (!comercioPrincipalId) {
+      alert('Este comercio no está vinculado a un principal.');
+      return;
+    }
+
+    const { data: imagenes, error: errImg } = await supabase
+      .from('imagenesComercios')
+      .select('imagen, portada')
+      .eq('idComercio', comercioPrincipalId)
+      .eq('logo', false);
+
+    if (errImg || !imagenes?.length) {
+      alert('El comercio principal no tiene imágenes de galería.');
+      return;
+    }
+
+    // 🔍 Evitar duplicados
+    const { data: existentes } = await supabase
+      .from('imagenesComercios')
+      .select('imagen')
+      .eq('idComercio', comercioId)
+      .eq('logo', false);
+
+    const existentesSet = new Set(existentes?.map(i => i.imagen) || []);
+    const nuevas = imagenes
+      .filter(img => !existentesSet.has(img.imagen))
+      .map(img => ({
+        idComercio: comercioId,
+        imagen: img.imagen,
+        logo: false,
+        portada: img.portada,
+      }));
+
+    if (!nuevas.length) {
+      alert('No hay imágenes nuevas para duplicar.');
+      return;
+    }
+
+    const { error: errInsert } = await supabase.from('imagenesComercios').insert(nuevas);
+    if (errInsert) throw errInsert;
+
+    // ⚙️ Sincronizar portada si el comercio no tiene una
+    const { data: portadaActual } = await supabase
+      .from('imagenesComercios')
+      .select('id')
+      .eq('idComercio', comercioId)
+      .eq('portada', true)
+      .maybeSingle();
+
+    if (!portadaActual && nuevas.some(n => n.portada)) {
+      const nuevaPortada = nuevas.find(n => n.portada);
+      const portadaUrl = obtenerUrlPublica(nuevaPortada.imagen);
+      await actualizarPortadaComercio(portadaUrl);
+    }
+
+    alert('✅ Galería duplicada exitosamente.');
+    await cargarGaleriaComercio(comercioId);
+    await mostrarPortadaEnPreview();
+  } catch (err) {
+    console.error('Error duplicando galería:', err);
+    alert('❌ No se pudo duplicar la galería.');
+  }
 }

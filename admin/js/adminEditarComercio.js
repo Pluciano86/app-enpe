@@ -1,14 +1,16 @@
-// adminEditarComercio.js (actualizado)
-import { guardarLogoSiAplica } from './adminLogoComercio.js';
+// adminEditarComercio.js
+import { guardarLogoSiAplica, duplicarLogoDesdePrincipal } from './adminLogoComercio.js';
 import {
   cargarGaleriaComercio,
   activarBotonesGaleria,
-  mostrarPortadaEnPreview
+  mostrarPortadaEnPreview,
+  duplicarGaleriaDesdePrincipal
 } from './adminGaleriaComercio.js';
 import { cargarHorariosComercio } from './adminHorarioComercio.js';
 import { cargarFeriadosComercio } from './adminFeriadosComercio.js';
 import { cargarAmenidadesComercio } from './adminAmenidadesComercio.js';
 import { cargarCategoriasYSubcategorias } from './adminCategoriasComercio.js';
+import { cargarSucursalesRelacionadas } from './adminSucursalesComercio.js';
 import { idComercio, supabase } from '../shared/supabaseClient.js';
 
 let categoriaFallbackActual = '';
@@ -72,7 +74,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   await cargarAmenidadesComercio();
   await cargarCategoriasYSubcategorias();
   await cargarDatosGenerales();
+  await cargarSucursalesRelacionadas();
+
+  await verificarSiEsSucursal();
 });
+
+// ✅ Mostrar botones solo si el comercio es sucursal
+async function verificarSiEsSucursal() {
+  try {
+    const { data: relacion, error } = await supabase
+      .from('ComercioSucursales')
+      .select('comercio_id')
+      .eq('sucursal_id', idComercio)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (relacion?.comercio_id) {
+      const principalId = relacion.comercio_id;
+      const btnLogo = document.getElementById('btnDuplicarLogo');
+      const btnGaleria = document.getElementById('btnDuplicarGaleria');
+
+      btnLogo?.classList.remove('hidden');
+      btnGaleria?.classList.remove('hidden');
+
+      btnLogo?.addEventListener('click', () =>
+        duplicarLogoDesdePrincipal(idComercio, principalId)
+      );
+
+      btnGaleria?.addEventListener('click', () =>
+        duplicarGaleriaDesdePrincipal(idComercio, principalId)
+      );
+    }
+  } catch (err) {
+    console.error('Error verificando si el comercio es sucursal:', err);
+  }
+}
 
 // Función para cargar campos de texto
 async function cargarDatosGenerales() {
