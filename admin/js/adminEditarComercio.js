@@ -116,7 +116,6 @@ async function verificarSiEsSucursal() {
 async function cargarDatosGenerales() {
   console.log('🟡 Iniciando carga de datos generales para comercio:', idComercio);
 
-  // 1️⃣ Consulta principal (campos directos)
   const { data: comercio, error: errorComercio } = await supabase
     .from('Comercios')
     .select(
@@ -125,37 +124,17 @@ async function cargarDatosGenerales() {
     .eq('id', idComercio)
     .maybeSingle();
 
-  if (errorComercio) {
-    console.error('❌ Error cargando comercio:', errorComercio);
-    alert('Error al cargar los datos generales. Revisa la consola.');
-    return;
-  }
+  // 📋 Log completo de lo que trae Supabase
+  console.log('📥 Resultado de Supabase (comercio):', comercio);
+  if (errorComercio) console.error('❌ Error cargando comercio:', errorComercio);
 
   if (!comercio) {
-    alert('⚠️ No se encontró el comercio con ese ID.');
+    console.warn('⚠️ No se encontró información del comercio.');
     return;
   }
 
-  console.log('✅ Datos generales cargados:', comercio);
-
-  // 2️⃣ Cargar relaciones (categorías y subcategorías)
-  const { data: relCategorias } = await supabase
-    .from('ComercioCategorias')
-    .select('idCategoria')
-    .eq('idComercio', idComercio);
-
-  const { data: relSubcategorias } = await supabase
-    .from('ComercioSubcategorias')
-    .select('idSubcategoria')
-    .eq('idComercio', idComercio);
-
-  console.log('🔗 Relaciones:', {
-    categorias: relCategorias,
-    subcategorias: relSubcategorias
-  });
-
-  // 3️⃣ Rellenar los campos del formulario
-  const campos = [
+  // 🧩 Log campo por campo
+  const camposTexto = [
     'nombre',
     'telefono',
     'direccion',
@@ -168,31 +147,38 @@ async function cargarDatosGenerales() {
     'webpage',
     'descripcion',
     'colorPrimario',
-    'colorSecundario'
+    'colorSecundario',
   ];
 
-  campos.forEach((id) => {
+  console.group('🔎 Valores recibidos de Supabase');
+  camposTexto.forEach((campo) => {
+    console.log(`${campo}:`, comercio[campo]);
+  });
+  console.groupEnd();
+
+  // 🏙️ Municipio
+  console.log('🏙️ Municipio:', comercio.idMunicipio, '-', comercio.municipio);
+  console.log('🌎 Área:', comercio.idArea, '-', comercio.area);
+
+  // 🔗 Categoría y subcategoría de texto (fallback)
+  console.log('📂 Categoria textual:', comercio.categoria);
+  console.log('📂 Subcategoría textual:', comercio.subCategorias);
+
+  // 🟢 Si todo bien, ahora rellenamos inputs
+  camposTexto.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
       el.value = comercio[id] || '';
-      console.log(`🟢 Campo cargado: ${id} →`, comercio[id]);
     }
   });
 
-  // 4️⃣ Municipio
-  if (comercio.idMunicipio) {
-    const select = document.getElementById('municipio');
-    if (select) {
-      select.value = String(comercio.idMunicipio);
-      console.log('🏙️ Municipio cargado:', comercio.idMunicipio);
-    }
+  const selectMunicipio = document.getElementById('municipio');
+  if (selectMunicipio && comercio.idMunicipio) {
+    selectMunicipio.value = String(comercio.idMunicipio);
   }
 
-  // 5️⃣ Guardar relaciones globales
-  window.categoriasSeleccionadas = (relCategorias || []).map((r) => r.idCategoria);
-  window.subcategoriasSeleccionadas = (relSubcategorias || []).map((r) => r.idSubcategoria);
-
-  console.log('✅ Carga completa de datos y relaciones lista.');
+  // ✅ Log final de confirmación
+  console.log('✅ Campos cargados correctamente en el formulario');
 }
 // Evento para guardar cambios
 const btnGuardar = document.getElementById('btn-guardar');
