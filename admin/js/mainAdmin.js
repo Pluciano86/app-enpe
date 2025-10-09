@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { getPublicBase } from '../shared/utils.js';
+import { resolvePath } from '../shared/pathResolver.js';
 
 export const supabase = createClient(
   'https://zgjaxanqfkweslkxtayt.supabase.co',
@@ -427,7 +428,7 @@ export function filtrarYMostrarComercios() {
   document.querySelectorAll('.btn-editar').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const id = e.currentTarget.dataset.id;
-      window.location.href = `/admin/editarComercio.html?id=${id}`;
+      window.location.href = resolvePath(`editarComercio.html?id=${id}`);
     });
   });
 

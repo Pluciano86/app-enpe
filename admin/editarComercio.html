@@ -15,26 +15,9 @@
 <body class="bg-gray-50 pb-24">
 
 <div id="headerContainer"></div>
-<script>
-fetch("./shared/adminHeader.html")
-  .then(res => res.text())
-  .then(html => {
-    document.getElementById("headerContainer").innerHTML = html;
-    const toggleBtn = document.getElementById("menuToggle");
-    const sidebar = document.getElementById("adminSidebar");
-    const overlay = document.getElementById("sidebarOverlay");
-    if (toggleBtn && sidebar && overlay) {
-      toggleBtn.addEventListener("click", () => {
-        const visible = sidebar.classList.contains("-translate-x-full");
-        sidebar.classList.toggle("-translate-x-full");
-        overlay.classList.toggle("hidden", !visible);
-      });
-      overlay.addEventListener("click", () => {
-        sidebar.classList.add("-translate-x-full");
-        overlay.classList.add("hidden");
-      });
-    }
-  });
+<script type="module">
+import { loadAdminHeader } from './js/loadAdminHeader.js';
+loadAdminHeader();
 </script>
 
 <main class="px-4 py-6">
@@ -149,16 +132,16 @@ fetch("./shared/adminHeader.html")
 </main>
 
 <script type="module" src="./shared/supabaseClient.js"></script>
-<script type="module" src="/admin/js/mainAdmin.js"></script>
-<script type="module" src="/admin/js/adminLogoComercio.js"></script>
-<script type="module" src="/admin/js/adminGaleriaComercio.js"></script>
-<script type="module" src="/admin/js/adminHorarioComercio.js"></script>
-<script type="module" src="/admin/js/adminFeriadosComercio.js"></script>
-<script type="module" src="/admin/js/adminAmenidadesComercio.js"></script>
-<script type="module" src="/admin/js/adminCategoriasComercio.js"></script>
-<script type="module" src="/admin/js/adminEditarComercio.js"></script>
-<script type="module" src="/admin/js/adminGuardarCambios.js"></script>
-<script type="module" src="/admin/js/botonAdminMenu.js"></script>
+<script type="module" src="./js/mainAdmin.js"></script>
+<script type="module" src="./js/adminLogoComercio.js"></script>
+<script type="module" src="./js/adminGaleriaComercio.js"></script>
+<script type="module" src="./js/adminHorarioComercio.js"></script>
+<script type="module" src="./js/adminFeriadosComercio.js"></script>
+<script type="module" src="./js/adminAmenidadesComercio.js"></script>
+<script type="module" src="./js/adminCategoriasComercio.js"></script>
+<script type="module" src="./js/adminEditarComercio.js"></script>
+<script type="module" src="./js/adminGuardarCambios.js"></script>
+<script type="module" src="./js/botonAdminMenu.js"></script>
 
 
 <!-- ✅ Botón Ediytar Alm/HH  -->

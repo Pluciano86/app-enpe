@@ -15,38 +15,9 @@
 
   <!-- Header y Sidebar -->
   <div id="headerContainer"></div>
-  <script>
-    fetch("./shared/adminHeader.html")
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById("headerContainer").innerHTML = html;
-
-        // Activar funcionalidad del sidebar
-        const toggleBtn = document.getElementById("menuToggle");
-        const sidebar = document.getElementById("adminSidebar");
-        const overlay = document.getElementById("sidebarOverlay");
-
-        if (toggleBtn && sidebar && overlay) {
-          toggleBtn.addEventListener("click", () => {
-            const visible = sidebar.classList.contains("-translate-x-full");
-            sidebar.classList.toggle("-translate-x-full");
-            overlay.classList.toggle("hidden", !visible);
-          });
-
-          overlay.addEventListener("click", () => {
-            sidebar.classList.add("-translate-x-full");
-            overlay.classList.add("hidden");
-          });
-        }
-
-        // Botón Usuarios → listado
-        const btnUsuarios = document.getElementById("btnUsuarios");
-        if (btnUsuarios) {
-          btnUsuarios.addEventListener("click", () => {
-            window.location.href = "/admin/usuarios.html";
-          });
-        }
-      });
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
   </script>
 
   <!-- Contenido -->

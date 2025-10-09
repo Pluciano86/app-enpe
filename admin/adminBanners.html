@@ -14,29 +14,9 @@
 <body class="bg-gray-50">
 
   <div id="headerContainer"></div>
-  <script>
-    fetch("./shared/adminHeader.html")
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById("headerContainer").innerHTML = html;
-
-        const toggleBtn = document.getElementById("menuToggle");
-        const sidebar = document.getElementById("adminSidebar");
-        const overlay = document.getElementById("sidebarOverlay");
-
-        if (toggleBtn && sidebar && overlay) {
-          toggleBtn.addEventListener("click", () => {
-            const visible = sidebar.classList.contains("-translate-x-full");
-            sidebar.classList.toggle("-translate-x-full");
-            overlay.classList.toggle("hidden", !visible);
-          });
-
-          overlay.addEventListener("click", () => {
-            sidebar.classList.add("-translate-x-full");
-            overlay.classList.add("hidden");
-          });
-        }
-      });
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
   </script>
 
   <main class="px-4 py-6 space-y-6">

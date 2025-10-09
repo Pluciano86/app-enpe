@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { resolvePath } from '../shared/pathResolver.js';
 
 const tablaUsuarios = document.getElementById('tabla-usuarios');
 const tablaMobile = document.getElementById('tabla-mobile');
@@ -38,6 +39,8 @@ function crearFila(usuario) {
   const foto = usuario.imagen || PLACEHOLDER_FOTO;
   const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Sin nombre';
 
+  const perfilUrl = resolvePath(`usuarioPerfil.html?id=${usuario.id}`);
+
   fila.innerHTML = `
     <td class="px-4 py-3">
       <img src="${foto}" alt="Foto" class="w-12 h-12 rounded-full object-cover border" />
@@ -48,7 +51,7 @@ function crearFila(usuario) {
     <td class="px-4 py-3 text-gray-600">${tipo}</td>
     <td class="px-4 py-3 text-gray-600">${formatearFecha(usuario.creado_en)}</td>
     <td class="px-4 py-3 text-center">
-      <a href="/admin/usuarioPerfil.html?id=${usuario.id}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
+      <a href="${perfilUrl}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
         <i class="fas fa-eye"></i>
         Ver
       </a>
@@ -66,13 +69,15 @@ function crearTarjeta(usuario) {
   const foto = usuario.imagen || PLACEHOLDER_FOTO;
   const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Sin nombre';
 
+  const perfilUrl = resolvePath(`usuarioPerfil.html?id=${usuario.id}`);
+
   tarjeta.innerHTML = `
     <img src="${foto}" alt="Foto" class="w-16 h-16 rounded-full object-cover border" />
     <div class="flex-1">
       <h3 class="text-lg font-semibold text-gray-800">${nombreCompleto}</h3>
       <p class="text-sm text-gray-500">${usuario.municipio || '—'}</p>
       <p class="text-sm text-gray-500">${tipo} · ${formatearFecha(usuario.creado_en)}</p>
-      <a href="/admin/usuarioPerfil.html?id=${usuario.id}" class="inline-flex items-center gap-2 mt-3 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
+      <a href="${perfilUrl}" class="inline-flex items-center gap-2 mt-3 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
         <i class="fas fa-eye"></i>
         Ver
       </a>

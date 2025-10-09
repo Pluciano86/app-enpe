@@ -1,5 +1,6 @@
 // crearComercio.js
 import { supabase } from '../shared/supabaseClient.js';
+import { resolvePath } from '../shared/pathResolver.js';
 
 const municipioSelect = document.getElementById('municipio');
 const categoriaSelect = document.getElementById('categoria');
@@ -192,7 +193,7 @@ const nombreArea = areaData.nombre;
     }
 
     alert('✅ Comercio creado exitosamente');
-    location.href = 'adminComercios.html';
+    location.href = resolvePath('adminComercios.html');
   } catch (error) {
     console.error('❌ Error creando comercio:', error);
     if (nuevoComercioId) {

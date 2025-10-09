@@ -16,36 +16,17 @@
   <!-- Header y Sidebar -->
   <div id="headerContainer"></div>
 
-  <script>
-    fetch("./shared/adminHeader.html")
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById("headerContainer").innerHTML = html;
-
-        // Activar funcionalidad del sidebar
-        const toggleBtn = document.getElementById("menuToggle");
-        const sidebar = document.getElementById("adminSidebar");
-        const overlay = document.getElementById("sidebarOverlay");
-
-        if (toggleBtn && sidebar && overlay) {
-          toggleBtn.addEventListener("click", () => {
-            const visible = sidebar.classList.contains("-translate-x-full");
-            sidebar.classList.toggle("-translate-x-full");
-            overlay.classList.toggle("hidden", !visible);
-          });
-
-          overlay.addEventListener("click", () => {
-            sidebar.classList.add("-translate-x-full");
-            overlay.classList.add("hidden");
-          });
-        }
-      });
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
   </script>
 
   <main class="px-4 py-6">
     <h2 class="text-2xl text-center font-medium mb-4">Listado de Comercios</h2>
     <div class="flex justify-center items-center mb-4">
-      <a href="crearComercio.html" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow inline-flex items-center gap-2">
+      <a href="crearComercio.html"
+         data-resolve-path="crearComercio.html"
+         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow inline-flex items-center gap-2">
         <i class="fas fa-plus"></i>
         Nuevo Comercio
       </a>
