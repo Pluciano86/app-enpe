@@ -283,3 +283,5 @@ btnGuardar.addEventListener('click', async () => {
     btnGuardar.disabled = false;
   }
 });
+
+console.log('✅ adminEditarComercio.js cargado correctamente');
