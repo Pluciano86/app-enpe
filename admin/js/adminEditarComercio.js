@@ -13,6 +13,11 @@ import { cargarCategoriasYSubcategorias } from './adminCategoriasComercio.js';
 import { cargarSucursalesRelacionadas } from './adminSucursalesComercio.js';
 import { idComercio, supabase } from '../shared/supabaseClient.js';
 
+console.log('✅ adminEditarComercio.js importado y ejecutándose');
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('✅ DOM completamente cargado, inicializando funciones');
+});
+
 let categoriaFallbackActual = '';
 let subcategoriaFallbackActual = '';
 
@@ -63,31 +68,59 @@ async function sincronizarRelacionesComercio(id, categoriasIds, subcategoriasIds
   return { categoriaIds, subcategoriaIds };
 }
 
-// Cargar datos generales al inicio
+// 🚀 Flujo de carga con logs paso a paso
 document.addEventListener('DOMContentLoaded', async () => {
-  await cargarGaleriaComercio();
-  await mostrarPortadaEnPreview();
+  console.log('🚀 Iniciando flujo de carga completo...');
+  try {
+    await cargarGaleriaComercio();
+    console.log('🖼️ Galería cargada');
+
+    await mostrarPortadaEnPreview();
+    console.log('🖼️ Portada mostrada');
+
+    if (typeof activarBotonesGaleria === 'function') {
   activarBotonesGaleria();
+  console.log('🧩 Botones galería activos');
+} else {
+  console.warn('⚠️ activarBotonesGaleria no está exportada. Se omite.');
+}
 
-  await cargarHorariosComercio();
-  await cargarFeriadosComercio();
-  await cargarAmenidadesComercio();
-  await cargarCategoriasYSubcategorias();
-  await cargarDatosGenerales();
-  await cargarSucursalesRelacionadas();
+    await cargarHorariosComercio();
+    console.log('⏰ Horarios cargados');
 
-  await verificarSiEsSucursal();
+    await cargarFeriadosComercio();
+    console.log('🎉 Feriados cargados');
+
+    await cargarAmenidadesComercio();
+    console.log('🎯 Amenidades cargadas');
+
+    await cargarCategoriasYSubcategorias();
+    console.log('📚 Categorías cargadas');
+
+    await cargarDatosGenerales();
+    console.log('🧾 Datos generales cargados');
+
+    await cargarSucursalesRelacionadas();
+    console.log('🏪 Sucursales cargadas');
+
+    await verificarSiEsSucursal();
+    console.log('🔍 Verificación de sucursal completa');
+  } catch (err) {
+    console.error('❌ Error durante la carga inicial:', err);
+  }
 });
 
 // ✅ Mostrar botones solo si el comercio es sucursal
 async function verificarSiEsSucursal() {
   try {
+    console.log('🔎 Verificando si el comercio es una sucursal...');
     const { data: relacion, error } = await supabase
       .from('ComercioSucursales')
       .select('comercio_id')
       .eq('sucursal_id', idComercio)
       .maybeSingle();
 
+    console.log('📦 Resultado relación sucursal:', relacion);
     if (error) throw error;
 
     if (relacion?.comercio_id) {
@@ -105,14 +138,17 @@ async function verificarSiEsSucursal() {
       btnGaleria?.addEventListener('click', () =>
         duplicarGaleriaDesdePrincipal(idComercio, principalId)
       );
+
+      console.log('🧭 Comercio detectado como sucursal, botones visibles.');
+    } else {
+      console.log('ℹ️ Comercio no es sucursal o sin relación registrada.');
     }
   } catch (err) {
     console.error('Error verificando si el comercio es sucursal:', err);
   }
 }
 
-// Función para cargar campos de texto
-// ✅ Versión simplificada y segura para producción
+// 🧾 Cargar datos generales con logs detallados
 async function cargarDatosGenerales() {
   console.log('🟡 Iniciando carga de datos generales para comercio:', idComercio);
 
@@ -124,8 +160,7 @@ async function cargarDatosGenerales() {
     .eq('id', idComercio)
     .maybeSingle();
 
-  // 📋 Log completo de lo que trae Supabase
-  console.log('📥 Resultado de Supabase (comercio):', comercio);
+  console.log('📤 Query ejecutada. Respuesta cruda:', comercio);
   if (errorComercio) console.error('❌ Error cargando comercio:', errorComercio);
 
   if (!comercio) {
@@ -156,15 +191,12 @@ async function cargarDatosGenerales() {
   });
   console.groupEnd();
 
-  // 🏙️ Municipio
   console.log('🏙️ Municipio:', comercio.idMunicipio, '-', comercio.municipio);
   console.log('🌎 Área:', comercio.idArea, '-', comercio.area);
-
-  // 🔗 Categoría y subcategoría de texto (fallback)
   console.log('📂 Categoria textual:', comercio.categoria);
   console.log('📂 Subcategoría textual:', comercio.subCategorias);
 
-  // 🟢 Si todo bien, ahora rellenamos inputs
+  // Rellenar inputs
   camposTexto.forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
@@ -177,12 +209,13 @@ async function cargarDatosGenerales() {
     selectMunicipio.value = String(comercio.idMunicipio);
   }
 
-  // ✅ Log final de confirmación
   console.log('✅ Campos cargados correctamente en el formulario');
 }
-// Evento para guardar cambios
+
+// 💾 Guardar cambios
 const btnGuardar = document.getElementById('btn-guardar');
 btnGuardar.addEventListener('click', async () => {
+  console.log('💾 Iniciando guardado de comercio...');
   const nombre = document.getElementById('nombre').value.trim();
   const telefono = document.getElementById('telefono').value.trim();
   const direccion = document.getElementById('direccion').value.trim();

@@ -222,48 +222,107 @@ loadAdminHeader();
 </script>
 
 
-<!-- ✅ Script: Muestra la imagen de portada del comercio -->
+<!-- ✅ Bloque unificado de logo, portada y horarios -->
 <script type="module">
-  import { supabase } from './shared/supabaseClient.js';
-  const idComercio = new URLSearchParams(window.location.search).get('id');
+  import { supabase, idComercio } from './shared/supabaseClient.js';
 
-  const { data, error } = await supabase
-    .from('imagenesComercios')
-    .select('imagen')
-    .eq('idComercio', idComercio)
-    .eq('logo', true)
-    .maybeSingle();
+  // 🖼️ Cargar logo
+  try {
+    const { data: logoData, error: logoError } = await supabase
+      .from('imagenesComercios')
+      .select('imagen')
+      .eq('idComercio', idComercio)
+      .eq('logo', true)
+      .maybeSingle();
 
-  if (!error && data?.imagen) {
-    const url = supabase.storage.from('galeriacomercios').getPublicUrl(data.imagen).data.publicUrl;
-    const preview = document.getElementById('preview-logo');
-    if (preview) preview.src = url;
+    if (!logoError && logoData?.imagen) {
+      const url = supabase.storage
+        .from('galeriacomercios')
+        .getPublicUrl(logoData.imagen).data.publicUrl;
+      const preview = document.getElementById('preview-logo');
+      if (preview) preview.src = url;
+    }
+  } catch (err) {
+    console.error('❌ Error cargando logo:', err);
   }
-</script>
 
-<!-- ✅ Script: Muestra la imagen de portada del comercio -->
-<script type="module">
-  import { supabase } from './shared/supabaseClient.js';
-  const idComercio = new URLSearchParams(window.location.search).get('id');
+  // 🖼️ Cargar portada
+  try {
+    const { data: portadaData, error: portadaError } = await supabase
+      .from('imagenesComercios')
+      .select('imagen')
+      .eq('idComercio', idComercio)
+      .eq('portada', true)
+      .maybeSingle();
 
-  const { data, error } = await supabase
-    .from('imagenesComercios')
-    .select('imagen')
-    .eq('idComercio', idComercio)
-    .eq('portada', true)
-    .maybeSingle();
+    if (!portadaError && portadaData?.imagen) {
+      const url = supabase.storage
+        .from('galeriacomercios')
+        .getPublicUrl(portadaData.imagen).data.publicUrl;
+      const preview = document.getElementById('portadaPreview');
+      if (preview) preview.src = url;
+    }
+  } catch (err) {
+    console.error('❌ Error cargando portada:', err);
+  }
 
-  if (!error && data?.imagen) {
-    const url = supabase.storage.from('galeriacomercios').getPublicUrl(data.imagen).data.publicUrl;
-    const preview = document.getElementById('portadaPreview');
-    if (preview) preview.src = url;
+  // ⏰ Cargar horarios
+  try {
+    const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const contenedor = document.getElementById('horariosContainer');
+    contenedor.innerHTML = '';
+
+    const { data: horarios, error: horariosError } = await supabase
+      .from('Horarios')
+      .select('*')
+      .eq('idComercio', idComercio);
+
+    if (horariosError) {
+      contenedor.innerHTML = '<p class="text-red-600">Error al cargar horarios.</p>';
+      console.error(horariosError);
+      return;
+    }
+
+    diasSemana.forEach((dia, i) => {
+      const row = horarios.find(h => h.diaSemana === i) || {};
+      const apertura = row.apertura?.substring(0, 5) || '';
+      const cierre = row.cierre?.substring(0, 5) || '';
+      const cerrado = row.cerrado || false;
+
+      const div = document.createElement('div');
+      div.className = 'flex items-center gap-4';
+      div.innerHTML = `
+        <label class="w-24 font-medium">${dia}</label>
+        <input type="time" class="apertura border rounded px-2 py-1" value="${apertura}" ${cerrado ? 'disabled' : ''}>
+        <span>a</span>
+        <input type="time" class="cierre border rounded px-2 py-1" value="${cierre}" ${cerrado ? 'disabled' : ''}>
+        <label class="flex items-center gap-1 text-sm">
+          <input type="checkbox" class="cerrado" ${cerrado ? 'checked' : ''}>
+          Cerrado
+        </label>
+      `;
+
+      const checkbox = div.querySelector('.cerrado');
+      const aperturaInput = div.querySelector('.apertura');
+      const cierreInput = div.querySelector('.cierre');
+
+      checkbox.addEventListener('change', () => {
+        const desactivar = checkbox.checked;
+        aperturaInput.disabled = desactivar;
+        cierreInput.disabled = desactivar;
+      });
+
+      contenedor.appendChild(div);
+    });
+  } catch (err) {
+    console.error('❌ Error cargando horarios:', err);
   }
 </script>
 
 <!-- ✅ Script: Carga los horarios del comercio por día de la semana -->
 <script type="module">
   import { supabase } from './shared/supabaseClient.js';
-  const idComercio = new URLSearchParams(window.location.search).get('id');
+  import { idComercio } from '../shared/supabaseClient.js';
 
   const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
