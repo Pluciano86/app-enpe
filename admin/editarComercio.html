@@ -214,84 +214,107 @@ loadAdminHeader();
   });
 </script>
 
-<!-- ✅ Bloque unificado de logo, portada y horarios -->
+
+<!-- ✅ Bloque final: carga logo, portada y horarios -->
 <script type="module">
   import { supabase, idComercio } from './shared/supabaseClient.js';
 
-  // 🖼️ Cargar logo
-  try {
-    const { data: logoData, error: logoError } = await supabase
-      .from('imagenesComercios')
-      .select('imagen')
-      .eq('idComercio', idComercio)
-      .eq('logo', true)
-      .maybeSingle();
+  document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🟡 Iniciando carga visual de comercio con ID:', idComercio);
 
-    if (!logoError && logoData?.imagen) {
-      const url = supabase.storage.from('galeriacomercios').getPublicUrl(logoData.imagen).data.publicUrl;
-      const preview = document.getElementById('preview-logo');
-      if (preview) preview.src = url;
-    }
-  } catch (err) {
-    console.error('❌ Error cargando logo:', err);
-  }
-
-  // 🖼️ Cargar portada
-  try {
-    const { data: portadaData, error: portadaError } = await supabase
-      .from('imagenesComercios')
-      .select('imagen')
-      .eq('idComercio', idComercio)
-      .eq('portada', true)
-      .maybeSingle();
-
-    if (!portadaError && portadaData?.imagen) {
-      const url = supabase.storage.from('galeriacomercios').getPublicUrl(portadaData.imagen).data.publicUrl;
-      const preview = document.getElementById('portadaPreview');
-      if (preview) preview.src = url;
-    }
-  } catch (err) {
-    console.error('❌ Error cargando portada:', err);
-  }
-
-  // ⏰ Cargar horarios
-  try {
-    const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-    const contenedor = document.getElementById('horariosContainer');
-    contenedor.innerHTML = '';
-
-    const { data: horarios, error: horariosError } = await supabase
-      .from('Horarios')
-      .select('*')
-      .eq('idComercio', idComercio);
-
-    if (horariosError) {
-      contenedor.innerHTML = '<p class="text-red-600">Error al cargar horarios.</p>';
-      console.error(horariosError);
+    if (!idComercio) {
+      console.error('❌ idComercio no encontrado en la URL.');
       return;
     }
 
-    diasSemana.forEach((dia, i) => {
-      const row = horarios.find(h => h.diaSemana === i) || {};
-      const apertura = row.apertura?.substring(0, 5) || '';
-      const cierre = row.cierre?.substring(0, 5) || '';
-      const cerrado = row.cerrado || false;
+    // 🖼️ Cargar logo
+    try {
+      const { data: logoData, error: logoError } = await supabase
+        .from('imagenesComercios')
+        .select('imagen')
+        .eq('idComercio', idComercio)
+        .eq('logo', true)
+        .maybeSingle();
 
-      const div = document.createElement('div');
-      div.className = 'flex items-center gap-4';
-      div.innerHTML = `
-        <label class="w-24 font-medium">${dia}</label>
-        <input type="time" class="apertura border rounded px-2 py-1" value="${apertura}" ${cerrado ? 'disabled' : ''}>
-        <span>a</span>
-        <input type="time" class="cierre border rounded px-2 py-1" value="${cierre}" ${cerrado ? 'disabled' : ''}>
-        <label class="flex items-center gap-1 text-sm">
-          <input type="checkbox" class="cerrado" ${cerrado ? 'checked' : ''}>
-          Cerrado
-        </label>
-      `;
+      console.log('📸 Logo:', logoData);
 
-      const checkbox = div.querySelector('.cerrado');
-      const aperturaInput = div.querySelector('.apertura');
-      const cierreInput = div.querySelector('.cierre');
+      if (!logoError && logoData?.imagen) {
+        const url = supabase.storage.from('galeriacomercios').getPublicUrl(logoData.imagen).data.publicUrl;
+        document.getElementById('preview-logo').src = url;
+      }
+    } catch (err) {
+      console.error('❌ Error cargando logo:', err);
+    }
 
-      checkbox.addEventListener('change', ()
+    // 🖼️ Cargar portada
+    try {
+      const { data: portadaData, error: portadaError } = await supabase
+        .from('imagenesComercios')
+        .select('imagen')
+        .eq('idComercio', idComercio)
+        .eq('portada', true)
+        .maybeSingle();
+
+      console.log('🏞️ Portada:', portadaData);
+
+      if (!portadaError && portadaData?.imagen) {
+        const url = supabase.storage.from('galeriacomercios').getPublicUrl(portadaData.imagen).data.publicUrl;
+        document.getElementById('portadaPreview').src = url;
+      }
+    } catch (err) {
+      console.error('❌ Error cargando portada:', err);
+    }
+
+    // ⏰ Cargar horarios
+    try {
+      const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const cont = document.getElementById('horariosContainer');
+      cont.innerHTML = '';
+
+      const { data: horarios, error: errHor } = await supabase
+        .from('Horarios')
+        .select('*')
+        .eq('idComercio', idComercio);
+
+      console.log('🕒 Horarios:', horarios);
+
+      if (errHor) {
+        cont.innerHTML = '<p class="text-red-600">Error al cargar horarios.</p>';
+        console.error(errHor);
+        return;
+      }
+
+      dias.forEach((dia, i) => {
+        const row = horarios.find(h => h.diaSemana === i) || {};
+        const apertura = row.apertura?.substring(0, 5) || '';
+        const cierre = row.cierre?.substring(0, 5) || '';
+        const cerrado = row.cerrado || false;
+
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-4';
+        div.innerHTML = `
+          <label class="w-24 font-medium">${dia}</label>
+          <input type="time" class="border rounded px-2 py-1 apertura" value="${apertura}" ${cerrado ? 'disabled' : ''}>
+          <span>a</span>
+          <input type="time" class="border rounded px-2 py-1 cierre" value="${cierre}" ${cerrado ? 'disabled' : ''}>
+          <label class="flex items-center gap-1 text-sm">
+            <input type="checkbox" class="cerrado" ${cerrado ? 'checked' : ''}> Cerrado
+          </label>
+        `;
+        const cb = div.querySelector('.cerrado');
+        const ap = div.querySelector('.apertura');
+        const ci = div.querySelector('.cierre');
+        cb.addEventListener('change', () => {
+          ap.disabled = cb.checked;
+          ci.disabled = cb.checked;
+        });
+        cont.appendChild(div);
+      });
+    } catch (err) {
+      console.error('❌ Error cargando horarios:', err);
+    }
+  });
+</script>
+
+</body>
+</html>
