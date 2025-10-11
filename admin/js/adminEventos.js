@@ -126,6 +126,7 @@ function obtenerPartesFecha(fechaStr) {
 
 async function limpiarEventosExpirados() {
   const ahora = new Date();
+  // Solo ejecuta la limpieza después de las 3 AM para evitar conflictos con eventos recientes
   if (ahora.getHours() < 3) return;
 
   const hoyISO = ahora.toISOString().slice(0, 10);
@@ -134,10 +135,11 @@ async function limpiarEventosExpirados() {
     .select('idevento, fecha');
 
   if (error) {
-    console.warn('No se pudieron revisar eventos expirados:', error);
+    console.warn('⚠️ No se pudieron revisar eventos expirados:', error);
     return;
   }
 
+  // Agrupa la última fecha de cada evento
   const ultimaFechaPorEvento = new Map();
   (data ?? []).forEach((registro) => {
     const actual = ultimaFechaPorEvento.get(registro.idevento);
@@ -146,19 +148,39 @@ async function limpiarEventosExpirados() {
     }
   });
 
+  // Filtra los eventos cuya última fecha ya pasó
   const eventosAEliminar = Array.from(ultimaFechaPorEvento.entries())
     .filter(([, fechaFinal]) => fechaFinal < hoyISO)
     .map(([id]) => id);
 
   if (eventosAEliminar.length === 0) return;
 
-  await supabase.from('eventoFechas').delete().in('idevento', eventosAEliminar).catch((err) => {
-    console.error('Error eliminando fechas expiradas:', err);
-  });
+  try {
+    // Elimina fechas asociadas
+    const { error: errorFechas } = await supabase
+      .from('eventoFechas')
+      .delete()
+      .in('idevento', eventosAEliminar);
 
-  await supabase.from('eventos').delete().in('id', eventosAEliminar).catch((err) => {
-    console.error('Error eliminando eventos expirados:', err);
-  });
+    if (errorFechas) {
+      console.error('❌ Error eliminando fechas expiradas:', errorFechas);
+    }
+
+    // Elimina los eventos principales
+    const { error: errorEventos } = await supabase
+      .from('eventos')
+      .delete()
+      .in('id', eventosAEliminar);
+
+    if (errorEventos) {
+      console.error('❌ Error eliminando eventos expirados:', errorEventos);
+    } else {
+      console.log(`🗑️ ${eventosAEliminar.length} eventos expirados eliminados correctamente`);
+    }
+
+  } catch (err) {
+    console.error('💥 Error inesperado al limpiar eventos expirados:', err);
+  }
 }
 
 async function cargarCatalogos() {

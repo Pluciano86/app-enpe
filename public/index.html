@@ -23,55 +23,13 @@
 
 
   <!-- Categorías más buscadas -->
-  <section class="text-center">
-    <h2 class="text-2xl font-medium mb-4">CATEGORÍAS MÁS BUSCADAS</h2>
-    <div class="grid grid-cols-3 gap-4 px-4">
-
-      <a href="listadoComercios.html?idCategoria=1">
-      <div class="flex flex-col items-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/RESTAURANTES.jpg" class="rounded-full w-24 h-24 object-cover">
-        <p>Restaurantes</p>
-      </div>
-      </a>
-
-      <a href="listadoComercios.html?idCategoria=5">
-      <div class="flex flex-col items-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/FOOD%20TRUCK.jpg" class="rounded-full w-24 h-24 object-cover">
-        <p>Food Trucks</p>
-      </div>
-      </a>
-
-      <a href="listadoComercios.html?idCategoria=4">
-      <div class="flex flex-col items-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/COFFE%20SHOP.jpg" class="rounded-full w-24 h-24 object-cover">
-        <p>Coffee Shops</p>
-      </div>
-      </a>
-      
-      <a href="listadoComercios.html?idCategoria=6">
-      <div class="flex flex-col items-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/Dispensario.jpg" class="rounded-full w-24 h-24 object-cover">
-        <p>Dispensarios</p>
-      </div>
-      </a>
-
-      <a href="listadoComercios.html?idCategoria=3">
-      <div class="flex flex-col items-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/Bares.jpg" class="rounded-full w-24 h-24 object-cover">
-        <p>Bares</p>
-        </div>
-        </a>
-
-      <a href="listadoComercios.html?idCategoria=2">
-      <div class="flex flex-col items-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/categorias/panaderias.jpg" class="rounded-full w-24 h-24 object-cover">
-        <p>Panaderías</p>
-      </div>
-      </a>
-
-    </div>
-    <p class="mt-4 text-sm"">Ver todas las Categorías...</p>
-  </section>
+<section id="categoriasSection" class="text-center">
+  <h2 class="text-2xl font-medium mb-4">CATEGORÍAS MÁS BUSCADAS</h2>
+  <div id="categoriasContainer" class="grid grid-cols-3 gap-4 px-4"></div>
+  <p id="toggleCategorias" class="mt-4 text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+  Ver todas las Categorías...
+</p>
+</section>
 
 
 
@@ -199,6 +157,8 @@
 <!-- Footer -->
 <div id="footerContainer"></div>
 <script type="module" src="js/footer.js"></script>
+
+<script type="module" src="./js/categoriasIndex.js"></script>
 
 <script type="module" src="./js/bannerCarousel.js"></script>
 <script type="module">
