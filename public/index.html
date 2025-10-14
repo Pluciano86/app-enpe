@@ -34,7 +34,6 @@
 <section id="bannerEspeciales" class="my-8 text-center mx-4">
   <a href="#">
     <video id="videoEspeciales"
-           id="videoHero"
            autoplay
            muted
            loop
@@ -45,6 +44,24 @@
     </video>
   </a>
 </section>
+
+<script>
+  const videoEspeciales = document.getElementById("videoEspeciales");
+  let intentoReproducir = false;
+
+  function reproducirVideoEspeciales() {
+    if (!intentoReproducir && videoEspeciales) {
+      intentoReproducir = true;
+      videoEspeciales.play().catch((e) => 
+        console.warn("Intento de reproducción fallido en videoEspeciales:", e)
+      );
+    }
+  }
+
+  // Detecta interacción del usuario para habilitar autoplay
+  document.addEventListener("touchstart", reproducirVideoEspeciales, { once: true });
+  document.addEventListener("scroll", reproducirVideoEspeciales, { once: true });
+</script>
 
 <!-- Carrusel de Lugares para Comer -->
 <section class="text-center my-6 px-4">
