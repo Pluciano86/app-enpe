@@ -57,7 +57,10 @@ async function mostrarSucursales(idComercio, nombreComercio) {
 export async function obtenerComercioPorID(idComercio) {
   const { data, error } = await supabase
     .from('Comercios')
-    .select('*')
+    .select(`
+      *,
+      ComercioCategorias ( idCategoria )
+    `)
     .eq('id', idComercio)
     .single();
 
@@ -71,8 +74,18 @@ export async function obtenerComercioPorID(idComercio) {
     document.getElementById('nombreSucursal').textContent = data.nombreSucursal;
   }
   document.getElementById('textoDireccion').textContent = data.direccion;
-  document.getElementById('telefonoComercio').innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${data.telefono}`;
-  document.getElementById('telefonoComercio').href = `tel:${data.telefono}`;
+
+  // ✅ Mostrar teléfono solo si NO es categoría Jangueo (id 11)
+  const esJangueo = data.ComercioCategorias?.some((c) => c.idCategoria === 11);
+  const telefonoElemento = document.getElementById('telefonoComercio');
+
+  if (!esJangueo && data.telefono) {
+    telefonoElemento.innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${data.telefono}`;
+    telefonoElemento.href = `tel:${data.telefono}`;
+  } else if (telefonoElemento) {
+    telefonoElemento.classList.add('hidden');
+  }
+
   document.getElementById('nombreCercanosComida').textContent = data.nombre;
 
   if (data.whatsapp) document.getElementById('linkWhatsapp')?.setAttribute('href', data.whatsapp);

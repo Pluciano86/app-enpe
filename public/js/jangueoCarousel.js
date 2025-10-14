@@ -1,19 +1,19 @@
-// public/js/comidaCarousel.js
+// public/js/jangueoCarousel.js
 import { supabase } from "../shared/supabaseClient.js";
 
 /**
- * 🔹 Carrusel de "Aquí en Pe Erre se come bien"
- * Solo muestra comercios con categoría Restaurantes.
+ * 🔹 Carrusel de lugares para janguear
+ * Solo muestra comercios con categoría Jangueo.
  */
-export async function renderComidaCarousel(containerId) {
+export async function renderJangueoCarousel(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  // ✅ ID de la categoría “Restaurantes”
-  const idRestaurantes = 1; // asegúrate de que coincide con tu tabla Categorias
+  // ✅ ID de la categoría “Jangueo”
+  const idJangueo = 11;
 
   try {
-    // 🔸 Buscar comercios activos que pertenezcan a Restaurantes
+    // 🔸 Buscar comercios activos que pertenezcan a Jangueo
     const { data: comercios, error: comerciosError } = await supabase
       .from("Comercios")
       .select(`
@@ -28,23 +28,18 @@ export async function renderComidaCarousel(containerId) {
 
     if (comerciosError) throw comerciosError;
 
-    // 🔹 Filtrar solo los de la categoría Restaurantes
+    // 🔹 Filtrar solo los de la categoría Jangueo
     const comerciosFiltrados = comercios.filter((c) =>
-      c.ComercioCategorias?.some((cc) => cc.idCategoria === idRestaurantes)
+      c.ComercioCategorias?.some((cc) => cc.idCategoria === idJangueo)
     );
 
     if (comerciosFiltrados.length === 0) {
-      container.innerHTML = `<p class="text-gray-500 text-center">No hay restaurantes disponibles</p>`;
+      container.innerHTML = `<p class="text-gray-500 text-center">No hay lugares de jangueo disponibles</p>`;
       return;
     }
 
     // 🔸 Obtener imágenes (no logos)
     const idsComercios = comerciosFiltrados.map((c) => c.id).filter(Boolean);
-    if (idsComercios.length === 0) {
-      console.warn("⚠️ Comercios sin IDs válidos.");
-      container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes disponibles.</p>`;
-      return;
-    }
 
     const { data: imagenes, error: imgError } = await supabase
       .from("imagenesComercios")
@@ -53,9 +48,8 @@ export async function renderComidaCarousel(containerId) {
       .neq("logo", true);
 
     if (imgError) throw imgError;
-
-    if (!imagenes || imagenes.length === 0) {
-      container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes de restaurantes.</p>`;
+    if (!imagenes?.length) {
+      container.innerHTML = `<p class="text-gray-500 text-center">No hay imágenes disponibles.</p>`;
       return;
     }
 
@@ -71,14 +65,13 @@ export async function renderComidaCarousel(containerId) {
 
     // 🔸 Crear estructura del carrusel
     container.innerHTML = `
-      <div class="swiper comida-swiper">
+      <div class="swiper jangueo-swiper">
         <div class="swiper-wrapper">
           ${await Promise.all(
             imagenesPorComercio.map(async (img) => {
               const comercio = comerciosFiltrados.find((c) => c.id === img.idComercio);
               if (!comercio) return "";
 
-              // 🔹 Buscar logo del comercio
               const { data: logoData } = await supabase
                 .from("imagenesComercios")
                 .select("imagen")
@@ -115,21 +108,26 @@ export async function renderComidaCarousel(containerId) {
       </div>
     `;
 
-    // 🔸 Inicializar Swiper (mismo estilo que antes)
-    new Swiper(container.querySelector(".comida-swiper"), {
+    // 🔸 Inicializar Swiper
+    new Swiper(container.querySelector(".jangueo-swiper"), {
       loop: true,
       autoplay: { delay: 3000, disableOnInteraction: false },
       speed: 900,
       slidesPerView: 1.5,
       spaceBetween: 16,
       direction: "horizontal",
+      autoplay: {
+  delay: 3000,
+  disableOnInteraction: false,
+  reverseDirection: true,  // 👈 hace que el carrusel vaya al revés
+},
       breakpoints: {
         640: { slidesPerView: 4, spaceBetween: 20 },
         1024: { slidesPerView: 5, spaceBetween: 24 },
       },
     });
   } catch (err) {
-    console.error("❌ Error cargando carrusel de Restaurantes:", err);
-    container.innerHTML = `<p class="text-red-500 text-center">Error al cargar los restaurantes.</p>`;
+    console.error("❌ Error cargando carrusel de Jangueo:", err);
+    container.innerHTML = `<p class="text-red-500 text-center">Error al cargar los lugares de Jangueo.</p>`;
   }
 }
