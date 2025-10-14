@@ -24,37 +24,42 @@
 
   <!-- Categorías más buscadas -->
 <section id="categoriasSection" class="text-center">
-  <h2 class="text-2xl font-medium mb-4">CATEGORÍAS MÁS BUSCADAS</h2>
+  <h2 class="text-2xl font-medium mb-4">Categorías más Buscadas</h2>
   <div id="categoriasContainer" class="grid grid-cols-3 gap-4 px-4"></div>
   <p id="toggleCategorias" class="mt-4 text-sm text-gray-500 cursor-pointer hover:text-gray-700">
   Ver todas las Categorías...
 </p>
 </section>
 
-<section id="bannerEspeciales" class="my-8 text-center px-4">
-  <a href="/public/especiales/especialesDiarios.html">
-    <img id="imagenEspeciales"
-         src=""
-         alt="Especiales del Día"
-         class="w-full max-w-5xl mx-auto aspect-[6/1] object-cover rounded-xl shadow-md hover:scale-[1.02] transition-transform duration-300" />
+<section id="bannerEspeciales" class="my-8 text-center mx-4">
+  <a href="#">
+    <video id="videoEspeciales"
+           autoplay
+           muted
+           loop
+           playsinline
+           class="w-full max-w-5xl mx-auto aspect-[6/1] object-cover rounded-2xl shadow-md hover:scale-[1.02] transition-transform duration-300">
+      <source id="videoSource" src="" type="video/mp4">
+      Tu navegador no soporta video.
+    </video>
   </a>
 </section>
 
 <!-- Carrusel de Lugares para Comer -->
 <section class="text-center my-6 px-4">
-  <h2 class="text-2xl font-medium mb-4">¡AQUÍ EN PE ERRE SE COME BIEN!</h2>
+  <h2 class="text-2xl font-medium mb-4">¡Aquí <strong>EnPeErre</strong> se come Brutal!</h2>
   <div id="comidaCarousel"></div>
 </section>
 
 <!-- Carrusel de Jangueo -->
 <section class="text-center my-6 px-4">
-  <h2 class="text-2xl font-medium mb-4">¿VAMO' A JANGUEAR?</h2>
+  <h2 class="text-2xl font-medium mb-4">¿Nos Fuimos pal Jangueo?</h2>
   <div id="jangueoCarousel"></div>
 </section>
 
 <!-- Carrusel de Eventos -->
 <section class="text-center my-6 px-4">
-  <h2 class="text-2xl font-medium mb-4">CHEQUEA LOS PRÓXIMOS EVENTOS</h2>
+  <h2 class="text-2xl font-medium mb-4">Chequea los prósimos Eventos</h2>
   <div id="eventosCarousel"></div>
 </section>
 
@@ -126,8 +131,8 @@
 </script>
 
   <!-- Descubre lo que hay en tu área -->
- <a href="listadoLugares.html" class="py-6 px-3">
- <h2 class="text-xl text-center uppercase">Descubre lo que hay en tu área</h2> </a>
+ <a href="listadoLugares.html" class="text-center my-6 px-4">
+ <h2 class="text-2xl font-medium mb-4">Descubre lo que hay en tu Área</h2> </a>
 
   <div class="grid grid-cols-2 gap-4 pr-4 pb-4 pl-4">
         <a href="listadoArea.html?idArea=1">
@@ -188,6 +193,21 @@
       if (bannerElement) container.appendChild(bannerElement);
     }
   });
+</script>
+
+<script>
+  function getBasePath() {
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  return isLocal ? '/public/' : '/';
+}
+
+// Aplicar el href correcto al banner Especiales
+document.addEventListener('DOMContentLoaded', () => {
+  const bannerLink = document.querySelector('#bannerEspeciales a');
+  if (bannerLink) {
+    bannerLink.href = `${getBasePath()}especiales/especialesDiarios.html`;
+  }
+});
 </script>
 
 <script type="module">
