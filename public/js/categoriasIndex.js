@@ -7,6 +7,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   let todasCategorias = [];
   let mostrandoTodas = false;
 
+  // 🔹 Orden personalizado de categorías
+  const ordenPersonalizado = [
+    "Restaurantes",
+    "Coffee Shops",
+    "Jangueo",
+    "Antojitos Dulces",
+    "Food Trucks",
+    "Dispensarios",
+    "Panaderías",
+    "Playground",
+    "Bares"
+  ];
+
   // 🔹 Cargar categorías desde Supabase
   async function cargarCategorias() {
     const { data, error } = await supabase
@@ -19,7 +32,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    todasCategorias = data || [];
+    // 🧩 Aplicar el orden personalizado
+    todasCategorias = (data || []).sort((a, b) => {
+      const indexA = ordenPersonalizado.indexOf(a.nombre);
+      const indexB = ordenPersonalizado.indexOf(b.nombre);
+
+      // Si alguna categoría no está en la lista, se manda al final
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+
     renderizarCategorias();
   }
 
@@ -37,12 +61,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         <img src="${cat.imagen || 'https://via.placeholder.com/150'}"
              alt="${cat.nombre}"
              class="rounded-full w-24 h-24 object-cover mb-1">
-        <p>${cat.nombre}</p>
+        <p class="text-gray-700">${cat.nombre}</p>
       `;
       contenedor.appendChild(card);
     });
 
+    // 🔸 Cambiar texto y color del botón
     toggleBtn.textContent = mostrandoTodas ? 'Ver menos...' : 'Ver todas las Categorías...';
+    toggleBtn.className = 'text-gray-500 text-sm font-medium hover:text-gray-700 mt-2';
   }
 
   // 🔹 Alternar entre ver todas / solo las principales
