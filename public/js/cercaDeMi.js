@@ -1194,6 +1194,7 @@ async function locateUser() {
   // 📍 Estado actual
   let primeraVez = true;
   let velocidadMph = 0;
+  let ultimoHeading = null;
 
   // 🔁 Actualizar ubicación en vivo
   const actualizarUbicacion = async (pos) => {
@@ -1217,6 +1218,21 @@ async function locateUser() {
       const zoomActual = map.getZoom();
       if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
 
+      // 🧭 Orientar el mapa o el marcador según dirección real
+      const heading = pos.coords.heading;
+      if (heading !== null && !isNaN(heading)) {
+        ultimoHeading = heading;
+
+        // Si el plugin leaflet-map-rotate está disponible, rota el mapa
+        if (typeof map.setBearing === "function") {
+          map.setBearing(heading);
+        } else if (userMarker?._icon) {
+          // Fallback: rota solo el ícono del usuario
+          userMarker._icon.style.transition = "transform 0.2s linear";
+          userMarker._icon.style.transform = `rotate(${heading}deg)`;
+        }
+      }
+
       // 🔵 Crear o mover el marcador del usuario
       if (userMarker) {
         userMarker.setLatLng([userLat, userLon]);
@@ -1238,9 +1254,10 @@ async function locateUser() {
         userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
       }
 
-      // 🎯 Centrar solo la primera vez (para no marear al usuario)
+      // 🎯 Seguir la posición en tiempo real, pero permitir mover el mapa
+      map.panTo([userLat, userLon], { animate: true });
       if (primeraVez) {
-        map.setView([userLat, userLon], zoomDeseado, { animate: true });
+        map.setZoom(zoomDeseado);
         primeraVez = false;
       }
 
@@ -1250,7 +1267,9 @@ async function locateUser() {
         map._comerciosCargados = true;
       }
 
-      console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoomDeseado}`);
+      // 🔁 Mostrar en consola (solo para pruebas)
+      console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoomDeseado} | Heading: ${ultimoHeading}`);
+
     } catch (err) {
       console.error("⚠️ Error actualizando ubicación:", err);
     } finally {
@@ -1302,6 +1321,9 @@ async function locateUser() {
         else zoomDeseado = 17;
 
         map.setView([userLat, userLon], zoomDeseado, { animate: true });
+        if (ultimoHeading && typeof map.setBearing === "function") {
+          map.setBearing(ultimoHeading); // reorientar hacia la dirección actual
+        }
       }
     };
     return btn;
