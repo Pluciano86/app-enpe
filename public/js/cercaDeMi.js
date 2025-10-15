@@ -1191,8 +1191,11 @@ async function locateUser() {
   const idUsuario = await obtenerIdUsuarioActual();
   const iconoUsuario = await crearIconoUsuario(idUsuario);
 
-  let siguiendoUsuario = true; // 🔹 Estado del modo seguimiento
+  // 📍 Estado actual
+  let primeraVez = true;
+  let velocidadMph = 0;
 
+  // 🔁 Actualizar ubicación en vivo
   const actualizarUbicacion = async (pos) => {
     try {
       userLat = pos.coords.latitude;
@@ -1202,7 +1205,7 @@ async function locateUser() {
 
       // 🌀 Calcular velocidad en millas por hora
       const speed = pos.coords.speed || 0; // m/s
-      const velocidadMph = speed * 2.23694; // convertir a mph
+      velocidadMph = speed * 2.23694; // convertir a mph
 
       // 🔎 Determinar zoom base según velocidad
       let zoomDeseado;
@@ -1210,15 +1213,9 @@ async function locateUser() {
       else if (velocidadMph >= 20) zoomDeseado = 15;  // 🚙 Media
       else zoomDeseado = 17;                          // 🚶 Lento / detenido
 
-      // 📏 Si el usuario acercó más, no lo alejamos
+      // 📏 Si el usuario acercó más, respetar su zoom
       const zoomActual = map.getZoom();
       if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
-
-      // 🧭 Rotar mapa según dirección (heading) usando Leaflet.MapRotate
-      const heading = pos.coords.heading;
-      if (heading !== null && !isNaN(heading)) {
-        map.setBearing(heading); // ✅ Rotación real del mapa sin girar UI
-      }
 
       // 🔵 Crear o mover el marcador del usuario
       if (userMarker) {
@@ -1241,10 +1238,11 @@ async function locateUser() {
         userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
       }
 
-      // 🎯 Mantener mapa centrado mientras el modo seguimiento esté activo
-if (map._siguiendoUsuario) {
-  map.setView([userLat, userLon], zoomDeseado, { animate: false });
-}
+      // 🎯 Centrar solo la primera vez (para no marear al usuario)
+      if (primeraVez) {
+        map.setView([userLat, userLon], zoomDeseado, { animate: true });
+        primeraVez = false;
+      }
 
       // ⚡ Cargar comercios solo la primera vez
       if (!map._comerciosCargados) {
@@ -1252,7 +1250,6 @@ if (map._siguiendoUsuario) {
         map._comerciosCargados = true;
       }
 
-      // 🔁 Mostrar datos en consola (para debug)
       console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoomDeseado}`);
     } catch (err) {
       console.error("⚠️ Error actualizando ubicación:", err);
@@ -1261,40 +1258,31 @@ if (map._siguiendoUsuario) {
     }
   };
 
+  // ⚠️ Si falla GPS, usar ubicación base (Ponce)
   const handleError = (err) => {
     console.warn("⚠️ Error en seguimiento de ubicación:", err.message);
-
-    // 🧭 Fallback local para desarrollo sin GPS real
     if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
       console.warn("⚠️ Usando ubicación por defecto (Ponce, PR)");
       userLat = 18.012;
       userLon = -66.613;
       map.setView([userLat, userLon], 15, { animate: true });
       toggleLoader(false);
-      return;
     }
-
-    toggleLoader(false);
   };
 
-  // 🔁 Seguimiento en vivo
+  // 📡 Seguimiento continuo
   navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
     enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 30000, // ⏱️ 30 segundos para evitar "Timeout expired"
+    maximumAge: 1000,
+    timeout: 30000,
   });
 
-  // 🖐️ Detectar cuando el usuario arrastra o hace zoom → desactivar seguimiento
-  map.on("dragstart zoomstart", () => {
-    siguiendoUsuario = false;
-  });
-
-  // 🎯 Botón flotante para volver a centrar y restaurar orientación
+  // 🎯 Botón flotante para centrar vista según la velocidad
   const btnSeguir = L.control({ position: "bottomright" });
   btnSeguir.onAdd = () => {
     const btn = L.DomUtil.create("button", "seguir-usuario-btn");
     btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
-    btn.title = "Centrar mapa y restaurar orientación";
+    btn.title = "Centrar mapa en tu ubicación";
     btn.style.cssText = `
       background: white;
       border: none;
@@ -1306,14 +1294,16 @@ if (map._siguiendoUsuario) {
       box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     `;
     btn.onclick = () => {
-  map.enableFollowUser(); // ✅ Reactivar seguimiento
-  map._userMovedManually = false;
-  if (userLat && userLon) {
-    map.setBearing(0); // volver al norte
-    let zoom = map.getZoom() < 17 ? 17 : map.getZoom();
-    map.setView([userLat, userLon], zoom, { animate: true });
-  }
-};
+      if (userLat && userLon) {
+        // Calcular zoom dinámico según velocidad actual
+        let zoomDeseado;
+        if (velocidadMph > 45) zoomDeseado = 13;
+        else if (velocidadMph >= 20) zoomDeseado = 15;
+        else zoomDeseado = 17;
+
+        map.setView([userLat, userLon], zoomDeseado, { animate: true });
+      }
+    };
     return btn;
   };
   btnSeguir.addTo(map);
