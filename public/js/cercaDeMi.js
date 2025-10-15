@@ -63,6 +63,7 @@ const CATEGORY_COLORS = {
 let map, markersLayer, userMarker;
 let userLat = null;
 let userLon = null;
+let userAccuracyCircle = null;
 
 
 
@@ -1162,32 +1163,112 @@ async function locateUser() {
   if (!navigator.geolocation) return;
   toggleLoader(true);
 
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      try {
-        userLat = pos.coords.latitude;
-        userLon = pos.coords.longitude;
+  const idUsuario = await obtenerIdUsuarioActual();
+  const iconoUsuario = await crearIconoUsuario(idUsuario);
 
-        map.setView([userLat, userLon], 13);
+  let siguiendoUsuario = true; // 🔹 Estado del modo seguimiento
 
-        if (userMarker) {
-          map.removeLayer(userMarker);
-        }
+  const actualizarUbicacion = async (pos) => {
+  try {
+    userLat = pos.coords.latitude;
+    userLon = pos.coords.longitude;
 
-        const idUsuario = await obtenerIdUsuarioActual();
-        const iconoUsuario = await crearIconoUsuario(idUsuario);
-        userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+    // 🌀 Calcular velocidad en millas por hora
+    const speed = pos.coords.speed || 0; // m/s
+    const velocidadMph = speed * 2.23694; // convertir a mph
 
-        await loadNearby();
-      } catch (err) {
-        console.error('⚠️ Error posicionando al usuario:', err);
-      } finally {
-        toggleLoader(false);
+    // 🔎 Determinar zoom según velocidad
+    let zoom;
+    if (velocidadMph > 45) zoom = 13;        // 🚗 Alta velocidad
+    else if (velocidadMph >= 20) zoom = 15;  // 🚙 Velocidad media
+    else zoom = 17;                          // 🚶 Baja o detenido
+
+    if (!map) return;
+
+    // 🔵 Crear o mover el marcador del usuario
+    if (userMarker) {
+      userMarker.setLatLng([userLat, userLon]);
+    } else {
+      userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+    }
+
+    // 🔵 Crear o actualizar círculo de precisión
+    if (!userAccuracyCircle) {
+      userAccuracyCircle = L.circle([userLat, userLon], {
+        radius: pos.coords.accuracy || 20,
+        color: "#3b82f6",
+        fillColor: "#3b82f6",
+        fillOpacity: 0.1,
+        weight: 1,
+      }).addTo(map);
+    } else {
+      userAccuracyCircle.setLatLng([userLat, userLon]);
+      userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
+    }
+
+    // 🎯 Centrar mapa solo si el usuario no lo movió manualmente
+    if (siguiendoUsuario && !map._userMovedManually) {
+      map.setView([userLat, userLon], zoom, { animate: true });
+    }
+
+    // ⚡ Cargar comercios solo la primera vez
+    if (!map._comerciosCargados) {
+      await loadNearby();
+      map._comerciosCargados = true;
+    }
+
+    // 🔁 Mostrar en consola (solo para pruebas)
+    console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoom}`);
+
+  } catch (err) {
+    console.error("⚠️ Error actualizando ubicación:", err);
+  } finally {
+    toggleLoader(false);
+  }
+};
+
+  const handleError = (err) => {
+    console.warn('⚠️ Error en seguimiento de ubicación:', err.message);
+    toggleLoader(false);
+  };
+
+  // 🔁 Seguimiento en vivo
+  navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 10000,
+  });
+
+  // 🖐️ Detectar cuando el usuario arrastra el mapa → desactivar seguimiento
+  map.on('dragstart', () => {
+    siguiendoUsuario = false;
+  });
+
+  // 🎯 Añadir un botón flotante para volver a centrar el mapa
+  const btnSeguir = L.control({ position: 'bottomright' });
+  btnSeguir.onAdd = () => {
+    const btn = L.DomUtil.create('button', 'seguir-usuario-btn');
+    btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+    btn.title = 'Volver a centrar en tu ubicación';
+    btn.style.cssText = `
+      background: white;
+      border: none;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    `;
+    btn.onclick = () => {
+      siguiendoUsuario = true;
+      if (userLat && userLon) {
+        map.setView([userLat, userLon], 15, { animate: true });
       }
-    },
-    () => toggleLoader(false),
-    { enableHighAccuracy: true }
-  );
+    };
+    return btn;
+  };
+  btnSeguir.addTo(map);
 }
 
 /* ------------------------------ INIT ------------------------------ */

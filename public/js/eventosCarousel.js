@@ -132,7 +132,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
     btnVerMas.href = "listadoEventos.html";
     btnVerMas.textContent = "Ver más eventos";
     btnVerMas.className =
-      "bg-[#0B132B] hover:bg-[#1C2541] text-white font-semibold py-2 px-8 rounded-lg shadow transition";
+      "bg-[#0B132B] hover:bg-[#1C2541] text-white font-light py-2 px-8 rounded-lg shadow transition";
 
     btnContainer.appendChild(btnVerMas);
     container.appendChild(btnContainer);

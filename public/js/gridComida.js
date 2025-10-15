@@ -176,7 +176,7 @@ if (restantes.length > 0) {
   const btnVerMas = document.createElement("button");
   btnVerMas.textContent = "Ver más...";
   btnVerMas.className =
-    "bg-[#0B132B] hover:bg-[#1C2541] text-white font-semibold py-2 px-8 rounded-lg shadow transition";
+    "bg-[#0B132B] hover:bg-[#1C2541] text-white font-light py-2 px-8 rounded-lg shadow transition";
 
   // Acción al hacer clic
   btnVerMas.addEventListener("click", () => {
