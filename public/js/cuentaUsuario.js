@@ -264,7 +264,7 @@ async function cargarPerfil(uid) {
   console.log('Ejecutando operación select en tabla usuarios', { filtro: { id: uid } });
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
+    .select('id, nombre, apellido, telefono, email, imagen, created_at, municipio, notificartext')
     .eq('id', uid)
     .maybeSingle();
 
@@ -495,7 +495,7 @@ async function cargarFavoritos(uid) {
     .from('favoritosusuarios')
     .select(`
       idcomercio,
-      creado_en,
+      created_at,
       Comercios (
         id,
         nombre,
