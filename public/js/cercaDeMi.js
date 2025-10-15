@@ -1218,20 +1218,18 @@ async function locateUser() {
       const zoomActual = map.getZoom();
       if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
 
-      // 🧭 Orientar el mapa o el marcador según dirección real
-      const heading = pos.coords.heading;
-      if (heading !== null && !isNaN(heading)) {
-        ultimoHeading = heading;
+      // 🧭 Orientar marcador del usuario según dirección real
+const heading = pos.coords.heading;
+if (heading !== null && !isNaN(heading)) {
+  ultimoHeading = heading;
 
-        // Si el plugin leaflet-map-rotate está disponible, rota el mapa
-        if (typeof map.setBearing === "function") {
-          map.setBearing(heading);
-        } else if (userMarker?._icon) {
-          // Fallback: rota solo el ícono del usuario
-          userMarker._icon.style.transition = "transform 0.2s linear";
-          userMarker._icon.style.transform = `rotate(${heading}deg)`;
-        }
-      }
+  // 🔄 Rota el ícono del usuario según heading (0° = norte)
+  if (userMarker?._icon) {
+    userMarker._icon.style.transition = "transform 0.4s ease-out";
+    userMarker._icon.style.transformOrigin = "center center";
+    userMarker._icon.style.transform = `rotate(${heading}deg)`;
+  }
+}
 
       // 🔵 Crear o mover el marcador del usuario
       if (userMarker) {
