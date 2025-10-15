@@ -617,14 +617,14 @@ async function inyectarPortadas(lista = []) {
 
 function initMap() {
   // ✅ Crear mapa base
-  map = L.map('map', {
+  map = L.map("map", {
     maxZoom: 22,
     minZoom: 6,
     zoomControl: false,
-  }).setView([18.2208, -66.5901], 9);
+  }).setView([18.2208, -66.5901], 13); // Zoom inicial 13 como solicitaste
 
-  // ✅ Capa del mapa (Carto Voyager: más moderna y ligera)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  // ✅ Capa del mapa (Carto Voyager)
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     maxZoom: 22,
     attribution:
       '&copy; <a href="https://carto.com/">CartoDB</a> | &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
@@ -633,41 +633,42 @@ function initMap() {
   // ✅ Capa de marcadores
   markersLayer = L.layerGroup().addTo(map);
 
-  // 🧭 Inicializar control de seguimiento
+  // 🧭 Control de seguimiento del usuario
   map._siguiendoUsuario = true;
-
-  map.enableFollowUser = function () {
+  map.enableFollowUser = () => {
     map._siguiendoUsuario = true;
     console.log("📍 Seguimiento activado");
   };
-
-  map.disableFollowUser = function () {
+  map.disableFollowUser = () => {
     map._siguiendoUsuario = false;
     console.log("📍 Seguimiento pausado (usuario movió el mapa)");
   };
 
-  // 🚫 Pausar seguimiento si el usuario mueve o hace zoom
+  // 🚫 Desactiva seguimiento si el usuario mueve o hace zoom
   map.on("dragstart zoomstart", () => {
     map.disableFollowUser();
   });
 
-  // ⚙️ Rotación inicial (sin espacios en blanco)
+  // ⚙️ Ajustes visuales del mapa para rotación CSS
   const mapEl = document.getElementById("map");
-  mapEl.style.transition = "transform 0.5s ease-out";
+  mapEl.style.transition = "transform 0.6s ease-out";
   mapEl.style.transformOrigin = "center center";
+  mapEl.style.width = "140vw";      // 🔹 más ancho para cubrir rotación completa
+  mapEl.style.height = "140vh";     // 🔹 más alto para evitar bordes vacíos
+  mapEl.style.position = "absolute";
+  mapEl.style.top = "-20vh";
+  mapEl.style.left = "-20vw";
+  mapEl.style.zIndex = "0";         // 🔹 siempre debajo del resto de elementos
 
-  // 🚀 Aumentar el contenedor para que no se vean bordes al rotar
+  // 🚀 Aumentar el contenedor principal del mapa
   const mapContainer = document.getElementById("mapContainer");
   if (mapContainer) {
-    mapContainer.style.width = "120vw";
-    mapContainer.style.height = "120vh";
     mapContainer.style.position = "relative";
     mapContainer.style.overflow = "hidden";
-    mapContainer.style.left = "-10vw";
-    mapContainer.style.top = "-10vh";
+    mapContainer.style.zIndex = "1";
   }
 
-  console.log("✅ Mapa inicializado con contenedor ampliado y rotación lista");
+  console.log("✅ Mapa inicializado con fondo expandido y rotación fluida");
 }
 
 function updateRadioLabel() {
@@ -1213,6 +1214,7 @@ async function locateUser() {
   let primeraVez = true;
   let velocidadMph = 0;
   let ultimoHeading = null; // 🧭 Última dirección conocida
+  let ultimaPosicion = null; // 📍 Última posición registrada
 
   // 🔁 Actualizar ubicación en vivo
   const actualizarUbicacion = async (pos) => {
@@ -1223,16 +1225,22 @@ async function locateUser() {
       if (!map) return;
 
       // 🌀 Calcular velocidad en millas por hora
-      const speed = pos.coords.speed || 0; // m/s
-      velocidadMph = speed * 2.23694; // convertir a mph
+      const speed = pos.coords.speed || 0;
+      velocidadMph = speed * 2.23694;
+
+      // 📏 Calcular distancia recorrida desde la última posición
+      if (ultimaPosicion) {
+        const distancia = getDistanceMeters(ultimaPosicion, { lat: userLat, lon: userLon });
+        if (distancia < 3) return; // ignora movimientos pequeños
+      }
+      ultimaPosicion = { lat: userLat, lon: userLon };
 
       // 🔎 Determinar zoom base según velocidad
       let zoomDeseado;
       if (velocidadMph > 45) zoomDeseado = 13;        // 🚗 Alta velocidad
       else if (velocidadMph >= 20) zoomDeseado = 15;  // 🚙 Media
-      else zoomDeseado = 17;                          // 🚶 Lento / detenido
+      else zoomDeseado = 20;                          // 🚶 Lento / detenido
 
-      // 📏 Si el usuario acercó más, respetar su zoom
       const zoomActual = map.getZoom();
       if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
 
@@ -1242,25 +1250,25 @@ async function locateUser() {
 
       if (heading !== null && !isNaN(heading)) {
         ultimoHeading = heading;
-
-        // 🌀 Suavizar rotación
-        mapEl.style.transition = "transform 0.4s linear";
+        mapEl.style.transition = "transform 0.5s ease-out";
         mapEl.style.transform = `rotate(${-heading}deg)`;
       } else if (ultimoHeading !== null) {
-        // Mantener la última orientación conocida si se pierde temporalmente
         mapEl.style.transform = `rotate(${-ultimoHeading}deg)`;
       }
 
-      // 🔵 Crear o mover el marcador del usuario
+      // 📍 Crear o mover el marcador del usuario (no se rota)
       if (userMarker) {
         userMarker.setLatLng([userLat, userLon]);
       } else {
-        userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+        userMarker = L.marker([userLat, userLon], {
+          icon: iconoUsuario,
+          interactive: false, // evita clics accidentales
+        }).addTo(map);
       }
 
-      // 🎯 Centrar solo la primera vez (para no marear al usuario)
+      // 🎯 Centrar solo la primera vez
       if (primeraVez) {
-        map.setView([userLat, userLon], zoomDeseado, { animate: true });
+        map.setView([userLat, userLon], 13, { animate: true });
         primeraVez = false;
       }
 
@@ -1270,7 +1278,9 @@ async function locateUser() {
         map._comerciosCargados = true;
       }
 
-      console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Heading: ${heading ?? "N/A"}°`);
+      console.log(
+        `🚶‍♂️ ${velocidadMph.toFixed(1)} mph | Heading: ${heading ?? "N/A"}° | Zoom: ${zoomDeseado}`
+      );
     } catch (err) {
       console.error("⚠️ Error actualizando ubicación:", err);
     } finally {
@@ -1285,7 +1295,7 @@ async function locateUser() {
       console.warn("⚠️ Usando ubicación por defecto (Ponce, PR)");
       userLat = 18.012;
       userLon = -66.613;
-      map.setView([userLat, userLon], 15, { animate: true });
+      map.setView([userLat, userLon], 13, { animate: true });
       toggleLoader(false);
     }
   };
@@ -1297,40 +1307,53 @@ async function locateUser() {
     timeout: 30000,
   });
 
-  // 🎯 Botón flotante para centrar vista según la velocidad
-  const btnSeguir = L.control({ position: "bottomright" });
-  btnSeguir.onAdd = () => {
-    const btn = L.DomUtil.create("button", "seguir-usuario-btn");
-    btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
-    btn.title = "Centrar mapa en tu ubicación";
-    btn.style.cssText = `
-      background: white;
-      border: none;
-      border-radius: 50%;
-      width: 44px;
-      height: 44px;
-      font-size: 18px;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-    `;
-    btn.onclick = () => {
-      if (userLat && userLon) {
-        let zoomDeseado;
-        if (velocidadMph > 45) zoomDeseado = 13;
-        else if (velocidadMph >= 20) zoomDeseado = 15;
-        else zoomDeseado = 17;
+  // 🎯 Botón flotante fijo (📍)
+  const btn = document.createElement("button");
+  btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+  btn.title = "Centrar mapa en tu ubicación";
+  btn.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: #23b4e9;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 9999;
+  `;
+  btn.onclick = () => {
+    if (userLat && userLon) {
+      let zoomDeseado;
+      if (velocidadMph > 45) zoomDeseado = 13;
+      else if (velocidadMph >= 20) zoomDeseado = 15;
+      else zoomDeseado = 20;
 
-        // 🔄 Al volver a centrar, restablecer rotación
-        const mapEl = document.getElementById("map");
-        if (ultimoHeading !== null)
-          mapEl.style.transform = `rotate(${-ultimoHeading}deg)`;
+      const mapEl = document.getElementById("map");
+      if (ultimoHeading !== null)
+        mapEl.style.transform = `rotate(${-ultimoHeading}deg)`;
 
-        map.setView([userLat, userLon], zoomDeseado, { animate: true });
-      }
-    };
-    return btn;
+      map.setView([userLat, userLon], zoomDeseado, { animate: true });
+    }
   };
-  btnSeguir.addTo(map);
+  document.body.appendChild(btn);
+}
+
+// 📏 Función auxiliar para calcular distancia (en metros)
+function getDistanceMeters(p1, p2) {
+  const R = 6371000;
+  const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
+  const dLon = ((p2.lon - p1.lon) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((p1.lat * Math.PI) / 180) *
+      Math.cos((p2.lat * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 /* ------------------------------ INIT ------------------------------ */
