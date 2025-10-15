@@ -616,14 +616,22 @@ async function inyectarPortadas(lista = []) {
 }
 
 function initMap() {
-  // Asegúrate que exista <div id="map"></div> en cercaDeMi.html
-  map = L.map('map', { maxZoom: 20 }).setView([18.2208, -66.5901], 9);
+  // ✅ Crear mapa con zoom extendido y rotación habilitada
+  map = L.map('map', {
+    maxZoom: 22,        // 🔥 Permite acercar más (nivel calle)
+    minZoom: 6,         // 🔹 Previene alejar demasiado
+    rotate: true,       // 🧭 Rotación real (requiere leaflet-map-rotate)
+    touchRotate: true,  // 📱 Permite girar con dos dedos
+  }).setView([18.2208, -66.5901], 9);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // ✅ TileLayer HD (CartoDB Voyager — más nítido y moderno)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 22,
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+      '&copy; <a href="https://carto.com/">CartoDB</a> | &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
   }).addTo(map);
 
+  // ✅ Capa de marcadores (comercios)
   markersLayer = L.layerGroup().addTo(map);
 }
 
@@ -1189,13 +1197,10 @@ async function locateUser() {
       const zoomActual = map.getZoom();
       if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
 
-      // 🧭 Rotar mapa según dirección (heading)
+      // 🧭 Rotar mapa según dirección (heading) usando Leaflet.MapRotate
       const heading = pos.coords.heading;
       if (heading !== null && !isNaN(heading)) {
-        const mapContainer = map.getContainer();
-        mapContainer.style.transition = "transform 0.6s ease-out";
-        mapContainer.style.transformOrigin = "center center";
-        mapContainer.style.transform = `rotate(${-heading}deg)`;
+        map.setBearing(heading); // ✅ Rotación real del mapa sin girar UI
       }
 
       // 🔵 Crear o mover el marcador del usuario
@@ -1230,9 +1235,8 @@ async function locateUser() {
         map._comerciosCargados = true;
       }
 
-      // 🔁 Mostrar en consola (solo para pruebas)
+      // 🔁 Mostrar datos en consola (para debug)
       console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoomDeseado}`);
-
     } catch (err) {
       console.error("⚠️ Error actualizando ubicación:", err);
     } finally {
@@ -1288,8 +1292,7 @@ async function locateUser() {
       siguiendoUsuario = true;
       map._userMovedManually = false;
       if (userLat && userLon) {
-        const mapContainer = map.getContainer();
-        mapContainer.style.transform = "rotate(0deg)"; // volver al norte
+        map.setBearing(0); // 🔄 vuelve al norte
         let zoom = map.getZoom() < 17 ? 17 : map.getZoom();
         map.setView([userLat, userLon], zoom, { animate: true });
       }
