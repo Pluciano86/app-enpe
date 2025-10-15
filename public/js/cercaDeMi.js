@@ -1169,66 +1169,90 @@ async function locateUser() {
   let siguiendoUsuario = true; // 🔹 Estado del modo seguimiento
 
   const actualizarUbicacion = async (pos) => {
-  try {
-    userLat = pos.coords.latitude;
-    userLon = pos.coords.longitude;
+    try {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
 
-    // 🌀 Calcular velocidad en millas por hora
-    const speed = pos.coords.speed || 0; // m/s
-    const velocidadMph = speed * 2.23694; // convertir a mph
+      if (!map) return;
 
-    // 🔎 Determinar zoom según velocidad
-    let zoom;
-    if (velocidadMph > 45) zoom = 13;        // 🚗 Alta velocidad
-    else if (velocidadMph >= 20) zoom = 15;  // 🚙 Velocidad media
-    else zoom = 17;                          // 🚶 Baja o detenido
+      // 🌀 Calcular velocidad en millas por hora
+      const speed = pos.coords.speed || 0; // m/s
+      const velocidadMph = speed * 2.23694; // convertir a mph
 
-    if (!map) return;
+      // 🔎 Determinar zoom base según velocidad
+      let zoomDeseado;
+      if (velocidadMph > 45) zoomDeseado = 13;        // 🚗 Alta velocidad
+      else if (velocidadMph >= 20) zoomDeseado = 15;  // 🚙 Media
+      else zoomDeseado = 17;                          // 🚶 Lento / detenido
 
-    // 🔵 Crear o mover el marcador del usuario
-    if (userMarker) {
-      userMarker.setLatLng([userLat, userLon]);
-    } else {
-      userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+      // 📏 Si el usuario acercó más, no lo alejamos
+      const zoomActual = map.getZoom();
+      if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
+
+      // 🧭 Rotar mapa según dirección (heading)
+      const heading = pos.coords.heading;
+      if (heading !== null && !isNaN(heading)) {
+        const mapContainer = map.getContainer();
+        mapContainer.style.transition = "transform 0.6s ease-out";
+        mapContainer.style.transformOrigin = "center center";
+        mapContainer.style.transform = `rotate(${-heading}deg)`;
+      }
+
+      // 🔵 Crear o mover el marcador del usuario
+      if (userMarker) {
+        userMarker.setLatLng([userLat, userLon]);
+      } else {
+        userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+      }
+
+      // 🔵 Crear o actualizar círculo de precisión
+      if (!userAccuracyCircle) {
+        userAccuracyCircle = L.circle([userLat, userLon], {
+          radius: pos.coords.accuracy || 20,
+          color: "#3b82f6",
+          fillColor: "#3b82f6",
+          fillOpacity: 0.1,
+          weight: 1,
+        }).addTo(map);
+      } else {
+        userAccuracyCircle.setLatLng([userLat, userLon]);
+        userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
+      }
+
+      // 🎯 Centrar mapa solo si está en modo seguimiento
+      if (siguiendoUsuario) {
+        map.setView([userLat, userLon], zoomDeseado, { animate: true });
+      }
+
+      // ⚡ Cargar comercios solo la primera vez
+      if (!map._comerciosCargados) {
+        await loadNearby();
+        map._comerciosCargados = true;
+      }
+
+      // 🔁 Mostrar en consola (solo para pruebas)
+      console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoomDeseado}`);
+
+    } catch (err) {
+      console.error("⚠️ Error actualizando ubicación:", err);
+    } finally {
+      toggleLoader(false);
     }
-
-    // 🔵 Crear o actualizar círculo de precisión
-    if (!userAccuracyCircle) {
-      userAccuracyCircle = L.circle([userLat, userLon], {
-        radius: pos.coords.accuracy || 20,
-        color: "#3b82f6",
-        fillColor: "#3b82f6",
-        fillOpacity: 0.1,
-        weight: 1,
-      }).addTo(map);
-    } else {
-      userAccuracyCircle.setLatLng([userLat, userLon]);
-      userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
-    }
-
-    // 🎯 Centrar mapa solo si el usuario no lo movió manualmente
-    if (siguiendoUsuario && !map._userMovedManually) {
-      map.setView([userLat, userLon], zoom, { animate: true });
-    }
-
-    // ⚡ Cargar comercios solo la primera vez
-    if (!map._comerciosCargados) {
-      await loadNearby();
-      map._comerciosCargados = true;
-    }
-
-    // 🔁 Mostrar en consola (solo para pruebas)
-    console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoom}`);
-
-  } catch (err) {
-    console.error("⚠️ Error actualizando ubicación:", err);
-  } finally {
-    toggleLoader(false);
-  }
-};
+  };
 
   const handleError = (err) => {
-    console.warn('⚠️ Error en seguimiento de ubicación:', err.message);
+    console.warn("⚠️ Error en seguimiento de ubicación:", err.message);
+
+    // 🧭 Fallback local para desarrollo sin GPS real
+    if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
+      console.warn("⚠️ Usando ubicación por defecto (Ponce, PR)");
+      userLat = 18.012;
+      userLon = -66.613;
+      map.setView([userLat, userLon], 15, { animate: true });
+      toggleLoader(false);
+      return;
+    }
+
     toggleLoader(false);
   };
 
@@ -1236,20 +1260,20 @@ async function locateUser() {
   navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
     enableHighAccuracy: true,
     maximumAge: 0,
-    timeout: 10000,
+    timeout: 30000, // ⏱️ 30 segundos para evitar "Timeout expired"
   });
 
-  // 🖐️ Detectar cuando el usuario arrastra el mapa → desactivar seguimiento
-  map.on('dragstart', () => {
+  // 🖐️ Detectar cuando el usuario arrastra o hace zoom → desactivar seguimiento
+  map.on("dragstart zoomstart", () => {
     siguiendoUsuario = false;
   });
 
-  // 🎯 Añadir un botón flotante para volver a centrar el mapa
-  const btnSeguir = L.control({ position: 'bottomright' });
+  // 🎯 Botón flotante para volver a centrar y restaurar orientación
+  const btnSeguir = L.control({ position: "bottomright" });
   btnSeguir.onAdd = () => {
-    const btn = L.DomUtil.create('button', 'seguir-usuario-btn');
+    const btn = L.DomUtil.create("button", "seguir-usuario-btn");
     btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
-    btn.title = 'Volver a centrar en tu ubicación';
+    btn.title = "Centrar mapa y restaurar orientación";
     btn.style.cssText = `
       background: white;
       border: none;
@@ -1262,8 +1286,12 @@ async function locateUser() {
     `;
     btn.onclick = () => {
       siguiendoUsuario = true;
+      map._userMovedManually = false;
       if (userLat && userLon) {
-        map.setView([userLat, userLon], 15, { animate: true });
+        const mapContainer = map.getContainer();
+        mapContainer.style.transform = "rotate(0deg)"; // volver al norte
+        let zoom = map.getZoom() < 17 ? 17 : map.getZoom();
+        map.setView([userLat, userLon], zoom, { animate: true });
       }
     };
     return btn;
