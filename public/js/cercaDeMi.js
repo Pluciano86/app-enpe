@@ -1194,7 +1194,6 @@ async function locateUser() {
   // 📍 Estado actual
   let primeraVez = true;
   let velocidadMph = 0;
-  let ultimoHeading = null;
 
   // 🔁 Actualizar ubicación en vivo
   const actualizarUbicacion = async (pos) => {
@@ -1218,22 +1217,6 @@ async function locateUser() {
       const zoomActual = map.getZoom();
       if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
 
-      // 🧭 Rotar el mapa completo según la dirección real del usuario
-const heading = pos.coords.heading;
-const mapContainer = map.getContainer();
-
-if (heading !== null && !isNaN(heading)) {
-  ultimoHeading = heading;
-
-  // Aplicar rotación suave al canvas interno del mapa
-  const mapPane = mapContainer.querySelector('.leaflet-map-pane');
-  if (mapPane) {
-    mapPane.style.transition = 'transform 0.6s ease-out';
-    mapPane.style.transformOrigin = 'center center';
-    mapPane.style.transform = `rotate(${-heading}deg)`; // negativo para alinear con movimiento real
-  }
-}
-
       // 🔵 Crear o mover el marcador del usuario
       if (userMarker) {
         userMarker.setLatLng([userLat, userLon]);
@@ -1255,10 +1238,9 @@ if (heading !== null && !isNaN(heading)) {
         userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
       }
 
-      // 🎯 Seguir la posición en tiempo real, pero permitir mover el mapa
-      map.panTo([userLat, userLon], { animate: true });
+      // 🎯 Centrar solo la primera vez (para no marear al usuario)
       if (primeraVez) {
-        map.setZoom(zoomDeseado);
+        map.setView([userLat, userLon], zoomDeseado, { animate: true });
         primeraVez = false;
       }
 
@@ -1268,9 +1250,7 @@ if (heading !== null && !isNaN(heading)) {
         map._comerciosCargados = true;
       }
 
-      // 🔁 Mostrar en consola (solo para pruebas)
-      console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoomDeseado} | Heading: ${ultimoHeading}`);
-
+      console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoomDeseado}`);
     } catch (err) {
       console.error("⚠️ Error actualizando ubicación:", err);
     } finally {
@@ -1314,24 +1294,16 @@ if (heading !== null && !isNaN(heading)) {
       box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     `;
     btn.onclick = () => {
-  if (userLat && userLon) {
-    // Calcular zoom dinámico según velocidad actual
-    let zoomDeseado;
-    if (velocidadMph > 45) zoomDeseado = 13;
-    else if (velocidadMph >= 20) zoomDeseado = 15;
-    else zoomDeseado = 17;
+      if (userLat && userLon) {
+        // Calcular zoom dinámico según velocidad actual
+        let zoomDeseado;
+        if (velocidadMph > 45) zoomDeseado = 13;
+        else if (velocidadMph >= 20) zoomDeseado = 15;
+        else zoomDeseado = 17;
 
-    // Centrar vista
-    map.setView([userLat, userLon], zoomDeseado, { animate: true });
-
-    // 🔄 Restaurar orientación al norte
-    const mapPane = map.getContainer().querySelector('.leaflet-map-pane');
-    if (mapPane) {
-      mapPane.style.transition = 'transform 0.6s ease-out';
-      mapPane.style.transform = 'rotate(0deg)';
-    }
-  }
-};
+        map.setView([userLat, userLon], zoomDeseado, { animate: true });
+      }
+    };
     return btn;
   };
   btnSeguir.addTo(map);
