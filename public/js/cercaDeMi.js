@@ -616,40 +616,58 @@ async function inyectarPortadas(lista = []) {
 }
 
 function initMap() {
-  // ✅ Crear mapa con zoom extendido y rotación habilitada
+  // ✅ Crear mapa base
   map = L.map('map', {
-    maxZoom: 22,        // 🔥 Permite acercar más (nivel calle)
-    minZoom: 6,         // 🔹 Previene alejar demasiado
-    rotate: true,       // 🧭 Rotación real (requiere leaflet-map-rotate)
-    touchRotate: true,  // 📱 Permite girar con dos dedos
+    maxZoom: 22,
+    minZoom: 6,
+    zoomControl: false,
   }).setView([18.2208, -66.5901], 9);
 
-  // ✅ TileLayer HD (CartoDB Voyager — más nítido y moderno)
+  // ✅ Capa del mapa (Carto Voyager: más moderna y ligera)
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 22,
     attribution:
       '&copy; <a href="https://carto.com/">CartoDB</a> | &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
   }).addTo(map);
 
-  // ✅ Capa de marcadores (comercios)
+  // ✅ Capa de marcadores
   markersLayer = L.layerGroup().addTo(map);
-  // ✅ Configurar seguimiento dinámico del usuario
-map._siguiendoUsuario = true;
 
-map.enableFollowUser = function () {
+  // 🧭 Inicializar control de seguimiento
   map._siguiendoUsuario = true;
-  console.log("📍 Seguimiento activado");
-};
 
-map.disableFollowUser = function () {
-  map._siguiendoUsuario = false;
-  console.log("📍 Seguimiento pausado (usuario movió el mapa)");
-};
+  map.enableFollowUser = function () {
+    map._siguiendoUsuario = true;
+    console.log("📍 Seguimiento activado");
+  };
 
-// 🔸 Detiene el seguimiento si el usuario arrastra o hace zoom manual
-map.on("dragstart zoomstart", () => {
-  map.disableFollowUser();
-});
+  map.disableFollowUser = function () {
+    map._siguiendoUsuario = false;
+    console.log("📍 Seguimiento pausado (usuario movió el mapa)");
+  };
+
+  // 🚫 Pausar seguimiento si el usuario mueve o hace zoom
+  map.on("dragstart zoomstart", () => {
+    map.disableFollowUser();
+  });
+
+  // ⚙️ Rotación inicial (sin espacios en blanco)
+  const mapEl = document.getElementById("map");
+  mapEl.style.transition = "transform 0.5s ease-out";
+  mapEl.style.transformOrigin = "center center";
+
+  // 🚀 Aumentar el contenedor para que no se vean bordes al rotar
+  const mapContainer = document.getElementById("mapContainer");
+  if (mapContainer) {
+    mapContainer.style.width = "120vw";
+    mapContainer.style.height = "120vh";
+    mapContainer.style.position = "relative";
+    mapContainer.style.overflow = "hidden";
+    mapContainer.style.left = "-10vw";
+    mapContainer.style.top = "-10vh";
+  }
+
+  console.log("✅ Mapa inicializado con contenedor ampliado y rotación lista");
 }
 
 function updateRadioLabel() {
@@ -1194,6 +1212,7 @@ async function locateUser() {
   // 📍 Estado actual
   let primeraVez = true;
   let velocidadMph = 0;
+  let ultimoHeading = null; // 🧭 Última dirección conocida
 
   // 🔁 Actualizar ubicación en vivo
   const actualizarUbicacion = async (pos) => {
@@ -1217,25 +1236,26 @@ async function locateUser() {
       const zoomActual = map.getZoom();
       if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
 
+      // 🧭 ROTAR MAPA según dirección (heading)
+      const heading = pos.coords.heading;
+      const mapEl = document.getElementById("map");
+
+      if (heading !== null && !isNaN(heading)) {
+        ultimoHeading = heading;
+
+        // 🌀 Suavizar rotación
+        mapEl.style.transition = "transform 0.4s linear";
+        mapEl.style.transform = `rotate(${-heading}deg)`;
+      } else if (ultimoHeading !== null) {
+        // Mantener la última orientación conocida si se pierde temporalmente
+        mapEl.style.transform = `rotate(${-ultimoHeading}deg)`;
+      }
+
       // 🔵 Crear o mover el marcador del usuario
       if (userMarker) {
         userMarker.setLatLng([userLat, userLon]);
       } else {
         userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
-      }
-
-      // 🔵 Crear o actualizar círculo de precisión
-      if (!userAccuracyCircle) {
-        userAccuracyCircle = L.circle([userLat, userLon], {
-          radius: pos.coords.accuracy || 20,
-          color: "#3b82f6",
-          fillColor: "#3b82f6",
-          fillOpacity: 0.1,
-          weight: 1,
-        }).addTo(map);
-      } else {
-        userAccuracyCircle.setLatLng([userLat, userLon]);
-        userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
       }
 
       // 🎯 Centrar solo la primera vez (para no marear al usuario)
@@ -1250,7 +1270,7 @@ async function locateUser() {
         map._comerciosCargados = true;
       }
 
-      console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoomDeseado}`);
+      console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Heading: ${heading ?? "N/A"}°`);
     } catch (err) {
       console.error("⚠️ Error actualizando ubicación:", err);
     } finally {
@@ -1295,11 +1315,15 @@ async function locateUser() {
     `;
     btn.onclick = () => {
       if (userLat && userLon) {
-        // Calcular zoom dinámico según velocidad actual
         let zoomDeseado;
         if (velocidadMph > 45) zoomDeseado = 13;
         else if (velocidadMph >= 20) zoomDeseado = 15;
         else zoomDeseado = 17;
+
+        // 🔄 Al volver a centrar, restablecer rotación
+        const mapEl = document.getElementById("map");
+        if (ultimoHeading !== null)
+          mapEl.style.transform = `rotate(${-ultimoHeading}deg)`;
 
         map.setView([userLat, userLon], zoomDeseado, { animate: true });
       }
