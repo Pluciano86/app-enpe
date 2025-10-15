@@ -1218,16 +1218,19 @@ async function locateUser() {
       const zoomActual = map.getZoom();
       if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
 
-      // 🧭 Orientar marcador del usuario según dirección real
+      // 🧭 Rotar el mapa completo según la dirección real del usuario
 const heading = pos.coords.heading;
+const mapContainer = map.getContainer();
+
 if (heading !== null && !isNaN(heading)) {
   ultimoHeading = heading;
 
-  // 🔄 Rota el ícono del usuario según heading (0° = norte)
-  if (userMarker?._icon) {
-    userMarker._icon.style.transition = "transform 0.4s ease-out";
-    userMarker._icon.style.transformOrigin = "center center";
-    userMarker._icon.style.transform = `rotate(${heading}deg)`;
+  // Aplicar rotación suave al canvas interno del mapa
+  const mapPane = mapContainer.querySelector('.leaflet-map-pane');
+  if (mapPane) {
+    mapPane.style.transition = 'transform 0.6s ease-out';
+    mapPane.style.transformOrigin = 'center center';
+    mapPane.style.transform = `rotate(${-heading}deg)`; // negativo para alinear con movimiento real
   }
 }
 
@@ -1311,19 +1314,24 @@ if (heading !== null && !isNaN(heading)) {
       box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     `;
     btn.onclick = () => {
-      if (userLat && userLon) {
-        // Calcular zoom dinámico según velocidad actual
-        let zoomDeseado;
-        if (velocidadMph > 45) zoomDeseado = 13;
-        else if (velocidadMph >= 20) zoomDeseado = 15;
-        else zoomDeseado = 17;
+  if (userLat && userLon) {
+    // Calcular zoom dinámico según velocidad actual
+    let zoomDeseado;
+    if (velocidadMph > 45) zoomDeseado = 13;
+    else if (velocidadMph >= 20) zoomDeseado = 15;
+    else zoomDeseado = 17;
 
-        map.setView([userLat, userLon], zoomDeseado, { animate: true });
-        if (ultimoHeading && typeof map.setBearing === "function") {
-          map.setBearing(ultimoHeading); // reorientar hacia la dirección actual
-        }
-      }
-    };
+    // Centrar vista
+    map.setView([userLat, userLon], zoomDeseado, { animate: true });
+
+    // 🔄 Restaurar orientación al norte
+    const mapPane = map.getContainer().querySelector('.leaflet-map-pane');
+    if (mapPane) {
+      mapPane.style.transition = 'transform 0.6s ease-out';
+      mapPane.style.transform = 'rotate(0deg)';
+    }
+  }
+};
     return btn;
   };
   btnSeguir.addTo(map);
