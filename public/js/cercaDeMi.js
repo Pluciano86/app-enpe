@@ -633,6 +633,23 @@ function initMap() {
 
   // ✅ Capa de marcadores (comercios)
   markersLayer = L.layerGroup().addTo(map);
+  // ✅ Configurar seguimiento dinámico del usuario
+map._siguiendoUsuario = true;
+
+map.enableFollowUser = function () {
+  map._siguiendoUsuario = true;
+  console.log("📍 Seguimiento activado");
+};
+
+map.disableFollowUser = function () {
+  map._siguiendoUsuario = false;
+  console.log("📍 Seguimiento pausado (usuario movió el mapa)");
+};
+
+// 🔸 Detiene el seguimiento si el usuario arrastra o hace zoom manual
+map.on("dragstart zoomstart", () => {
+  map.disableFollowUser();
+});
 }
 
 function updateRadioLabel() {
@@ -1224,10 +1241,10 @@ async function locateUser() {
         userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
       }
 
-      // 🎯 Centrar mapa solo si está en modo seguimiento
-      if (siguiendoUsuario) {
-        map.setView([userLat, userLon], zoomDeseado, { animate: true });
-      }
+      // 🎯 Mantener mapa centrado mientras el modo seguimiento esté activo
+if (map._siguiendoUsuario) {
+  map.setView([userLat, userLon], zoomDeseado, { animate: false });
+}
 
       // ⚡ Cargar comercios solo la primera vez
       if (!map._comerciosCargados) {
@@ -1289,14 +1306,14 @@ async function locateUser() {
       box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     `;
     btn.onclick = () => {
-      siguiendoUsuario = true;
-      map._userMovedManually = false;
-      if (userLat && userLon) {
-        map.setBearing(0); // 🔄 vuelve al norte
-        let zoom = map.getZoom() < 17 ? 17 : map.getZoom();
-        map.setView([userLat, userLon], zoom, { animate: true });
-      }
-    };
+  map.enableFollowUser(); // ✅ Reactivar seguimiento
+  map._userMovedManually = false;
+  if (userLat && userLon) {
+    map.setBearing(0); // volver al norte
+    let zoom = map.getZoom() < 17 ? 17 : map.getZoom();
+    map.setView([userLat, userLon], zoom, { animate: true });
+  }
+};
     return btn;
   };
   btnSeguir.addTo(map);
