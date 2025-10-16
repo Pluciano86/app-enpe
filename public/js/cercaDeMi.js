@@ -1194,52 +1194,12 @@ async function locateUser() {
 
     if (!map) return;
 
-    // 📍 Crear marcador del usuario con borde celeste y punta direccional
-if (!userMarker) {
-  const iconoUsuario = L.divIcon({
-    className: "usuario-icon",
-    html: `
-      <div style="
-        position: relative;
-        width: 38px; height: 38px;
-        border-radius: 50%;
-        background: white;
-        border: 4px solid #23b4e9;
-        box-shadow: 0 0 0 3px rgba(35,180,233,0.3);
-        display: flex; align-items: center; justify-content: center;
-      ">
-        <img src="${iconoUsuario?.options?.iconUrl || './img/user-default.png'}"
-             alt="Usuario"
-             style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;" />
-        <div class="flecha-usuario" style="
-          position: absolute;
-          bottom: -10px; left: 50%;
-          transform: translateX(-50%) rotate(0deg);
-          width: 0; height: 0;
-          border-left: 7px solid transparent;
-          border-right: 7px solid transparent;
-          border-top: 12px solid #23b4e9;
-        "></div>
-      </div>
-    `,
-    iconSize: [38, 38],
-    iconAnchor: [19, 19],
-  });
-
-  userMarker = L.marker([userLat, userLon], {
-    icon: iconoUsuario,
-    interactive: false,
-    zIndexOffset: 1000,
-  }).addTo(map);
-} else {
-  userMarker.setLatLng([userLat, userLon]);
-
-  // 🧭 Actualizar la dirección del triángulo según heading
-  const flecha = userMarker._icon?.querySelector(".flecha-usuario");
-  if (flecha && pos.coords.heading !== null && !isNaN(pos.coords.heading)) {
-    flecha.style.transform = `translateX(-50%) rotate(${pos.coords.heading}deg)`;
-  }
-}
+    // 🔵 Crear o mover el marcador del usuario
+    if (userMarker) {
+      userMarker.setLatLng([userLat, userLon]);
+    } else {
+      userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+    }
 
     // 🔵 (Quitamos el círculo de precisión si existiera)
 if (userAccuracyCircle) {
