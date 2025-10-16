@@ -1175,50 +1175,89 @@ async function locateUser() {
   const idUsuario = await obtenerIdUsuarioActual();
   const iconoUsuario = await crearIconoUsuario(idUsuario);
 
-  let siguiendoUsuario = true; // 🔹 Estado del modo seguimiento
+  let siguiendoUsuario = true;
+  let ultimaPosicion = null;
+  let ultimoHeading = 0;
+  let flechaLayer = null;
 
   const actualizarUbicacion = async (pos) => {
   try {
     userLat = pos.coords.latitude;
     userLon = pos.coords.longitude;
 
-    // 🌀 Calcular velocidad en millas por hora
-    const speed = pos.coords.speed || 0; // m/s
-    const velocidadMph = speed * 2.23694; // convertir a mph
+    // 🧭 Dirección del usuario
+    const heading = pos.coords.heading;
+    if (heading !== null && !isNaN(heading)) ultimoHeading = heading;
 
-    // 🔎 Determinar zoom según velocidad
+    // 🌀 Calcular velocidad
+    const speed = pos.coords.speed || 0;
+    const velocidadMph = speed * 2.23694;
+
+    // 📏 Calcular distancia mínima (para saber si se movió)
+    const actualPos = { lat: userLat, lon: userLon };
+    const movioSuficiente = !ultimaPosicion
+      || getDistanceMeters(ultimaPosicion, actualPos) >= 3;
+
+    // 🔎 Determinar zoom
     let zoom;
-    if (velocidadMph > 45) zoom = 13;        // 🚗 Alta velocidad
-    else if (velocidadMph >= 20) zoom = 15;  // 🚙 Velocidad media
-    else zoom = 20;                          // 🚶 Baja o detenido
+    if (!ultimaPosicion) {
+      // primera lectura → vista amplia
+      zoom = 13;
+    } else if (movioSuficiente) {
+      // si se movió, aplica zoom según velocidad
+      if (velocidadMph > 45) zoom = 13;
+      else if (velocidadMph >= 20) zoom = 15;
+      else zoom = 20;
+    } else {
+      // si no se movió, mantenemos zoom actual
+      zoom = map.getZoom();
+    }
 
     if (!map) return;
 
-    // 🔵 Crear o mover el marcador del usuario
+    // 📍 Crear o mover el marcador del usuario (mantiene tu imagen)
     if (userMarker) {
       userMarker.setLatLng([userLat, userLon]);
     } else {
       userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
     }
 
-    // 🔵 (Quitamos el círculo de precisión si existiera)
-if (userAccuracyCircle) {
-  userAccuracyCircle.remove();
-  userAccuracyCircle = null;
-}
+    // 🔵 Punta de dirección (flecha independiente)
+    if (!flechaLayer) {
+      const flechaIcon = L.divIcon({
+        className: "flecha-direccion",
+        html: `
+          <div style="
+            width: 0; height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-top: 12px solid #23b4e9;
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.25));
+            transform: rotate(${ultimoHeading}deg);
+          "></div>
+        `,
+        iconSize: [0, 0],
+        iconAnchor: [0, -28],
+      });
+      flechaLayer = L.marker([userLat, userLon], { icon: flechaIcon, interactive: false }).addTo(map);
+    } else {
+      flechaLayer.setLatLng([userLat, userLon]);
+      const el = flechaLayer.getElement();
+      if (el) el.querySelector("div").style.transform = `rotate(${ultimoHeading}deg)`;
+    }
 
-    // 🎯 Centrar mapa solo si el usuario no lo movió manualmente
+    // 🎯 Centrar mapa
     if (siguiendoUsuario && !map._userMovedManually) {
       map.setView([userLat, userLon], zoom, { animate: true });
     }
 
-    // ⚡ Cargar comercios solo la primera vez
+    // ⚡ Cargar comercios
     if (!map._comerciosCargados) {
       await loadNearby();
       map._comerciosCargados = true;
     }
 
-    // 🔁 Mostrar en consola (solo para pruebas)
+    ultimaPosicion = actualPos;
     console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoom}`);
 
   } catch (err) {
@@ -1233,19 +1272,16 @@ if (userAccuracyCircle) {
     toggleLoader(false);
   };
 
-  // 🔁 Seguimiento en vivo
   navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
     enableHighAccuracy: true,
     maximumAge: 0,
     timeout: 10000,
   });
 
-  // 🖐️ Detectar cuando el usuario arrastra el mapa → desactivar seguimiento
   map.on('dragstart', () => {
     siguiendoUsuario = false;
   });
 
-  // 🎯 Añadir un botón flotante para volver a centrar el mapa
   const btnSeguir = L.control({ position: 'bottomright' });
   btnSeguir.onAdd = () => {
     const btn = L.DomUtil.create('button', 'seguir-usuario-btn');
