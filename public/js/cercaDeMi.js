@@ -621,7 +621,7 @@ function initMap() {
     maxZoom: 22,     // 🔥 permite acercar más de lo normal
     minZoom: 6,
     zoomControl: true,
-  }).setView([18.2208, -66.5901], 13); // Zoom inicial
+  }).setView([18.2208, -66.5901], 15); // Zoom inicial
 
   // ✅ Capa de mapa (Carto Voyager o OpenStreetMap)
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -1177,52 +1177,135 @@ async function locateUser() {
   toggleLoader(true);
 
   const idUsuario = await obtenerIdUsuarioActual();
-  const iconoUsuario = await crearIconoUsuario(idUsuario);
+  const iconoBase = await crearIconoUsuario(idUsuario);
 
   let siguiendoUsuario = true;
   let primeraVez = true;
+  let ultimaPosicion = null;
+  let velocidadMph = 0;
+  let ultimoHeading = null;
 
+  // 🧭 Función para calcular distancia en metros entre dos puntos
+  function getDistanceMeters(p1, p2) {
+    const R = 6371e3;
+    const toRad = deg => (deg * Math.PI) / 180;
+    const dLat = toRad(p2.lat - p1.lat);
+    const dLon = toRad(p2.lon - p1.lon);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(p1.lat)) * Math.cos(toRad(p2.lat)) *
+      Math.sin(dLon / 2) ** 2;
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  }
+
+  // 🎯 Función que actualiza el ícono con la dirección visual del usuario
+  function actualizarIconoConFlecha(heading = 0) {
+    const markerEl = userMarker?._icon;
+    if (!markerEl) return;
+    markerEl.style.transform = `rotate(${heading}deg)`;
+  }
+
+  // 🔁 Actualizar ubicación en vivo
   const actualizarUbicacion = async (pos) => {
     try {
       userLat = pos.coords.latitude;
       userLon = pos.coords.longitude;
-
-      if (!map) return;
-
-      // 🌀 Calcular velocidad en mph
       const speed = pos.coords.speed || 0;
-      const velocidadMph = speed * 2.23694;
+      velocidadMph = speed * 2.23694;
 
-      // 🔎 Determinar zoom según velocidad
-      let zoom;
-      if (velocidadMph > 45) zoom = 13;
-      else if (velocidadMph >= 20) zoom = 15;
-      else zoom = 20;
+      // 🧭 Dirección (heading)
+      const heading = pos.coords.heading;
+      if (heading !== null && !isNaN(heading)) ultimoHeading = heading;
 
-      // 🔵 Crear o mover marcador de usuario
-      if (userMarker) {
-        userMarker.setLatLng([userLat, userLon]);
-      } else {
-        userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+      // 🪄 Evitar movimientos menores de 3 m
+      if (ultimaPosicion) {
+        const distancia = getDistanceMeters(ultimaPosicion, { lat: userLat, lon: userLon });
+        if (distancia < 3) return;
       }
+      ultimaPosicion = { lat: userLat, lon: userLon };
 
-      // 🎯 Mantener centrado si está en modo seguimiento
+      // 🔎 Zoom dinámico según velocidad
+      let zoomDeseado;
+      if (velocidadMph > 45) zoomDeseado = 13;
+      else if (velocidadMph >= 20) zoomDeseado = 15;
+      else zoomDeseado = 20;
+
+      const zoomActual = map.getZoom();
+      if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
+
+      // 📍 Crear marcador del usuario con doble borde y punta
+if (!userMarker) {
+  // 🖼️ Forzar obtención segura de la imagen del usuario
+  let userImgUrl = "";
+
+  try {
+    if (iconoBase?.options?.iconUrl) userImgUrl = iconoBase.options.iconUrl;
+    else if (iconoBase instanceof HTMLImageElement) userImgUrl = iconoBase.src;
+    else if (typeof iconoBase === "string") userImgUrl = iconoBase;
+    else if (iconoBase?._icon?.src) userImgUrl = iconoBase._icon.src;
+    else userImgUrl = "./img/user-default.png"; // 🧩 Fallback
+  } catch (e) {
+    console.warn("⚠️ No se pudo obtener imagen del usuario:", e);
+    userImgUrl = "./img/user-default.png";
+  }
+
+  // 🔍 Mostrar en consola qué imagen se usará (solo para debug)
+  console.log("🧭 Imagen detectada del usuario:", userImgUrl);
+
+  const iconoUsuario = L.divIcon({
+    className: "usuario-icon",
+    html: `
+      <div style="
+        position: relative;
+        width: 38px; height: 38px;
+        border-radius: 50%;
+        background: white;
+        border: 4px solid #23b4e9;
+        box-shadow: 0 0 0 3px rgba(35,180,233,0.3);
+        display: flex; align-items: center; justify-content: center;
+      ">
+        <img src='${userImgUrl}' alt='Usuario'
+             style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;" />
+        <div style="
+          position: absolute;
+          bottom: -10px; left: 50%;
+          transform: translateX(-50%) rotate(${ultimoHeading || 0}deg);
+          width: 0; height: 0;
+          border-left: 7px solid transparent;
+          border-right: 7px solid transparent;
+          border-top: 12px solid #23b4e9;
+        "></div>
+      </div>
+    `,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+  });
+
+  userMarker = L.marker([userLat, userLon], {
+    icon: iconoUsuario,
+    interactive: false,
+    zIndexOffset: 1000,
+  }).addTo(map);
+} else {
+  userMarker.setLatLng([userLat, userLon]);
+  actualizarIconoConFlecha(ultimoHeading || 0);
+}
+
+      // 🎯 Centrar en la primera posición y seguir si está activo
       if (siguiendoUsuario) {
         if (primeraVez) {
-          map.setView([userLat, userLon], zoom, { animate: true });
+          map.setView([userLat, userLon], 13, { animate: true });
           primeraVez = false;
         } else {
           map.panTo([userLat, userLon], { animate: true });
         }
       }
 
-      // ⚡ Cargar comercios solo la primera vez
+      // ⚡ Cargar comercios solo una vez
       if (!map._comerciosCargados) {
         await loadNearby();
         map._comerciosCargados = true;
       }
-
-      console.log(`📍 ${userLat.toFixed(5)}, ${userLon.toFixed(5)} | Velocidad: ${velocidadMph.toFixed(1)} mph`);
     } catch (err) {
       console.error("⚠️ Error actualizando ubicación:", err);
     } finally {
@@ -1230,50 +1313,48 @@ async function locateUser() {
     }
   };
 
+  // ⚠️ Fallback de ubicación
   const handleError = (err) => {
-    console.warn("⚠️ Error en seguimiento de ubicación:", err.message);
+    console.warn("⚠️ Error en seguimiento:", err.message);
+    userLat = 18.012;
+    userLon = -66.613;
+    map.setView([userLat, userLon], 13, { animate: true });
     toggleLoader(false);
   };
 
-  // 🔁 Seguimiento en vivo continuo
+  // 📡 Seguimiento continuo
   navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
     enableHighAccuracy: true,
-    maximumAge: 0,
-    timeout: 15000,
+    maximumAge: 1000,
+    timeout: 30000,
   });
 
-  // 🖐️ Pausar seguimiento al mover el mapa
-  map.on("dragstart", () => {
-    siguiendoUsuario = false;
-  });
-
-  // 🎯 Botón flotante para volver a centrar
-  const btnSeguir = L.control({ position: "bottomright" });
-  btnSeguir.onAdd = () => {
-    const btn = L.DomUtil.create("button", "seguir-usuario-btn");
-    btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
-    btn.title = "Centrar en tu ubicación";
-    btn.style.cssText = `
-      background: #23b4e9;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 56px;
-      height: 56px;
-      font-size: 20px;
-      cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-      z-index: 9999;
-    `;
-    btn.onclick = () => {
-      siguiendoUsuario = true;
-      if (userLat && userLon) {
-        map.setView([userLat, userLon], map.getZoom(), { animate: true });
-      }
-    };
-    return btn;
+  // 🎯 Botón flotante para re-centrar
+  const btn = document.createElement("button");
+  btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+  btn.title = "Centrar mapa en tu ubicación";
+  btn.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: #23b4e9;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 9999;
+  `;
+  btn.onclick = () => {
+    siguiendoUsuario = true;
+    if (userLat && userLon) {
+      map.setView([userLat, userLon], map.getZoom(), { animate: true });
+    }
   };
-  btnSeguir.addTo(map);
+  document.body.appendChild(btn);
 }
 
 /* ------------------------------ INIT ------------------------------ */
