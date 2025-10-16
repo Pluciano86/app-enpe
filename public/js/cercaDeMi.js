@@ -1180,50 +1180,48 @@ async function locateUser() {
   let ultimoHeading = 0;
   let flechaLayer = null;
 
-  const actualizarUbicacion = async (pos) => {
+const actualizarUbicacion = async (pos) => {
   try {
     userLat = pos.coords.latitude;
     userLon = pos.coords.longitude;
+    if (!map || !Number.isFinite(userLat) || !Number.isFinite(userLon)) return;
 
-    // 🧭 Dirección del usuario
+    // 🧭 Dirección
     const heading = pos.coords.heading;
     if (heading !== null && !isNaN(heading)) ultimoHeading = heading;
 
-    // 🌀 Calcular velocidad
+    // 🌀 Velocidad → mph
     const speed = pos.coords.speed || 0;
     const velocidadMph = speed * 2.23694;
 
-    // 📏 Calcular distancia mínima (para saber si se movió)
+    // 📏 Distancia recorrida
     const actualPos = { lat: userLat, lon: userLon };
-    const movioSuficiente = !ultimaPosicion
-      || getDistanceMeters(ultimaPosicion, actualPos) >= 3;
+    const distancia = ultimaPosicion ? getDistanceMeters(ultimaPosicion, actualPos) : 9999;
+    ultimaPosicion = actualPos; // ✅ actualiza SIEMPRE
 
-    // 🔎 Determinar zoom
+    // 🔎 Zoom base
     let zoom;
-    if (!ultimaPosicion) {
-      // primera lectura → vista amplia
-      zoom = 13;
-    } else if (movioSuficiente) {
-      // si se movió, aplica zoom según velocidad
+    if (!map._primeraLectura) {
+      zoom = 13; // primera lectura → vista amplia
+      map._primeraLectura = true;
+    } else if (distancia >= 3) {
       if (velocidadMph > 45) zoom = 13;
       else if (velocidadMph >= 20) zoom = 15;
       else zoom = 20;
     } else {
-      // si no se movió, mantenemos zoom actual
-      zoom = map.getZoom();
+      zoom = map.getZoom(); // mantiene zoom actual si no se movió
     }
 
-    if (!map) return;
-
-    // 📍 Crear o mover el marcador del usuario (mantiene tu imagen)
-    if (userMarker) {
-      userMarker.setLatLng([userLat, userLon]);
-    } else {
+    // 📍 Crear o mover marcador del usuario
+    if (!userMarker) {
       userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+      window.userMarker = userMarker;
+    } else {
+      userMarker.setLatLng([userLat, userLon]);
     }
 
-    // 🔵 Punta de dirección (flecha independiente)
-    if (!flechaLayer) {
+    // 🧭 Flecha de dirección (si la tienes)
+    if (!window.flechaLayer) {
       const flechaIcon = L.divIcon({
         className: "flecha-direccion",
         html: `
@@ -1239,26 +1237,27 @@ async function locateUser() {
         iconSize: [0, 0],
         iconAnchor: [0, -28],
       });
-      flechaLayer = L.marker([userLat, userLon], { icon: flechaIcon, interactive: false }).addTo(map);
+      window.flechaLayer = L.marker([userLat, userLon], { icon: flechaIcon, interactive: false }).addTo(map);
     } else {
-      flechaLayer.setLatLng([userLat, userLon]);
-      const el = flechaLayer.getElement();
+      window.flechaLayer.setLatLng([userLat, userLon]);
+      const el = window.flechaLayer.getElement();
       if (el) el.querySelector("div").style.transform = `rotate(${ultimoHeading}deg)`;
     }
 
-    // 🎯 Centrar mapa
+    // 🎯 Centrado dinámico
     if (siguiendoUsuario && !map._userMovedManually) {
+      const zoomActual = map.getZoom();
+      if (zoomActual > zoom) zoom = zoomActual;
       map.setView([userLat, userLon], zoom, { animate: true });
     }
 
-    // ⚡ Cargar comercios
+    // ⚡ Cargar comercios solo una vez
     if (!map._comerciosCargados) {
       await loadNearby();
       map._comerciosCargados = true;
     }
 
-    ultimaPosicion = actualPos;
-    console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoom}`);
+    console.log(`📍 Actualizado: ${userLat.toFixed(5)}, ${userLon.toFixed(5)} | Zoom: ${zoom}`);
 
   } catch (err) {
     console.error("⚠️ Error actualizando ubicación:", err);
