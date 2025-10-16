@@ -1201,19 +1201,11 @@ async function locateUser() {
       userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
     }
 
-    // 🔵 Crear o actualizar círculo de precisión
-    if (!userAccuracyCircle) {
-      userAccuracyCircle = L.circle([userLat, userLon], {
-        radius: pos.coords.accuracy || 20,
-        color: "#3b82f6",
-        fillColor: "#3b82f6",
-        fillOpacity: 0.1,
-        weight: 1,
-      }).addTo(map);
-    } else {
-      userAccuracyCircle.setLatLng([userLat, userLon]);
-      userAccuracyCircle.setRadius(pos.coords.accuracy || 20);
-    }
+    // 🔵 (Quitamos el círculo de precisión si existiera)
+if (userAccuracyCircle) {
+  userAccuracyCircle.remove();
+  userAccuracyCircle = null;
+}
 
     // 🎯 Centrar mapa solo si el usuario no lo movió manualmente
     if (siguiendoUsuario && !map._userMovedManually) {
