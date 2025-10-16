@@ -616,59 +616,24 @@ async function inyectarPortadas(lista = []) {
 }
 
 function initMap() {
-  // ✅ Crear mapa base
-  map = L.map("map", {
-    maxZoom: 22,
+  // ✅ Crear mapa base (sin rotación CSS)
+  map = L.map('map', {
+    maxZoom: 22,     // 🔥 permite acercar más de lo normal
     minZoom: 6,
-    zoomControl: false,
-  }).setView([18.2208, -66.5901], 13); // Zoom inicial 13 como solicitaste
+    zoomControl: true,
+  }).setView([18.2208, -66.5901], 13); // Zoom inicial
 
-  // ✅ Capa del mapa (Carto Voyager)
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+  // ✅ Capa de mapa (Carto Voyager o OpenStreetMap)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 22,
     attribution:
       '&copy; <a href="https://carto.com/">CartoDB</a> | &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
   }).addTo(map);
 
-  // ✅ Capa de marcadores
+  // ✅ Capa para los marcadores
   markersLayer = L.layerGroup().addTo(map);
 
-  // 🧭 Control de seguimiento del usuario
-  map._siguiendoUsuario = true;
-  map.enableFollowUser = () => {
-    map._siguiendoUsuario = true;
-    console.log("📍 Seguimiento activado");
-  };
-  map.disableFollowUser = () => {
-    map._siguiendoUsuario = false;
-    console.log("📍 Seguimiento pausado (usuario movió el mapa)");
-  };
-
-  // 🚫 Desactiva seguimiento si el usuario mueve o hace zoom
-  map.on("dragstart zoomstart", () => {
-    map.disableFollowUser();
-  });
-
-  // ⚙️ Ajustes visuales del mapa para rotación CSS
-  const mapEl = document.getElementById("map");
-  mapEl.style.transition = "transform 0.6s ease-out";
-  mapEl.style.transformOrigin = "center center";
-  mapEl.style.width = "140vw";      // 🔹 más ancho para cubrir rotación completa
-  mapEl.style.height = "140vh";     // 🔹 más alto para evitar bordes vacíos
-  mapEl.style.position = "absolute";
-  mapEl.style.top = "-20vh";
-  mapEl.style.left = "-20vw";
-  mapEl.style.zIndex = "0";         // 🔹 siempre debajo del resto de elementos
-
-  // 🚀 Aumentar el contenedor principal del mapa
-  const mapContainer = document.getElementById("mapContainer");
-  if (mapContainer) {
-    mapContainer.style.position = "relative";
-    mapContainer.style.overflow = "hidden";
-    mapContainer.style.zIndex = "1";
-  }
-
-  console.log("✅ Mapa inicializado con fondo expandido y rotación fluida");
+  console.log("✅ Mapa inicializado correctamente (zoom máximo 22)");
 }
 
 function updateRadioLabel() {
@@ -1204,19 +1169,19 @@ const listaConMunicipio = lista.map(c => {
 }
 
 async function locateUser() {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation) {
+    alert("Tu navegador no permite acceder a la ubicación.");
+    return;
+  }
+
   toggleLoader(true);
 
   const idUsuario = await obtenerIdUsuarioActual();
   const iconoUsuario = await crearIconoUsuario(idUsuario);
 
-  // 📍 Estado actual
+  let siguiendoUsuario = true;
   let primeraVez = true;
-  let velocidadMph = 0;
-  let ultimoHeading = null; // 🧭 Última dirección conocida
-  let ultimaPosicion = null; // 📍 Última posición registrada
 
-  // 🔁 Actualizar ubicación en vivo
   const actualizarUbicacion = async (pos) => {
     try {
       userLat = pos.coords.latitude;
@@ -1224,52 +1189,31 @@ async function locateUser() {
 
       if (!map) return;
 
-      // 🌀 Calcular velocidad en millas por hora
+      // 🌀 Calcular velocidad en mph
       const speed = pos.coords.speed || 0;
-      velocidadMph = speed * 2.23694;
+      const velocidadMph = speed * 2.23694;
 
-      // 📏 Calcular distancia recorrida desde la última posición
-      if (ultimaPosicion) {
-        const distancia = getDistanceMeters(ultimaPosicion, { lat: userLat, lon: userLon });
-        if (distancia < 3) return; // ignora movimientos pequeños
-      }
-      ultimaPosicion = { lat: userLat, lon: userLon };
+      // 🔎 Determinar zoom según velocidad
+      let zoom;
+      if (velocidadMph > 45) zoom = 13;
+      else if (velocidadMph >= 20) zoom = 15;
+      else zoom = 20;
 
-      // 🔎 Determinar zoom base según velocidad
-      let zoomDeseado;
-      if (velocidadMph > 45) zoomDeseado = 13;        // 🚗 Alta velocidad
-      else if (velocidadMph >= 20) zoomDeseado = 15;  // 🚙 Media
-      else zoomDeseado = 20;                          // 🚶 Lento / detenido
-
-      const zoomActual = map.getZoom();
-      if (zoomActual > zoomDeseado) zoomDeseado = zoomActual;
-
-      // 🧭 ROTAR MAPA según dirección (heading)
-      const heading = pos.coords.heading;
-      const mapEl = document.getElementById("map");
-
-      if (heading !== null && !isNaN(heading)) {
-        ultimoHeading = heading;
-        mapEl.style.transition = "transform 0.5s ease-out";
-        mapEl.style.transform = `rotate(${-heading}deg)`;
-      } else if (ultimoHeading !== null) {
-        mapEl.style.transform = `rotate(${-ultimoHeading}deg)`;
-      }
-
-      // 📍 Crear o mover el marcador del usuario (no se rota)
+      // 🔵 Crear o mover marcador de usuario
       if (userMarker) {
         userMarker.setLatLng([userLat, userLon]);
       } else {
-        userMarker = L.marker([userLat, userLon], {
-          icon: iconoUsuario,
-          interactive: false, // evita clics accidentales
-        }).addTo(map);
+        userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
       }
 
-      // 🎯 Centrar solo la primera vez
-      if (primeraVez) {
-        map.setView([userLat, userLon], 13, { animate: true });
-        primeraVez = false;
+      // 🎯 Mantener centrado si está en modo seguimiento
+      if (siguiendoUsuario) {
+        if (primeraVez) {
+          map.setView([userLat, userLon], zoom, { animate: true });
+          primeraVez = false;
+        } else {
+          map.panTo([userLat, userLon], { animate: true });
+        }
       }
 
       // ⚡ Cargar comercios solo la primera vez
@@ -1278,9 +1222,7 @@ async function locateUser() {
         map._comerciosCargados = true;
       }
 
-      console.log(
-        `🚶‍♂️ ${velocidadMph.toFixed(1)} mph | Heading: ${heading ?? "N/A"}° | Zoom: ${zoomDeseado}`
-      );
+      console.log(`📍 ${userLat.toFixed(5)}, ${userLon.toFixed(5)} | Velocidad: ${velocidadMph.toFixed(1)} mph`);
     } catch (err) {
       console.error("⚠️ Error actualizando ubicación:", err);
     } finally {
@@ -1288,72 +1230,50 @@ async function locateUser() {
     }
   };
 
-  // ⚠️ Si falla GPS, usar ubicación base (Ponce)
   const handleError = (err) => {
     console.warn("⚠️ Error en seguimiento de ubicación:", err.message);
-    if (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE) {
-      console.warn("⚠️ Usando ubicación por defecto (Ponce, PR)");
-      userLat = 18.012;
-      userLon = -66.613;
-      map.setView([userLat, userLon], 13, { animate: true });
-      toggleLoader(false);
-    }
+    toggleLoader(false);
   };
 
-  // 📡 Seguimiento continuo
+  // 🔁 Seguimiento en vivo continuo
   navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
     enableHighAccuracy: true,
-    maximumAge: 1000,
-    timeout: 30000,
+    maximumAge: 0,
+    timeout: 15000,
   });
 
-  // 🎯 Botón flotante fijo (📍)
-  const btn = document.createElement("button");
-  btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
-  btn.title = "Centrar mapa en tu ubicación";
-  btn.style.cssText = `
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    background: #23b4e9;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 56px;
-    height: 56px;
-    font-size: 20px;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 9999;
-  `;
-  btn.onclick = () => {
-    if (userLat && userLon) {
-      let zoomDeseado;
-      if (velocidadMph > 45) zoomDeseado = 13;
-      else if (velocidadMph >= 20) zoomDeseado = 15;
-      else zoomDeseado = 20;
+  // 🖐️ Pausar seguimiento al mover el mapa
+  map.on("dragstart", () => {
+    siguiendoUsuario = false;
+  });
 
-      const mapEl = document.getElementById("map");
-      if (ultimoHeading !== null)
-        mapEl.style.transform = `rotate(${-ultimoHeading}deg)`;
-
-      map.setView([userLat, userLon], zoomDeseado, { animate: true });
-    }
+  // 🎯 Botón flotante para volver a centrar
+  const btnSeguir = L.control({ position: "bottomright" });
+  btnSeguir.onAdd = () => {
+    const btn = L.DomUtil.create("button", "seguir-usuario-btn");
+    btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+    btn.title = "Centrar en tu ubicación";
+    btn.style.cssText = `
+      background: #23b4e9;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+      z-index: 9999;
+    `;
+    btn.onclick = () => {
+      siguiendoUsuario = true;
+      if (userLat && userLon) {
+        map.setView([userLat, userLon], map.getZoom(), { animate: true });
+      }
+    };
+    return btn;
   };
-  document.body.appendChild(btn);
-}
-
-// 📏 Función auxiliar para calcular distancia (en metros)
-function getDistanceMeters(p1, p2) {
-  const R = 6371000;
-  const dLat = ((p2.lat - p1.lat) * Math.PI) / 180;
-  const dLon = ((p2.lon - p1.lon) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((p1.lat * Math.PI) / 180) *
-      Math.cos((p2.lat * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  btnSeguir.addTo(map);
 }
 
 /* ------------------------------ INIT ------------------------------ */
