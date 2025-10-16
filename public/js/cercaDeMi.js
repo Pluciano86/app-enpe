@@ -1175,77 +1175,110 @@ async function locateUser() {
   const idUsuario = await obtenerIdUsuarioActual();
   const iconoUsuario = await crearIconoUsuario(idUsuario);
 
-  let siguiendoUsuario = true; // 🔹 Estado del modo seguimiento
+  let siguiendoUsuario = true;
+  let ultimaPosicion = null;
+
+  // marca si el usuario tocó el mapa (para no re-centrar a la fuerza)
+  map._userMovedManually = false;
+
+  // si el usuario mueve o hace zoom, pausamos seguimiento automático
+  map.on('dragstart zoomstart', () => {
+    map._userMovedManually = true;
+    siguiendoUsuario = false;
+  });
+
+  // util distancia (metros)
+  const getDistanceMeters = (p1, p2) => {
+    const R = 6371e3, toRad = d => (d * Math.PI) / 180;
+    const dLat = toRad(p2.lat - p1.lat);
+    const dLon = toRad(p2.lon - p1.lon);
+    const a = Math.sin(dLat/2)**2 +
+      Math.cos(toRad(p1.lat)) * Math.cos(toRad(p2.lat)) * Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
 
   const actualizarUbicacion = async (pos) => {
-  try {
-    userLat = pos.coords.latitude;
-    userLon = pos.coords.longitude;
+    try {
+      userLat = pos.coords.latitude;
+      userLon = pos.coords.longitude;
+      if (!map || !Number.isFinite(userLat) || !Number.isFinite(userLon)) return;
 
-    // 🌀 Calcular velocidad en millas por hora
-    const speed = pos.coords.speed || 0; // m/s
-    const velocidadMph = speed * 2.23694; // convertir a mph
+      // velocidad → mph
+      const speed = pos.coords.speed || 0; // m/s
+      const mph = speed * 2.23694;
 
-    // 🔎 Determinar zoom según velocidad
-    let zoom;
-    if (velocidadMph > 45) zoom = 13;        // 🚗 Alta velocidad
-    else if (velocidadMph >= 20) zoom = 15;  // 🚙 Velocidad media
-    else zoom = 20;                          // 🚶 Baja o detenido
+      // distancia recorrida desde la última lectura
+      const ahora = { lat: userLat, lon: userLon };
+      const dist = ultimaPosicion ? getDistanceMeters(ultimaPosicion, ahora) : Infinity;
+      ultimaPosicion = ahora;
 
-    if (!map) return;
+      // crea/mueve el pin del usuario
+      if (userMarker) {
+        userMarker.setLatLng([userLat, userLon]);
+      } else {
+        userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+      }
 
-    // 🔵 Crear o mover el marcador del usuario
-    if (userMarker) {
-      userMarker.setLatLng([userLat, userLon]);
-    } else {
-      userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+      // 1) primera fijación: mostrar vista amplia (13) para ver varias cuadras/comercios
+      if (!map._firstFix) {
+        map._firstFix = true;
+        map.setView([userLat, userLon], 13, { animate: true });
+      } else {
+        // 2) si aún no recorrió 3 m, no cambiamos el zoom (solo seguimos el pin)
+        if (dist >= 3) {
+          // 3) calcular zoom según velocidad
+          let zoomDeseado = (mph > 45) ? 13 : (mph >= 20 ? 15 : 20);
+
+          // si el usuario acercó más, no lo alejamos
+          const zActual = map.getZoom();
+          if (zActual > zoomDeseado) zoomDeseado = zActual;
+
+          // re-centrar solo si seguimos al usuario y no movió el mapa manualmente
+          if (siguiendoUsuario && !map._userMovedManually) {
+            map.setView([userLat, userLon], zoomDeseado, { animate: true });
+          }
+        } else {
+          // menos de 3 m: mantener zoom actual; si seguimos, solo centrar suavemente
+          if (siguiendoUsuario && !map._userMovedManually) {
+            map.panTo([userLat, userLon], { animate: true });
+          }
+        }
+      }
+
+      // cargar comercios la primera vez
+      if (!map._comerciosCargados) {
+        await loadNearby();
+        map._comerciosCargados = true;
+      }
+
+      // elimina círculo de precisión si existiera
+      if (userAccuracyCircle) {
+        userAccuracyCircle.remove();
+        userAccuracyCircle = null;
+      }
+
+      // debug
+      // console.log(`📍 ${userLat.toFixed(5)}, ${userLon.toFixed(5)} | ${mph.toFixed(1)} mph | dist ${Math.round(dist)} m`);
+    } catch (err) {
+      console.error('⚠️ Error actualizando ubicación:', err);
+    } finally {
+      toggleLoader(false);
     }
-
-    // 🔵 (Quitamos el círculo de precisión si existiera)
-if (userAccuracyCircle) {
-  userAccuracyCircle.remove();
-  userAccuracyCircle = null;
-}
-
-    // 🎯 Centrar mapa solo si el usuario no lo movió manualmente
-    if (siguiendoUsuario && !map._userMovedManually) {
-      map.setView([userLat, userLon], zoom, { animate: true });
-    }
-
-    // ⚡ Cargar comercios solo la primera vez
-    if (!map._comerciosCargados) {
-      await loadNearby();
-      map._comerciosCargados = true;
-    }
-
-    // 🔁 Mostrar en consola (solo para pruebas)
-    console.log(`🚀 Velocidad: ${velocidadMph.toFixed(1)} mph | Zoom: ${zoom}`);
-
-  } catch (err) {
-    console.error("⚠️ Error actualizando ubicación:", err);
-  } finally {
-    toggleLoader(false);
-  }
-};
+  };
 
   const handleError = (err) => {
     console.warn('⚠️ Error en seguimiento de ubicación:', err.message);
     toggleLoader(false);
   };
 
-  // 🔁 Seguimiento en vivo
+  // seguimiento continuo
   navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
     enableHighAccuracy: true,
     maximumAge: 0,
     timeout: 10000,
   });
 
-  // 🖐️ Detectar cuando el usuario arrastra el mapa → desactivar seguimiento
-  map.on('dragstart', () => {
-    siguiendoUsuario = false;
-  });
-
-  // 🎯 Añadir un botón flotante para volver a centrar el mapa
+  // botón para re-centrar (reactiva seguimiento y respeta zoom por velocidad)
   const btnSeguir = L.control({ position: 'bottomright' });
   btnSeguir.onAdd = () => {
     const btn = L.DomUtil.create('button', 'seguir-usuario-btn');
@@ -1262,9 +1295,10 @@ if (userAccuracyCircle) {
       box-shadow: 0 2px 8px rgba(0,0,0,0.25);
     `;
     btn.onclick = () => {
+      map._userMovedManually = false;
       siguiendoUsuario = true;
-      if (userLat && userLon) {
-        map.setView([userLat, userLon], 15, { animate: true });
+      if (typeof userLat === 'number' && typeof userLon === 'number') {
+        map.setView([userLat, userLon], Math.max(15, map.getZoom() || 13), { animate: true });
       }
     };
     return btn;
