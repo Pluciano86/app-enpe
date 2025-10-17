@@ -15,8 +15,6 @@ if (btnVerMenu && idComercio) {
       .limit(1)
       .maybeSingle();
 
-    console.log("🆔 Comercio detectado:", idComercio);
-
     if (!error && menu) {
       btnVerMenu.href = `menu/menuComercio.html?id=${idComercio}`;
     //  btnVerMenu.target = "_blank";
@@ -25,7 +23,6 @@ if (btnVerMenu && idComercio) {
 btnVerMenu.classList.add('inline-block', 'mt-4', 'bg-orange-400', 'hover:bg-orange-600', 'text-white', 'font-normal', 'py-2', 'px-10', 'rounded-full', 'shadow-lg');
       console.log("✅ Menú encontrado para este comercio");
     } else {
-      console.log("🚫 No hay menú activo para este comercio");
     }
   } catch (e) {
     console.error('❌ Error verificando menú:', e);
