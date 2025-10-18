@@ -563,94 +563,125 @@ async function aplicarFiltrosYRedibujar() {
       "inline-block text-gray-800 text-[15px] font-medium text-center w-full";
 
     // 🧩 Mostrar texto según resultados
-    if (total === 0) {
-      labelTotal.textContent = `No se encontraron ${categoriaNombre} ${
-        municipioActivo ? `en tu ubicación actual` : ""
-      }`;
+if (total === 0) {
+  // 🧹 Eliminar mensajes previos o sugerencias antiguas
+  document.querySelectorAll('.mensaje-no-resultados, .sugerencias-cercanas').forEach(el => el.remove());
 
-      // 🔹 Botón azul con municipio activo
-      if (municipioActivo) {
-        const btnMunicipio = document.createElement("button");
-        btnMunicipio.innerHTML = `✕ ${municipioActivo}`;
-        btnMunicipio.className =
-          "ml-2 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition";
-        btnMunicipio.addEventListener("click", () => {
-          filtrosActivos.municipio = "";
-          const selectMunicipio = document.getElementById("filtro-municipio");
-          if (selectMunicipio) selectMunicipio.value = "";
-          cargarComerciosConOrden();
-        });
-        labelTotal.appendChild(btnMunicipio);
-      }
+  const esBusquedaManual = !!municipioActivo && municipioActivo !== filtrosActivos?.municipioDetectado;
+  const categoria = categoriaNombre || "Comercios";
+  const municipio = municipioActivo || "tu ubicación actual";
 
-      filtrosDiv.appendChild(labelTotal);
+  // 🔹 Crear contenedor principal del mensaje
+  const contenedorMsg = document.createElement("div");
+  contenedorMsg.className = "mensaje-no-resultados text-center mt-6 mb-4 px-4";
 
-      // ⚡ Mostrar comercios cercanos automáticamente (solo si búsqueda por ubicación)
-      if (municipioActivo && !hayBusquedaNombre && !hayBusquedaPlato) {
-        console.log("🔍 Mostrando comercios cercanos...");
-        try {
-          const coordsUsuario = await obtenerCoordenadasUsuario();
-          if (coordsUsuario) {
-            let cercanos = listaOriginal
-              .filter(
-                (c) =>
-                  c.latitud &&
-                  c.longitud &&
-                  calcularDistancia(
-                    coordsUsuario.lat,
-                    coordsUsuario.lon,
-                    c.latitud,
-                    c.longitud
-                  ) <= 40
-              )
-              .map((c) => ({
-                ...c,
-                distanciaKm: calcularDistancia(
-                  coordsUsuario.lat,
-                  coordsUsuario.lon,
-                  c.latitud,
-                  c.longitud
-                ),
-              }))
-              .sort((a, b) => a.distanciaKm - b.distanciaKm);
+  // 🔹 Mensaje principal dinámico
+  const mensajePrincipal = esBusquedaManual
+    ? `No se encontraron ${categoria.toLowerCase()} en el municipio de ${municipio}.`
+    : `No se encontraron ${categoria.toLowerCase()} en tu ubicación actual.`;
 
-            if (cercanos.length > 0) {
-  // Crear el texto de sugerencia
-  const sugerenciasDiv = document.createElement("div");
-  sugerenciasDiv.className = "text-center mt-4 text-gray-700 font-medium";
-  sugerenciasDiv.innerHTML = `
-    <p class="text-base font-normal">
-     ${categoriaNombre} cerca de ${municipioActivo}:
-    </p>
+  contenedorMsg.innerHTML = `
+    <p class="text-gray-700 font-medium mb-3">${mensajePrincipal}</p>
+    <h3 class="text-lg font-semibold text-gray-900">${categoria} cerca de ${municipio}:</h3>
   `;
 
-  // 👉 Insertar el texto justo debajo del mensaje "No se encontraron..."
-  const mensajeNoResultados = document.querySelector('#filtros-activos');
-  if (mensajeNoResultados && mensajeNoResultados.parentElement) {
-    mensajeNoResultados.parentElement.insertBefore(
-      sugerenciasDiv,
-      mensajeNoResultados.nextSibling
-    );
+  filtrosDiv.appendChild(contenedorMsg);
+
+  // 🔹 Botón azul con municipio activo
+  if (municipioActivo) {
+    const btnMunicipio = document.createElement("button");
+    btnMunicipio.innerHTML = `✕ ${municipioActivo}`;
+    btnMunicipio.className =
+      "ml-2 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition";
+    btnMunicipio.addEventListener("click", () => {
+      filtrosActivos.municipio = "";
+      const selectMunicipio = document.getElementById("filtro-municipio");
+      if (selectMunicipio) selectMunicipio.value = "";
+      cargarComerciosConOrden();
+    });
+    contenedorMsg.appendChild(btnMunicipio);
   }
 
-  // Mostrar hasta 10 lugares cercanos
-  cercanos.slice(0, 10).forEach((comercio) => {
-    const card = comercio.activoEnPeErre
-      ? cardComercio(comercio)
-      : cardComercioNoActivo(comercio);
-    contenedor.appendChild(card);
-  });
-}
-          }
-        } catch (error) {
-          console.error("Error al mostrar comercios cercanos:", error.message);
-        }
-      }
+  // ⚡ Mostrar comercios cercanos automáticamente
+  try {
+    let referencia = null;
 
-      const bannerFinal = await crearBannerElemento("banner-bottom");
-      if (bannerFinal) contenedor.appendChild(bannerFinal);
-      return;
-    } else {
+    // 🗺️ Coordenadas base
+    const coordsUsuario = await obtenerCoordenadasUsuario();
+
+// Si es búsqueda manual y hay municipio seleccionado, prioriza su centro
+if (esBusquedaManual && municipioActivo) {
+  const { data: muni, error: muniError } = await supabase
+    .from("Municipios")
+    .select("latitud, longitud")
+    .eq("nombre", municipioActivo)
+    .maybeSingle();
+
+  if (muniError) {
+    console.warn("⚠️ Error obteniendo coordenadas del municipio:", muniError.message);
+  }
+
+  if (Number.isFinite(muni?.latitud) && Number.isFinite(muni?.longitud)) {
+    referencia = { lat: muni.latitud, lon: muni.longitud };
+    console.log(`📍 Centro de ${municipioActivo}:`, referencia);
+  } else {
+    console.warn(`⚠️ ${municipioActivo} aún no tiene coordenadas, usando la ubicación del usuario.`);
+    referencia = coordsUsuario || null;
+  }
+} else {
+  // Si no hay municipio manual, usa la ubicación actual
+  referencia = coordsUsuario || null;
+}
+
+    // 🔍 Buscar comercios cercanos dentro del radio
+    if (referencia) {
+      let cercanos = listaOriginal
+        .filter((c) =>
+          c.latitud &&
+          c.longitud &&
+          calcularDistancia(
+            referencia.lat,
+            referencia.lon,
+            c.latitud,
+            c.longitud
+          ) <= 15 // 📏 límite de 15 km para municipios adyacentes
+        )
+        .map((c) => ({
+          ...c,
+          distanciaKm: calcularDistancia(
+            referencia.lat,
+            referencia.lon,
+            c.latitud,
+            c.longitud
+          ),
+        }))
+        .sort((a, b) => a.distanciaKm - b.distanciaKm);
+
+      if (cercanos.length > 0) {
+        const sugerenciasDiv = document.createElement("div");
+        sugerenciasDiv.className =
+          "sugerencias-cercanas text-center mt-4 text-gray-700 font-medium";
+        // 🧩 Mensaje corto sin duplicación
+        sugerenciasDiv.innerHTML = `<p class="text-sm text-gray-600 italic mb-2">Mostrando resultados cercanos…</p>`;
+        filtrosDiv.appendChild(sugerenciasDiv);
+
+        // Mostrar hasta 10 comercios
+        cercanos.slice(0, 10).forEach((comercio) => {
+          const card = comercio.activoEnPeErre
+            ? cardComercio(comercio)
+            : cardComercioNoActivo(comercio);
+          contenedor.appendChild(card);
+        });
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error mostrando comercios cercanos:", error.message);
+  }
+
+  const bannerFinal = await crearBannerElemento("banner-bottom");
+  if (bannerFinal) contenedor.appendChild(bannerFinal);
+  return;
+} else {
       labelTotal.textContent = `${total} ${categoriaNombre} ${
         municipioActivo ? `en tu ubicación actual en` : ""
       }`;
