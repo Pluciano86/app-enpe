@@ -114,6 +114,20 @@ if (direccionSpan) {
       });
     }
 
+    // === Descripción ===
+const descripcionEl = document.getElementById("descripcionPlaya");
+if (descripcionEl) {
+  descripcionEl.textContent =
+    data.descripcion?.trim() || "Descripción no disponible.";
+}
+
+// === Acceso ===
+const accesoEl = document.getElementById("infoAcceso");
+if (accesoEl) {
+  accesoEl.textContent =
+    data.acceso?.trim() || "Información de acceso no disponible.";
+}
+
     // === Clima ===
     const clima = await obtenerClima(data.latitud, data.longitud);
     if (clima) {

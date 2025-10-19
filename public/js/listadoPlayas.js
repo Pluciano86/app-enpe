@@ -157,9 +157,16 @@ async function renderizarPlayas() {
     const filtrarSurfear = checkSurfear.checked;
     const filtrarSnorkel = checkSnorkel.checked;
 
+
     let filtradas = todasLasPlayas.filter((p) => {
       const coincideNombre = p.nombre.toLowerCase().includes(texto);
-      const coincideCosta = costa ? p.costa === costa : true;
+      const coincideCosta =
+  !costa ||
+  (p.costa && p.costa.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase() ===
+    costa.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase()) ||
+  (p.costa && p.costa.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().includes(
+    costa.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase()
+  ));
       const coincideMunicipio = municipio ? p.municipio === municipio : true;
       const pasaFiltroNadar = !filtrarNadar || Boolean(p.nadar);
       const pasaFiltroSurfear = !filtrarSurfear || Boolean(p.surfear);
@@ -365,7 +372,7 @@ function cargarMunicipios() {
   const costaSeleccionada = selectCosta.value;
   const municipiosUnicos = [...new Set(
     todasLasPlayas
-      .filter(p => !costaSeleccionada || p.costa === costaSeleccionada)
+      .filter(p => !costaSeleccionada || p.costa?.trim().toLowerCase() === costaSeleccionada.trim().toLowerCase())
       .map(p => p.municipio)
   )].sort();
 

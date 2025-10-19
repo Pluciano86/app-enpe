@@ -93,24 +93,7 @@
       </a>
     </div>
 
-
-    <!-- Estacionamiento y acceso -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-      <div class="bg-white rounded-lg p-4 shadow">
-        <h2 class="text-lg font-semibold text-gray-800 mb-2">Estacionamiento</h2>
-        <p id="infoEstacionamiento" class="text-sm text-gray-600">
-          Información sobre dónde estacionarse.
-        </p>
-      </div>
-      <div class="bg-white rounded-lg p-4 shadow">
-        <h2 class="text-lg font-semibold text-gray-800 mb-2">Acceso</h2>
-        <p id="infoAcceso" class="text-sm text-gray-600">
-          Información sobre cómo llegar a la playa.
-        </p>
-      </div>
-    </div>
-
-    <!-- Descripción -->
+<!-- Descripción -->
     <div class="bg-white rounded-lg p- shadow mt-4">
       <h2 class="text-lg font-semibold text-gray-800 mb-2">Descripción</h2>
       <p id="descripcionPlaya" class="text-sm text-gray-700 leading-relaxed">
@@ -118,7 +101,69 @@
       </p>
     </div>
 
+    <div class="bg-white rounded-lg p-4 shadow">
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Acceso</h2>
+        <p id="infoAcceso" class="text-sm text-gray-600">
+          Información sobre cómo llegar a la playa.
+        </p>
+      </div>
 
+    <!-- Estacionamiento y acceso 
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+      <div class="bg-white rounded-lg p-4 shadow">
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Estacionamiento</h2>
+        <p id="infoEstacionamiento" class="text-sm text-gray-600">
+          Información sobre dónde estacionarse.
+        </p>
+      </div>-->
+
+<!-- ==================== CERCANOS ==================== -->
+<section id="cercanosComidaContainer" class="hidden mt-8 px-4">
+  <h2 class="text-lg font-medium mb-4">
+    Lugares para Comer a menos de 10 minutos de
+    <span id="nombreCercanosComida" class="text-primary"></span>
+  </h2>
+  <div id="sliderCercanosComida" class="swiper cercanosSwiper">
+    <div class="swiper-wrapper"></div>
+  </div>
+</section>
+
+<section id="cercanosPlayasContainer" class="hidden mt-8 px-4">
+  <h2 class="text-lg font-medium mb-4">
+    Otras Playas a menos de 15 minutos de
+    <span id="nombreCercanosPlayas" class="text-primary"></span>
+  </h2>
+  <div id="sliderPlayasCercanas" class="swiper playasSwiper">
+    <div class="swiper-wrapper"></div>
+  </div>
+</section>
+
+<section id="cercanosLugaresContainer" class="hidden mt-8 px-4">
+  <h2 class="text-lg font-medium mb-4">
+    Lugares de interés cerca de
+    <span id="nombreCercanosLugares" class="text-primary"></span>
+  </h2>
+  <div id="sliderCercanosLugares" class="swiper lugaresSwiper">
+    <div class="swiper-wrapper"></div>
+  </div>
+</section>
+
+<!-- SwiperJS -->
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<!-- ===================================================== -->
+<!-- SwiperJS -->
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+
+<!-- Cercanos Playa JS -->
+<script type="module" src="./js/cercanosPlaya.js"></script>
   <!-- Loader -->
   <div id="loader" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
     <div class="bg-white px-4 py-3 rounded shadow text-sm font-medium">Cargando información...</div>
@@ -131,5 +176,6 @@
   <script type="module" src="./js/header.js"></script>
   <script type="module" src="./js/footer.js"></script>
   <script type="module" src="./js/perfilPlaya.js"></script>
+  <script type="module" src="./js/cercanosPlaya.js"></script>
 </body>
 </html>
