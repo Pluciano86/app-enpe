@@ -1,9 +1,20 @@
 console.log('🚀 Inició cargarEspeciales.js');
 import { supabase } from '../shared/supabaseClient.js';
 import { renderizarEspeciales } from './renderEspeciales.js';
+import { mostrarCargando, mostrarError } from '../js/mensajesUI.js';
+
+const contenedorAlmuerzos = document.getElementById('contenedorAlmuerzos');
+const contenedorHappy = document.getElementById('contenedorHappy');
 
 async function cargarEspecialesDelDia() {
   const hoy = new Date().getDay();
+
+  if (contenedorAlmuerzos) {
+    mostrarCargando(contenedorAlmuerzos, 'Cargando especiales...', '⏳');
+  }
+  if (contenedorHappy) {
+    mostrarCargando(contenedorHappy, 'Cargando especiales...', '⏳');
+  }
 
   const { data: especiales, error } = await supabase
     .from('especialesDia')
@@ -13,6 +24,12 @@ async function cargarEspecialesDelDia() {
 
   if (error) {
     console.error('🛑 Error cargando especiales:', error.message);
+    if (contenedorAlmuerzos) {
+      mostrarError(contenedorAlmuerzos, 'No pudimos cargar los especiales.', '⚠️');
+    }
+    if (contenedorHappy) {
+      mostrarError(contenedorHappy, 'No pudimos cargar los especiales.', '⚠️');
+    }
     return;
   }
 

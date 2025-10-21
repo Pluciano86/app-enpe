@@ -1,8 +1,3 @@
-// 🔧 Loader eliminado: funciones vacías para evitar errores
-function mostrarLoader() {}
-function ocultarLoader() {}
-
-
 // lugares.js
 function getPublicBase() {
   const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
@@ -10,7 +5,7 @@ function getPublicBase() {
 }
 
 import { supabase } from '../shared/supabaseClient.js';
-import { mostrarMensajeVacio } from './mensajesUI.js';
+import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 import { calcularTiemposParaLugares } from './distanciaLugar.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 
@@ -26,6 +21,13 @@ let lugares = [];
 let latUsuario = null;
 let lonUsuario = null;
 let renderVersion = 0;
+
+const claseBaseContenedor = contenedor?.className || '';
+function restaurarContenedor() {
+  if (contenedor) {
+    contenedor.className = claseBaseContenedor;
+  }
+}
 
 const cleanupCarousels = (container) => {
   if (!container) return;
@@ -127,8 +129,7 @@ function crearCardLugar(lugar) {
 async function cargarLugares() {
   let { data, error } = await supabase.from('LugaresTuristicos').select('*').eq('activo', true);
   if (error) {
-    console.error('Error cargando lugares:', error);
-    return;
+    throw error;
   }
 
   lugares = data.filter(l => l.latitud && l.longitud);
@@ -200,81 +201,84 @@ async function cargarLugares() {
 
 async function renderizarLugares() {
   const currentRender = ++renderVersion;
-  await renderTopBannerLugares();
-  if (currentRender !== renderVersion) return;
-
-  cleanupCarousels(contenedor);
-  contenedor.innerHTML = '';
-  let filtrados = [...lugares];
-
-  const texto = inputBuscar.value.toLowerCase();
-  if (texto) filtrados = filtrados.filter(l => l.nombre.toLowerCase().includes(texto));
-
-  const categoriaSeleccionada = selectCategoria.value;
-  if (categoriaSeleccionada) {
-    filtrados = filtrados.filter(l => l.categorias?.includes(categoriaSeleccionada));
-  }
-
-  const municipio = selectMunicipio.value;
-  if (municipio) filtrados = filtrados.filter(l => l.municipio === municipio);
-
-  if (btnAbierto.classList.contains('bg-blue-500')) filtrados = filtrados.filter(l => l.abiertoAhora);
-  if (btnFavoritos.classList.contains('bg-blue-500')) filtrados = filtrados.filter(l => l.favorito);
-  if (btnGratis.classList.contains('bg-blue-500')) filtrados = filtrados.filter(l => l.precioEntrada === 'Gratis');
-
-  const orden = document.getElementById('filtro-orden')?.value;
-  if (orden === 'az') {
-    filtrados.sort((a, b) => a.nombre.localeCompare(b.nombre));
-  } else if (orden === 'recientes') {
-    filtrados.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  } else {
-    filtrados.sort((a, b) => a.distanciaLugar - b.distanciaLugar);
-  }
-
-  if (filtrados.length === 0) {
-    mostrarMensajeVacio(contenedor, 'No se encontraron Lugares de Interés para los filtros seleccionados.', '📍');
-    const bannerFinal = await crearBannerElemento('banner-bottom');
+  try {
+    await renderTopBannerLugares();
     if (currentRender !== renderVersion) return;
-    if (bannerFinal) contenedor.appendChild(bannerFinal);
-    return;
-  }
 
-  const fragment = document.createDocumentFragment();
-  let cartasEnFila = 0;
-  let totalFilas = 0;
+    restaurarContenedor();
+    cleanupCarousels(contenedor);
+    contenedor.innerHTML = '';
+    let filtrados = [...lugares];
 
-  for (let i = 0; i < filtrados.length; i++) {
-    const lugar = filtrados[i];
-    const card = crearCardLugar(lugar);
-    if (card instanceof HTMLElement) {
-      fragment.appendChild(card);
-      cartasEnFila += 1;
+    const texto = inputBuscar.value.toLowerCase();
+    if (texto) filtrados = filtrados.filter(l => l.nombre.toLowerCase().includes(texto));
 
-      const esUltimaCarta = i === filtrados.length - 1;
-      const filaCompleta = cartasEnFila === 2 || esUltimaCarta;
+    const categoriaSeleccionada = selectCategoria.value;
+    if (categoriaSeleccionada) {
+      filtrados = filtrados.filter(l => l.categorias?.includes(categoriaSeleccionada));
+    }
 
-      if (filaCompleta) {
-        totalFilas += 1;
-        cartasEnFila = 0;
+    const municipio = selectMunicipio.value;
+    if (municipio) filtrados = filtrados.filter(l => l.municipio === municipio);
 
-        const debeInsertarIntermedio = totalFilas % 4 === 0 && !esUltimaCarta;
-        if (debeInsertarIntermedio) {
-          const bannerIntermedio = await crearBannerElemento('banner-inline');
-          if (currentRender !== renderVersion) return;
-          if (bannerIntermedio) fragment.appendChild(bannerIntermedio);
+    if (btnAbierto.classList.contains('bg-blue-500')) filtrados = filtrados.filter(l => l.abiertoAhora);
+    if (btnFavoritos.classList.contains('bg-blue-500')) filtrados = filtrados.filter(l => l.favorito);
+    if (btnGratis.classList.contains('bg-blue-500')) filtrados = filtrados.filter(l => l.precioEntrada === 'Gratis');
+
+    const orden = document.getElementById('filtro-orden')?.value;
+    if (orden === 'az') {
+      filtrados.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    } else if (orden === 'recientes') {
+      filtrados.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else {
+      filtrados.sort((a, b) => a.distanciaLugar - b.distanciaLugar);
+    }
+
+    if (filtrados.length === 0) {
+      mostrarMensajeVacio(contenedor, 'No se encontraron Lugares de Interés para los filtros seleccionados.', '📍');
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    let cartasEnFila = 0;
+    let totalFilas = 0;
+
+    for (let i = 0; i < filtrados.length; i++) {
+      const lugar = filtrados[i];
+      const card = crearCardLugar(lugar);
+      if (card instanceof HTMLElement) {
+        fragment.appendChild(card);
+        cartasEnFila += 1;
+
+        const esUltimaCarta = i === filtrados.length - 1;
+        const filaCompleta = cartasEnFila === 2 || esUltimaCarta;
+
+        if (filaCompleta) {
+          totalFilas += 1;
+          cartasEnFila = 0;
+
+          const debeInsertarIntermedio = totalFilas % 4 === 0 && !esUltimaCarta;
+          if (debeInsertarIntermedio) {
+            const bannerIntermedio = await crearBannerElemento('banner-inline');
+            if (currentRender !== renderVersion) return;
+            if (bannerIntermedio) fragment.appendChild(bannerIntermedio);
+          }
         }
       }
     }
-  }
 
-  const debeAgregarFinal = totalFilas === 0 || totalFilas % 4 !== 0;
-  if (debeAgregarFinal) {
-    const bannerFinal = await crearBannerElemento('banner-bottom');
-    if (currentRender !== renderVersion) return;
-    if (bannerFinal) fragment.appendChild(bannerFinal);
-  }
+    const debeAgregarFinal = totalFilas === 0 || totalFilas % 4 !== 0;
+    if (debeAgregarFinal) {
+      const bannerFinal = await crearBannerElemento('banner-bottom');
+      if (currentRender !== renderVersion) return;
+      if (bannerFinal) fragment.appendChild(bannerFinal);
+    }
 
-  contenedor.appendChild(fragment);
+    contenedor.appendChild(fragment);
+  } catch (error) {
+    console.error('❌ Error al renderizar lugares:', error);
+    mostrarError(contenedor, 'No pudimos mostrar los lugares.', '⚠️');
+  }
 }
 
 async function llenarSelects() {
@@ -308,8 +312,8 @@ selectMunicipio.addEventListener('change', renderizarLugares);
 });
 
 async function inicializarLugares({ lat, lon } = {}) {
-  if (typeof mostrarLoader === 'function') {
-    await mostrarLoader();
+  if (contenedor) {
+    mostrarCargando(contenedor, 'Cargando lugares...', '📍');
   }
 
   try {
@@ -322,9 +326,10 @@ async function inicializarLugares({ lat, lon } = {}) {
       cargarMunicipios(),
       cargarLugares()
     ]);
-  } finally {
-    if (typeof ocultarLoader === 'function') {
-      await ocultarLoader();
+  } catch (error) {
+    console.error('❌ Error inicializando lugares:', error);
+    if (contenedor) {
+      mostrarError(contenedor, 'No pudimos cargar los lugares.', '⚠️');
     }
   }
 }

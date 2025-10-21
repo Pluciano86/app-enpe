@@ -6,6 +6,15 @@ const contenedorHappy = document.getElementById('contenedorHappy');
 const seccionAlmuerzo = contenedorAlmuerzos.closest('section');
 const seccionHappy = contenedorHappy.closest('section');
 
+const claseBaseAlmuerzos = contenedorAlmuerzos?.className || '';
+const claseBaseHappy = contenedorHappy?.className || '';
+
+function restaurarContenedor(contenedor, claseBase) {
+  if (contenedor) {
+    contenedor.className = claseBase;
+  }
+}
+
 async function renderizarEspeciales(lista) {
   const ahora = new Date();
   const hora = ahora.getHours() + ahora.getMinutes() / 60;
@@ -13,6 +22,8 @@ async function renderizarEspeciales(lista) {
   const esAlmuerzo = hora >= 2 && hora < 15.5;
   const tipoSeleccionado = esAlmuerzo ? 'almuerzo' : 'happyhour';
 
+  restaurarContenedor(contenedorAlmuerzos, claseBaseAlmuerzos);
+  restaurarContenedor(contenedorHappy, claseBaseHappy);
   contenedorAlmuerzos.innerHTML = '';
   contenedorHappy.innerHTML = '';
   seccionAlmuerzo.classList.add('hidden');

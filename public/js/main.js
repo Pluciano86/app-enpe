@@ -1,18 +1,6 @@
 import { getPublicBase, calcularTiempoEnVehiculo, formatearHorario } from '../shared/utils.js';
 import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
-
-// 📦 Supabase y componentes
-function mostrarMensajeVacio(contenedor, mensaje = 'No se encontraron comercios para los filtros seleccionados.', icono = '📍') {
-  contenedor.innerHTML = `
-    <div class="col-span-full flex justify-center items-center py-12">
-      <div class="w-full max-w-xs text-center text-gray-600 px-4">
-        <div class="text-5xl mb-2 animate-bounce">${icono}</div>
-        <p class="text-lg font-medium leading-tight mb-1">${mensaje}</p>
-        <p class="text-sm text-gray-400">Prueba cambiar los filtros o intenta otra búsqueda.</p>
-      </div>
-    </div>
-  `;
-}
+import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
@@ -32,6 +20,15 @@ const supabaseUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c';
 const supabase = createClient(supabaseUrl, supabaseKey);
 const baseImageUrl = getPublicBase('galeriacomercios');
+
+const contenedorListado = document.getElementById('app');
+const claseBaseListado = contenedorListado?.className || '';
+
+function restaurarLayoutListado() {
+  if (contenedorListado) {
+    contenedorListado.className = claseBaseListado;
+  }
+}
 
 const diaActual = new Date().getDay();
 const idCategoriaDesdeURL = obtenerIdCategoriaDesdeURL();
@@ -287,8 +284,7 @@ async function cargarComercios() {
 
   const { data: comercios, error } = await query;
   if (error) {
-    console.error('Error cargando comercios:', error);
-    return;
+    throw error;
   }
 
   const comerciosNormalizados = (comercios || []).map((comercio) => ({
@@ -492,6 +488,8 @@ async function aplicarFiltrosYRedibujar() {
     await renderTopBanner();
 
     const contenedor = document.getElementById("app");
+    if (!contenedor) return;
+    restaurarLayoutListado();
     cleanupCarousels(contenedor);
     contenedor.innerHTML = "";
 
@@ -564,30 +562,24 @@ async function aplicarFiltrosYRedibujar() {
 
     // 🧩 Mostrar texto según resultados
 if (total === 0) {
-  // 🧹 Eliminar mensajes previos o sugerencias antiguas
   document.querySelectorAll('.mensaje-no-resultados, .sugerencias-cercanas').forEach(el => el.remove());
 
   const esBusquedaManual = !!municipioActivo && municipioActivo !== filtrosActivos?.municipioDetectado;
   const categoria = categoriaNombre || "Comercios";
   const municipio = municipioActivo || "tu ubicación actual";
 
-  // 🔹 Crear contenedor principal del mensaje
-  const contenedorMsg = document.createElement("div");
-  contenedorMsg.className = "mensaje-no-resultados text-center mt-6 mb-4 px-4";
-
-  // 🔹 Mensaje principal dinámico
   const mensajePrincipal = esBusquedaManual
     ? `No se encontraron ${categoria.toLowerCase()} en el municipio de ${municipio}.`
     : `No se encontraron ${categoria.toLowerCase()} en tu ubicación actual.`;
 
-  contenedorMsg.innerHTML = `
-    <p class="text-gray-700 font-medium mb-3">${mensajePrincipal}</p>
-    <h3 class="text-lg font-semibold text-gray-900">${categoria} cerca de ${municipio}:</h3>
-  `;
+  mostrarMensajeVacio(contenedor, mensajePrincipal, '🍽️');
+  contenedor.classList.add('flex-col', 'gap-4');
 
+  const contenedorMsg = document.createElement("div");
+  contenedorMsg.className = "mensaje-no-resultados text-center mt-6 mb-4 px-4";
+  contenedorMsg.innerHTML = `<h3 class="text-lg font-semibold text-gray-900">${categoria} cerca de ${municipio}:</h3>`;
   filtrosDiv.appendChild(contenedorMsg);
 
-  // 🔹 Botón azul con municipio activo
   if (municipioActivo) {
     const btnMunicipio = document.createElement("button");
     btnMunicipio.innerHTML = `✕ ${municipioActivo}`;
@@ -602,38 +594,32 @@ if (total === 0) {
     contenedorMsg.appendChild(btnMunicipio);
   }
 
-  // ⚡ Mostrar comercios cercanos automáticamente
+  let sugerenciasWrapper = null;
+
   try {
     let referencia = null;
-
-    // 🗺️ Coordenadas base
     const coordsUsuario = await obtenerCoordenadasUsuario();
 
-// Si es búsqueda manual y hay municipio seleccionado, prioriza su centro
-if (esBusquedaManual && municipioActivo) {
-  const { data: muni, error: muniError } = await supabase
-    .from("Municipios")
-    .select("latitud, longitud")
-    .eq("nombre", municipioActivo)
-    .maybeSingle();
+    if (esBusquedaManual && municipioActivo) {
+      const { data: muni, error: muniError } = await supabase
+        .from("Municipios")
+        .select("latitud, longitud")
+        .eq("nombre", municipioActivo)
+        .maybeSingle();
 
-  if (muniError) {
-    console.warn("⚠️ Error obteniendo coordenadas del municipio:", muniError.message);
-  }
+      if (muniError) {
+        console.warn("⚠️ Error obteniendo coordenadas del municipio:", muniError.message);
+      }
 
-  if (Number.isFinite(muni?.latitud) && Number.isFinite(muni?.longitud)) {
-    referencia = { lat: muni.latitud, lon: muni.longitud };
-    console.log(`📍 Centro de ${municipioActivo}:`, referencia);
-  } else {
-    console.warn(`⚠️ ${municipioActivo} aún no tiene coordenadas, usando la ubicación del usuario.`);
-    referencia = coordsUsuario || null;
-  }
-} else {
-  // Si no hay municipio manual, usa la ubicación actual
-  referencia = coordsUsuario || null;
-}
+      if (Number.isFinite(muni?.latitud) && Number.isFinite(muni?.longitud)) {
+        referencia = { lat: muni.latitud, lon: muni.longitud };
+      } else {
+        referencia = coordsUsuario || null;
+      }
+    } else {
+      referencia = coordsUsuario || null;
+    }
 
-    // 🔍 Buscar comercios cercanos dentro del radio
     if (referencia) {
       let cercanos = listaOriginal
         .filter((c) =>
@@ -644,7 +630,7 @@ if (esBusquedaManual && municipioActivo) {
             referencia.lon,
             c.latitud,
             c.longitud
-          ) <= 15 // 📏 límite de 15 km para municipios adyacentes
+          ) <= 15
         )
         .map((c) => ({
           ...c,
@@ -658,28 +644,30 @@ if (esBusquedaManual && municipioActivo) {
         .sort((a, b) => a.distanciaKm - b.distanciaKm);
 
       if (cercanos.length > 0) {
+        sugerenciasWrapper = document.createElement("div");
+        sugerenciasWrapper.className = `${claseBaseListado} mt-4`;
+        contenedor.appendChild(sugerenciasWrapper);
+
         const sugerenciasDiv = document.createElement("div");
         sugerenciasDiv.className =
           "sugerencias-cercanas text-center mt-4 text-gray-700 font-medium";
-        // 🧩 Mensaje corto sin duplicación
         sugerenciasDiv.innerHTML = `<p class="text-sm text-gray-600 italic mb-2">Mostrando resultados cercanos…</p>`;
         filtrosDiv.appendChild(sugerenciasDiv);
 
-        // Mostrar hasta 10 comercios
         cercanos.slice(0, 10).forEach((comercio) => {
           const card = comercio.activoEnPeErre
             ? cardComercio(comercio)
             : cardComercioNoActivo(comercio);
-          contenedor.appendChild(card);
+          sugerenciasWrapper.appendChild(card);
         });
+
+        const bannerFinal = await crearBannerElemento("banner-bottom");
+        if (bannerFinal) sugerenciasWrapper.appendChild(bannerFinal);
       }
     }
   } catch (error) {
     console.error("❌ Error mostrando comercios cercanos:", error.message);
   }
-
-  const bannerFinal = await crearBannerElemento("banner-bottom");
-  if (bannerFinal) contenedor.appendChild(bannerFinal);
   return;
 } else {
       labelTotal.textContent = `${total} ${categoriaNombre} ${
@@ -743,6 +731,9 @@ if (esBusquedaManual && municipioActivo) {
     contenedor.appendChild(fragment);
   } catch (error) {
     console.error("Error al redibujar comercios:", error);
+    if (contenedor) {
+      mostrarError(contenedor, 'No pudimos mostrar los comercios.', '⚠️');
+    }
   }
 }
 
@@ -845,14 +836,13 @@ navigator.geolocation.getCurrentPosition(async (pos) => {
 });
 
 async function cargarComerciosConOrden() {
-  if (typeof mostrarLoader === 'function') {
-    await mostrarLoader();
+  if (contenedorListado) {
+    mostrarCargando(contenedorListado, 'Cargando comercios...', '🍽️');
   }
 
   try {
     console.log("🔄 Orden seleccionado:", filtrosActivos.orden);
 
-    // Solo recarga comercios (no toca tiempos)
     await cargarComercios();
 
     if (filtrosActivos.orden === 'ubicacion') {
@@ -863,7 +853,6 @@ async function cargarComerciosConOrden() {
       listaOriginal.sort((a, b) => b.id - a.id);
     }
 
-    // Reordenar si destacados está activo
     if (filtrosActivos.destacadosPrimero) {
       const activos = listaOriginal.filter(c => c.activoEnPeErre);
       const inactivos = listaOriginal.filter(c => !c.activoEnPeErre);
@@ -880,10 +869,11 @@ async function cargarComerciosConOrden() {
       );
     }
 
-    aplicarFiltrosYRedibujar();
-  } finally {
-    if (typeof ocultarLoader === 'function') {
-      await ocultarLoader();
+    await aplicarFiltrosYRedibujar();
+  } catch (error) {
+    console.error("❌ Error cargando comercios:", error);
+    if (contenedorListado) {
+      mostrarError(contenedorListado, 'No pudimos cargar los comercios.', '⚠️');
     }
   }
 }

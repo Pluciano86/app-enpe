@@ -2,7 +2,7 @@
 import { obtenerClima } from "./obtenerClima.js";
 import { supabase } from '../shared/supabaseClient.js';
 import { calcularTiemposParaLugares, calcularDistancia } from './distanciaLugar.js';
-import { mostrarMensajeVacio } from './mensajesUI.js';
+import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 
 const inputBuscar = document.getElementById("inputBuscar");
@@ -19,6 +19,13 @@ let todasLasPlayas = [];
 let usuarioLat = null;
 let usuarioLon = null;
 let renderID = 0;
+
+const claseBaseContenedor = contenedor?.className || '';
+function restaurarContenedor() {
+  if (contenedor) {
+    contenedor.className = claseBaseContenedor;
+  }
+}
 
 const cleanupCarousels = (container) => {
   if (!container) return;
@@ -60,8 +67,8 @@ async function crearBannerElemento(slotName = 'banner-inline') {
 }
 
 async function inicializarPlayas({ lat, lon } = {}) {
-  if (typeof mostrarLoader === 'function') {
-    await mostrarLoader();
+  if (contenedor) {
+    mostrarCargando(contenedor, 'Cargando playas...', '🏖️');
   }
 
   try {
@@ -76,10 +83,11 @@ async function inicializarPlayas({ lat, lon } = {}) {
       await calcularTiempos();
     }
 
-    renderizarPlayas();
-  } finally {
-    if (typeof ocultarLoader === 'function') {
-      await ocultarLoader();
+    await renderizarPlayas();
+  } catch (error) {
+    console.error("❌ Error cargando playas:", error);
+    if (contenedor) {
+      mostrarError(contenedor, 'No pudimos cargar las playas.', '⚠️');
     }
   }
 }
@@ -102,7 +110,7 @@ if ('geolocation' in navigator) {
 
 async function cargarPlayas() {
   const { data, error } = await supabase.from("playas").select("*");
-  if (error) return console.error("Error cargando playas:", error);
+  if (error) throw error;
   todasLasPlayas = data;
 
   const { data: imagenes, error: errorImg } = await supabase
@@ -147,6 +155,7 @@ async function renderizarPlayas() {
     await renderTopBannerPlayas();
     if (currentID !== renderID) return;
 
+    restaurarContenedor();
     cleanupCarousels(contenedor);
     contenedor.innerHTML = "";
 
@@ -195,19 +204,7 @@ async function renderizarPlayas() {
           ? `No se encontraron playas que coincidan con ${filtrosActivos.join(", ")}.`
           : "No se encontraron playas para mostrar.";
 
-      contenedor.innerHTML = `
-        <div class="col-span-full flex justify-center items-center py-12">
-          <div class="w-full max-w-xs text-center text-gray-600 px-4">
-            <div class="text-5xl mb-2 animate-bounce">🏖️</div>
-            <p class="text-lg font-medium leading-tight mb-1">${mensaje}</p>
-            <p class="text-sm text-gray-400">Prueba cambiar los filtros o intenta otra búsqueda.</p>
-          </div>
-        </div>
-      `;
-
-      const bannerFinal = await crearBannerElemento("banner-bottom");
-      if (currentID !== renderID) return;
-      if (bannerFinal) contenedor.appendChild(bannerFinal);
+      mostrarMensajeVacio(contenedor, mensaje, '🏖️');
       return;
     }
 
@@ -352,6 +349,7 @@ if (imagenEl) {
     contenedor.appendChild(fragment);
   } catch (error) {
     console.error("Error al renderizar playas:", error);
+    mostrarError(contenedor, 'No pudimos mostrar las playas.', '⚠️');
   }
 }
 
