@@ -4,21 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script>
-    (function() {
-      const lockOrientation = () => {
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock('portrait').catch(() => {});
-        }
-      };
-      if ('ontouchstart' in window) {
-        lockOrientation();
-        window.addEventListener('orientationchange', lockOrientation);
-      }
-    })();
-  </script>
-
-  <title>Especiales del Día</title>
+<title>Especiales del Día</title>
   <script src="https://cdn.tailwindcss.com"></script> <!-- ✅ Este sí funciona -->
   <script> tailwind.config = {theme: {extend: {fontFamily: {sans: ['Kanit', 'sans-serif']}}}}
 </script>
@@ -114,5 +100,6 @@
 <div id="footerContainer"></div>
 <script type="module" src="../js/footer.js"></script>
 
+  <script src="../js/bloquearPantalla.js"></script>
 </body>
 </html>

@@ -3,21 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script>
-    (function() {
-      const lockOrientation = () => {
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock('portrait').catch(() => {});
-        }
-      };
-      if ('ontouchstart' in window) {
-        lockOrientation();
-        window.addEventListener('orientationchange', lockOrientation);
-      }
-    })();
-  </script>
-
-  <title>Perfil de Playa</title>
+<title>Perfil de Playa</title>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -192,5 +178,6 @@
   <script type="module" src="./js/perfilPlaya.js"></script>
 <script type="module" src="./js/calcularTiemposParaLista.js"></script> <!-- solo si NO lo importas dentro -->
 <script type="module" src="./js/cercanosPlaya.js"></script>
+  <script src="js/bloquearPantalla.js"></script>
 </body>
 </html>
