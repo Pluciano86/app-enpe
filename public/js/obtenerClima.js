@@ -13,7 +13,7 @@ export async function obtenerClima(lat, lon) {
     return null;
   }
 
-  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&lang=es&appid=${API_KEY}`;
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=imperial&lang=es&appid=${API_KEY}`;
 
   try {
     const response = await fetch(url);
@@ -22,9 +22,9 @@ export async function obtenerClima(lat, lon) {
     const data = await response.json();
 
     // === Datos principales ===
-    const temperatura = `${Math.round(data.main.temp)}°C`;
-    const min = `${Math.round(data.main.temp_min)}°C`;
-    const max = `${Math.round(data.main.temp_max)}°C`;
+    const temperatura = `${Math.round(data.main.temp)}°F`;
+    const min = `${Math.round(data.main.temp_min)}°F`;
+    const max = `${Math.round(data.main.temp_max)}°F`;
     const viento = `${Math.round(data.wind.speed)} mph`;
     const humedad = `${data.main.humidity}%`;
     const estado = (data.weather?.[0]?.description || "Sin datos").toUpperCase();

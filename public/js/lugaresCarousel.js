@@ -131,29 +131,18 @@ export async function renderLugaresCarousel(containerId) {
       </div>
     `;
 
-    // 🌀 Inicializar Swiper (centrado y fluido)
-const swiperEl = slider.querySelector('.lugaresSwiper');
-
-if (swiperEl.__swiper) swiperEl.__swiper.destroy(true, true);
-
-const swiper = new Swiper(swiperEl, {
-  centeredSlides: true,              // 👈 centra la tarjeta actual
-  slidesPerView: 'auto',             // 👈 calcula ancho automático
-  spaceBetween: 20,
-  loop: true,
-  speed: 900,
-  grabCursor: true,                  // 👈 mejora el control táctil
-  autoplay: {
-    delay: 3200,
-    disableOnInteraction: false,  
-  },
-  slidesOffsetBefore: 16,            // 👈 pequeño margen lateral
-  slidesOffsetAfter: 16,
-  breakpoints: {
-    640: { spaceBetween: 24 },
-    1024: { spaceBetween: 28 },
-  },
-});
+    // 🔹 Inicializar Swiper
+    new Swiper(container.querySelector(".lugaresSwiper"), {
+      loop: true,
+      autoplay: { delay: 3000, disableOnInteraction: false, reverseDirection: true },
+      speed: 900,
+      slidesPerView: 1.2,
+      spaceBetween: 12,
+      breakpoints: {
+        640: { slidesPerView: 2.2, spaceBetween: 20 },
+        1024: { slidesPerView: 3.2, spaceBetween: 24 },
+      },
+    });
 
     // 🔹 Botón “Ver más Lugares”
     const btnContainer = document.createElement("div");
@@ -175,7 +164,7 @@ const swiper = new Swiper(swiperEl, {
 }
 
 /* -------------------------------------------------------
-   🔄 ACTUALIZACIÓN AUTOMÁTICA POR EVENTO 
+   🔄 ACTUALIZACIÓN AUTOMÁTICA POR EVENTO lugaresSwiper
 -------------------------------------------------------- */
 window.addEventListener("areaCargada", async (e) => {
   const { idArea, idMunicipio } = e.detail || {};

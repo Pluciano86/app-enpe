@@ -9,7 +9,7 @@
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 
-<body class="text-gray-800 font-[Kanit]">
+<body class="bg-white text-gray-800 font-[Kanit] min-h-screen overflow-y-auto pb-24">
 
   <!-- Header -->
   <div id="headerContainer" class="z-50 relative"></div>
@@ -138,12 +138,12 @@
   </div>
 </section>
 
-<section id="cercanosLugaresContainer" class="hidden mt-8 px-4">
-  <h2 class="text-lg font-medium mb-4">
+<section id="cercanosLugaresContainer" class="hidden mt-8 w-full">
+  <h2 class="text-lg font-medium mb-4 px-4">
     Lugares de interés cerca de
     <span id="nombreCercanosLugares" class="text-primary"></span>
   </h2>
-  <div id="sliderCercanosLugares" class="swiper lugaresSwiper">
+  <div id="sliderCercanosLugares" class="swiper lugaresSwiper w-full">
     <div class="swiper-wrapper"></div>
   </div>
 </section>
@@ -176,6 +176,7 @@
   <script type="module" src="./js/header.js"></script>
   <script type="module" src="./js/footer.js"></script>
   <script type="module" src="./js/perfilPlaya.js"></script>
-  <script type="module" src="./js/cercanosPlaya.js"></script>
+<script type="module" src="./js/calcularTiemposParaLista.js"></script> <!-- solo si NO lo importas dentro -->
+<script type="module" src="./js/cercanosPlaya.js"></script>
 </body>
 </html>
