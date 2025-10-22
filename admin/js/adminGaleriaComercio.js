@@ -340,3 +340,5 @@ export async function duplicarGaleriaDesdePrincipal(comercioId, comercioPrincipa
     alert('❌ No se pudo duplicar la galería.');
   }
 }
+
+export { activarBotonesGaleria };
