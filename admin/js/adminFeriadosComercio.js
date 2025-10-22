@@ -1,5 +1,6 @@
 // adminFeriadosComercio.js
 import { supabase } from '../shared/supabaseClient.js';
+
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -11,10 +12,12 @@ async function cargarFeriadosComercio() {
   const container = document.getElementById('feriadosContainer');
   if (!container) return;
 
+  // Traer feriados desde la tabla Horarios (columna feriado tipo date)
   const { data, error } = await supabase
-    .from('feriados')
-    .select('*')
-    .eq('idComercio', idComercio);
+    .from('Horarios')
+    .select('id, feriado')
+    .eq('idComercio', idComercio)
+    .not('feriado', 'is', null);
 
   if (error) {
     console.error('Error cargando feriados:', error);
@@ -22,30 +25,37 @@ async function cargarFeriadosComercio() {
     return;
   }
 
-  const feriadosValidos = data.filter(f => f.feriado !== null);
-
-  if (feriadosValidos.length === 0) {
-    container.innerHTML = '<p class="text-gray-500">No hay feriados aún.</p>';
-    return;
+  // Mostrar los feriados existentes
+  if (data && data.length > 0) {
+    container.innerHTML = data
+      .map(
+        (f) => `
+      <div class="flex items-center gap-4 my-2">
+        <input type="date" class="border rounded p-1" value="${f.feriado}" data-id="${f.id}">
+        <button class="text-red-600 eliminarFeriado" data-id="${f.id}">Eliminar</button>
+      </div>
+    `
+      )
+      .join('');
+  } else {
+    container.innerHTML = '<p class="text-gray-400">No hay feriados registrados.</p>';
   }
 
-  container.innerHTML = '';
-  feriadosValidos.forEach((f) => {
-    const div = document.createElement('div');
-    div.className = 'flex items-center gap-4';
-    div.innerHTML = `
-      <input type="date" class="border rounded p-1" value="${f.feriado}" data-id="${f.id}">
-      <button class="text-red-600 eliminarFeriado" data-id="${f.id}">Eliminar</button>
-    `;
-    container.appendChild(div);
-  });
-
-  document.querySelectorAll('.eliminarFeriado').forEach(btn => {
+  // Asociar eventos de eliminación
+  document.querySelectorAll('.eliminarFeriado').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
       if (confirm('¿Eliminar este feriado?')) {
-        await supabase.from('feriados').delete().eq('id', id);
-        await cargarFeriadosComercio();
+        const { error: delError } = await supabase
+          .from('Horarios')
+          .update({ feriado: null })
+          .eq('id', id);
+        if (delError) {
+          console.error('Error al eliminar feriado:', delError);
+          alert('Hubo un error al eliminar el feriado.');
+        } else {
+          await cargarFeriadosComercio();
+        }
       }
     });
   });
@@ -58,8 +68,9 @@ async function agregarNuevoFeriado() {
     return;
   }
 
+  // Insertar nuevo feriado en la tabla Horarios
   const { error } = await supabase
-    .from('feriados')
+    .from('Horarios')
     .insert([{ idComercio, feriado: fecha }]);
 
   if (error) {
@@ -71,5 +82,4 @@ async function agregarNuevoFeriado() {
   await cargarFeriadosComercio();
 }
 
-// ✅ Export para poder usar en el HTML si lo necesitas
 export { cargarFeriadosComercio, agregarNuevoFeriado };

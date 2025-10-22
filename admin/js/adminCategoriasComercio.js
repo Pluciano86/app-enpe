@@ -137,8 +137,6 @@ window.removerSubcategoria = function (id) {
 // ✅ Nuevo método corregido: Cargar relaciones desde tablas intermedias
 async function cargarRelacionesComercio() {
   try {
-    console.log('🟢 Cargando relaciones de categorías/subcategorías del comercio:', idComercio);
-
     const { data: categoriasRel, error: errorCat } = await supabase
       .from('ComercioCategorias')
       .select('idCategoria')
