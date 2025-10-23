@@ -54,30 +54,25 @@ async function cargarDropdownMunicipios(idArea, idMunicipioSeleccionado) {
     dropdown.parentElement.classList.remove('hidden');
   }
 
-// 🔹 Nuevo comportamiento dinámico sin recargar
-dropdown.addEventListener('change', async (e) => {
-  const idMunicipio = e.target.value ? parseInt(e.target.value) : null;
+  // 🔹 Nuevo comportamiento dinámico sin recargar
+  dropdown.addEventListener('change', async (e) => {
+    const idMunicipio = e.target.value ? parseInt(e.target.value) : null;
 
-  // 🔸 Actualizar filtros globales
-  window.filtrosArea = {
-    idArea,
-    idMunicipio,
-  };
+    // 🔸 Actualizar filtros globales
+    window.filtrosArea = { idArea, idMunicipio };
 
-  // 🔸 Actualizar el nombre del header
-  await mostrarNombreArea(idArea, idMunicipio);
+    // 🔸 Actualizar el nombre del header
+    await mostrarNombreArea(idArea, idMunicipio);
 
-  // 🔸 Recargar dinámicamente el carrusel de Jangueo
-  await renderJangueoCarouselArea("jangueoCarousel");
+    // 🔸 Recargar carruseles
+    await renderJangueoCarouselArea("jangueoCarousel");
+    await renderEventosCarousel("eventosCarousel", { idArea, idMunicipio });
 
-  // 🔸 También se puede recargar el de eventos si deseas
-  await renderEventosCarousel("eventosCarousel", { idArea, idMunicipio });
-
-  // 🔸 🔥 Actualizar el grid de comida sin recargar
-  window.dispatchEvent(new CustomEvent("areaCargada", {
-    detail: { idArea, idMunicipio },
-}));
-}); // 👈👈 este cierre FALTABA
+    // 🔸 🔥 Notificar al módulo de lugares para que actualice las tarjetas
+    window.dispatchEvent(new CustomEvent("areaCargada", {
+      detail: { idArea, idMunicipio, ocultarDistancia: true },
+    }));
+  }); // 👈 cierre correcto
 }
 
 export async function obtenerParametros() {
@@ -93,20 +88,16 @@ async function cargarTodo() {
   idAreaGlobal = idArea;
   municipioSeleccionado = isNaN(idMunicipio) ? null : idMunicipio;
 
-  // 🔸 Guardar filtros globales accesibles desde cualquier módulo
-  window.filtrosArea = {
-    idArea,
-    idMunicipio,
-  };
+  window.filtrosArea = { idArea, idMunicipio };
 
   await mostrarNombreArea(idArea, municipioSeleccionado);
   await cargarDropdownMunicipios(idArea, municipioSeleccionado);
   await renderEventosCarousel("eventosCarousel", { idArea, idMunicipio });
   await renderJangueoCarouselArea("jangueoCarousel");
 
-  // 🔹 Disparar evento para que otros módulos escuchen el área cargada
+  // 🔹 Disparar evento inicial al cargar la página
   window.dispatchEvent(new CustomEvent('areaCargada', {
-    detail: { idArea, idMunicipio },
+    detail: { idArea, idMunicipio, ocultarDistancia: true },
   }));
 }
 

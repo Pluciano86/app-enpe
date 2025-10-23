@@ -1,46 +1,59 @@
-// cardLugarSlide.js
-export function cardLugarSlide(lugar) {
+// ✅ cardLugarSlide.js
+export function cardLugarSlide(lugar, opciones = {}) {
   const {
     id,
     nombre,
     municipio,
     imagen,
-    tiempoTexto = "a 3 minutos",
+    tiempoTexto = "a 3 minutos", // valor por defecto si no hay distancia calculada
   } = lugar;
+
+  // Nueva opción controlada desde listadoArea
+  const { ocultarDistancia = false } = opciones;
 
   const card = document.createElement("a");
   card.href = `perfilLugar.html?id=${id}`;
   card.className = `
-    block w-72 sm:w-80 md:w-96 shrink-0 rounded-xl overflow-hidden bg-white shadow-sm
-    hover:shadow-lg hover:scale-[1.02] transition-all duration-300
+    block w-80 sm:w-96 shrink-0 rounded-lg overflow-hidden bg-white relative
+    hover:scale-[1.02] transition-transform
   `.trim();
 
   card.innerHTML = `
-    <!-- Imagen principal -->
-    <div class="relative w-full h-44 bg-gray-100">
-      <img
-        src="${imagen || "https://placehold.co/400x250?text=Lugar"}"
-        alt="${nombre}"
-        class="w-full h-full object-cover"
-        loading="lazy"
-      />
-    </div>
+    <!-- Imagen del lugar -->
+<div class="w-full h-42 relative bg-gray-200">
+  <img 
+    src="${imagen && imagen.trim() !== '' 
+      ? imagen 
+      : 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/nodisponiblepeq.jpg'}" 
+    alt="${nombre}" 
+    class="w-full h-full object-cover" 
+    onerror="this.src='https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/nodisponiblepeq.jpg'" 
+  />
+</div>
 
-    <!-- Contenido -->
-    <div class="py-2 text-center">
+    <!-- Info -->
+    <div class="pt-2 pb-2 text-center">
       <!-- Nombre -->
-      <h3 class="text-base sm:text-lg font-semibold text-gray-800 leading-tight truncate px-3">
+      <h3 class="text-lg font-medium text-gray-800 truncate px-2 leading-tight">
         ${nombre}
       </h3>
 
-      <!-- Municipio y tiempo -->
-      <div class="flex justify-center items-center gap-3 mt-1 text-sm text-gray-500">
-        <span class="flex items-center gap-1 text-[#23b4e9]">
-          <i class="fa-solid fa-map-marker-alt"></i> ${municipio || "Sin municipio"}
+      <!-- Municipio y (opcional) distancia -->
+      <div class="flex justify-center items-center gap-4 text-sm mt-1 text-gray-500">
+        <!-- Municipio -->
+        <span class="flex items-center gap-1 text-[#23b4e9] font-normal">
+          <i class="fas fa-map-pin"></i> ${municipio ?? ""}
         </span>
-        <span class="flex items-center gap-1">
-          <i class="fa-solid fa-car text-gray-400"></i> ${tiempoTexto}
-        </span>
+
+        <!-- Solo mostrar distancia si no está oculto -->
+        ${
+          !ocultarDistancia && tiempoTexto
+            ? `
+          <span class="flex items-center gap-1 text-gray-400 font-normal">
+            <i class="fa-solid fa-car text-gray-400"></i> ${tiempoTexto}
+          </span>`
+            : ""
+        }
       </div>
     </div>
   `;

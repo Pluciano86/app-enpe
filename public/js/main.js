@@ -569,20 +569,25 @@ if (total === 0) {
   const categoria = categoriaNombre || "Comercios";
   const municipio = municipioActivo || "tu ubicación actual";
 
-  // 🔹 Crear contenedor principal del mensaje
-  const contenedorMsg = document.createElement("div");
-  contenedorMsg.className = "mensaje-no-resultados text-center mt-6 mb-4 px-4";
+  // ✅ Asegurar contenedor de mensajes fuera del grid
+  let mensajesContainer = document.getElementById('mensajesContainer');
+  if (!mensajesContainer) {
+    mensajesContainer = document.createElement('div');
+    mensajesContainer.id = 'mensajesContainer';
+    mensajesContainer.className = 'text-center mb-6';
+    contenedor.parentNode.insertBefore(mensajesContainer, contenedor);
+  }
+  mensajesContainer.innerHTML = '';
 
-  // 🔹 Mensaje principal dinámico
+  // 🔹 Mensaje principal genérico (sin repetir municipio)
   const mensajePrincipal = esBusquedaManual
-    ? `No se encontraron ${categoria.toLowerCase()} en el municipio de ${municipio}.`
+    ? `No se encontraron ${categoria.toLowerCase()} en el municipio seleccionado.`
     : `No se encontraron ${categoria.toLowerCase()} en tu ubicación actual.`;
 
-  contenedorMsg.innerHTML = `
-    <p class="text-gray-700 font-medium mb-3">${mensajePrincipal}</p>
-  `;
-
-  filtrosDiv.appendChild(contenedorMsg);
+  const mensajeBase = document.createElement("div");
+  mensajeBase.className = "mensaje-no-resultados text-center mt-6 mb-4 px-4";
+  mensajeBase.innerHTML = `<p class="text-gray-700 font-medium mb-3">${mensajePrincipal}</p>`;
+  mensajesContainer.appendChild(mensajeBase);
 
   // 🔹 Botón azul con municipio activo
   if (municipioActivo) {
@@ -591,12 +596,15 @@ if (total === 0) {
     btnMunicipio.className =
       "ml-2 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition";
     btnMunicipio.addEventListener("click", () => {
+      // ✅ Reiniciar filtro, limpiar mensajes y recargar lista completa
       filtrosActivos.municipio = "";
       const selectMunicipio = document.getElementById("filtro-municipio");
       if (selectMunicipio) selectMunicipio.value = "";
+      const mensajesContainerExistente = document.getElementById('mensajesContainer');
+      if (mensajesContainerExistente) mensajesContainerExistente.remove();
       cargarComerciosConOrden();
     });
-    contenedorMsg.appendChild(btnMunicipio);
+    mensajeBase.appendChild(btnMunicipio);
   }
 
   // ⚡ Mostrar comercios cercanos automáticamente
@@ -604,7 +612,7 @@ if (total === 0) {
     let referencia = null;
     const coordsUsuario = await obtenerCoordenadasUsuario();
 
-    // Si es búsqueda manual, usar coordenadas del municipio seleccionado
+    // 🧭 Si es búsqueda manual, usar coordenadas del municipio seleccionado
     if (esBusquedaManual && municipioActivo) {
       const { data: muni } = await supabase
         .from("Municipios")
@@ -621,7 +629,7 @@ if (total === 0) {
       referencia = coordsUsuario;
     }
 
-    // 🔍 Buscar comercios cercanos dentro del radio
+    // 🔍 Buscar comercios cercanos dentro de 25 km (igual que Lugares)
     if (referencia) {
       let cercanos = listaOriginal
         .filter((c) =>
@@ -632,7 +640,7 @@ if (total === 0) {
             referencia.lon,
             c.latitud,
             c.longitud
-          ) <= 15 // 📏 límite de 15 km para municipios adyacentes
+          ) <= 15
         )
         .map((c) => ({
           ...c,
@@ -646,12 +654,16 @@ if (total === 0) {
         .sort((a, b) => a.distanciaKm - b.distanciaKm);
 
       if (cercanos.length > 0) {
-        // ✅ Solo mostrar "Mostrando resultados cercanos…" si hay cercanos
-        const sugerenciasDiv = document.createElement("div");
-        sugerenciasDiv.className =
-          "sugerencias-cercanas text-center mt-4 text-gray-700 font-medium";
-        sugerenciasDiv.innerHTML = `<p class="text-sm text-gray-600 italic mb-2">Mostrando resultados cercanos…</p>`;
-        filtrosDiv.appendChild(sugerenciasDiv);
+        // ✅ Mostrar encabezado y mensaje igual que en Lugares
+        const bloqueCercanos = document.createElement("div");
+        bloqueCercanos.className = "text-center mt-8 mb-4";
+        bloqueCercanos.innerHTML = `
+          <h3 class="text-lg font-semibold text-gray-800 mb-1">
+            ${categoria} cerca de <span class="text-[#23b4e9]">${municipioActivo}</span>:
+          </h3>
+          <p class="text-sm text-gray-600 italic mb-4">Mostrando resultados cercanos...</p>
+        `;
+        mensajesContainer.appendChild(bloqueCercanos);
 
         cercanos.slice(0, 10).forEach((comercio) => {
           const card = comercio.activoEnPeErre
@@ -660,11 +672,11 @@ if (total === 0) {
           contenedor.appendChild(card);
         });
       } else {
-        // ❌ Solo si NO hay cercanos, mostrar mensaje final
+        // ❌ Sin comercios cercanos
         const sinCercanos = document.createElement("p");
         sinCercanos.className = "text-gray-600 mt-4 italic";
-        sinCercanos.textContent = `Tampoco se encontraron ${categoria.toLowerCase()} cercanos a ${municipio}.`;
-        contenedorMsg.appendChild(sinCercanos);
+        sinCercanos.textContent = `Tampoco se encontraron ${categoria.toLowerCase()} cercanos a ${municipioActivo || 'tu ubicación'}.`;
+        mensajesContainer.appendChild(sinCercanos);
       }
     }
   } catch (error) {

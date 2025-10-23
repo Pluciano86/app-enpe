@@ -9,6 +9,28 @@ import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI
 import { calcularTiemposParaLugares } from './distanciaLugar.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 
+// 📍 Calcula distancia entre dos coordenadas (Haversine)
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+  if (
+    typeof lat1 !== 'number' ||
+    typeof lon1 !== 'number' ||
+    typeof lat2 !== 'number' ||
+    typeof lon2 !== 'number'
+  ) return Infinity;
+
+  const R = 6371; // radio de la Tierra en km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // distancia en km
+}
+
 const contenedor = document.getElementById('lugaresContainer');
 const inputBuscar = document.getElementById('searchInput');
 const selectCategoria = document.getElementById('selectCategoria');
@@ -146,16 +168,30 @@ async function cargarLugares() {
     lugar.idCategorias = categoriasRel?.filter(c => c.idLugar === lugar.id).map(c => c.categoria?.idCategoria).filter(Boolean);
   });
 
-  const { data: imagenes, error: errorImg } = await supabase
-    .from('imagenesLugares')
-    .select('imagen, idLugar, portada')
-    .eq('portada', true);
-  if (errorImg) console.error('Error cargando portadas:', errorImg);
+  // 🖼️ Intentar obtener imagen directamente desde la columna 'imagen' del lugar
+const imagenDefault = "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/lugarnodisponible.jpg";
 
-  lugares.forEach(lugar => {
+// 🔹 Buscar imágenes alternativas (solo si no hay imagen directa)
+const { data: imagenes, error: errorImg } = await supabase
+  .from('imagenesLugares')
+  .select('imagen, idLugar, portada')
+  .eq('portada', true);
+
+if (errorImg) {
+  console.error('Error cargando portadas:', errorImg);
+}
+
+// 🔹 Asignar imagen priorizando la columna 'imagen' del lugar
+lugares.forEach(lugar => {
+  if (lugar.imagen && lugar.imagen.trim() !== "") {
+    // ✅ Usar la imagen directa de la tabla LugaresTuristicos
+    lugar.portada = lugar.imagen;
+  } else {
+    // 🔄 Buscar en la tabla imagenesLugares (portada)
     const imgPortada = imagenes?.find(img => img.idLugar === lugar.id);
-    lugar.portada = imgPortada?.imagen || null;
-  });
+    lugar.portada = imgPortada?.imagen || imagenDefault;
+  }
+});
 
   if (latUsuario && lonUsuario) {
     lugares = await calcularTiemposParaLugares(lugares, { lat: latUsuario, lon: lonUsuario });
@@ -173,27 +209,31 @@ async function cargarLugares() {
   const horaActual = ahora.getHours() + ahora.getMinutes() / 60;
 
   lugares.forEach(lugar => {
-    const horario = horarios?.find(h => h.idLugar === lugar.id);
-    if (horario) {
-      if (horario.cerradoTemporal) {
-        lugar.estado = 'cerrado temporal';
-        lugar.abiertoAhora = false;
-      } else if (horario.abiertoSiempre) {
-        lugar.estado = 'siempre abierto';
-        lugar.abiertoAhora = true;
-      } else if (horario.cerrado) {
-        lugar.abiertoAhora = false;
-      } else {
-        const [hA, mA] = horario.apertura.split(':').map(Number);
-        const [hC, mC] = horario.cierre.split(':').map(Number);
-        const horaApertura = hA + mA / 60;
-        const horaCierre = hC + mC / 60;
-        lugar.abiertoAhora = horaActual >= horaApertura && horaActual < horaCierre;
-      }
+  const horario = horarios?.find(h => h.idLugar === lugar.id);
+  if (horario) {
+    if (horario.cerradoTemporal) {
+      lugar.estado = 'cerrado temporal';
+      lugar.abiertoAhora = false;
+    } else if (horario.abiertoSiempre) {
+      lugar.estado = 'siempre abierto';
+      lugar.abiertoAhora = true;
+    } else if (horario.cerrado) {
+      lugar.abiertoAhora = false;
+    } else if (horario.apertura && horario.cierre) {
+      // ✅ Validar que apertura y cierre existan antes de usar split
+      const [hA, mA] = horario.apertura.split(':').map(Number);
+      const [hC, mC] = horario.cierre.split(':').map(Number);
+      const horaApertura = hA + mA / 60;
+      const horaCierre = hC + mC / 60;
+      lugar.abiertoAhora = horaActual >= horaApertura && horaActual < horaCierre;
     } else {
+      // Si no hay hora definida
       lugar.abiertoAhora = false;
     }
-  });
+  } else {
+    lugar.abiertoAhora = false;
+  }
+});
 
   await llenarSelects();
   await renderizarLugares();
@@ -235,9 +275,124 @@ async function renderizarLugares() {
     }
 
     if (filtrados.length === 0) {
-      mostrarMensajeVacio(contenedor, 'No se encontraron Lugares de Interés para los filtros seleccionados.', '📍');
-      return;
+  contenedor.innerHTML = '';
+  document.querySelectorAll('.mensaje-no-resultados, .sugerencias-cercanas').forEach(el => el.remove());
+
+  const municipioActivo = selectMunicipio.value;
+  const categoriaNombre = "Lugares de interés";
+
+  // ✅ Asegurar contenedor de mensajes fuera del grid
+  let mensajesContainer = document.getElementById('mensajesContainer');
+  if (!mensajesContainer) {
+    mensajesContainer = document.createElement('div');
+    mensajesContainer.id = 'mensajesContainer';
+    mensajesContainer.className = 'text-center mb-6';
+    contenedor.parentNode.insertBefore(mensajesContainer, contenedor);
+  }
+  mensajesContainer.innerHTML = ''; // 🔹 limpiar mensajes previos
+
+  // 🔹 Mensaje principal (sin mencionar el municipio)
+  const mensajePrincipal = `No se encontraron ${categoriaNombre.toLowerCase()} en el municipio seleccionado.`;
+
+  const mensajeBase = document.createElement("div");
+  mensajeBase.className = "mensaje-no-resultados text-center mt-6 mb-4 px-4";
+  mensajeBase.innerHTML = `<p class="text-gray-700 font-medium mb-3">${mensajePrincipal}</p>`;
+  mensajesContainer.appendChild(mensajeBase);
+
+  // 🔹 Mostrar chip con botón para quitar filtro
+  if (municipioActivo) {
+    const btnMunicipio = document.createElement("button");
+    btnMunicipio.innerHTML = `✕ ${municipioActivo}`;
+    btnMunicipio.className =
+      "ml-2 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition";
+    btnMunicipio.addEventListener("click", () => {
+      // ✅ Reiniciar filtro, limpiar mensajes y recargar lista completa
+      selectMunicipio.value = "";
+      const mensajesContainerExistente = document.getElementById('mensajesContainer');
+      if (mensajesContainerExistente) mensajesContainerExistente.remove(); // 🚀 Elimina mensajes antes de recargar
+      renderizarLugares();
+    });
+    mensajeBase.appendChild(btnMunicipio);
+  }
+
+  try {
+    let referencia = null;
+
+    // 🧭 Coordenadas del usuario
+    const coordsUsuario = await new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        () => resolve(null)
+      );
+    });
+
+    // 🗺️ Coordenadas del municipio seleccionado
+    if (municipioActivo) {
+      const { data: muni } = await supabase
+        .from("Municipios")
+        .select("latitud, longitud")
+        .eq("nombre", municipioActivo)
+        .maybeSingle();
+
+      if (muni?.latitud && muni?.longitud) {
+        referencia = { lat: parseFloat(muni.latitud), lon: parseFloat(muni.longitud) };
+      } else if (coordsUsuario) {
+        referencia = coordsUsuario;
+      }
+    } else {
+      referencia = coordsUsuario;
     }
+
+    // 🔍 Buscar lugares cercanos dentro de 25 km
+    if (referencia) {
+      const cercanos = lugares
+        .filter((l) => {
+          const lat = parseFloat(l.latitud);
+          const lon = parseFloat(l.longitud);
+          return lat && lon && calcularDistancia(referencia.lat, referencia.lon, lat, lon) <= 25;
+        })
+        .map((l) => ({
+          ...l,
+          distanciaKm: calcularDistancia(
+            referencia.lat,
+            referencia.lon,
+            parseFloat(l.latitud),
+            parseFloat(l.longitud)
+          ),
+        }))
+        .sort((a, b) => a.distanciaKm - b.distanciaKm);
+
+      if (cercanos.length > 0) {
+        const bloqueCercanos = document.createElement("div");
+        bloqueCercanos.className = "text-center mt-8 mb-4";
+        bloqueCercanos.innerHTML = `
+          <h3 class="text-lg font-semibold text-gray-800 mb-1">
+            Lugares de interés cerca de <span class="text-[#23b4e9]">${municipioActivo}</span>:
+          </h3>
+          <p class="text-sm text-gray-600 italic mb-4">Mostrando resultados cercanos...</p>
+        `;
+        mensajesContainer.appendChild(bloqueCercanos);
+
+        cercanos.slice(0, 10).forEach((lugar) => {
+          const card = crearCardLugar(lugar);
+          contenedor.appendChild(card);
+        });
+      } else {
+        const sinCercanos = document.createElement("p");
+        sinCercanos.className = "text-gray-600 mt-4 italic";
+        sinCercanos.textContent = `Tampoco se encontraron lugares de interés cercanos a ${municipioActivo || 'tu ubicación'}.`;
+        mensajesContainer.appendChild(sinCercanos);
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error mostrando lugares cercanos:", error.message);
+  }
+
+  const bannerFinal = await crearBannerElemento("banner-bottom");
+  if (bannerFinal) contenedor.appendChild(bannerFinal);
+  return;
+}
 
     const fragment = document.createDocumentFragment();
     let cartasEnFila = 0;

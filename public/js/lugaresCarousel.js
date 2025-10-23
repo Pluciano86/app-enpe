@@ -1,4 +1,4 @@
-// lugaresCarousel.js
+// ✅ lugaresCarousel.js
 import { supabase } from "../shared/supabaseClient.js";
 import { cardLugarSlide } from "./cardLugarSlide.js";
 
@@ -122,7 +122,7 @@ export async function renderLugaresCarousel(containerId) {
             .map(
               (lugar) => `
                 <div class="swiper-slide">
-                  ${cardLugarSlide(lugar).outerHTML}
+                  ${cardLugarSlide(lugar, { ocultarDistancia: true }).outerHTML}
                 </div>
               `
             )
