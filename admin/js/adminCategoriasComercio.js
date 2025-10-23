@@ -134,7 +134,7 @@ window.removerSubcategoria = function (id) {
   mostrarSeleccionadas('subcategoriasSeleccionadas', window.subcategoriasSeleccionadas, subcategorias, 'removerSubcategoria');
 };
 
-// ✅ Nuevo método corregido: Cargar relaciones desde tablas intermedias
+// ✅ Cargar relaciones del comercio con categorías y subcategorías
 async function cargarRelacionesComercio() {
   try {
     const { data: categoriasRel, error: errorCat } = await supabase
@@ -158,10 +158,8 @@ async function cargarRelacionesComercio() {
       .map((rel) => Number(rel.idSubcategoria))
       .filter((id) => !Number.isNaN(id));
 
-    console.log('✅ Categorías seleccionadas:', window.categoriasSeleccionadas);
-    console.log('✅ Subcategorías seleccionadas:', window.subcategoriasSeleccionadas);
   } catch (error) {
-    console.error('Error procesando relaciones del comercio:', error);
+
   }
 }
 
@@ -207,3 +205,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   await cargarCategorias();
   await cargarSubcategorias();
 });
+
+// ✅ Exportar correctamente para otros módulos
+export {
+  cargarCategorias,
+  cargarSubcategorias,
+  cargarRelacionesComercio,
+  cargarRelacionesComercio as cargarCategoriasYSubcategorias
+};

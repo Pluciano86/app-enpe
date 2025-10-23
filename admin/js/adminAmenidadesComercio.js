@@ -9,7 +9,7 @@ let amenidadesSeleccionadas = [];
 document.addEventListener('DOMContentLoaded', async () => {
   await cargarAmenidades();
 
-  // Mostrar formulario
+  // Mostrar formulario para nueva amenidad
   document.getElementById('nuevaAmenidadBtn')?.addEventListener('click', () => {
     document.getElementById('nuevaAmenidadForm').classList.remove('hidden');
     document.getElementById('nuevaAmenidadBtn').classList.add('hidden');
@@ -45,7 +45,11 @@ async function cargarAmenidades() {
   const container = document.getElementById('amenidadesContainer');
   if (!container) return;
 
-  const { data: todas, error } = await supabase.from('Amenidades').select('*').order('nombre');
+  const { data: todas, error } = await supabase
+    .from('Amenidades')
+    .select('*')
+    .order('nombre');
+
   const { data: activas, error: errorActivas } = await supabase
     .from('comercioAmenidades')
     .select('idAmenidad')
@@ -58,7 +62,7 @@ async function cargarAmenidades() {
   }
 
   amenidadesDisponibles = todas || [];
-  amenidadesSeleccionadas = activas.map(a => a.idAmenidad);
+  amenidadesSeleccionadas = activas?.map(a => a.idAmenidad) || [];
 
   container.innerHTML = '';
   amenidadesDisponibles.forEach(a => {
@@ -74,9 +78,12 @@ async function cargarAmenidades() {
   });
 }
 
-export async function guardarAmenidadesSeleccionadas() {
+// ✅ No usar export aquí en la declaración (solo al final)
+async function guardarAmenidadesSeleccionadas() {
   const checks = document.querySelectorAll('#amenidadesContainer input[type="checkbox"]');
-  const seleccionadas = Array.from(checks).filter(c => c.checked).map(c => parseInt(c.id.replace('amenidad-', '')));
+  const seleccionadas = Array.from(checks)
+    .filter(c => c.checked)
+    .map(c => parseInt(c.id.replace('amenidad-', '')));
 
   await supabase.from('comercioAmenidades').delete().eq('idComercio', idComercio);
 
@@ -85,5 +92,8 @@ export async function guardarAmenidadesSeleccionadas() {
     await supabase.from('comercioAmenidades').insert(nuevas);
   }
 
-  console.log('Amenidades guardadas:', nuevas);
+  console.log('✅ Amenidades guardadas:', nuevas);
 }
+
+// ✅ Exportaciones únicas y correctas
+export { cargarAmenidades as cargarAmenidadesComercio, guardarAmenidadesSeleccionadas };

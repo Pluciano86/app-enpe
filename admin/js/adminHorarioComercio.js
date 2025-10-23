@@ -1,4 +1,4 @@
-// adminHorariosComercio.js
+// adminHorarioComercio.js
 import { supabase } from '../shared/supabaseClient.js';
 import { idComercio } from './mainAdmin.js';
 
@@ -10,7 +10,7 @@ export async function cargarHorariosComercio() {
   if (!container) return;
 
   const { data: horarios, error } = await supabase
-    .from("horarios")
+    .from("Horarios") // ✅ corregido
     .select("*")
     .eq("idComercio", idComercio);
 
@@ -54,16 +54,16 @@ export async function guardarHorariosComercio() {
     const diaReal = (i + 1) % 7; // Alineado con getDay()
 
     const { data: existente } = await supabase
-      .from("horarios")
+      .from("Horarios") // ✅ corregido
       .select("id")
       .eq("idComercio", idComercio)
       .eq("diaSemana", diaReal)
       .maybeSingle();
 
     if (existente) {
-      await supabase.from("horarios").update({ apertura, cierre, cerrado }).eq("id", existente.id);
+      await supabase.from("Horarios").update({ apertura, cierre, cerrado }).eq("id", existente.id);
     } else {
-      await supabase.from("horarios").insert({ idComercio, diaSemana: diaReal, apertura, cierre, cerrado });
+      await supabase.from("Horarios").insert({ idComercio, diaSemana: diaReal, apertura, cierre, cerrado });
     }
   }
 
