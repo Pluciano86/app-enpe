@@ -41,10 +41,14 @@ export function cardComercioNoActivo(comercio) {
           </div>
         </div>
 
-        <!-- Teléfono -->
-        <a href="tel:${comercio.telefono}" class="text-[15px] text-gray-600 mt-1 mb-1 no-underline">
-          ${comercio.telefono}
-        </a>
+        <!-- Teléfono (mantiene espacio aunque esté vacío) -->
+${
+  comercio.telefono && comercio.telefono.trim() && comercio.telefono.toLowerCase() !== "null"
+    ? `<a href="tel:${comercio.telefono}" class="text-[15px] text-gray-600 mt-1 mb-1 no-underline">
+         ${comercio.telefono}
+       </a>`
+    : `<div class="text-[15px] text-gray-600 mt-1 mb-1 h-[22px]">&nbsp;</div>`
+}
 
         <!-- Badge de perfil no disponible -->
         <span class="mt-2 px-4 py-1 text-xs bg-gray-300 text-gray-700 rounded-full whitespace-nowrap">
