@@ -1,48 +1,89 @@
-import fetch from 'node-fetch';
-import fs from 'fs';
+import axios from "axios";
+import fs from "fs";
+import { createObjectCsvWriter } from "csv-writer";
+import dotenv from "dotenv";
+dotenv.config();
 
-const GOOGLE_API_KEY = 'AIzaSyBxfWTx5kMwy_2UcOnKhILbnLkbU4VMaBI';
+const API_KEY = process.env.GOOGLE_API_KEY;
 
-// Coordenadas aproximadas de municipios de PR
-const coordenadasMunicipios = {
-  "Ponce": "17.9854,-66.6141",
-  "San Juan": "18.4655,-66.1057",
-  "Mayagüez": "18.2010,-67.1396",
-  "Bayamón": "18.3986,-66.1557",
-  "Arecibo": "18.4720,-66.7157",
-  "Caguas": "18.2333,-66.0350",
-  "Guayama": "17.9794,-66.1133",
-  "Humacao": "18.1516,-65.8270"
-  // Agrega más municipios según necesites
-};
+// === CONFIGURACIÓN ===
+const municipios = ["Adjuntas", "Aguada", "Aguadilla", "Aguas Buenas", "Aibonito", "Añasco", "Arecibo", "Arroyo"];
+const categorias = ["Restaurantes", "Coffee Shops", "Panaderías", "Pubs", "Food Trucks", "Postres", "Playgrounds", "Discotecas", "Barras"];
+const excluirFastFood = ["McDonald", "Burger King", "Subway", "Wendy", "KFC", "Popeyes", "Church", "Domino", "Pizza Hut", "Taco Bell"];
 
-const municipio = 'Ponce'; // <-- Cambia aquí
-const tipo = 'restaurant'; // <-- Cambia a 'bakery', 'bar', etc.
+const csvWriter = createObjectCsvWriter({
+  path: "comercios.csv",
+  header: [
+    { id: "nombre", title: "nombre" },
+    { id: "telefono", title: "telefono" },
+    { id: "direccion", title: "direccion" },
+    { id: "latitud", title: "latitud" },
+    { id: "longitud", title: "longitud" },
+    { id: "municipio", title: "municipio" },
+    { id: "categoria", title: "categoria" },
+  ],
+});
 
-const location = coordenadasMunicipios[municipio];
-const radius = 8000;
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function buscarComercios() {
-  const searchUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location}&radius=${radius}&type=${tipo}&key=${GOOGLE_API_KEY}`;
-  const response = await fetch(searchUrl);
-  const data = await response.json();
+  const resultados = [];
 
-  if (data.status !== 'OK') {
-    console.error('❌ Error:', data.status, data.error_message);
-    return;
+  for (const municipio of municipios) {
+    for (const categoria of categorias) {
+      console.log(`🔎 Buscando ${categoria} en ${municipio}...`);
+      const query = `${categoria} en ${municipio} Puerto Rico -fast food`;
+
+      let nextPageToken = null;
+      let count = 0;
+
+      do {
+        const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(
+          query
+        )}&key=${API_KEY}${nextPageToken ? `&pagetoken=${nextPageToken}` : ""}`;
+
+        try {
+          const { data } = await axios.get(url);
+          if (!data.results) break;
+
+          for (const lugar of data.results) {
+            if (
+              lugar.business_status !== "OPERATIONAL" ||
+              excluirFastFood.some((f) => lugar.name.toLowerCase().includes(f.toLowerCase()))
+            )
+              continue;
+
+            resultados.push({
+              nombre: lugar.name,
+              telefono: "", // opcional: agregar luego con Place Details
+              direccion: lugar.formatted_address || "",
+              latitud: lugar.geometry?.location?.lat || "",
+              longitud: lugar.geometry?.location?.lng || "",
+              municipio,
+              categoria,
+            });
+
+            count++;
+            if (count >= 200) break;
+          }
+
+          nextPageToken = data.next_page_token;
+          if (nextPageToken) {
+            console.log("⏳ Esperando para la siguiente página...");
+            await delay(2500);
+          }
+        } catch (err) {
+          console.error("❌ Error en solicitud:", err.message);
+          break;
+        }
+      } while (nextPageToken && count < 200);
+
+      console.log(`✅ ${count} ${categoria.toLowerCase()} encontrados en ${municipio}.`);
+    }
   }
 
-  const resultados = data.results.map(c => ({
-    nombre: c.name,
-    direccion: c.vicinity || '',
-    latitud: c.geometry.location.lat,
-    longitud: c.geometry.location.lng,
-    place_id: c.place_id
-  }));
-
-  const archivo = `resultados_${tipo}_${municipio}.json`;
-  fs.writeFileSync(archivo, JSON.stringify(resultados, null, 2));
-  console.log(`✅ Se guardaron ${resultados.length} comercios en ${archivo}`);
+  await csvWriter.writeRecords(resultados);
+  console.log(`\n📁 Archivo generado con ${resultados.length} comercios totales.`);
 }
 
 buscarComercios();

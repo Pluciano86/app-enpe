@@ -687,27 +687,49 @@ if (total === 0) {
   if (bannerFinal) contenedor.appendChild(bannerFinal);
   return;
 } else {
-      labelTotal.textContent = `${total} ${categoriaNombre} ${
-        municipioActivo ? `en tu ubicación actual en` : ""
-      }`;
+  // 🧹 Limpiar mensajes anteriores si existían
+  const mensajesPrevios = document.getElementById("mensajesContainer");
+  if (mensajesPrevios) mensajesPrevios.remove();
 
-      // 🔹 Botón azul
-      if (municipioActivo) {
-        const btnEliminar = document.createElement("button");
-        btnEliminar.innerHTML = `✕ ${municipioActivo}`;
-        btnEliminar.className =
-          "ml-3 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition-all";
-        btnEliminar.addEventListener("click", () => {
-          filtrosActivos.municipio = "";
-          const selectMunicipio = document.getElementById("filtro-municipio");
-          if (selectMunicipio) selectMunicipio.value = "";
-          cargarComerciosConOrden();
-        });
-        labelTotal.appendChild(btnEliminar);
-      }
+  // 🧭 Obtener municipio actual del usuario (si existe)
+  let municipioUsuario = "";
+  try {
+    municipioUsuario = localStorage.getItem("municipioUsuario") || "";
+  } catch {
+    municipioUsuario = "";
+  }
 
-      filtrosDiv.appendChild(labelTotal);
-    }
+  // 🧭 Detectar si el municipio seleccionado es el mismo que el actual
+  const esUbicacionActual =
+    municipioActivo &&
+    municipioUsuario &&
+    municipioActivo.toLowerCase() === municipioUsuario.toLowerCase();
+
+  labelTotal.textContent = `${total} ${categoriaNombre} ${
+    municipioActivo
+      ? esUbicacionActual
+        ? `en tu ubicación actual en`
+        : `en el municipio de`
+      : ""
+  }`;
+
+  // 🔹 Botón azul
+  if (municipioActivo) {
+    const btnEliminar = document.createElement("button");
+    btnEliminar.innerHTML = `✕ ${municipioActivo}`;
+    btnEliminar.className =
+      "ml-3 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition-all";
+    btnEliminar.addEventListener("click", () => {
+      filtrosActivos.municipio = "";
+      const selectMunicipio = document.getElementById("filtro-municipio");
+      if (selectMunicipio) selectMunicipio.value = "";
+      cargarComerciosConOrden();
+    });
+    labelTotal.appendChild(btnEliminar);
+  }
+
+  filtrosDiv.appendChild(labelTotal);
+}
 
     // 🧱 Redibujar resultados
     const fragment = document.createDocumentFragment();
