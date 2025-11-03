@@ -88,6 +88,12 @@ function ordenarFechas(fechas = []) {
   return [...fechas].sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+function eventoExpirado(evento) {
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  const ultFecha = evento.fechas?.length ? evento.fechas[evento.fechas.length - 1].fecha : null;
+  return ultFecha && ultFecha < hoyISO;
+}
+
 function obtenerProximaFecha(evento) {
   const hoyISO = new Date().toISOString().slice(0, 10);
   const ordenadas = ordenarFechas(evento.fechas);
@@ -128,6 +134,8 @@ async function cargarEventos() {
 
   eventos = (data ?? []).map((evento) => {
     const { eventoFechas, ...resto } = evento;
+    // 🔍 Filtrar eventos expirados (todas las fechas pasaron)
+eventos = eventos.filter(ev => !eventoExpirado(ev));
     const categoriaInfo = categorias[resto.categoria] || {};
     return {
       ...resto,
