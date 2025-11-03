@@ -1,206 +1,210 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { resolvePath } from '../shared/pathResolver.js';
 
-const tablaUsuarios = document.getElementById('tabla-usuarios');
-const tablaMobile = document.getElementById('tabla-mobile');
-const filtroNombre = document.getElementById('search-nombre');
-const filtroMunicipio = document.getElementById('search-municipio');
-const filtroTipo = document.getElementById('search-tipo');
+// === Referencias a elementos del DOM ===
+const btnFavoritos = document.getElementById('btnFavoritos');
+const modalFavoritos = document.getElementById('modalFavoritos');
+const favoritosList = document.getElementById('favoritos-list');
+const buscadorFavoritos = document.getElementById('buscadorFavoritos');
+const filtroMunicipio = document.getElementById('filtroMunicipio');
+const filtroCategoria = document.getElementById('filtroCategoria');
+const filtroOrden = document.getElementById('filtroOrden');
 
-const PLACEHOLDER_FOTO = 'https://placehold.co/80x80?text=User';
+// === Estado global ===
+let usuarioActual = null;
+let listaFavoritos = [];
+let listaFiltrada = [];
 
-let usuariosOriginales = [];
-
-function formatearFecha(iso) {
-  if (!iso) return '—';
-  const fecha = new Date(iso);
-  if (Number.isNaN(fecha.getTime())) return '—';
-  return fecha.toLocaleDateString('es-PR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-}
-
-function determinarTipo(usuario) {
-  if (!usuario.comercios?.length) return 'Regular';
-  const roles = usuario.comercios.map(c => (c.rol || '').toLowerCase());
-  if (roles.includes('colaborador') || roles.includes('colaborador de comercio')) {
-    return 'Colaborador de Comercio';
-  }
-  return 'Admin Comercio';
-}
-
-function crearFila(usuario) {
-  const fila = document.createElement('tr');
-  fila.className = 'hover:bg-gray-50';
-
-  const tipo = determinarTipo(usuario);
-  const foto = usuario.imagen || PLACEHOLDER_FOTO;
-  const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Sin nombre';
-
-  const perfilUrl = resolvePath(`usuarioPerfil.html?id=${usuario.id}`);
-
-  fila.innerHTML = `
-    <td class="px-4 py-3">
-      <img src="${foto}" alt="Foto" class="w-12 h-12 rounded-full object-cover border" />
-    </td>
-    <td class="px-4 py-3 font-medium text-gray-800">${nombreCompleto}</td>
-    <td class="px-4 py-3 text-gray-600">${usuario.municipio || '—'}</td>
-    <td class="px-4 py-3 text-gray-600">–</td>
-    <td class="px-4 py-3 text-gray-600">${tipo}</td>
-    <td class="px-4 py-3 text-gray-600">${formatearFecha(usuario.creado_en)}</td>
-    <td class="px-4 py-3 text-center">
-      <a href="${perfilUrl}" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
-        <i class="fas fa-eye"></i>
-        Ver
-      </a>
-    </td>
-  `;
-
-  return fila;
-}
-
-function crearTarjeta(usuario) {
-  const tarjeta = document.createElement('div');
-  tarjeta.className = 'bg-white rounded-xl shadow p-4 flex items-center gap-4';
-
-  const tipo = determinarTipo(usuario);
-  const foto = usuario.imagen || PLACEHOLDER_FOTO;
-  const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim() || 'Sin nombre';
-
-  const perfilUrl = resolvePath(`usuarioPerfil.html?id=${usuario.id}`);
-
-  tarjeta.innerHTML = `
-    <img src="${foto}" alt="Foto" class="w-16 h-16 rounded-full object-cover border" />
-    <div class="flex-1">
-      <h3 class="text-lg font-semibold text-gray-800">${nombreCompleto}</h3>
-      <p class="text-sm text-gray-500">${usuario.municipio || '—'}</p>
-      <p class="text-sm text-gray-500">${tipo} · ${formatearFecha(usuario.creado_en)}</p>
-      <a href="${perfilUrl}" class="inline-flex items-center gap-2 mt-3 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded">
-        <i class="fas fa-eye"></i>
-        Ver
-      </a>
-    </div>
-  `;
-
-  return tarjeta;
-}
-
-function mostrarError(mensaje) {
-  tablaUsuarios.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-red-500">${mensaje}</td></tr>`;
-  tablaMobile.innerHTML = `<p class="text-red-500 text-center">${mensaje}</p>`;
-}
-
-function renderizarUsuarios(lista) {
-  if (!lista.length) {
-    tablaUsuarios.innerHTML = '<tr><td colspan="7" class="px-4 py-6 text-center text-gray-500">No se encontraron usuarios</td></tr>';
-    tablaMobile.innerHTML = '<p class="text-gray-500 text-center">No se encontraron usuarios</p>';
+// === Función: Cargar perfil del usuario actual ===
+async function cargarPerfilUsuario() {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    console.error('Error obteniendo usuario:', error);
     return;
   }
 
-  tablaUsuarios.innerHTML = '';
-  tablaMobile.innerHTML = '';
+  usuarioActual = user;
 
-  lista.forEach(usuario => {
-    tablaUsuarios.appendChild(crearFila(usuario));
-    tablaMobile.appendChild(crearTarjeta(usuario));
-  });
-}
-
-function aplicarFiltros() {
-  const texto = (filtroNombre?.value || '').trim().toLowerCase();
-  const municipioSeleccionado = filtroMunicipio?.value || '';
-  const tipoSeleccionado = filtroTipo?.value || '';
-
-  const filtrados = usuariosOriginales.filter(usuario => {
-    const nombreCompleto = `${usuario.nombre || ''} ${usuario.apellido || ''}`.toLowerCase();
-    const coincideNombre = !texto || nombreCompleto.includes(texto);
-
-    const coincideMunicipio = !municipioSeleccionado || usuario.municipio === municipioSeleccionado;
-
-    const tipo = determinarTipo(usuario).toLowerCase();
-    let coincideTipo = true;
-    if (tipoSeleccionado === 'regulares') coincideTipo = tipo.includes('regular');
-    else if (tipoSeleccionado === 'admins-comercio') coincideTipo = tipo.includes('admin');
-    else if (tipoSeleccionado === 'colaboradores-comercio') coincideTipo = tipo.includes('colaborador');
-
-    return coincideNombre && coincideMunicipio && coincideTipo;
-  });
-
-  renderizarUsuarios(filtrados);
-}
-
-function inicializarFiltros() {
-  [filtroNombre, filtroMunicipio, filtroTipo].forEach(control => {
-    if (!control) return;
-    control.addEventListener('input', aplicarFiltros);
-    control.addEventListener('change', aplicarFiltros);
-  });
-}
-
-async function cargarMunicipios() {
-  if (!filtroMunicipio) return;
-  const { data, error } = await supabase
-    .from('Municipios')
-    .select('id, nombre')
-    .order('nombre');
-
-  if (error) {
-    console.error('Error cargando municipios:', error);
-    return;
-  }
-
-  data.forEach(municipio => {
-    const opcion = document.createElement('option');
-    opcion.value = municipio.nombre;
-    opcion.textContent = municipio.nombre;
-    filtroMunicipio.appendChild(opcion);
-  });
-}
-
-async function cargarUsuarios() {
-  const { data, error } = await supabase
+  // Cargar datos adicionales del usuario (si tienes tabla "usuarios")
+  const { data, error: errUsuario } = await supabase
     .from('usuarios')
+    .select('nombre, apellido, imagen, municipio, creado_en')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (errUsuario) console.warn('No se pudo cargar información extendida del usuario:', errUsuario);
+
+  document.getElementById('nombreUsuario').textContent = `${data?.nombre || user.email}`;
+  document.getElementById('emailUsuario').textContent = user.email;
+  document.getElementById('municipioUsuario').textContent = data?.municipio || '—';
+  document.getElementById('fotoPerfil').src = data?.imagen || 'https://placehold.co/100x100?text=User';
+  document.getElementById('fechaRegistro').textContent = data?.creado_en
+    ? `Activo desde ${new Date(data.creado_en).toLocaleDateString('es-PR')}`
+    : '';
+}
+
+// === Función: Cargar comercios favoritos ===
+async function cargarFavoritos() {
+  if (!usuarioActual) return;
+
+  // 1️⃣ Traer los favoritos del usuario con los datos básicos del comercio
+  const { data: favoritos, error } = await supabase
+    .from('favoritosusuarios')
     .select(`
       id,
-      nombre,
-      apellido,
-      imagen,
       creado_en,
-      Municipios:Municipios(nombre),
-      UsuarioComercios:UsuarioComercios(
-        rol,
-        Comercios:Comercios!fk_usuario_comercio_comercio(nombre)
+      Comercios:Comercios(
+        id,
+        nombre,
+        telefono,
+        municipio,
+        activo,
+        imagenesComercios(imagen, portada)
       )
-    `);
+    `)
+    .eq('idusuario', usuarioActual.id)
+    .order('creado_en', { ascending: false });
 
   if (error) {
-    console.error('Error cargando usuarios:', error);
-    mostrarError('Error cargando usuarios');
+    console.error('Error cargando favoritos:', error);
+    favoritosList.innerHTML = '<p class="text-center text-red-500">Error cargando favoritos.</p>';
     return;
   }
 
-  usuariosOriginales = (data || []).map(usuario => ({
-    id: usuario.id,
-    nombre: usuario.nombre,
-    apellido: usuario.apellido,
-    imagen: usuario.imagen,
-    creado_en: usuario.creado_en,
-    municipio: usuario.Municipios?.nombre || '—',
-    comercios: usuario.UsuarioComercios?.map(uc => ({
-      rol: uc.rol,
-      nombre: uc.Comercios?.nombre
-    })) || []
-  }));
+  // 2️⃣ Para cada comercio, traer sus categorías desde ComercioCategorias → Categorias
+  const comerciosIds = favoritos.map(f => f.Comercios?.id).filter(Boolean);
+  let categoriasPorComercio = {};
 
-  renderizarUsuarios(usuariosOriginales);
+  if (comerciosIds.length > 0) {
+    const { data: relaciones, error: errCat } = await supabase
+      .from('ComercioCategorias')
+      .select(`
+        idComercio,
+        Categorias:Categorias(nombre)
+      `)
+      .in('idComercio', comerciosIds);
+
+    if (!errCat && relaciones) {
+      relaciones.forEach(r => {
+        if (!categoriasPorComercio[r.idComercio]) categoriasPorComercio[r.idComercio] = [];
+        categoriasPorComercio[r.idComercio].push(r.Categorias?.nombre);
+      });
+    }
+  }
+
+  // 3️⃣ Unir las categorías al resultado principal
+  listaFavoritos = (favoritos || []).map(f => ({
+    ...f,
+    Comercios: {
+      ...f.Comercios,
+      categorias: categoriasPorComercio[f.Comercios?.id] || []
+    }
+  })).filter(f => f.Comercios?.activo);
+
+  listaFiltrada = [...listaFavoritos];
+
+  mostrarFavoritos();
+  cargarFiltros();
 }
 
-async function init() {
-  await cargarMunicipios();
-  await cargarUsuarios();
-  inicializarFiltros();
+// === Función: Mostrar favoritos en tarjetas ===
+function mostrarFavoritos() {
+  favoritosList.innerHTML = '';
+
+  if (!listaFiltrada.length) {
+    favoritosList.innerHTML = '<p class="text-center text-gray-500 mt-6">No tienes comercios favoritos todavía.</p>';
+    return;
+  }
+
+  listaFiltrada.forEach(fav => {
+    const c = fav.Comercios;
+    const portada = c.imagenesComercios?.find(img => img.portada)?.imagen
+      || 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/lugarnodisponible.jpg';
+
+    const card = document.createElement('div');
+    card.className = 'bg-white border rounded-xl shadow hover:shadow-md transition overflow-hidden';
+    card.innerHTML = `
+      <div class="relative w-full h-40">
+        <img src="${portada}" alt="${c.nombre}" class="w-full h-full object-cover">
+      </div>
+      <div class="p-3 text-left">
+        <h3 class="font-semibold text-lg">${c.nombre}</h3>
+        <p class="text-sm text-gray-500">${c.municipio || 'Municipio'}</p>
+        <p class="text-xs text-gray-400">${c.categorias?.join(', ') || ''}</p>
+        <a href="perfilComercio.html?id=${c.id}" 
+           class="block mt-2 text-sm text-blue-600 font-medium hover:underline">
+          Ver Perfil
+        </a>
+      </div>
+    `;
+    favoritosList.appendChild(card);
+  });
 }
 
-init();
+// === Función: Cargar opciones de filtros ===
+function cargarFiltros() {
+  const municipios = [...new Set(listaFavoritos.map(f => f.Comercios?.municipio).filter(Boolean))];
+  const categorias = [
+    ...new Set(
+      listaFavoritos.flatMap(f => f.Comercios?.categorias || [])
+    )
+  ];
+
+  filtroMunicipio.innerHTML = '<option value="">Municipio</option>';
+  municipios.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = m;
+    filtroMunicipio.appendChild(opt);
+  });
+
+  filtroCategoria.innerHTML = '<option value="">Categoría</option>';
+  categorias.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    filtroCategoria.appendChild(opt);
+  });
+}
+
+// === Función: Aplicar filtros y búsqueda ===
+function aplicarFiltros() {
+  const texto = buscadorFavoritos.value.toLowerCase();
+  const muni = filtroMunicipio.value;
+  const cat = filtroCategoria.value;
+  const orden = filtroOrden.value;
+
+  listaFiltrada = listaFavoritos.filter(f => {
+    const c = f.Comercios;
+    const coincideTexto = !texto || c.nombre.toLowerCase().includes(texto);
+    const coincideMunicipio = !muni || c.municipio === muni;
+    const coincideCategoria = !cat || (c.categorias || []).includes(cat);
+    return coincideTexto && coincideMunicipio && coincideCategoria;
+  });
+
+  // Orden
+  if (orden === 'alfabetico') {
+    listaFiltrada.sort((a, b) => a.Comercios.nombre.localeCompare(b.Comercios.nombre));
+  } else if (orden === 'recientes') {
+    listaFiltrada.sort((a, b) => new Date(b.creado_en) - new Date(a.creado_en));
+  }
+
+  mostrarFavoritos();
+}
+
+// === Eventos ===
+btnFavoritos.addEventListener('click', async () => {
+  modalFavoritos.classList.remove('hidden');
+  await cargarFavoritos();
+});
+
+document.getElementById('btnCerrarFavoritos').addEventListener('click', () => {
+  modalFavoritos.classList.add('hidden');
+});
+
+[buscadorFavoritos, filtroMunicipio, filtroCategoria, filtroOrden].forEach(el => {
+  el?.addEventListener('input', aplicarFiltros);
+  el?.addEventListener('change', aplicarFiltros);
+});
+
+// === Inicialización ===
+cargarPerfilUsuario();

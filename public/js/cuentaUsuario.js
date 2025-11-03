@@ -109,7 +109,7 @@ function mostrarFavoritos(lista) {
   listaFavoritos.innerHTML = '';
 
   lista.forEach(item => {
-    const categoriasTexto = item.categoriasNombre?.filter(Boolean).join(', ') || '';
+    const categoriasTexto = item.categorias?.filter(Boolean).join(', ') || '';
 
     const card = document.createElement('div');
     card.className = 'flex items-center justify-between gap-3 bg-white rounded-lg shadow p-3 cursor-pointer hover:bg-gray-50 transition';
@@ -195,11 +195,13 @@ function poblarFiltros(lista) {
   if (filtroCategoria) {
     const categoriasMap = new Map();
     lista.forEach(item => {
-      (item.categorias || []).forEach((id, index) => {
+      const ids = item.categoriaIds || [];
+      const nombres = item.categorias || [];
+      ids.forEach((id, index) => {
         if (id === null || id === undefined) return;
         const key = String(id);
         if (!categoriasMap.has(key)) {
-          const nombre = item.categoriasNombre?.[index] || `Categoría ${id}`;
+          const nombre = nombres?.[index] || `Categoría ${id}`;
           categoriasMap.set(key, nombre);
         }
       });
@@ -224,7 +226,7 @@ function obtenerFavoritosFiltrados() {
   return favoritos.filter(item => {
     const coincideNombre = !searchQuery || item.nombre?.toLowerCase().includes(searchQuery);
     const coincideMunicipio = !municipioSeleccionado || item.municipioNombre === municipioSeleccionado;
-    const coincideCategoria = !categoriaSeleccionada || item.categorias?.map(String).includes(categoriaSeleccionada);
+    const coincideCategoria = !categoriaSeleccionada || item.categoriaIds?.map(String).includes(categoriaSeleccionada);
     return coincideNombre && coincideMunicipio && coincideCategoria;
   });
 }
@@ -490,18 +492,17 @@ const normalizarAArray = (valor) => {
 };
 
 async function cargarFavoritos(uid) {
-  console.log('Ejecutando operación select en tabla favoritosusuarios', { filtro: { idusuario: uid } });
+  console.log("Ejecutando consulta favoritosusuarios");
   const { data, error } = await supabase
     .from('favoritosusuarios')
     .select(`
       idcomercio,
-      created_at,
+      creado_en,
       Comercios (
         id,
         nombre,
         municipio,
         idMunicipio,
-        idCategoria,
         idSubcategoria,
         latitud,
         longitud
@@ -518,17 +519,62 @@ async function cargarFavoritos(uid) {
 
   huboErrorCargandoFavoritos = false;
 
+  console.log("Favoritos raw:", data);
+
   if (!data?.length) return [];
 
-  const idsFavoritos = [...new Set(data.map(item => item.idcomercio).filter(Boolean))];
+  const comerciosIds = [...new Set(data.map(item => item.idcomercio).filter(Boolean))];
+  console.log("IDs de comercios:", comerciosIds);
+
+  await asegurarMapasCategoriaSubcategoria();
+
+  let categoriasPorComercio = new Map();
+  let relaciones = [];
+  if (comerciosIds.length) {
+    const { data: relacionesData, error: relacionesError } = await supabase
+      .from('ComercioCategorias')
+      .select(`
+        idComercio,
+        idCategoria,
+        Categorias (
+          id,
+          nombre
+        )
+      `)
+      .in('idComercio', comerciosIds);
+
+    if (relacionesError) {
+      console.warn('⚠️ No se pudieron obtener categorías de favoritos:', relacionesError.message);
+    } else if (relacionesData) {
+      relaciones = relacionesData;
+      categoriasPorComercio = relacionesData.reduce((map, relacion) => {
+        if (!relacion?.idComercio) return map;
+        if (!map.has(relacion.idComercio)) {
+          map.set(relacion.idComercio, { ids: [], nombres: [] });
+        }
+        const entry = map.get(relacion.idComercio);
+
+        if (relacion.idCategoria !== null && relacion.idCategoria !== undefined) {
+          entry.ids.push(relacion.idCategoria);
+          const nombreCategoria = relacion.Categorias?.nombre || mapaCategorias?.[relacion.idCategoria] || null;
+          if (nombreCategoria) {
+            entry.nombres.push(nombreCategoria);
+          }
+        }
+
+        return map;
+      }, new Map());
+    }
+  }
+  console.log("Relaciones cargadas:", relaciones);
 
   let logosMap = new Map();
-  if (idsFavoritos.length) {
-    console.log('Ejecutando operación select en tabla imagenesComercios', { filtro: { idComercio: idsFavoritos, logo: true } });
+  if (comerciosIds.length) {
+    console.log('Ejecutando operación select en tabla imagenesComercios', { filtro: { idComercio: comerciosIds, logo: true } });
     const { data: logosData, error: errorLogos } = await supabase
       .from('imagenesComercios')
       .select('idComercio, imagen')
-      .in('idComercio', idsFavoritos)
+      .in('idComercio', comerciosIds)
       .eq('logo', true);
 
     if (errorLogos) {
@@ -545,14 +591,14 @@ async function cargarFavoritos(uid) {
     }
   }
 
-  await asegurarMapasCategoriaSubcategoria();
-
   return data
     .map(item => {
       const comercio = item.Comercios;
       if (!comercio) return null;
 
-      const categoriaIds = normalizarAArray(comercio.idCategoria);
+      const categoriasInfo = categoriasPorComercio.get(comercio.id || item.idcomercio) || { ids: [], nombres: [] };
+      const categoriaIds = categoriasInfo.ids;
+      const categoriasNombre = categoriasInfo.nombres;
       const subcategoriaIds = normalizarAArray(comercio.idSubcategoria);
       const logoUrl = logosMap.get(comercio.id || item.idcomercio) || null;
 
@@ -562,8 +608,8 @@ async function cargarFavoritos(uid) {
         municipio: comercio.municipio || '',
         municipioNombre: comercio.municipio || '',
         municipioId: comercio.idMunicipio ?? null,
-        categorias: categoriaIds,
-        categoriasNombre: categoriaIds.map(id => mapaCategorias?.[id] || `Categoría ${id}`),
+        categoriaIds,
+        categorias: categoriasNombre,
         subcategorias: subcategoriaIds,
         subcategoriasNombre: subcategoriaIds.map(id => mapaSubcategorias?.[id] || `Subcategoría ${id}`),
         latitud: comercio.latitud != null ? Number(comercio.latitud) : null,
@@ -582,6 +628,7 @@ async function cargarYMostrarFavoritos() {
   mostrarMensajeFavoritos('Cargando favoritos...');
 
   favoritos = await cargarFavoritos(usuarioId);
+  console.log("Favoritos:", favoritos);
 
   if (huboErrorCargandoFavoritos) {
     return;
