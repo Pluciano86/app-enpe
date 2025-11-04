@@ -32,7 +32,8 @@
 
     <div class="mt-6 space-y-3">
       <button id="btnFavoritos" class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Comercios Favoritos</button>
-      <button class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Playas Favoritas</button>
+      <button id="btnFavoritosLugares" class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Lugares Favoritos</button>
+      <button id="btnFavoritosPlayas" class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Playas Favoritas</button>
     </div>
 
     <button id="btnLogout" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm mt-4 w-full">
@@ -151,6 +152,86 @@
     <button id="btnCerrarFavoritos" class="absolute top-2 right-2 text-gray-600 hover:text-black">&times;</button>
   </div>
 </div>
+
+  <!-- Modal Favoritos Lugares -->
+  <div id="modalFavoritosLugares" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg w-[90%] max-w-lg h-[80%] flex flex-col relative">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 class="text-xl font-semibold">Mis Lugares Favoritos</h2>
+        <button id="btnCerrarFavoritosLugares" class="text-gray-600 hover:text-black text-xl leading-none">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex items-center w-full border rounded-md shadow-sm overflow-hidden">
+          <span class="px-3 text-gray-500">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input
+            type="text"
+            id="buscadorFavoritosLugares"
+            placeholder="Buscar lugar..."
+            class="w-full p-2 focus:outline-none focus:ring focus:border-blue-300"
+          />
+        </div>
+
+        <div class="flex justify-between gap-2">
+          <select id="filtroMunicipioLugares" class="w-1/3 p-2 border rounded-md">
+            <option value="">Municipio</option>
+          </select>
+          <select id="filtroCategoriaLugares" class="w-1/3 p-2 border rounded-md">
+            <option value="">Categoría</option>
+          </select>
+          <select id="filtroOrdenLugares" class="w-1/3 p-2 border rounded-md">
+            <option value="alfabetico">Orden alfabético</option>
+            <option value="recientes">Recientes</option>
+            <option value="cercania">Cercanía</option>
+          </select>
+        </div>
+
+        <div id="favoritos-lugares-list" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Favoritos Playas -->
+  <div id="modalFavoritosPlayas" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg w-[90%] max-w-lg h-[80%] flex flex-col relative">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 class="text-xl font-semibold">Mis Playas Favoritas</h2>
+        <button id="btnCerrarFavoritosPlayas" class="text-gray-600 hover:text-black text-xl leading-none">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex items-center w-full border rounded-md shadow-sm overflow-hidden">
+          <span class="px-3 text-gray-500">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input
+            type="text"
+            id="buscadorFavoritosPlayas"
+            placeholder="Buscar playa..."
+            class="w-full p-2 focus:outline-none focus:ring focus:border-blue-300"
+          />
+        </div>
+
+        <div class="flex justify-between gap-2">
+          <select id="filtroMunicipioPlayas" class="w-1/3 p-2 border rounded-md">
+            <option value="">Municipio</option>
+          </select>
+          <select id="filtroCategoriaPlayas" class="w-1/3 p-2 border rounded-md">
+            <option value="">Categoría</option>
+          </select>
+          <select id="filtroOrdenPlayas" class="w-1/3 p-2 border rounded-md">
+            <option value="alfabetico">Orden alfabético</option>
+            <option value="recientes">Recientes</option>
+            <option value="cercania">Cercanía</option>
+          </select>
+        </div>
+
+        <div id="favoritos-playas-list" class="space-y-3"></div>
+      </div>
+    </div>
+  </div>
 
 
 <!-- Footer -->

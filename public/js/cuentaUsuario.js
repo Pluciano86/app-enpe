@@ -47,10 +47,28 @@ const inputBuscar = document.getElementById('buscadorFavoritos');
 const filtroMunicipio = document.getElementById('filtroMunicipio');
 const filtroCategoria = document.getElementById('filtroCategoria');
 const filtroOrden = document.getElementById('filtroOrden');
+const btnFavoritosLugares = document.getElementById('btnFavoritosLugares');
+const modalFavoritosLugares = document.getElementById('modalFavoritosLugares');
+const btnCerrarFavoritosLugares = document.getElementById('btnCerrarFavoritosLugares');
+const listaFavoritosLugares = document.getElementById('favoritos-lugares-list');
+const inputBuscarFavoritosLugares = document.getElementById('buscadorFavoritosLugares');
+const filtroMunicipioLugares = document.getElementById('filtroMunicipioLugares');
+const filtroCategoriaLugares = document.getElementById('filtroCategoriaLugares');
+const filtroOrdenLugares = document.getElementById('filtroOrdenLugares');
+const btnFavoritosPlayas = document.getElementById('btnFavoritosPlayas');
+const modalFavoritosPlayas = document.getElementById('modalFavoritosPlayas');
+const btnCerrarFavoritosPlayas = document.getElementById('btnCerrarFavoritosPlayas');
+const listaFavoritosPlayas = document.getElementById('favoritos-playas-list');
+const inputBuscarFavoritosPlayas = document.getElementById('buscadorFavoritosPlayas');
+const filtroMunicipioPlayas = document.getElementById('filtroMunicipioPlayas');
+const filtroCategoriaPlayas = document.getElementById('filtroCategoriaPlayas');
+const filtroOrdenPlayas = document.getElementById('filtroOrdenPlayas');
 
 const btnLogout = document.getElementById('btnLogout');
 
 const PLACEHOLDER_FOTO = 'https://placehold.co/100x100?text=User';
+const PLACEHOLDER_LUGAR = 'https://placehold.co/120x80?text=Lugar';
+const PLACEHOLDER_PLAYA = 'https://placehold.co/120x80?text=Playa';
 
 let perfilOriginal = null;
 let usuarioId = null;
@@ -60,6 +78,10 @@ let mapaSubcategorias = null;
 let searchQuery = '';
 let userCoords = null;
 let huboErrorCargandoFavoritos = false;
+let favoritosLugares = [];
+let searchQueryLugares = '';
+let favoritosPlayas = [];
+let searchQueryPlayas = '';
 
 async function restaurarSesionDesdeHash() {
   const hash = window.location.hash;
@@ -216,6 +238,515 @@ function poblarFiltros(lista) {
       option.textContent = nombre;
       filtroCategoria.appendChild(option);
     });
+  }
+}
+
+function mostrarMensajeFavoritosLugares(texto, clase = 'text-gray-500') {
+  if (!listaFavoritosLugares) return;
+  listaFavoritosLugares.innerHTML = `<p class="text-center ${clase}">${texto}</p>`;
+}
+
+function renderFavoritosLugares(lista) {
+  if (!listaFavoritosLugares) return;
+
+  if (!lista?.length) {
+    mostrarMensajeFavoritosLugares('No tienes lugares favoritos todavía');
+    return;
+  }
+
+  listaFavoritosLugares.innerHTML = '';
+
+  lista.forEach((item) => {
+    const card = document.createElement('div');
+    card.className = 'flex items-center justify-between gap-3 bg-white rounded-lg shadow p-3 cursor-pointer hover:bg-gray-50 transition transition-opacity';
+    card.addEventListener('click', () => {
+      window.location.href = `${basePath}/perfilLugar.html?id=${item.id}`;
+    });
+
+    const contenido = document.createElement('div');
+    contenido.className = 'flex items-center gap-3 flex-1';
+
+    const imagen = document.createElement('img');
+    imagen.className = 'w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0';
+    imagen.src = item.imagen || PLACEHOLDER_LUGAR;
+    imagen.alt = item.nombre || 'Lugar';
+
+    const textos = document.createElement('div');
+    textos.className = 'flex-1 text-left';
+    textos.innerHTML = `
+      <p class="text-base font-semibold text-gray-800">${item.nombre || 'Lugar sin nombre'}</p>
+      ${item.municipioNombre ? `<p class="text-xs text-gray-500 mt-1">${item.municipioNombre}</p>` : ''}
+      ${item.categorias?.length ? `<p class="text-xs text-gray-400 mt-1">${item.categorias.join(', ')}</p>` : ''}
+    `;
+
+    contenido.appendChild(imagen);
+    contenido.appendChild(textos);
+
+    const eliminarIcono = document.createElement('i');
+    eliminarIcono.className = 'fa-solid fa-trash text-red-500 text-xl cursor-pointer hover:text-red-700 transition px-2';
+    eliminarIcono.dataset.idlugar = String(item.id);
+    eliminarIcono.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      if (!usuarioId) {
+        window.location.href = `${basePath}/logearse.html`;
+        return;
+      }
+      const confirmar = confirm(`¿Eliminar ${item.nombre || 'este lugar'} de tus favoritos?`);
+      if (!confirmar) return;
+      console.log("Ícono eliminar clicado:", item.id);
+      await eliminarFavoritoLugar(item.id, card);
+    });
+
+    card.appendChild(contenido);
+    card.appendChild(eliminarIcono);
+
+    listaFavoritosLugares.appendChild(card);
+  });
+}
+
+function poblarFiltrosLugares(lista) {
+  const resetSelect = (select, placeholder) => {
+    if (!select) return;
+    select.innerHTML = '';
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = placeholder;
+    select.appendChild(option);
+  };
+
+  resetSelect(filtroMunicipioLugares, 'Municipio');
+  resetSelect(filtroCategoriaLugares, 'Categoría');
+
+  if (filtroMunicipioLugares) {
+    const municipios = [...new Set(lista.map(item => item.municipioNombre).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    municipios.forEach(nombre => {
+      const option = document.createElement('option');
+      option.value = nombre;
+      option.textContent = nombre;
+      filtroMunicipioLugares.appendChild(option);
+    });
+  }
+
+  if (filtroCategoriaLugares) {
+    const categoriasMap = new Map();
+    lista.forEach(item => {
+      const ids = item.categoriaIds || [];
+      const nombres = item.categorias || [];
+      ids.forEach((id, index) => {
+        if (id === null || id === undefined) return;
+        const key = String(id);
+        if (!categoriasMap.has(key)) {
+          categoriasMap.set(key, nombres?.[index] || `Categoría ${id}`);
+        }
+      });
+    });
+
+    [...categoriasMap.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], 'es', { sensitivity: 'base' }))
+      .forEach(([id, nombre]) => {
+        const option = document.createElement('option');
+        option.value = String(id);
+        option.textContent = nombre;
+        filtroCategoriaLugares.appendChild(option);
+      });
+  }
+}
+
+function obtenerFavoritosLugaresFiltrados() {
+  const municipioSeleccionado = filtroMunicipioLugares?.value || '';
+  const categoriaSeleccionada = filtroCategoriaLugares?.value || '';
+
+  return favoritosLugares.filter(item => {
+    const coincideNombre = !searchQueryLugares || item.nombre?.toLowerCase().includes(searchQueryLugares);
+    const coincideMunicipio = !municipioSeleccionado || item.municipioNombre === municipioSeleccionado;
+    const coincideCategoria = !categoriaSeleccionada || item.categoriaIds?.map(String).includes(categoriaSeleccionada);
+    return coincideNombre && coincideMunicipio && coincideCategoria;
+  });
+}
+
+function ordenarFavoritosLugares(lista) {
+  const orden = filtroOrdenLugares?.value || 'alfabetico';
+  const listaOrdenada = [...lista];
+
+  if (orden === 'alfabetico') {
+    listaOrdenada.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  } else if (orden === 'recientes') {
+    listaOrdenada.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+  } else if (orden === 'cercania' && userCoords) {
+    listaOrdenada.sort((a, b) => {
+      const distA = (a.latitud != null && a.longitud != null)
+        ? calcularDistancia(userCoords.lat, userCoords.lon, a.latitud, a.longitud)
+        : Infinity;
+      const distB = (b.latitud != null && b.longitud != null)
+        ? calcularDistancia(userCoords.lat, userCoords.lon, b.latitud, b.longitud)
+        : Infinity;
+      return distA - distB;
+    });
+  }
+
+  return listaOrdenada;
+}
+
+function actualizarListadoFavoritosLugares() {
+  if (!listaFavoritosLugares) return;
+  const filtrados = obtenerFavoritosLugaresFiltrados();
+  const ordenados = ordenarFavoritosLugares(filtrados);
+  renderFavoritosLugares(ordenados);
+}
+
+function mostrarMensajeFavoritosPlayas(texto, clase = 'text-gray-500') {
+  if (!listaFavoritosPlayas) return;
+  listaFavoritosPlayas.innerHTML = `<p class="text-center ${clase}">${texto}</p>`;
+}
+
+function renderFavoritosPlayas(lista) {
+  if (!listaFavoritosPlayas) return;
+
+  if (!lista?.length) {
+    mostrarMensajeFavoritosPlayas('No tienes playas favoritas todavía');
+    return;
+  }
+
+  listaFavoritosPlayas.innerHTML = '';
+
+  lista.forEach((item) => {
+    const card = document.createElement('div');
+    card.className = 'flex items-center justify-between gap-3 bg-white rounded-lg shadow p-3 cursor-pointer hover:bg-gray-50 transition transition-opacity';
+    card.addEventListener('click', () => {
+      window.location.href = `${basePath}/perfilPlaya.html?id=${item.id}`;
+    });
+
+    const contenido = document.createElement('div');
+    contenido.className = 'flex items-center gap-3 flex-1';
+
+    const imagen = document.createElement('img');
+    imagen.className = 'w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0';
+    imagen.src = item.imagen || PLACEHOLDER_PLAYA;
+    imagen.alt = item.nombre || 'Playa';
+
+    const textos = document.createElement('div');
+    textos.className = 'flex-1 text-left';
+    textos.innerHTML = `
+      <p class="text-base font-semibold text-gray-800">${item.nombre || 'Playa sin nombre'}</p>
+      ${item.municipioNombre ? `<p class="text-xs text-gray-500 mt-1">${item.municipioNombre}</p>` : ''}
+      ${item.categorias?.length ? `<p class="text-xs text-gray-400 mt-1">${item.categorias.join(', ')}</p>` : ''}
+    `;
+
+    contenido.appendChild(imagen);
+    contenido.appendChild(textos);
+
+    const eliminarIcono = document.createElement('i');
+    eliminarIcono.className = 'fa-solid fa-trash text-red-500 text-xl cursor-pointer hover:text-red-700 transition px-2';
+    eliminarIcono.dataset.idplaya = String(item.id);
+    eliminarIcono.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      if (!usuarioId) {
+        window.location.href = `${basePath}/logearse.html`;
+        return;
+      }
+      const confirmar = confirm(`¿Eliminar ${item.nombre || 'esta playa'} de tus favoritos?`);
+      if (!confirmar) return;
+      console.log('Ícono eliminar clicado:', item.id);
+      await eliminarFavoritoPlaya(item.id, card);
+    });
+
+    card.appendChild(contenido);
+    card.appendChild(eliminarIcono);
+
+    listaFavoritosPlayas.appendChild(card);
+  });
+}
+
+function poblarFiltrosPlayas(lista) {
+  const resetSelect = (select, placeholder) => {
+    if (!select) return;
+    select.innerHTML = '';
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = placeholder;
+    select.appendChild(option);
+  };
+
+  resetSelect(filtroMunicipioPlayas, 'Municipio');
+  resetSelect(filtroCategoriaPlayas, 'Categoría');
+
+  if (filtroMunicipioPlayas) {
+    const municipios = [...new Set(lista.map(item => item.municipioNombre).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    municipios.forEach(nombre => {
+      const option = document.createElement('option');
+      option.value = nombre;
+      option.textContent = nombre;
+      filtroMunicipioPlayas.appendChild(option);
+    });
+  }
+
+  if (filtroCategoriaPlayas) {
+    const categoriasMap = new Map();
+    lista.forEach(item => {
+      const ids = item.categoriaIds || [];
+      const nombres = item.categorias || [];
+      ids.forEach((id, index) => {
+        if (id === null || id === undefined || id === '') return;
+        const key = String(id);
+        if (!categoriasMap.has(key)) {
+          categoriasMap.set(key, nombres?.[index] || `Categoría ${id}`);
+        }
+      });
+    });
+
+    [...categoriasMap.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1], 'es', { sensitivity: 'base' }))
+      .forEach(([id, nombre]) => {
+        const option = document.createElement('option');
+        option.value = String(id);
+        option.textContent = nombre;
+        filtroCategoriaPlayas.appendChild(option);
+      });
+  }
+}
+
+function obtenerFavoritosPlayasFiltrados() {
+  const municipioSeleccionado = filtroMunicipioPlayas?.value || '';
+  const categoriaSeleccionada = filtroCategoriaPlayas?.value || '';
+
+  return favoritosPlayas.filter(item => {
+    const coincideNombre = !searchQueryPlayas || item.nombre?.toLowerCase().includes(searchQueryPlayas);
+    const coincideMunicipio = !municipioSeleccionado || item.municipioNombre === municipioSeleccionado;
+    const coincideCategoria = !categoriaSeleccionada || item.categoriaIds?.map(String).includes(categoriaSeleccionada);
+    return coincideNombre && coincideMunicipio && coincideCategoria;
+  });
+}
+
+function ordenarFavoritosPlayas(lista) {
+  const orden = filtroOrdenPlayas?.value || 'alfabetico';
+  const listaOrdenada = [...lista];
+
+  if (orden === 'alfabetico') {
+    listaOrdenada.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+  } else if (orden === 'recientes') {
+    listaOrdenada.sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+  } else if (orden === 'cercania' && userCoords) {
+    listaOrdenada.sort((a, b) => {
+      const distA = (a.latitud != null && a.longitud != null)
+        ? calcularDistancia(userCoords.lat, userCoords.lon, a.latitud, a.longitud)
+        : Infinity;
+      const distB = (b.latitud != null && b.longitud != null)
+        ? calcularDistancia(userCoords.lat, userCoords.lon, b.latitud, b.longitud)
+        : Infinity;
+      return distA - distB;
+    });
+  }
+
+  return listaOrdenada;
+}
+
+function actualizarListadoFavoritosPlayas() {
+  if (!listaFavoritosPlayas) return;
+  const filtrados = obtenerFavoritosPlayasFiltrados();
+  const ordenados = ordenarFavoritosPlayas(filtrados);
+  renderFavoritosPlayas(ordenados);
+}
+
+async function eliminarFavoritoPlaya(idPlaya, cardElement) {
+  if (!usuarioId) {
+    window.location.href = `${basePath}/logearse.html`;
+    return;
+  }
+
+  console.log('Eliminando playa favorita:', idPlaya);
+  const { data, error } = await supabase
+    .from('favoritosPlayas')
+    .delete()
+    .eq('idusuario', usuarioId)
+    .eq('idplaya', idPlaya)
+    .select('id');
+
+  if (error) {
+    console.error('🛑 Error eliminando playa favorita:', error);
+    alert('No se pudo eliminar esta playa. Intenta nuevamente.');
+    return;
+  }
+
+  console.log('Eliminación completada');
+  favoritosPlayas = favoritosPlayas.filter(playa => playa.id !== idPlaya);
+  console.log('Lista actualizada de favoritos (playas):', favoritosPlayas);
+
+  if (cardElement) {
+    cardElement.classList.add('opacity-0');
+    setTimeout(() => {
+      actualizarListadoFavoritosPlayas();
+    }, 200);
+  } else {
+    actualizarListadoFavoritosPlayas();
+  }
+}
+
+async function cargarFavoritosPlayas() {
+  if (!usuarioId) {
+    alert('Debes iniciar sesión para ver tus playas favoritas.');
+    window.location.href = `${basePath}/logearse.html`;
+    return [];
+  }
+
+  mostrarMensajeFavoritosPlayas('Cargando playas favoritas...');
+
+  const { data, error } = await supabase
+    .from('favoritosPlayas')
+    .select(`
+      id,
+      creado_en,
+      idplaya,
+      playa:playas (
+        id,
+        nombre,
+        municipio,
+        activo,
+        imagen,
+        latitud,
+        longitud,
+        costa,
+        nadar,
+        surfear,
+        snorkeling
+      )
+    `)
+    .eq('idusuario', usuarioId)
+    .order('creado_en', { ascending: false });
+
+  if (error) {
+    console.error('🛑 Error al cargar playas favoritas:', error);
+    mostrarMensajeFavoritosPlayas('Error cargando playas favoritas.', 'text-red-500');
+    favoritosPlayas = [];
+    return [];
+  }
+
+  console.log('Playas favoritas obtenidas:', data);
+
+  const activos = (data || []).filter(item => item?.playa && item.playa.activo !== false);
+
+  if (!activos.length) {
+    favoritosPlayas = [];
+    searchQueryPlayas = '';
+    if (inputBuscarFavoritosPlayas) inputBuscarFavoritosPlayas.value = '';
+    if (filtroMunicipioPlayas) filtroMunicipioPlayas.value = '';
+    if (filtroCategoriaPlayas) filtroCategoriaPlayas.value = '';
+    if (filtroOrdenPlayas) filtroOrdenPlayas.value = 'alfabetico';
+    poblarFiltrosPlayas([]);
+    renderFavoritosPlayas(favoritosPlayas);
+    return [];
+  }
+
+  const playasBase = activos
+    .map(item => {
+      const playa = item.playa || {};
+      const categorias = [];
+      const categoriaIds = [];
+
+      if (playa.costa) {
+        categorias.push(`Costa ${playa.costa}`);
+        categoriaIds.push(`costa-${playa.costa}`);
+      }
+      if (playa.nadar) {
+        categorias.push('Nadar');
+        categoriaIds.push('nadar');
+      }
+      if (playa.surfear) {
+        categorias.push('Surfear');
+        categoriaIds.push('surfear');
+      }
+      if (playa.snorkeling) {
+        categorias.push('Snorkel');
+        categoriaIds.push('snorkeling');
+      }
+
+      return {
+        id: playa.id || item.idplaya,
+        nombre: playa.nombre || 'Playa sin nombre',
+        municipioRaw: playa.municipio,
+        imagen: playa.imagen || '',
+        latitud: playa.latitud != null ? Number(playa.latitud) : null,
+        longitud: playa.longitud != null ? Number(playa.longitud) : null,
+        categorias,
+        categoriaIds,
+        creadoEn: item.creado_en
+      };
+    })
+    .filter(playa => playa.id != null);
+
+  const municipiosUnicos = [...new Set(playasBase.map(p => p.municipioRaw).filter(valor => valor !== null && valor !== undefined))];
+  const municipioNombreMap = new Map();
+
+  for (const municipio of municipiosUnicos) {
+    const nombre = await obtenerNombreMunicipio(municipio);
+    municipioNombreMap.set(municipio, nombre || (typeof municipio === 'string' ? municipio : String(municipio)));
+  }
+
+  favoritosPlayas = playasBase.map(playa => ({
+    ...playa,
+    municipioNombre: municipioNombreMap.get(playa.municipioRaw) || '',
+  }));
+
+  searchQueryPlayas = '';
+  if (inputBuscarFavoritosPlayas) inputBuscarFavoritosPlayas.value = '';
+  if (filtroMunicipioPlayas) filtroMunicipioPlayas.value = '';
+  if (filtroCategoriaPlayas) filtroCategoriaPlayas.value = '';
+  if (filtroOrdenPlayas) filtroOrdenPlayas.value = 'alfabetico';
+
+  poblarFiltrosPlayas(favoritosPlayas);
+  actualizarListadoFavoritosPlayas();
+
+  if (!userCoords && filtroOrdenPlayas?.value === 'cercania' && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        userCoords = { lat: coords.latitude, lon: coords.longitude };
+        actualizarListadoFavoritosPlayas();
+      },
+      (geoError) => {
+        console.warn('⚠️ No se pudo obtener la ubicación del usuario (playas favoritas):', geoError.message);
+        actualizarListadoFavoritosPlayas();
+      }
+    );
+  }
+
+  return favoritosPlayas;
+}
+
+async function eliminarFavoritoLugar(idLugar, cardElement) {
+  if (!usuarioId) {
+    window.location.href = `${basePath}/logearse.html`;
+    return;
+  }
+
+  console.log("Intentando eliminar lugar favorito:", idLugar);
+  console.log("Eliminando lugar favorito en Supabase...");
+  const { data, error } = await supabase
+    .from('favoritosLugares')
+    .delete()
+    .eq('idusuario', usuarioId)
+    .eq('idlugar', idLugar)
+    .select('id');
+
+  console.log("Resultado eliminación:", { data, error });
+
+  if (error) {
+    console.error('🛑 Error eliminando lugar favorito:', error);
+    alert('No se pudo eliminar este lugar. Intenta nuevamente.');
+    return;
+  }
+
+  console.log("Lugar eliminado correctamente");
+  favoritosLugares = favoritosLugares.filter(lugar => lugar.id !== idLugar);
+  console.log("Lista actualizada de favoritos:", favoritosLugares);
+
+  if (cardElement) {
+    cardElement.classList.add('opacity-0');
+    setTimeout(() => {
+      actualizarListadoFavoritosLugares();
+    }, 200);
+  } else {
+    actualizarListadoFavoritosLugares();
   }
 }
 
@@ -622,6 +1153,153 @@ async function cargarFavoritos(uid) {
     .filter(Boolean);
 }
 
+async function cargarFavoritosLugares() {
+  if (!usuarioId) {
+    alert('Debes iniciar sesión para ver tus lugares favoritos.');
+    window.location.href = `${basePath}/logearse.html`;
+    return [];
+  }
+
+  mostrarMensajeFavoritosLugares('Cargando lugares favoritos...');
+  console.log("Cargando lugares favoritos...");
+
+  const { data, error } = await supabase
+    .from('favoritosLugares')
+    .select(`
+      id,
+      creado_en,
+      idlugar,
+      LugaresTuristicos (
+        id,
+        nombre,
+        municipio,
+        activo,
+        imagen,
+        latitud,
+        longitud
+      )
+    `)
+    .eq('idusuario', usuarioId)
+    .order('creado_en', { ascending: false });
+
+  if (error) {
+    console.log("Error al cargar favoritosLugares:", error);
+    mostrarMensajeFavoritosLugares('Error cargando lugares favoritos.', 'text-red-500');
+    favoritosLugares = [];
+    return [];
+  }
+
+  console.log("Lugares favoritos obtenidos:", data);
+
+  const activos = (data || []).filter(item => item?.LugaresTuristicos?.activo);
+  if (!activos.length) {
+    favoritosLugares = [];
+    searchQueryLugares = '';
+    if (inputBuscarFavoritosLugares) inputBuscarFavoritosLugares.value = '';
+    if (filtroMunicipioLugares) filtroMunicipioLugares.value = '';
+    if (filtroCategoriaLugares) filtroCategoriaLugares.value = '';
+    if (filtroOrdenLugares) filtroOrdenLugares.value = 'alfabetico';
+    poblarFiltrosLugares([]);
+    renderFavoritosLugares(favoritosLugares);
+    return [];
+  }
+
+  const lugaresBase = activos.map(item => {
+    const lugar = item.LugaresTuristicos || {};
+    return {
+      id: lugar.id || item.idlugar,
+      nombre: lugar.nombre || 'Lugar sin nombre',
+      municipioRaw: lugar.municipio,
+      activo: lugar.activo,
+      imagen: lugar.imagen || '',
+      latitud: lugar.latitud != null ? Number(lugar.latitud) : null,
+      longitud: lugar.longitud != null ? Number(lugar.longitud) : null,
+      creadoEn: item.creado_en
+    };
+  }).filter(lugar => lugar.id != null);
+
+  const municipiosUnicos = [...new Set(lugaresBase.map(l => l.municipioRaw).filter(valor => valor !== null && valor !== undefined))];
+  const municipioNombreMap = new Map();
+  for (const municipio of municipiosUnicos) {
+    const nombre = await obtenerNombreMunicipio(municipio);
+    municipioNombreMap.set(municipio, nombre || (typeof municipio === 'string' ? municipio : String(municipio)));
+  }
+
+  let categoriasPorLugar = new Map();
+  const lugarIds = lugaresBase.map(l => l.id);
+
+  if (lugarIds.length) {
+    const { data: categoriasData, error: categoriasError } = await supabase
+      .from('lugarCategoria')
+      .select(`
+        idLugar,
+        categoria:categoriaLugares (
+          id,
+          nombre
+        )
+      `)
+      .in('idLugar', lugarIds);
+
+    if (categoriasError) {
+      console.warn('⚠️ No se pudieron obtener las categorías de lugares favoritos:', categoriasError.message);
+    } else if (categoriasData) {
+      categoriasPorLugar = categoriasData.reduce((acc, entry) => {
+        const lugarId = entry?.idLugar ?? entry?.idlugar;
+        if (!lugarId) return acc;
+        const existente = acc.get(lugarId) || { ids: [], nombres: [] };
+        const categoriaCampo = entry.categoria || entry.categoriaLugares;
+        const categoriasArray = Array.isArray(categoriaCampo) ? categoriaCampo : [categoriaCampo];
+        categoriasArray.forEach((categoria) => {
+          if (!categoria || categoria.id == null) return;
+          existente.ids.push(categoria.id);
+          existente.nombres.push(categoria.nombre || `Categoría ${categoria.id}`);
+        });
+        acc.set(lugarId, existente);
+        return acc;
+      }, new Map());
+    }
+  }
+
+  favoritosLugares = lugaresBase.map(lugar => {
+    const infoCategoria = categoriasPorLugar.get(lugar.id) || { ids: [], nombres: [] };
+    return {
+      id: lugar.id,
+      nombre: lugar.nombre,
+      municipioNombre: municipioNombreMap.get(lugar.municipioRaw) || '',
+      categoriaIds: infoCategoria.ids,
+      categorias: infoCategoria.nombres,
+      imagen: lugar.imagen,
+      latitud: lugar.latitud,
+      longitud: lugar.longitud,
+      creadoEn: lugar.creadoEn
+    };
+  });
+
+  searchQueryLugares = '';
+  if (inputBuscarFavoritosLugares) inputBuscarFavoritosLugares.value = '';
+  if (filtroMunicipioLugares) filtroMunicipioLugares.value = '';
+  if (filtroCategoriaLugares) filtroCategoriaLugares.value = '';
+  if (filtroOrdenLugares) filtroOrdenLugares.value = 'alfabetico';
+
+  poblarFiltrosLugares(favoritosLugares);
+  actualizarListadoFavoritosLugares();
+
+  if (!userCoords && filtroOrdenLugares?.value === 'cercania' && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        userCoords = { lat: coords.latitude, lon: coords.longitude };
+        actualizarListadoFavoritosLugares();
+      },
+      (geoError) => {
+        console.warn('⚠️ No se pudo obtener la ubicación del usuario (lugares favoritos):', geoError.message);
+        actualizarListadoFavoritosLugares();
+      }
+    );
+  }
+
+  return favoritosLugares;
+}
+
 async function cargarYMostrarFavoritos() {
   if (!usuarioId) return;
 
@@ -736,13 +1414,59 @@ btnFavoritos?.addEventListener('click', async () => {
 
 btnCerrarFavoritos?.addEventListener('click', () => modalFavoritos?.classList.add('hidden'));
 
+btnFavoritosLugares?.addEventListener('click', async () => {
+  if (!usuarioId) {
+    window.location.href = `${basePath}/logearse.html`;
+    return;
+  }
+  modalFavoritosLugares?.classList.remove('hidden');
+  await cargarFavoritosLugares();
+});
+
+btnCerrarFavoritosLugares?.addEventListener('click', () => modalFavoritosLugares?.classList.add('hidden'));
+
+btnFavoritosPlayas?.addEventListener('click', async () => {
+  if (!usuarioId) {
+    window.location.href = `${basePath}/logearse.html`;
+    return;
+  }
+  modalFavoritosPlayas?.classList.remove('hidden');
+  await cargarFavoritosPlayas();
+});
+
+btnCerrarFavoritosPlayas?.addEventListener('click', () => modalFavoritosPlayas?.classList.add('hidden'));
+
 inputBuscar?.addEventListener('input', (e) => {
   searchQuery = e.target.value.toLowerCase();
   actualizarListadoFavoritos();
 });
 
+inputBuscarFavoritosLugares?.addEventListener('input', (e) => {
+  searchQueryLugares = e.target.value.toLowerCase();
+  actualizarListadoFavoritosLugares();
+});
+
+inputBuscarFavoritosPlayas?.addEventListener('input', (e) => {
+  searchQueryPlayas = e.target.value.toLowerCase();
+  actualizarListadoFavoritosPlayas();
+});
+
 [filtroMunicipio, filtroCategoria].forEach(filtro => {
   filtro?.addEventListener('change', actualizarListadoFavoritos);
+});
+
+[
+  filtroMunicipioLugares,
+  filtroCategoriaLugares
+].forEach(filtro => {
+  filtro?.addEventListener('change', actualizarListadoFavoritosLugares);
+});
+
+[
+  filtroMunicipioPlayas,
+  filtroCategoriaPlayas
+].forEach(filtro => {
+  filtro?.addEventListener('change', actualizarListadoFavoritosPlayas);
 });
 
 filtroOrden?.addEventListener('change', () => {
@@ -759,6 +1483,40 @@ filtroOrden?.addEventListener('change', () => {
     );
   } else {
     actualizarListadoFavoritos();
+  }
+});
+
+filtroOrdenLugares?.addEventListener('change', () => {
+  if (filtroOrdenLugares.value === 'cercania' && !userCoords && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        userCoords = { lat: coords.latitude, lon: coords.longitude };
+        actualizarListadoFavoritosLugares();
+      },
+      (error) => {
+        console.warn('⚠️ No se pudo obtener la ubicación del usuario:', error.message);
+        actualizarListadoFavoritosLugares();
+      }
+    );
+  } else {
+    actualizarListadoFavoritosLugares();
+  }
+});
+
+filtroOrdenPlayas?.addEventListener('change', () => {
+  if (filtroOrdenPlayas.value === 'cercania' && !userCoords && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        userCoords = { lat: coords.latitude, lon: coords.longitude };
+        actualizarListadoFavoritosPlayas();
+      },
+      (error) => {
+        console.warn('⚠️ No se pudo obtener la ubicación del usuario:', error.message);
+        actualizarListadoFavoritosPlayas();
+      }
+    );
+  } else {
+    actualizarListadoFavoritosPlayas();
   }
 });
 

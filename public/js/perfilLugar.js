@@ -80,6 +80,7 @@ async function inicializarFavorito(lugarId) {
   const texto = btnFavorito.querySelector('span');
 
   const { data: { user } } = await supabase.auth.getUser();
+  console.log('Usuario actual:', user?.id);
   if (!user) {
     btnFavorito.addEventListener('click', () => {
       window.location.href = `${basePath}/logearse.html`;
@@ -90,12 +91,18 @@ async function inicializarFavorito(lugarId) {
 
   usuarioId = user.id;
 
-  const { data: favoritoData } = await supabase
-    .from('lugaresFavoritos')
+  console.log('Verificando si es favorito...');
+  const { data: favoritoData, error: favoritoError } = await supabase
+    .from('favoritosLugares')
     .select('id')
-    .eq('idUsuario', usuarioId)
-    .eq('idLugar', lugarId)
+    .eq('idusuario', usuarioId)
+    .eq('idlugar', lugarId)
     .maybeSingle();
+
+  if (favoritoError) {
+    console.error('Error verificando favorito:', favoritoError);
+  }
+  console.log('Resultado favorito:', favoritoData);
 
   lugarFavorito = !!favoritoData;
   actualizarFavoritoUI(icono, texto);
@@ -107,11 +114,12 @@ async function inicializarFavorito(lugarId) {
     }
 
     if (lugarFavorito) {
+      console.log('Eliminando de favoritosLugares');
       const { error } = await supabase
-        .from('lugaresFavoritos')
+        .from('favoritosLugares')
         .delete()
-        .eq('idUsuario', usuarioId)
-        .eq('idLugar', lugarId);
+        .eq('idusuario', usuarioId)
+        .eq('idlugar', lugarId);
       if (!error) {
         lugarFavorito = false;
         actualizarFavoritoUI(icono, texto);
@@ -119,9 +127,10 @@ async function inicializarFavorito(lugarId) {
         console.error('❌ Error eliminando favorito:', error);
       }
     } else {
+      console.log('Insertando en favoritosLugares');
       const { error } = await supabase
-        .from('lugaresFavoritos')
-        .insert([{ idUsuario: usuarioId, idLugar: lugarId }]);
+        .from('favoritosLugares')
+        .insert([{ idusuario: usuarioId, idlugar: lugarId }]);
       if (!error) {
         lugarFavorito = true;
         actualizarFavoritoUI(icono, texto);
@@ -136,10 +145,11 @@ async function inicializarFavorito(lugarId) {
 function actualizarFavoritoUI(icono, texto) {
   if (!icono || !texto) return;
   if (lugarFavorito) {
-    icono.className = 'fas fa-heart text-xl text-red-500 animate-bounce';
+    console.log('Animando ícono de favoritos en lugar...');
+    icono.className = 'fas fa-heart text-xl text-red-500 animate-bounce transition-all duration-300 ease-in-out';
     texto.textContent = 'En favoritos';
   } else {
-    icono.className = 'far fa-heart text-xl';
+    icono.className = 'far fa-heart text-xl transition-all duration-300 ease-in-out';
     texto.textContent = 'Añadir a favoritos';
   }
 }

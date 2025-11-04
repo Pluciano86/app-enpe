@@ -3,6 +3,12 @@ import { supabase } from "../shared/supabaseClient.js";
 import { obtenerClima } from "./obtenerClima.js";
 import { calcularTiemposParaLista } from "./calcularTiemposParaLista.js";
 
+const isLocal = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
+const basePath = isLocal ? "/public" : "";
+
+let usuarioId = null;
+let playaFavorita = false;
+
 // Loader
 function mostrarLoader() {
   document.getElementById("loader")?.classList.remove("hidden");
@@ -30,6 +36,87 @@ function obtenerCoordenadasUsuario() {
       () => resolve(null),
       { enableHighAccuracy: true, timeout: 8000 }
     );
+  });
+}
+
+function actualizarFavoritoPlayaUI(icono, texto) {
+  if (!icono || !texto) return;
+  if (playaFavorita) {
+    icono.className = "fas fa-heart text-xl text-red-500 animate-bounce";
+    texto.textContent = "En favoritos";
+  } else {
+    icono.className = "far fa-heart text-xl";
+    texto.textContent = "Añadir a favoritos";
+  }
+}
+
+async function inicializarFavoritoPlaya(idPlaya) {
+  const btnFavorito = document.getElementById("btnFavoritoPlaya");
+  if (!btnFavorito || !idPlaya) return;
+
+  const icono = btnFavorito.querySelector("i");
+  const texto = btnFavorito.querySelector("span");
+
+  const { data: { user } } = await supabase.auth.getUser();
+  console.log("Usuario:", user?.id);
+
+  if (!user) {
+    btnFavorito.addEventListener("click", () => {
+      window.location.href = `${basePath}/logearse.html`;
+    });
+    btnFavorito.classList.add("opacity-70");
+    return;
+  }
+
+  usuarioId = user.id;
+
+  const { data: favoritoData, error: favoritoError } = await supabase
+    .from("favoritosPlayas")
+    .select("id")
+    .eq("idusuario", usuarioId)
+    .eq("idplaya", idPlaya)
+    .maybeSingle();
+
+  if (favoritoError) {
+    console.error("Error verificando favorito de playa:", favoritoError);
+  }
+  console.log("Favorito encontrado:", favoritoData);
+
+  playaFavorita = !!favoritoData;
+  actualizarFavoritoPlayaUI(icono, texto);
+
+  btnFavorito.addEventListener("click", async () => {
+    if (!usuarioId) {
+      window.location.href = `${basePath}/logearse.html`;
+      return;
+    }
+
+    if (playaFavorita) {
+      console.log("Eliminando de favoritosPlayas");
+      const { error } = await supabase
+        .from("favoritosPlayas")
+        .delete()
+        .eq("idusuario", usuarioId)
+        .eq("idplaya", idPlaya);
+      if (!error) {
+        playaFavorita = false;
+        actualizarFavoritoPlayaUI(icono, texto);
+      } else {
+        console.error("Error eliminando favorito de playa:", error);
+      }
+    } else {
+      console.log("Insertando en favoritosPlayas");
+      const { error } = await supabase
+        .from("favoritosPlayas")
+        .insert([{ idusuario: usuarioId, idplaya: idPlaya }]);
+      if (!error) {
+        playaFavorita = true;
+        actualizarFavoritoPlayaUI(icono, texto);
+      } else {
+        console.error("Error insertando favorito de playa:", error);
+        alert("No se pudo añadir esta playa a tus favoritos.");
+      }
+    }
   });
 }
 
@@ -175,6 +262,8 @@ if (accesoEl) {
         "btnWaze"
       ).href = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
     }
+
+    await inicializarFavoritoPlaya(idPlaya);
   } catch (err) {
     console.error("Error al cargar la playa:", err.message);
   } finally {
