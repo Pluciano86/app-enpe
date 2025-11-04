@@ -4,6 +4,7 @@ const PLACEHOLDER_PLAYA =
 
 export function cardPlayaSlide(playa) {
   const { id, nombre, municipio, tiempoTexto = "", imagen, clima = {} } = playa;
+  console.log("Renderizando corazón para:", nombre, playa?.favorito);
 
   // 🪶 Crear el enlace contenedor
   const card = document.createElement("a");
@@ -20,7 +21,16 @@ export function cardPlayaSlide(playa) {
   // 🧱 Estructura HTML
   card.innerHTML = `
     <!-- Imagen -->
-    <div class="w-full h-24 relative bg-gray-200">
+    <div class="w-full h-24 relative bg-gray-200 overflow-hidden">
+      ${playa.favorito ? `
+        <div class="absolute top-2 right-2 z-50">
+          <div class="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
+            <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
+              <i class="fas fa-heart text-red-600 text-xs"></i>
+            </div>
+          </div>
+        </div>` : ''
+      }
       <img 
         src="${imagenURL}" 
         alt="Imagen de ${nombre}" 

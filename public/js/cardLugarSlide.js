@@ -7,6 +7,7 @@ export function cardLugarSlide(lugar, opciones = {}) {
     imagen,
     tiempoTexto = "a 3 minutos", // valor por defecto si no hay distancia calculada
   } = lugar;
+  console.log("Renderizando corazón lugar:", nombre, lugar?.favorito);
 
   // Nueva opción controlada desde listadoArea
   const { ocultarDistancia = false } = opciones;
@@ -20,7 +21,16 @@ export function cardLugarSlide(lugar, opciones = {}) {
 
   card.innerHTML = `
     <!-- Imagen del lugar -->
-<div class="w-full h-42 relative bg-gray-200">
+<div class="w-full h-42 relative bg-gray-200 overflow-hidden">
+  ${lugar.favorito ? `
+    <div class="absolute top-2 right-2 z-50">
+      <div class="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
+        <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
+          <i class="fas fa-heart text-red-600 text-xs"></i>
+        </div>
+      </div>
+    </div>` : ''
+  }
   <img 
     src="${imagen && imagen.trim() !== '' 
       ? imagen 

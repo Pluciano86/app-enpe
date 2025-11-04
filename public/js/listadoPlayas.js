@@ -109,9 +109,36 @@ if ('geolocation' in navigator) {
 }
 
 async function cargarPlayas() {
+  const { data: { user } } = await supabase.auth.getUser();
+  console.log('User:', user?.id);
+
+  let favoritosSet = new Set();
+  if (user) {
+    const { data: favoritosData, error: favoritosError } = await supabase
+      .from('favoritosPlayas')
+      .select('idplaya')
+      .eq('idusuario', user.id);
+
+    if (favoritosError) {
+      console.error('❌ Error cargando favoritosPlayas:', favoritosError);
+    } else {
+      favoritosSet = new Set((favoritosData || []).map((fav) => fav.idplaya));
+      console.log('IDs favoritos (playas):', Array.from(favoritosSet));
+    }
+  } else {
+    console.log('Usuario no autenticado; marcando favoritos de playas en false.');
+  }
+
   const { data, error } = await supabase.from("playas").select("*");
   if (error) throw error;
-  todasLasPlayas = data;
+  todasLasPlayas = (data || []).map((playa) => ({
+    ...playa,
+    favorito: user ? favoritosSet.has(playa.id) : false,
+  }));
+  console.log(
+    'Primeros items con favorito (playas):',
+    todasLasPlayas.slice(0, 5).map((p) => ({ id: p.id, favorito: p.favorito }))
+  );
 
   const { data: imagenes, error: errorImg } = await supabase
     .from("imagenesPlayas")
@@ -231,6 +258,22 @@ async function renderizarPlayas() {
      // === Imagen de la playa (desde la columna 'imagen') ===
 const imagenEl = clone.querySelector(".imagen");
 if (imagenEl) {
+  const wrapper = imagenEl.parentElement;
+  if (wrapper) {
+    wrapper.classList.add('relative', 'overflow-hidden');
+    if (playa.favorito) {
+      const favWrapper = document.createElement('div');
+      favWrapper.className = 'absolute top-2 right-2 z-50';
+      favWrapper.innerHTML = `
+        <div class="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
+          <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
+            <i class="fas fa-heart text-red-600 text-xs"></i>
+          </div>
+        </div>
+      `;
+      wrapper.appendChild(favWrapper);
+    }
+  }
   imagenEl.src =
     playa.imagen && playa.imagen.trim() !== ""
       ? playa.imagen.trim()

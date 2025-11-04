@@ -117,7 +117,18 @@ function crearCardLugar(lugar) {
   }
 
   div.innerHTML = `
-    <div class="relative">
+    <div class="relative overflow-hidden">
+      ${
+        lugar.favorito
+          ? `<div class="absolute top-2 right-2 z-50">
+              <div class="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
+                <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
+                  <i class="fas fa-heart text-red-600 text-xs"></i>
+                </div>
+              </div>
+            </div>`
+          : ''
+      }
       <img src="${lugar.portada}" alt="Portada de ${lugar.nombre}" class="w-full h-40 object-cover" />
     <a href="${getPublicBase()}perfilLugar.html?id=${lugar.id}" class="relative w-full flex flex-col items-center no-underline">
         <div class="relative h-12 w-full">
@@ -149,12 +160,41 @@ function crearCardLugar(lugar) {
 }
 
 async function cargarLugares() {
+  const { data: { user } } = await supabase.auth.getUser();
+  console.log('User:', user?.id);
+
+  let favoritosSet = new Set();
+  if (user) {
+    const { data: favoritosData, error: favoritosError } = await supabase
+      .from('favoritosLugares')
+      .select('idlugar')
+      .eq('idusuario', user.id);
+
+    if (favoritosError) {
+      console.error('❌ Error cargando favoritosLugares:', favoritosError);
+    } else {
+      favoritosSet = new Set((favoritosData || []).map((fav) => fav.idlugar));
+      console.log('IDs favoritos (lugares):', Array.from(favoritosSet));
+    }
+  } else {
+    console.log('Usuario no autenticado; marcando favoritos de lugares en false.');
+  }
+
   let { data, error } = await supabase.from('LugaresTuristicos').select('*').eq('activo', true);
   if (error) {
     throw error;
   }
 
-  lugares = data.filter(l => l.latitud && l.longitud);
+  const baseLugares = (data || []).map((lugar) => ({
+    ...lugar,
+    favorito: user ? favoritosSet.has(lugar.id) : false,
+  }));
+  console.log(
+    'Primeros items con favorito (lugares):',
+    baseLugares.slice(0, 5).map((l) => ({ id: l.id, favorito: l.favorito }))
+  );
+
+  lugares = baseLugares.filter(l => l.latitud && l.longitud);
 
   const { data: categoriasRel, error: errorCategoriasRel } = await supabase
     .from('lugarCategoria')

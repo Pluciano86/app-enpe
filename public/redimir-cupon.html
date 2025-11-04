@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Redimir Cupón | En Pe Erre</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen font-[Kanit]">
+  <main class="max-w-lg mx-auto px-4 py-10">
+    <h1 class="text-3xl font-semibold text-gray-800 text-center mb-6">Redimir Cupón</h1>
+
+    <section id="cuponSection" class="bg-white rounded-xl shadow p-6 space-y-5 hidden">
+      <div class="flex flex-col items-center text-center gap-3">
+        <img id="cuponImagen" src="" alt="Cupón" class="w-40 h-40 object-cover rounded-lg hidden">
+        <h2 id="cuponTitulo" class="text-2xl font-semibold text-[#424242]"></h2>
+        <p id="cuponDescripcion" class="text-sm text-gray-600"></p>
+        <p id="cuponDescuento" class="text-sm font-medium text-green-600"></p>
+        <p id="estadoActual" class="text-sm font-semibold"></p>
+      </div>
+
+      <div class="border-t border-gray-200 pt-4">
+        <label class="block text-sm font-medium text-gray-600 mb-2" for="inputCodigoSecreto">Código secreto del comercio</label>
+        <input id="inputCodigoSecreto" type="password" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring focus:border-blue-400">
+      </div>
+
+      <button id="btnRedimir" class="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition">Redimir Cupón</button>
+
+      <p id="redimirMensaje" class="text-sm mt-2"></p>
+    </section>
+
+    <p id="mensajeGeneral" class="text-center text-sm text-gray-500"></p>
+  </main>
+
+  <script type="module" src="./shared/supabaseClient.js"></script>
+  <script type="module" src="./js/redimirCupon.js"></script>
+</body>
+</html>
