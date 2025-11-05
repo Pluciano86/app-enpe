@@ -292,7 +292,7 @@ const cargarDatosIniciales = async () => {
           imagen,
           codigosecreto,
           fechafin,
-          fechaFin,
+          fechafin,
           idComercio,
           Comercios (
             id,
