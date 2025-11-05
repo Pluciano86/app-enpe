@@ -82,6 +82,7 @@ const PLACEHOLDER_FOTO = 'https://placehold.co/100x100?text=User';
 const PLACEHOLDER_LUGAR = 'https://placehold.co/120x80?text=Lugar';
 const PLACEHOLDER_PLAYA = 'https://placehold.co/120x80?text=Playa';
 const PLACEHOLDER_COMERCIO_LOGO = 'https://placehold.co/80x80?text=Logo';
+const PLACEHOLDER_CUPON_IMAGEN = 'https://placehold.co/160x160?text=Cup%C3%B3n';
 
 let perfilOriginal = null;
 let usuarioId = null;
@@ -773,15 +774,28 @@ async function cargarCuponesUsuario() {
   ];
 
   const comercioNombreMap = new Map();
+  const comercioMunicipioMap = new Map();
   if (comercioIds.length) {
     const { data: comerciosData } = await supabase
       .from('Comercios')
-      .select('id, nombre')
+      .select('id, nombre, municipio, idMunicipio')
       .in('id', comercioIds);
 
-    (comerciosData || []).forEach((comercio) => {
-      comercioNombreMap.set(comercio.id, comercio.nombre || 'Comercio');
-    });
+    if (comerciosData?.length) {
+      await Promise.all(
+        comerciosData.map(async (comercio) => {
+          if (!comercio?.id) return;
+          comercioNombreMap.set(comercio.id, comercio.nombre || 'Comercio');
+          const municipioValor = comercio.municipio ?? comercio.idMunicipio ?? null;
+          const municipioNombre = await obtenerNombreMunicipio(municipioValor);
+          if (municipioNombre) {
+            comercioMunicipioMap.set(comercio.id, municipioNombre);
+          } else if (typeof comercio.municipio === 'string' && comercio.municipio.trim() !== '') {
+            comercioMunicipioMap.set(comercio.id, comercio.municipio.trim());
+          }
+        })
+      );
+    }
   }
 
   const comercioLogoMap = new Map();
@@ -805,6 +819,7 @@ async function cargarCuponesUsuario() {
     const comercioId = cupon.idComercio;
     const comercioNombre = comercioId ? comercioNombreMap.get(comercioId) || 'Comercio' : 'Comercio';
     const comercioLogo = comercioId ? comercioLogoMap.get(comercioId) || null : null;
+    const comercioMunicipio = comercioId ? comercioMunicipioMap.get(comercioId) || '' : '';
     const qrUrl = `${QR_REDIMIR_URL}?qr=${registro.codigoqr}`;
     return {
       ...registro,
@@ -814,6 +829,7 @@ async function cargarCuponesUsuario() {
       },
       comercioNombre,
       comercioLogo,
+      comercioMunicipio,
       qrUrl
     };
   });
@@ -842,14 +858,14 @@ function renderCuponesModal(mensaje = '') {
 
   cuponesUsuario.forEach((registro) => {
     const card = document.createElement('div');
-    card.className = 'flex items-center justify-between gap-3 bg-white rounded-lg shadow p-3 cursor-pointer hover:bg-gray-50 transition';
+    card.className = 'flex items-center gap-4 bg-white rounded-2xl shadow p-4 cursor-pointer hover:shadow-md transition';
     card.addEventListener('click', () => abrirModalCuponQr(registro));
 
     const infoWrapper = document.createElement('div');
-    infoWrapper.className = 'flex items-center gap-3 flex-1';
+    infoWrapper.className = 'flex items-start gap-3 flex-1';
 
     const logo = document.createElement('img');
-    logo.className = 'w-14 h-14 rounded-full object-cover border border-gray-200';
+    logo.className = 'w-14 h-14 rounded-full object-cover border border-gray-200 flex-shrink-0';
     if (registro.comercioLogo) {
       logo.src = registro.comercioLogo;
       logo.alt = registro.comercioNombre || 'Comercio';
@@ -864,34 +880,38 @@ function renderCuponesModal(mensaje = '') {
       ? new Date(registro.cupon.fechaFin).toLocaleDateString('es-PR')
       : '--';
     const descripcionTexto = registro.cupon?.descripcion
-      ? `<p class="text-xs text-gray-500 mt-1 line-clamp-2">${registro.cupon.descripcion}</p>`
+      ? `<p class="text-sm text-gray-600 mt-2 leading-snug">${registro.cupon.descripcion}</p>`
       : '';
-    const estadoTexto = registro.redimido ? 'Redimido' : 'Disponible';
-    const estadoClase = registro.redimido
-      ? 'inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded-full text-[11px]'
-      : 'inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-[11px]';
+    const municipioTexto = registro.comercioMunicipio
+      ? `<p class="text-xs text-gray-500">${registro.comercioMunicipio}</p>`
+      : '';
     textos.innerHTML = `
       <p class="text-sm font-semibold text-[#424242]">${registro.comercioNombre || 'Comercio'}</p>
-      <p class="text-lg font-semibold text-[#424242] mt-1">${registro.cupon?.titulo || 'Cupón'}</p>
+      ${municipioTexto}
+      <p class="text-xl font-extrabold text-red-600 mt-3">${registro.cupon?.titulo || 'Cupón'}</p>
       ${descripcionTexto}
-      <p class="text-xs text-gray-400 mt-1">Vence: ${venceTexto}</p>
-      <span class="${estadoClase} mt-1">${estadoTexto}</span>
+      <p class="text-xs text-gray-500 mt-2">Vence: ${venceTexto}</p>
     `;
 
     infoWrapper.appendChild(logo);
     infoWrapper.appendChild(textos);
 
-    const btnVer = document.createElement('button');
-    btnVer.type = 'button';
-    btnVer.className = 'text-sky-500 hover:text-sky-600 text-sm font-semibold px-3 py-1 border border-sky-200 rounded-md transition';
-    btnVer.textContent = 'Ver QR';
-    btnVer.addEventListener('click', (event) => {
-      event.stopPropagation();
-      abrirModalCuponQr(registro);
-    });
-
     card.appendChild(infoWrapper);
-    card.appendChild(btnVer);
+
+    const imagenWrapper = document.createElement('div');
+    imagenWrapper.className = 'flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-gray-100 bg-gray-100';
+    const imagenCupon = document.createElement('img');
+    imagenCupon.className = 'w-full h-full object-cover';
+    if (registro.cupon?.imagen) {
+      imagenCupon.src = registro.cupon.imagen;
+      imagenCupon.alt = registro.cupon?.titulo || 'Cupón';
+    } else {
+      imagenCupon.src = PLACEHOLDER_CUPON_IMAGEN;
+      imagenCupon.alt = 'Cupón';
+    }
+    imagenWrapper.appendChild(imagenCupon);
+
+    card.appendChild(imagenWrapper);
 
     listaCuponesModal.appendChild(card);
   });

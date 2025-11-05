@@ -1,157 +1,343 @@
 import { supabase } from '../shared/supabaseClient.js';
 
-const params = new URLSearchParams(window.location.search);
-const qr = params.get('qr') || '';
+// Elementos vista de validación
+const vistaValidacionEl = document.getElementById('vistaValidacion');
+const logoValidacionEl = document.getElementById('logoValidacion');
+const logoPlaceholderEl = document.getElementById('logoPlaceholder');
+const nombreValidacionEl = document.getElementById('nombreValidacion');
+const inputCodigoEl = document.getElementById('inputCodigoSecreto');
+const btnValidarEl = document.getElementById('btnValidarCodigo');
+const mensajeValidacionEl = document.getElementById('mensajeValidacion');
 
-const seccionCupon = document.getElementById('cuponSection');
-const mensajeGeneral = document.getElementById('mensajeGeneral');
-const btnRedimir = document.getElementById('btnRedimir');
-const inputCodigo = document.getElementById('inputCodigoSecreto');
-const mensajeResultado = document.getElementById('redimirMensaje');
+// Elementos vista del cupón
+const vistaCuponEl = document.getElementById('vistaCupon');
+const cuponLogoEl = document.getElementById('cuponLogo');
+const cuponComercioNombreEl = document.getElementById('cuponComercioNombre');
+const cuponComercioMunicipioEl = document.getElementById('cuponComercioMunicipio');
+const cuponTituloEl = document.getElementById('cuponTitulo');
+const cuponDescripcionEl = document.getElementById('cuponDescripcion');
+const cuponFechaEl = document.getElementById('cuponFecha');
+const btnRedimirEl = document.getElementById('btnRedimirCupon');
+const mensajeCuponEl = document.getElementById('mensajeCupon');
 
-const imagenEl = document.getElementById('cuponImagen');
-const tituloEl = document.getElementById('cuponTitulo');
-const descripcionEl = document.getElementById('cuponDescripcion');
-const descuentoEl = document.getElementById('cuponDescuento');
-const estadoActualEl = document.getElementById('estadoActual');
+const LOGO_PLACEHOLDER = 'https://placehold.co/160x160?text=Logo';
 
-let registroCupon = null;
+let cuponActual = null;
+let comercioActual = null;
+let cuponUsuarioActual = null;
 
-function mostrarEstado(texto, color = 'text-gray-600') {
-  if (!estadoActualEl) return;
-  estadoActualEl.textContent = texto;
-  estadoActualEl.className = `text-sm font-semibold ${color}`;
-}
+const actualizarMensaje = (
+  elemento,
+  texto,
+  color = 'text-red-600',
+  baseClass = 'text-sm text-center'
+) => {
+  if (!elemento) return;
+  elemento.textContent = texto || '';
+  elemento.className = `${baseClass} ${color}`.trim();
+};
 
-function setMensajeGeneral(texto, color = 'text-gray-500') {
-  mensajeGeneral.textContent = texto;
-  mensajeGeneral.className = `text-center text-sm ${color}`;
-}
+const formatearFecha = (iso) => {
+  if (!iso) return '--';
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return '--';
+  return fecha.toLocaleDateString('es-PR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
 
-function setMensajeResultado(texto, color = 'text-gray-600') {
-  mensajeResultado.textContent = texto;
-  mensajeResultado.className = `text-sm mt-2 ${color}`;
-}
+const formatearFechaHora = (iso) => {
+  if (!iso) return '';
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return '';
+  return fecha.toLocaleString('es-PR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 
-async function cargarCupon() {
-  if (!qr) {
-    setMensajeGeneral('No se encontró el código del cupón.', 'text-red-600');
-    return;
+const mostrarVistaCupon = () => {
+  if (!vistaCuponEl || !vistaValidacionEl) return;
+
+  vistaValidacionEl.classList.add('opacity-0', 'translate-y-3', 'pointer-events-none');
+  setTimeout(() => {
+    vistaValidacionEl.classList.add('hidden');
+    vistaCuponEl.classList.remove('hidden');
+    requestAnimationFrame(() => {
+      vistaCuponEl.classList.remove('opacity-0', '-translate-y-3');
+    });
+  }, 220);
+};
+
+const obtenerNombreMunicipio = async (valor) => {
+  if (valor === null || valor === undefined || valor === '') return null;
+
+  if (typeof valor === 'string' && Number.isNaN(Number(valor))) {
+    return valor;
   }
 
-  setMensajeGeneral('Cargando información del cupón...', 'text-gray-500');
-  console.log('QR recibido:', qr);
+  const numero = Number(valor);
+  if (Number.isNaN(numero)) return null;
 
   const { data, error } = await supabase
-    .from('cuponesUsuarios')
-    .select(`
-      id,
-      codigoqr,
-      redimido,
-      fechaGuardado,
-      fechaRedimido,
-      idUsuario,
-      cupon:cupones (
-        id,
-        titulo,
-        descripcion,
-        descuento,
-        imagen,
-        codigosecreto
-      )
-    `)
-    .eq('codigoqr', qr)
+    .from('Municipios')
+    .select('nombre')
+    .eq('id', numero)
     .maybeSingle();
 
   if (error) {
-    console.error('❌ Error obteniendo cupón por QR:', error);
-    setMensajeGeneral('Error consultando el cupón. Intenta nuevamente.', 'text-red-600');
-    return;
+    console.warn('No se pudo obtener el municipio:', error.message);
+    return null;
   }
 
-  if (!data) {
-    setMensajeGeneral('Cupón no encontrado o QR inválido.', 'text-red-600');
-    return;
-  }
+  return data?.nombre || null;
+};
 
-  registroCupon = data;
-  console.log('Registro encontrado:', registroCupon);
+const obtenerLogoComercio = async (idComercio) => {
+  if (!idComercio) return null;
 
-  const cupon = registroCupon.cupon || {};
-  if (cupon.imagen) {
-    imagenEl.src = cupon.imagen;
-    imagenEl.classList.remove('hidden');
-  }
-
-  tituloEl.textContent = cupon.titulo || 'Cupón';
-  descripcionEl.textContent = cupon.descripcion || '';
-  if (cupon.descuento != null) {
-    descuentoEl.textContent = `Descuento: ${cupon.descuento}%`;
-    descuentoEl.classList.remove('hidden');
-  } else {
-    descuentoEl.classList.add('hidden');
-  }
-
-  if (registroCupon.redimido) {
-    mostrarEstado(
-      `Cupón redimido el ${registroCupon.fechaRedimido ? new Date(registroCupon.fechaRedimido).toLocaleString('es-PR') : ''}`,
-      'text-green-600'
-    );
-    btnRedimir.disabled = true;
-  } else {
-    mostrarEstado('Cupón pendiente de redimir.', 'text-blue-600');
-  }
-
-  setMensajeGeneral('');
-  seccionCupon.classList.remove('hidden');
-}
-
-btnRedimir?.addEventListener('click', async () => {
-  if (!registroCupon) return;
-
-  const codigoIngresado = inputCodigo.value.trim();
-  if (!codigoIngresado) {
-    setMensajeResultado('Ingresa el código secreto para redimir el cupón.', 'text-red-600');
-    return;
-  }
-
-  const codigoCorrecto = registroCupon.cupon?.codigoSecreto || '';
-  console.log('Validando redención. Código ingresado:', codigoIngresado);
-
-  if (registroCupon.redimido) {
-    setMensajeResultado('Este cupón ya fue redimido previamente.', 'text-orange-600');
-    return;
-  }
-
-  if (codigoIngresado !== codigoCorrecto) {
-    setMensajeResultado('Código incorrecto. Verifica e intenta nuevamente.', 'text-red-600');
-    return;
-  }
-
-  btnRedimir.disabled = true;
-  setMensajeResultado('Redimiendo cupón...', 'text-gray-500');
-
-  const { error } = await supabase
-    .from('cuponesUsuarios')
-    .update({
-      redimido: true,
-      fechaRedimido: new Date().toISOString()
-    })
-    .eq('id', registroCupon.id);
+  const { data, error } = await supabase
+    .from('imagenesComercios')
+    .select('imagen')
+    .eq('idComercio', idComercio)
+    .eq('logo', true)
+    .maybeSingle();
 
   if (error) {
-    console.error('❌ Error redimiendo cupón:', error);
-    setMensajeResultado('No se pudo redimir el cupón. Intenta nuevamente.', 'text-red-600');
-    btnRedimir.disabled = false;
+    console.warn('No se pudo obtener el logo del comercio:', error.message);
+    return null;
+  }
+
+  if (!data?.imagen) return null;
+
+  const { data: publicData } = supabase.storage
+    .from('galeriacomercios')
+    .getPublicUrl(data.imagen);
+
+  return publicData?.publicUrl || null;
+};
+
+const obtenerInfoComercio = async (idComercio) => {
+  if (!idComercio) return null;
+
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('id, nombre, municipio, idMunicipio')
+    .eq('id', idComercio)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('Error obteniendo comercio:', error);
+    return null;
+  }
+
+  const municipioBase = data?.municipio ?? data?.idMunicipio ?? null;
+  const municipioNombre = await obtenerNombreMunicipio(municipioBase);
+  const logoUrl = await obtenerLogoComercio(data?.id);
+
+  return {
+    id: data?.id ?? idComercio,
+    nombre: data?.nombre || 'Comercio',
+    municipio: municipioNombre || (typeof data?.municipio === 'string' ? data.municipio : '—'),
+    logoUrl: logoUrl || null
+  };
+};
+
+const actualizarEstadoRedencion = () => {
+  if (!btnRedimirEl || !mensajeCuponEl) return;
+
+  if (!cuponUsuarioActual) {
+    btnRedimirEl.classList.add('hidden');
+    btnRedimirEl.disabled = true;
+    actualizarMensaje(mensajeCuponEl, 'No se encontró un registro asociado para redimir este cupón.', 'text-red-600', 'text-sm text-center mt-3 min-h-[1.25rem]');
     return;
   }
 
-  registroCupon.redimido = true;
-  mostrarEstado(
-    `Cupón redimido el ${new Date().toLocaleString('es-PR')}`,
-    'text-green-600'
-  );
-  setMensajeResultado('✅ Cupón redimido correctamente.', 'text-green-600');
-});
+  if (cuponUsuarioActual.redimido) {
+    btnRedimirEl.classList.add('hidden');
+    btnRedimirEl.disabled = true;
+    const fechaTexto = formatearFechaHora(cuponUsuarioActual.fechaRedimido);
+    const aviso = fechaTexto
+      ? `Este cupón ya fue redimido el ${fechaTexto}.`
+      : 'Este cupón ya fue redimido.';
+    actualizarMensaje(mensajeCuponEl, aviso, 'text-orange-600', 'text-sm text-center mt-3 min-h-[1.25rem]');
+  } else {
+    btnRedimirEl.classList.remove('hidden');
+    btnRedimirEl.disabled = false;
+    actualizarMensaje(mensajeCuponEl, '', 'text-gray-600', 'text-sm text-center mt-3 min-h-[1.25rem]');
+  }
+};
 
-cargarCupon();
+const renderizarCupon = () => {
+  if (!cuponActual) return;
+
+  const infoComercio = comercioActual ?? {
+    nombre: 'Comercio',
+    municipio: '—',
+    logoUrl: null,
+  };
+
+  if (cuponLogoEl) {
+    cuponLogoEl.src = infoComercio.logoUrl ? infoComercio.logoUrl : LOGO_PLACEHOLDER;
+    cuponLogoEl.classList.remove('hidden');
+  }
+
+  if (cuponComercioNombreEl) {
+    cuponComercioNombreEl.textContent = infoComercio.nombre || 'Comercio';
+  }
+
+  if (cuponComercioMunicipioEl) {
+    cuponComercioMunicipioEl.textContent = infoComercio.municipio || '—';
+  }
+
+  if (cuponTituloEl) {
+    cuponTituloEl.textContent = cuponActual.titulo || 'Cupón';
+  }
+
+  if (cuponDescripcionEl) {
+    cuponDescripcionEl.textContent = cuponActual.descripcion || '';
+  }
+
+  const fechaExpiracion = cuponActual.fechafin ?? cuponActual.fechaFin ?? null;
+  if (cuponFechaEl) {
+    cuponFechaEl.textContent = fechaExpiracion
+      ? `Vence: ${formatearFecha(fechaExpiracion)}`
+      : 'Vigencia indefinida';
+  }
+
+  mostrarVistaCupon();
+  actualizarEstadoRedencion();
+};
+
+const validarCodigo = async () => {
+  if (!inputCodigoEl || !btnValidarEl) return;
+
+  const valorIngresado = (inputCodigoEl.value || '').trim();
+
+  if (!valorIngresado) {
+    actualizarMensaje(mensajeValidacionEl, 'Ingresa el código secreto.', 'text-red-600', 'text-sm text-center min-h-[1.25rem]');
+    return;
+  }
+
+  const codigoNumero = Number(valorIngresado);
+  if (Number.isNaN(codigoNumero)) {
+    actualizarMensaje(mensajeValidacionEl, 'El código debe ser numérico.', 'text-red-600', 'text-sm text-center min-h-[1.25rem]');
+    return;
+  }
+
+  actualizarMensaje(mensajeValidacionEl, 'Validando código...', 'text-gray-500', 'text-sm text-center min-h-[1.25rem]');
+  btnValidarEl.disabled = true;
+
+  try {
+    const { data: cuponData, error: cuponError } = await supabase
+      .from('cupones')
+      .select('id, titulo, descripcion, imagen, fechafin, fechafin, idComercio, codigosecreto')
+      .eq('codigosecreto', codigoNumero)
+      .maybeSingle();
+
+    if (cuponError) {
+      console.error('Error consultando cupón:', cuponError);
+      actualizarMensaje(mensajeValidacionEl, 'Ocurrió un error al validar el código.', 'text-red-600', 'text-sm text-center min-h-[1.25rem]');
+      return;
+    }
+
+    if (!cuponData) {
+      actualizarMensaje(mensajeValidacionEl, 'Código incorrecto o cupón no encontrado.', 'text-red-600', 'text-sm text-center min-h-[1.25rem]');
+      return;
+    }
+
+    cuponActual = cuponData;
+    comercioActual = await obtenerInfoComercio(cuponData.idComercio);
+
+    if (comercioActual?.logoUrl && logoValidacionEl) {
+      logoValidacionEl.src = comercioActual.logoUrl;
+      logoValidacionEl.classList.remove('hidden');
+      logoPlaceholderEl?.classList.add('hidden');
+    }
+    if (comercioActual?.nombre && nombreValidacionEl) {
+      nombreValidacionEl.textContent = comercioActual.nombre;
+    }
+
+    const { data: registrosUsuarios, error: usuariosError } = await supabase
+      .from('cuponesUsuarios')
+      .select('id, redimido, fechaRedimido')
+      .eq('idCupon', cuponData.id)
+      .order('fechaGuardado', { ascending: true });
+
+    if (usuariosError) {
+      console.warn('No se pudieron obtener cupones de usuarios:', usuariosError);
+      cuponUsuarioActual = null;
+    } else if (Array.isArray(registrosUsuarios) && registrosUsuarios.length) {
+      const pendiente = registrosUsuarios.find((registro) => !registro.redimido);
+      cuponUsuarioActual = pendiente ?? registrosUsuarios[registrosUsuarios.length - 1];
+    } else {
+      cuponUsuarioActual = null;
+    }
+
+    actualizarMensaje(mensajeValidacionEl, '', 'text-gray-600', 'text-sm text-center min-h-[1.25rem]');
+    renderizarCupon();
+  } catch (error) {
+    console.error('Error general validando código:', error);
+    actualizarMensaje(mensajeValidacionEl, 'Error inesperado validando el código.', 'text-red-600', 'text-sm text-center min-h-[1.25rem]');
+  } finally {
+    btnValidarEl.disabled = false;
+  }
+};
+
+const redimirCupon = async () => {
+  if (!btnRedimirEl) return;
+
+  if (!cuponUsuarioActual) {
+    actualizarMensaje(mensajeCuponEl, 'No se identificó un registro para redimir este cupón.', 'text-red-600', 'text-sm text-center mt-3 min-h-[1.25rem]');
+    return;
+  }
+
+  if (cuponUsuarioActual.redimido) {
+    actualizarMensaje(mensajeCuponEl, 'Este cupón ya fue redimido.', 'text-orange-600', 'text-sm text-center mt-3 min-h-[1.25rem]');
+    return;
+  }
+
+  btnRedimirEl.disabled = true;
+  actualizarMensaje(mensajeCuponEl, 'Redimiendo cupón...', 'text-gray-500', 'text-sm text-center mt-3 min-h-[1.25rem]');
+
+  try {
+    const fechaRedimido = new Date().toISOString();
+    const { error } = await supabase
+      .from('cuponesUsuarios')
+      .update({
+        redimido: true,
+        fechaRedimido: fechaRedimido
+      })
+      .eq('id', cuponUsuarioActual.id);
+
+    if (error) {
+      console.error('Error redimiendo cupón:', error);
+      actualizarMensaje(mensajeCuponEl, 'Error al redimir el cupón. Inténtelo nuevamente.', 'text-red-600', 'text-sm text-center mt-3 min-h-[1.25rem]');
+      btnRedimirEl.disabled = false;
+      return;
+    }
+
+    cuponUsuarioActual.redimido = true;
+    cuponUsuarioActual.fechaRedimido = fechaRedimido;
+    actualizarMensaje(mensajeCuponEl, 'Cupón redimido exitosamente.', 'text-emerald-600', 'text-sm text-center mt-3 min-h-[1.25rem]');
+    actualizarEstadoRedencion();
+  } catch (error) {
+    console.error('Error inesperado redimiendo cupón:', error);
+    actualizarMensaje(mensajeCuponEl, 'Error al redimir el cupón. Inténtelo nuevamente.', 'text-red-600', 'text-sm text-center mt-3 min-h-[1.25rem]');
+    btnRedimirEl.disabled = false;
+  }
+};
+
+btnValidarEl?.addEventListener('click', validarCodigo);
+inputCodigoEl?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    validarCodigo();
+  }
+});
+btnRedimirEl?.addEventListener('click', redimirCupon);
