@@ -86,6 +86,7 @@ let searchQueryLugares = '';
 let favoritosPlayas = [];
 let searchQueryPlayas = '';
 let cuponesUsuario = [];
+const redimirBaseUrl = isLocal ? `${window.location.origin}/public` : 'https://enpe-erre.com';
 
 async function restaurarSesionDesdeHash() {
   const hash = window.location.hash;
@@ -815,7 +816,8 @@ async function cargarCuponesUsuario() {
     qrLabel.className = 'text-xs text-gray-600';
     qrLabel.textContent = 'Código QR';
     const qrImg = document.createElement('img');
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(registro.codigoqr)}`;
+    const qrUrl = `${redimirBaseUrl}/redimir-cupon.html?qr=${registro.codigoqr}`;
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
     qrImg.alt = 'Código QR del cupón';
     qrImg.className = 'w-32 h-32 object-contain';
     qrContainer.appendChild(qrLabel);

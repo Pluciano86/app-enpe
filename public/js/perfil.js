@@ -9,6 +9,9 @@ let latUsuario = null;
 let lonUsuario = null;
 const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const loginPath = isLocalHost ? '/public/logearse.html' : '/logearse.html';
+const redimirBaseUrl = isLocalHost
+  ? `${window.location.origin}/public`
+  : 'https://enpe-erre.com';
 
 async function cargarCuponesComercio(idComercio) {
   const seccion = document.getElementById('seccionCupones');
@@ -169,7 +172,8 @@ if (!cupones || cupones.length === 0) {
         btnGuardar.textContent = 'Guardando...';
         try {
           const codigoqr = crypto.randomUUID();
-          console.log('Generando QR para cupón:', cupon.id, codigoqr);
+          const qrUrl = `${redimirBaseUrl}/redimir-cupon.html?qr=${codigoqr}`;
+          console.log('Generando QR para cupón:', cupon.id, codigoqr, qrUrl);
           const { error: insertError } = await supabase
             .from('cuponesUsuarios')
             .insert({
