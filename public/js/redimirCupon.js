@@ -57,7 +57,7 @@ async function cargarCupon() {
         descripcion,
         descuento,
         imagen,
-        codigoSecreto
+        codigosecreto
       )
     `)
     .eq('codigoqr', qr)
