@@ -9,9 +9,7 @@ let latUsuario = null;
 let lonUsuario = null;
 const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const loginPath = isLocalHost ? '/public/logearse.html' : '/logearse.html';
-const redimirBaseUrl = isLocalHost
-  ? `${window.location.origin}/public`
-  : 'https://enpe-erre.com';
+const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
 
 async function cargarCuponesComercio(idComercio) {
   const seccion = document.getElementById('seccionCupones');
@@ -23,14 +21,13 @@ async function cargarCuponesComercio(idComercio) {
   mensaje.classList.add('hidden');
   seccion.classList.add('hidden');
 
-  const hoyISO = new Date().toISOString();
   const { data: cupones, error } = await supabase
   .from('cupones')
   .select('*')
   .eq('idComercio', idComercio)
   .eq('activo', true)
-  .gte('fechafin', new Date().toISOString())
-  .order('fechainicio', { ascending: false });
+  .gte('fechaFin', new Date().toISOString())
+  .order('fechaInicio', { ascending: false });
 
 if (error) {
   console.error('❌ Error cargando cupones del comercio:', error);
@@ -172,7 +169,7 @@ if (!cupones || cupones.length === 0) {
         btnGuardar.textContent = 'Guardando...';
         try {
           const codigoqr = crypto.randomUUID();
-          const qrUrl = `${redimirBaseUrl}/redimir-cupon.html?qr=${codigoqr}`;
+          const qrUrl = `${QR_REDIMIR_URL}?qr=${codigoqr}`;
           console.log('Generando QR para cupón:', cupon.id, codigoqr, qrUrl);
           const { error: insertError } = await supabase
             .from('cuponesUsuarios')

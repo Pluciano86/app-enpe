@@ -34,6 +34,7 @@
       <button id="btnFavoritos" class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Comercios Favoritos</button>
       <button id="btnFavoritosLugares" class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Lugares Favoritos</button>
       <button id="btnFavoritosPlayas" class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Playas Favoritas</button>
+      <button id="btnCupones" class="w-full bg-sky-500 text-white py-2 rounded-lg">Ver mis Cupones</button>
     </div>
 
     <button id="btnLogout" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm mt-4 w-full">
@@ -153,11 +154,30 @@
   </div>
 </div>
 
-  <section id="misCuponesSection" class="mt-8 hidden">
-    <h2 class="text-lg font-semibold text-gray-700 mb-3 text-left">Mis Cupones</h2>
-    <div id="misCuponesList" class="space-y-4"></div>
-    <p id="misCuponesMensaje" class="text-sm text-gray-500 hidden">No has guardado cupones todavía.</p>
-  </section>
+  <!-- Modal Cupones -->
+  <div id="modalCupones" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg w-[90%] max-w-lg h-[80%] flex flex-col relative">
+      <div class="flex justify-between items-center p-4 border-b">
+        <h2 class="text-xl font-semibold">Mis Cupones</h2>
+        <button id="btnCerrarCupones" class="text-gray-600 hover:text-black text-xl leading-none">&times;</button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-3" id="listaCuponesModal"></div>
+      <p id="cuponesModalMensaje" class="text-sm text-gray-500 text-center pb-4 hidden">No has guardado cupones todavía.</p>
+    </div>
+  </div>
+
+  <div id="modalCuponQr" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl shadow-lg w-[90%] max-w-sm p-6 flex flex-col items-center gap-4 relative">
+      <button id="btnCerrarCuponQr" class="absolute top-3 right-3 text-gray-500 hover:text-black text-2xl leading-none">&times;</button>
+      <img id="modalCuponQrImg" src="" alt="QR del cupón" class="w-56 h-56 object-contain">
+      <div class="flex flex-col items-center gap-2">
+        <img id="modalCuponQrLogo" src="" alt="Logo del comercio" class="w-16 h-16 object-cover rounded-full border hidden">
+        <p id="modalCuponQrComercio" class="text-base font-semibold text-[#424242] text-center"></p>
+        <p id="modalCuponQrNombre" class="text-lg font-semibold text-[#424242] text-center"></p>
+        <p id="modalCuponQrDescripcion" class="text-sm text-gray-600 text-center hidden"></p>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Favoritos Lugares -->
   <div id="modalFavoritosLugares" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

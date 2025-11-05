@@ -63,15 +63,25 @@ const inputBuscarFavoritosPlayas = document.getElementById('buscadorFavoritosPla
 const filtroMunicipioPlayas = document.getElementById('filtroMunicipioPlayas');
 const filtroCategoriaPlayas = document.getElementById('filtroCategoriaPlayas');
 const filtroOrdenPlayas = document.getElementById('filtroOrdenPlayas');
-const misCuponesSection = document.getElementById('misCuponesSection');
-const misCuponesList = document.getElementById('misCuponesList');
-const misCuponesMensaje = document.getElementById('misCuponesMensaje');
+const btnCupones = document.getElementById('btnCupones');
+const modalCupones = document.getElementById('modalCupones');
+const btnCerrarCupones = document.getElementById('btnCerrarCupones');
+const listaCuponesModal = document.getElementById('listaCuponesModal');
+const cuponesModalMensaje = document.getElementById('cuponesModalMensaje');
+const modalCuponQr = document.getElementById('modalCuponQr');
+const btnCerrarCuponQr = document.getElementById('btnCerrarCuponQr');
+const modalCuponQrImg = document.getElementById('modalCuponQrImg');
+const modalCuponQrLogo = document.getElementById('modalCuponQrLogo');
+const modalCuponQrComercio = document.getElementById('modalCuponQrComercio');
+const modalCuponQrNombre = document.getElementById('modalCuponQrNombre');
+const modalCuponQrDescripcion = document.getElementById('modalCuponQrDescripcion');
 
 const btnLogout = document.getElementById('btnLogout');
 
 const PLACEHOLDER_FOTO = 'https://placehold.co/100x100?text=User';
 const PLACEHOLDER_LUGAR = 'https://placehold.co/120x80?text=Lugar';
 const PLACEHOLDER_PLAYA = 'https://placehold.co/120x80?text=Playa';
+const PLACEHOLDER_COMERCIO_LOGO = 'https://placehold.co/80x80?text=Logo';
 
 let perfilOriginal = null;
 let usuarioId = null;
@@ -86,7 +96,7 @@ let searchQueryLugares = '';
 let favoritosPlayas = [];
 let searchQueryPlayas = '';
 let cuponesUsuario = [];
-const redimirBaseUrl = isLocal ? `${window.location.origin}/public` : 'https://enpe-erre.com';
+const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
 
 async function restaurarSesionDesdeHash() {
   const hash = window.location.hash;
@@ -718,12 +728,9 @@ async function cargarFavoritosPlayas() {
   return favoritosPlayas;
 }
 
-async function cargarCuponesUsuario() {
-  if (!usuarioId || !misCuponesSection || !misCuponesList || !misCuponesMensaje) return;
 
-  misCuponesList.innerHTML = '';
-  misCuponesSection.classList.add('hidden');
-  misCuponesMensaje.classList.add('hidden');
+async function cargarCuponesUsuario() {
+  if (!usuarioId) return;
 
   const { data, error } = await supabase
     .from('cuponesUsuarios')
@@ -739,7 +746,9 @@ async function cargarCuponesUsuario() {
         titulo,
         descripcion,
         descuento,
-        imagen
+        imagen,
+        fechafin,
+        idComercio
       )
     `)
     .eq('idUsuario', usuarioId)
@@ -747,87 +756,181 @@ async function cargarCuponesUsuario() {
 
   if (error) {
     console.error('❌ Error cargando cupones del usuario:', error);
-    misCuponesMensaje.textContent = 'No pudimos cargar tus cupones.';
-    misCuponesMensaje.classList.remove('hidden');
-    misCuponesSection.classList.remove('hidden');
+    cuponesUsuario = [];
+    renderCuponesModal('No pudimos cargar tus cupones.');
     return;
   }
 
-  cuponesUsuario = data || [];
-  console.log('Cupones del usuario:', cuponesUsuario);
+  const registros = data || [];
+  console.log('Cupones del usuario:', registros);
 
-  if (!cuponesUsuario.length) {
-    misCuponesMensaje.textContent = 'No has guardado cupones todavía.';
-    misCuponesMensaje.classList.remove('hidden');
-    misCuponesSection.classList.remove('hidden');
-    return;
+  const comercioIds = [
+    ...new Set(
+      registros
+        .map((registro) => registro.cupon?.idComercio)
+        .filter((id) => id !== null && id !== undefined)
+    )
+  ];
+
+  const comercioNombreMap = new Map();
+  if (comercioIds.length) {
+    const { data: comerciosData } = await supabase
+      .from('Comercios')
+      .select('id, nombre')
+      .in('id', comercioIds);
+
+    (comerciosData || []).forEach((comercio) => {
+      comercioNombreMap.set(comercio.id, comercio.nombre || 'Comercio');
+    });
   }
 
-  cuponesUsuario.forEach((registro) => {
+  const comercioLogoMap = new Map();
+  if (comercioIds.length) {
+    const { data: logosData } = await supabase
+      .from('imagenesComercios')
+      .select('idComercio, imagen')
+      .in('idComercio', comercioIds)
+      .eq('logo', true);
+
+    (logosData || []).forEach((entry) => {
+      const { data: publicData } = supabase.storage
+        .from('galeriacomercios')
+        .getPublicUrl(entry.imagen);
+      comercioLogoMap.set(entry.idComercio, publicData?.publicUrl || null);
+    });
+  }
+
+  cuponesUsuario = registros.map((registro) => {
     const cupon = registro.cupon || {};
-    const card = document.createElement('div');
-    card.className = 'border border-gray-200 rounded-lg shadow-sm p-4 flex flex-col gap-3 bg-white';
-
-    if (cupon.imagen) {
-      const img = document.createElement('img');
-      img.src = cupon.imagen;
-      img.alt = cupon.titulo || 'Cupón';
-      img.className = 'w-full h-32 object-cover rounded-md';
-      card.appendChild(img);
-    }
-
-    const titulo = document.createElement('h3');
-    titulo.className = 'text-base font-semibold text-[#424242]';
-    titulo.textContent = cupon.titulo || 'Cupón';
-    card.appendChild(titulo);
-
-    if (cupon.descripcion) {
-      const desc = document.createElement('p');
-      desc.className = 'text-xs text-gray-600';
-      desc.textContent = cupon.descripcion;
-      card.appendChild(desc);
-    }
-
-    const meta = document.createElement('div');
-    meta.className = 'flex flex-wrap items-center justify-between text-xs text-gray-500 gap-2';
-    meta.innerHTML = `
-      <span>Guardado: ${registro.fechaGuardado ? new Date(registro.fechaGuardado).toLocaleDateString('es-PR') : '--'}</span>
-      ${cupon.descuento != null ? `<span>Descuento: ${cupon.descuento}%</span>` : ''}
-    `;
-    card.appendChild(meta);
-
-    const estado = document.createElement('span');
-    estado.className = registro.redimido
-      ? 'inline-flex items-center px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full'
-      : 'inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full';
-    estado.textContent = registro.redimido ? 'Redimido' : 'Disponible';
-    card.appendChild(estado);
-
-    if (registro.redimido && registro.fechaRedimido) {
-      const fechaRedimido = document.createElement('p');
-      fechaRedimido.className = 'text-xs text-gray-500';
-      fechaRedimido.textContent = `Redimido: ${new Date(registro.fechaRedimido).toLocaleString('es-PR')}`;
-      card.appendChild(fechaRedimido);
-    }
-
-    const qrContainer = document.createElement('div');
-    qrContainer.className = 'flex flex-col items-center gap-2 mt-2';
-    const qrLabel = document.createElement('span');
-    qrLabel.className = 'text-xs text-gray-600';
-    qrLabel.textContent = 'Código QR';
-    const qrImg = document.createElement('img');
-    const qrUrl = `${redimirBaseUrl}/redimir-cupon.html?qr=${registro.codigoqr}`;
-    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
-    qrImg.alt = 'Código QR del cupón';
-    qrImg.className = 'w-32 h-32 object-contain';
-    qrContainer.appendChild(qrLabel);
-    qrContainer.appendChild(qrImg);
-    card.appendChild(qrContainer);
-
-    misCuponesList.appendChild(card);
+    const comercioId = cupon.idComercio;
+    const comercioNombre = comercioId ? comercioNombreMap.get(comercioId) || 'Comercio' : 'Comercio';
+    const comercioLogo = comercioId ? comercioLogoMap.get(comercioId) || null : null;
+    const qrUrl = `${QR_REDIMIR_URL}?qr=${registro.codigoqr}`;
+    return {
+      ...registro,
+      cupon: {
+        ...cupon,
+        fechaFin: cupon.fechaFin ?? cupon.fechafin ?? null
+      },
+      comercioNombre,
+      comercioLogo,
+      qrUrl
+    };
   });
 
-  misCuponesSection.classList.remove('hidden');
+  renderCuponesModal();
+}
+
+function renderCuponesModal(mensaje = '') {
+  if (!listaCuponesModal || !cuponesModalMensaje) return;
+
+  listaCuponesModal.innerHTML = '';
+
+  if (mensaje) {
+    cuponesModalMensaje.textContent = mensaje;
+    cuponesModalMensaje.classList.remove('hidden');
+    return;
+  }
+
+  if (!cuponesUsuario.length) {
+    cuponesModalMensaje.textContent = 'No has guardado cupones todavía.';
+    cuponesModalMensaje.classList.remove('hidden');
+    return;
+  }
+
+  cuponesModalMensaje.classList.add('hidden');
+
+  cuponesUsuario.forEach((registro) => {
+    const card = document.createElement('div');
+    card.className = 'flex items-center justify-between gap-3 bg-white rounded-lg shadow p-3 cursor-pointer hover:bg-gray-50 transition';
+    card.addEventListener('click', () => abrirModalCuponQr(registro));
+
+    const infoWrapper = document.createElement('div');
+    infoWrapper.className = 'flex items-center gap-3 flex-1';
+
+    const logo = document.createElement('img');
+    logo.className = 'w-14 h-14 rounded-full object-cover border border-gray-200';
+    if (registro.comercioLogo) {
+      logo.src = registro.comercioLogo;
+      logo.alt = registro.comercioNombre || 'Comercio';
+    } else {
+      logo.src = PLACEHOLDER_COMERCIO_LOGO;
+      logo.alt = 'Logo';
+    }
+
+    const textos = document.createElement('div');
+    textos.className = 'flex-1 text-left';
+    const venceTexto = registro.cupon?.fechaFin
+      ? new Date(registro.cupon.fechaFin).toLocaleDateString('es-PR')
+      : '--';
+    const descripcionTexto = registro.cupon?.descripcion
+      ? `<p class="text-xs text-gray-500 mt-1 line-clamp-2">${registro.cupon.descripcion}</p>`
+      : '';
+    const estadoTexto = registro.redimido ? 'Redimido' : 'Disponible';
+    const estadoClase = registro.redimido
+      ? 'inline-flex items-center px-2 py-1 bg-green-100 text-green-700 rounded-full text-[11px]'
+      : 'inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-[11px]';
+    textos.innerHTML = `
+      <p class="text-sm font-semibold text-[#424242]">${registro.comercioNombre || 'Comercio'}</p>
+      <p class="text-lg font-semibold text-[#424242] mt-1">${registro.cupon?.titulo || 'Cupón'}</p>
+      ${descripcionTexto}
+      <p class="text-xs text-gray-400 mt-1">Vence: ${venceTexto}</p>
+      <span class="${estadoClase} mt-1">${estadoTexto}</span>
+    `;
+
+    infoWrapper.appendChild(logo);
+    infoWrapper.appendChild(textos);
+
+    const btnVer = document.createElement('button');
+    btnVer.type = 'button';
+    btnVer.className = 'text-sky-500 hover:text-sky-600 text-sm font-semibold px-3 py-1 border border-sky-200 rounded-md transition';
+    btnVer.textContent = 'Ver QR';
+    btnVer.addEventListener('click', (event) => {
+      event.stopPropagation();
+      abrirModalCuponQr(registro);
+    });
+
+    card.appendChild(infoWrapper);
+    card.appendChild(btnVer);
+
+    listaCuponesModal.appendChild(card);
+  });
+}
+
+function abrirModalCuponQr(registro) {
+  if (!modalCuponQr || !modalCuponQrImg || !modalCuponQrComercio || !modalCuponQrNombre) return;
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(registro.qrUrl)}`;
+  modalCuponQrImg.src = qrImageUrl;
+  modalCuponQrImg.alt = `QR de ${registro.cupon?.titulo || 'Cupón'}`;
+  modalCuponQrNombre.textContent = registro.cupon?.titulo || '';
+  modalCuponQrComercio.textContent = registro.comercioNombre || 'Comercio';
+  if (modalCuponQrLogo) {
+    if (registro.comercioLogo) {
+      modalCuponQrLogo.src = registro.comercioLogo;
+      modalCuponQrLogo.alt = registro.comercioNombre || 'Comercio';
+      modalCuponQrLogo.classList.remove('hidden');
+    } else {
+      modalCuponQrLogo.classList.add('hidden');
+    }
+  }
+  if (modalCuponQrDescripcion) {
+    if (registro.cupon?.descripcion) {
+      modalCuponQrDescripcion.textContent = registro.cupon.descripcion;
+      modalCuponQrDescripcion.classList.remove('hidden');
+    } else {
+      modalCuponQrDescripcion.textContent = '';
+      modalCuponQrDescripcion.classList.add('hidden');
+    }
+  }
+  modalCuponQr.classList.remove('hidden');
+}
+
+function cerrarModalCuponQr() {
+  modalCuponQr?.classList.add('hidden');
+  if (modalCuponQrDescripcion) {
+    modalCuponQrDescripcion.textContent = '';
+    modalCuponQrDescripcion.classList.add('hidden');
+  }
 }
 
 async function eliminarFavoritoLugar(idLugar, cardElement) {
@@ -1554,6 +1657,30 @@ btnFavoritosPlayas?.addEventListener('click', async () => {
 });
 
 btnCerrarFavoritosPlayas?.addEventListener('click', () => modalFavoritosPlayas?.classList.add('hidden'));
+
+btnCupones?.addEventListener('click', async () => {
+  if (!usuarioId) {
+    window.location.href = `${basePath}/logearse.html`;
+    return;
+  }
+  renderCuponesModal('Cargando cupones...');
+  modalCupones?.classList.remove('hidden');
+  await cargarCuponesUsuario();
+});
+
+btnCerrarCupones?.addEventListener('click', () => modalCupones?.classList.add('hidden'));
+modalCupones?.addEventListener('click', (event) => {
+  if (event.target === modalCupones) {
+    modalCupones.classList.add('hidden');
+  }
+});
+
+btnCerrarCuponQr?.addEventListener('click', cerrarModalCuponQr);
+modalCuponQr?.addEventListener('click', (event) => {
+  if (event.target === modalCuponQr) {
+    cerrarModalCuponQr();
+  }
+});
 
 inputBuscar?.addEventListener('input', (e) => {
   searchQuery = e.target.value.toLowerCase();
