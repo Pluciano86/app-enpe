@@ -2,12 +2,12 @@ import { getPublicBase, calcularTiempoEnVehiculo, formatearHorario } from '../sh
 import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 //import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
+import { supabase } from '../shared/supabaseClient.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -16,9 +16,6 @@ function obtenerIdCategoriaDesdeURL() {
   return parseInt(raw);
 }
 
-const supabaseUrl = 'https://zgjaxanqfkweslkxtayt.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c';
-const supabase = createClient(supabaseUrl, supabaseKey);
 const baseImageUrl = getPublicBase('galeriacomercios');
 
 const contenedorListado = document.getElementById('app');

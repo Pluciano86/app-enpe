@@ -10,35 +10,55 @@ let lonUsuario = null;
 const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const loginPath = isLocalHost ? '/public/logearse.html' : '/logearse.html';
 const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
+const CUPON_PLACEHOLDER = 'https://placehold.co/600x400?text=Cup%C3%B3n';
 
 async function cargarCuponesComercio(idComercio) {
   const seccion = document.getElementById('seccionCupones');
   const contenedor = document.getElementById('cuponContainer');
   const mensaje = document.getElementById('cuponMensaje');
+  const indicador = document.getElementById('cuponIndicador');
   if (!seccion || !contenedor || !mensaje) return;
 
   contenedor.innerHTML = '';
   mensaje.classList.add('hidden');
   seccion.classList.add('hidden');
+  indicador?.classList.add('hidden');
 
-  const { data: cupones, error } = await supabase
-  .from('cupones')
-  .select('*')
-  .eq('idComercio', idComercio)
-  .eq('activo', true)
-  .gte('fechaFin', new Date().toISOString())
-  .order('fechaInicio', { ascending: false });
+  const ahoraISO = new Date().toISOString();
+  console.log('🔎 Buscando cupones del comercio', { idComercio, ahoraISO });
+
+  const { data: cuponesRaw, error } = await supabase
+    .from('cupones')
+    .select('*')
+    .eq('idComercio', idComercio)
+    .order('fechainicio', { ascending: false });
 
 if (error) {
   console.error('❌ Error cargando cupones del comercio:', error);
   return;
 }
 
-if (!cupones || cupones.length === 0) {
-  mensaje.textContent = 'No hay cupones disponibles en este momento.';
-  mensaje.classList.remove('hidden');
-  return;
-}
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const cupones = (cuponesRaw || []).filter((cupon) => {
+    const activo = cupon.activo !== false;
+    const fechaFinValor = cupon.fechaFin || cupon.fechafin || null;
+    const vigente = !fechaFinValor ? true : new Date(fechaFinValor).getTime() >= hoy.getTime();
+    return activo && vigente;
+  });
+
+  console.log('📦 Cupones filtrados:', cupones.length);
+
+  if (!cupones.length) {
+    if ((cuponesRaw || []).length) {
+      console.warn('⚠️ Se encontraron cupones pero fueron filtrados por activo/fecha.', cuponesRaw);
+    } else {
+      console.log('ℹ️ No hay cupones en la tabla para este comercio.');
+    }
+    mensaje.textContent = 'No hay cupones disponibles en este momento.';
+    mensaje.classList.remove('hidden');
+    return;
+  }
 
   const { data: { user } } = await supabase.auth.getUser();
   console.log('Cupones del comercio:', cupones);
@@ -83,57 +103,63 @@ if (!cupones || cupones.length === 0) {
 
   cupones.forEach((cupon) => {
     const card = document.createElement('div');
-    card.className = 'border border-gray-200 rounded-lg shadow-sm p-4 flex flex-col gap-3 bg-white';
+    card.className =
+      'border border-gray-200 rounded-xl shadow-sm p-4 flex flex-col gap-4 bg-white min-w-[280px] max-w-[280px] snap-center flex-shrink-0 h-[420px]';
 
-    if (cupon.imagen) {
-      const imgWrapper = document.createElement('div');
-      imgWrapper.className = 'relative rounded-md overflow-hidden h-40';
-      const img = document.createElement('img');
-      img.src = cupon.imagen;
-      img.alt = cupon.titulo || 'Cupón';
-      img.className = 'w-full h-full object-cover';
-      imgWrapper.appendChild(img);
-      card.appendChild(imgWrapper);
-    }
+    const cuerpo = document.createElement('div');
+    cuerpo.className = 'flex flex-col gap-3 flex-1';
+
+    const imgWrapper = document.createElement('div');
+    imgWrapper.className = 'relative rounded-xl overflow-hidden h-48 md:h-40';
+    const img = document.createElement('img');
+    img.src = cupon.imagen || CUPON_PLACEHOLDER;
+    img.alt = cupon.titulo || 'Cupón';
+    img.loading = 'lazy';
+    img.className = 'w-full h-full object-cover';
+    imgWrapper.appendChild(img);
+    cuerpo.appendChild(imgWrapper);
 
     const tituloEl = document.createElement('h3');
-    tituloEl.className = 'text-lg font-semibold text-[#424242]';
+    tituloEl.className = 'text-lg font-semibold text-[#424242] leading-tight';
     tituloEl.textContent = cupon.titulo || 'Cupón';
-    card.appendChild(tituloEl);
+    cuerpo.appendChild(tituloEl);
 
     if (cupon.descripcion) {
-      const descEl = document.createElement('p');
-      descEl.className = 'text-sm text-gray-600';
-      descEl.textContent = cupon.descripcion;
-      card.appendChild(descEl);
+      const descWrapper = document.createElement('div');
+      descWrapper.className = 'text-sm text-gray-600 leading-snug flex items-center justify-center min-h-[70px] text-center px-2 line-clamp-3';
+      descWrapper.textContent = cupon.descripcion;
+      cuerpo.appendChild(descWrapper);
     }
 
     if (cupon.descuento != null) {
       const desc = document.createElement('p');
       desc.className = 'text-sm font-medium text-green-600';
       desc.textContent = `Descuento: ${cupon.descuento}%`;
-      card.appendChild(desc);
+      cuerpo.appendChild(desc);
     }
 
-    const fechasEl = document.createElement('p');
-    fechasEl.className = 'text-xs text-gray-500';
-    fechasEl.textContent = `Válido del ${cupon.fechaInicio?.slice(0, 10) || '--'} al ${cupon.fechaFin?.slice(0, 10) || '--'}`;
-    card.appendChild(fechasEl);
+    card.appendChild(cuerpo);
+
+    const footer = document.createElement('div');
+    footer.className = 'flex flex-col gap-2';
+
+    const fechaFinValor = cupon.fechaFin || cupon.fechafin || null;
+    if (fechaFinValor) {
+      const fechaLegible = new Date(fechaFinValor).toLocaleDateString('es-PR', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      });
+      const fechasEl = document.createElement('p');
+      fechasEl.className = 'text-xs text-gray-500';
+      fechasEl.textContent = `Válido hasta ${fechaLegible}`;
+      footer.appendChild(fechasEl);
+    }
 
     const disponiblesTotal = cupon.cantidadDisponible ?? 0;
     const usados = totalesMap.get(cupon.id) || 0;
     const agotado = disponiblesTotal > 0 && usados >= disponiblesTotal;
 
-    const estadoRow = document.createElement('div');
-    estadoRow.className = 'flex items-center justify-between text-xs text-gray-500';
-    const cantidadTexto = disponiblesTotal > 0
-      ? `Disponibles: ${Math.max(disponiblesTotal - usados, 0)} de ${disponiblesTotal}`
-      : 'Disponibilidad ilimitada';
-    estadoRow.innerHTML = `<span>${cantidadTexto}</span>`;
-    card.appendChild(estadoRow);
-
     const acciones = document.createElement('div');
-    acciones.className = 'mt-2';
+    acciones.className = 'mt-1';
 
     const guardado = guardadosMap.get(cupon.id);
     console.log('Guardado encontrado:', cupon.id, guardado);
@@ -200,7 +226,6 @@ if (!cupones || cupones.length === 0) {
           estado.className = 'inline-flex items-center px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full';
           estado.textContent = 'Ya guardado';
           acciones.appendChild(estado);
-          estadoRow.innerHTML = `<span>${disponiblesTotal > 0 ? `Disponibles: ${Math.max(disponiblesTotal - (totalesMap.get(cupon.id) || 0), 0)} de ${disponiblesTotal}` : 'Disponibilidad ilimitada'}</span>`;
         } catch (error) {
           console.error('🛑 Error inesperado guardando cupón:', error);
           alert('No se pudo guardar el cupón. Intenta nuevamente.');
@@ -211,9 +236,19 @@ if (!cupones || cupones.length === 0) {
       acciones.appendChild(btnGuardar);
     }
 
-    card.appendChild(acciones);
+    footer.appendChild(acciones);
+    card.appendChild(footer);
     contenedor.appendChild(card);
   });
+
+  if (cupones.length > 1) {
+    if (indicador) {
+      indicador.textContent = `(${cupones.length} cupones disponibles)`;
+      indicador.classList.remove('hidden');
+    }
+  } else {
+    indicador?.classList.add('hidden');
+  }
 
   seccion.classList.remove('hidden');
 }

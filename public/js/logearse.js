@@ -228,7 +228,8 @@ async function init() {
       });
 
       if (errorSignup || !signup?.user?.id) {
-        errorRegistro.textContent = 'Error creando la cuenta.';
+        const mensaje = errorSignup?.message || 'Error creando la cuenta.';
+        errorRegistro.textContent = mensaje;
         errorRegistro.classList.remove('hidden');
         return;
       }
@@ -270,12 +271,13 @@ async function init() {
       if (!loginError) {
         window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
       } else {
-        alert('Cuenta creada, pero necesitas iniciar sesión.');
+        const mensaje = loginError?.message || 'Cuenta creada, pero necesitas iniciar sesión.';
+        alert(mensaje);
         window.location.reload();
       }
     } catch (err) {
       console.error("Error en registro:", err);
-      errorRegistro.textContent = "Error al crear la cuenta.";
+      errorRegistro.textContent = err?.message || "Error al crear la cuenta.";
       errorRegistro.classList.remove('hidden');
     }
   });

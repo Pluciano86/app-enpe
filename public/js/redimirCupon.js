@@ -200,17 +200,23 @@ const obtenerInfoComercio = async (idComercio, comercioBase = null) => {
 const actualizarEstadoRedencion = () => {
   if (!btnRedimirEl || !mensajeCuponEl) return;
 
-  if (!cuponUsuarioActual) {
+  const estaRedimido = cuponUsuarioActual
+    ? cuponUsuarioActual.redimido
+    : cuponActual?.activo === false;
+
+  if (!cuponActual) {
     btnRedimirEl.classList.add('hidden');
     btnRedimirEl.disabled = true;
-    actualizarMensaje(mensajeCuponEl, 'No se encontró un registro asociado para redimir este cupón.', 'text-red-600', MENSAJE_CUPON_BASE);
+    actualizarMensaje(mensajeCuponEl, 'Ingresa un código para validar el cupón.', 'text-gray-500', MENSAJE_CUPON_BASE);
     return;
   }
 
-  if (cuponUsuarioActual.redimido) {
+  if (estaRedimido) {
     btnRedimirEl.classList.add('hidden');
     btnRedimirEl.disabled = true;
-    const fechaTexto = formatearFechaHora(cuponUsuarioActual.fechaRedimido);
+    const fechaTexto = cuponUsuarioActual?.fechaRedimido
+      ? formatearFechaHora(cuponUsuarioActual.fechaRedimido)
+      : '';
     const aviso = fechaTexto
       ? `Este cupón ya fue redimido el ${fechaTexto}.`
       : 'Este cupón ya fue redimido.';
@@ -265,11 +271,11 @@ const renderizarCupon = () => {
 
 const cargarDatosIniciales = async () => {
   if (!btnValidarEl) return;
-  if (inputCodigoEl) inputCodigoEl.disabled = true;
+  if (inputCodigoEl) inputCodigoEl.disabled = false;
 
   if (!qrParam) {
-    actualizarMensaje(mensajeValidacionEl, 'No se encontró el código del QR en la URL.', 'text-red-600', MENSAJE_VALIDACION_BASE);
-    btnValidarEl.disabled = true;
+    actualizarMensaje(mensajeValidacionEl, 'Ingresa el código secreto para validar el cupón.', 'text-gray-500', MENSAJE_VALIDACION_BASE);
+    btnValidarEl.disabled = false;
     return;
   }
 
@@ -371,25 +377,51 @@ const validarCodigo = async () => {
     return;
   }
 
-  if (!cuponActual) {
-    actualizarMensaje(mensajeValidacionEl, 'Cupón no disponible para validar.', 'text-red-600', MENSAJE_VALIDACION_BASE);
-    return;
-  }
-
   actualizarMensaje(mensajeValidacionEl, 'Validando código...', 'text-gray-500', MENSAJE_VALIDACION_BASE);
   btnValidarEl.disabled = true;
 
   try {
-    const codigoReal = Number(cuponActual.codigosecreto ?? cuponActual.codigoSecreto);
-    if (Number.isNaN(codigoReal)) {
-      actualizarMensaje(mensajeValidacionEl, 'El cupón no tiene un código secreto válido configurado.', 'text-orange-600', MENSAJE_VALIDACION_BASE);
+    const { data: cuponPorCodigo, error } = await supabase
+      .from('cupones')
+      .select(`
+        *,
+        Comercios (
+          id,
+          nombre,
+          logo,
+          municipio,
+          idMunicipio
+        )
+      `)
+      .eq('codigosecreto', codigoNumero)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error validando código:', error);
+      actualizarMensaje(mensajeValidacionEl, 'No fue posible validar el código.', 'text-red-600', MENSAJE_VALIDACION_BASE);
       return;
     }
 
-    if (codigoNumero !== codigoReal) {
+    if (!cuponPorCodigo) {
       actualizarMensaje(mensajeValidacionEl, 'Código incorrecto o cupón no encontrado.', 'text-red-600', MENSAJE_VALIDACION_BASE);
       return;
     }
+
+    if (cuponPorCodigo.activo === false) {
+      actualizarMensaje(mensajeValidacionEl, 'Este cupón está inactivo o ya fue redimido.', 'text-red-600', MENSAJE_VALIDACION_BASE);
+      return;
+    }
+
+    if (cuponUsuarioActual && cuponUsuarioActual.idCupon !== cuponPorCodigo.id) {
+      actualizarMensaje(mensajeValidacionEl, 'El código ingresado no corresponde al cupón escaneado.', 'text-red-600', MENSAJE_VALIDACION_BASE);
+      return;
+    }
+
+    cuponActual = cuponUsuarioActual?.cupon
+      ? { ...cuponUsuarioActual.cupon, ...cuponPorCodigo }
+      : cuponPorCodigo;
+
+    comercioActual = await obtenerInfoComercio(cuponPorCodigo.idComercio, cuponPorCodigo.Comercios || null);
 
     actualizarMensaje(mensajeValidacionEl, '', 'text-gray-600', MENSAJE_VALIDACION_BASE);
     renderizarCupon();
@@ -404,12 +436,13 @@ const validarCodigo = async () => {
 const redimirCupon = async () => {
   if (!btnRedimirEl) return;
 
-  if (!cuponUsuarioActual) {
-    actualizarMensaje(mensajeCuponEl, 'No se identificó un registro para redimir este cupón.', 'text-red-600', MENSAJE_CUPON_BASE);
+  if (!cuponActual) {
+    actualizarMensaje(mensajeCuponEl, 'Valida primero el código del cupón.', 'text-red-600', MENSAJE_CUPON_BASE);
     return;
   }
 
-  if (cuponUsuarioActual.redimido) {
+  const yaRedimido = cuponUsuarioActual ? cuponUsuarioActual.redimido : cuponActual.activo === false;
+  if (yaRedimido) {
     actualizarMensaje(mensajeCuponEl, 'Este cupón ya fue redimido.', 'text-orange-600', MENSAJE_CUPON_BASE);
     return;
   }
@@ -419,27 +452,39 @@ const redimirCupon = async () => {
 
   try {
     const fechaRedimido = new Date().toISOString();
-    const { error } = await supabase
-      .from('cuponesUsuarios')
-      .update({
-        redimido: true,
-        fechaRedimido: fechaRedimido
-      })
-      .eq('id', cuponUsuarioActual.id);
 
-    if (error) {
-      console.error('Error redimiendo cupón:', error);
-      actualizarMensaje(mensajeCuponEl, 'Error al redimir el cupón. Inténtelo nuevamente.', 'text-red-600', MENSAJE_CUPON_BASE);
-      btnRedimirEl.disabled = false;
-      return;
+    if (cuponUsuarioActual) {
+      const { error } = await supabase
+        .from('cuponesUsuarios')
+        .update({
+          redimido: true,
+          fechaRedimido: fechaRedimido
+        })
+        .eq('id', cuponUsuarioActual.id);
+
+      if (error) {
+        throw error;
+      }
+
+      cuponUsuarioActual.redimido = true;
+      cuponUsuarioActual.fechaRedimido = fechaRedimido;
+    } else {
+      const { error } = await supabase
+        .from('cupones')
+        .update({ activo: false })
+        .eq('id', cuponActual.id);
+
+      if (error) {
+        throw error;
+      }
+
+      cuponActual.activo = false;
     }
 
-    cuponUsuarioActual.redimido = true;
-    cuponUsuarioActual.fechaRedimido = fechaRedimido;
     actualizarMensaje(mensajeCuponEl, 'Cupón redimido exitosamente.', 'text-emerald-600', MENSAJE_CUPON_BASE);
     actualizarEstadoRedencion();
   } catch (error) {
-    console.error('Error inesperado redimiendo cupón:', error);
+    console.error('Error redimiendo cupón:', error);
     actualizarMensaje(mensajeCuponEl, 'Error al redimir el cupón. Inténtelo nuevamente.', 'text-red-600', MENSAJE_CUPON_BASE);
     btnRedimirEl.disabled = false;
   }

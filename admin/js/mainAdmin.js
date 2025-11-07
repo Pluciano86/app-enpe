@@ -1,11 +1,6 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 import { getPublicBase } from '../shared/utils.js';
 import { resolvePath } from '../shared/pathResolver.js';
-
-export const supabase = createClient(
-  'https://zgjaxanqfkweslkxtayt.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnamF4YW5xZmt3ZXNsa3h0YXl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyNzk3NjgsImV4cCI6MjA2Mjg1NTc2OH0.Abif2Fu2uHyby--t_TAacEbjG8jCxmgsCbLx6AinT6c'
-);
+import { supabase } from '../shared/supabaseClient.js';
 
 const baseImageUrl = getPublicBase('galeriacomercios');
 const UNKNOWN_CATEGORY_LABEL = 'Sin categoría';

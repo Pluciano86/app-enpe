@@ -133,9 +133,14 @@
 
 <section id="seccionCupones" class="px-6 md:px-10 mt-6 hidden">
   <div class="bg-white rounded-lg shadow-sm p-5">
-    <h2 class="text-xl font-semibold text-[#424242] mb-4">Ofertas y Descuentos</h2>
-    <div id="cuponContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-    <p id="cuponMensaje" class="text-sm text-gray-500 hidden">No hay cupones disponibles en este momento.</p>
+    <div class="flex flex-col items-center gap-1 md:flex-row md:gap-3 md:justify-center text-center mb-3">
+      <h2 class="text-xl font-semibold text-[#424242]">Ofertas y Descuentos</h2>
+      <div id="cuponIndicador" class="text-sm text-gray-500 hidden"></div>
+    </div>
+    <div id="cuponSliderWrapper" class="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+      <div id="cuponContainer" class="flex gap-4 snap-x snap-mandatory min-h-[280px] pb-2"></div>
+    </div>
+    <p id="cuponMensaje" class="text-sm text-gray-500 hidden mt-3">No hay cupones disponibles en este momento.</p>
   </div>
 </section>
 
