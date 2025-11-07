@@ -385,7 +385,7 @@ const validarCodigo = async () => {
       .from('cupones')
       .select(`
         *,
-        Comercios (
+        comercios:Comercios (
           id,
           nombre,
           logo,
@@ -394,6 +394,7 @@ const validarCodigo = async () => {
         )
       `)
       .eq('codigosecreto', codigoNumero)
+      .eq('activo', true)
       .maybeSingle();
 
     if (error) {
@@ -403,7 +404,7 @@ const validarCodigo = async () => {
     }
 
     if (!cuponPorCodigo) {
-      actualizarMensaje(mensajeValidacionEl, 'Código incorrecto o cupón no encontrado.', 'text-red-600', MENSAJE_VALIDACION_BASE);
+      actualizarMensaje(mensajeValidacionEl, 'Cupón no encontrado o inactivo.', 'text-red-600', MENSAJE_VALIDACION_BASE);
       return;
     }
 
@@ -421,7 +422,7 @@ const validarCodigo = async () => {
       ? { ...cuponUsuarioActual.cupon, ...cuponPorCodigo }
       : cuponPorCodigo;
 
-    comercioActual = await obtenerInfoComercio(cuponPorCodigo.idComercio, cuponPorCodigo.Comercios || null);
+    comercioActual = await obtenerInfoComercio(cuponPorCodigo.idComercio, cuponPorCodigo.comercios || null);
 
     actualizarMensaje(mensajeValidacionEl, '', 'text-gray-600', MENSAJE_VALIDACION_BASE);
     renderizarCupon();
