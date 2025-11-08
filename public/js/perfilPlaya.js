@@ -1,10 +1,8 @@
 // public/js/perfilPlaya.js
 import { supabase } from "../shared/supabaseClient.js";
+import { requireAuth } from "./authGuard.js";
 import { obtenerClima } from "./obtenerClima.js";
 import { calcularTiemposParaLista } from "./calcularTiemposParaLista.js";
-
-const isLocal = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost";
-const basePath = isLocal ? "/public" : "";
 
 let usuarioId = null;
 let playaFavorita = false;
@@ -50,6 +48,24 @@ function actualizarFavoritoPlayaUI(icono, texto) {
   }
 }
 
+async function sincronizarFavoritoPlaya(idPlaya) {
+  if (!usuarioId) {
+    playaFavorita = false;
+    return;
+  }
+  const { data, error } = await supabase
+    .from("favoritosPlayas")
+    .select("id")
+    .eq("idusuario", usuarioId)
+    .eq("idplaya", idPlaya)
+    .maybeSingle();
+  if (error) {
+    console.error("Error verificando favorito de playa:", error);
+    return;
+  }
+  playaFavorita = !!data;
+}
+
 async function inicializarFavoritoPlaya(idPlaya) {
   const btnFavorito = document.getElementById("btnFavoritoPlaya");
   if (!btnFavorito || !idPlaya) return;
@@ -57,38 +73,28 @@ async function inicializarFavoritoPlaya(idPlaya) {
   const icono = btnFavorito.querySelector("i");
   const texto = btnFavorito.querySelector("span");
 
-  const { data: { user } } = await supabase.auth.getUser();
-  console.log("Usuario:", user?.id);
-
-  if (!user) {
-    btnFavorito.addEventListener("click", () => {
-      window.location.href = `${basePath}/logearse.html`;
-    });
-    btnFavorito.classList.add("opacity-70");
-    return;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      usuarioId = user.id;
+      await sincronizarFavoritoPlaya(idPlaya);
+    }
+  } catch (error) {
+    console.warn("⚠️ No se pudo obtener el usuario actual:", error?.message);
   }
-
-  usuarioId = user.id;
-
-  const { data: favoritoData, error: favoritoError } = await supabase
-    .from("favoritosPlayas")
-    .select("id")
-    .eq("idusuario", usuarioId)
-    .eq("idplaya", idPlaya)
-    .maybeSingle();
-
-  if (favoritoError) {
-    console.error("Error verificando favorito de playa:", favoritoError);
-  }
-  console.log("Favorito encontrado:", favoritoData);
-
-  playaFavorita = !!favoritoData;
   actualizarFavoritoPlayaUI(icono, texto);
 
   btnFavorito.addEventListener("click", async () => {
     if (!usuarioId) {
-      window.location.href = `${basePath}/logearse.html`;
-      return;
+      try {
+        const authUser = await requireAuth("favoriteBeach");
+        if (!authUser?.id) return;
+        usuarioId = authUser.id;
+        await sincronizarFavoritoPlaya(idPlaya);
+        actualizarFavoritoPlayaUI(icono, texto);
+      } catch {
+        return;
+      }
     }
 
     if (playaFavorita) {

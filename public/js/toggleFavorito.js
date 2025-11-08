@@ -1,40 +1,60 @@
+import { supabase } from '../shared/supabaseClient.js';
+import { requireAuth } from './authGuard.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
   const btn = document.getElementById('btnFavorito');
   const icono = btn?.querySelector('i');
   const texto = btn?.querySelector('span');
-  const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-  const basePath = isLocal ? '/public' : '';
-
   const idComercio = new URLSearchParams(window.location.search).get('id');
   let usuarioId = null;
   let esFavorito = false;
 
   if (!btn || !idComercio) return;
 
-  // Verificar sesión
-  const { supabase } = await import('../shared/supabaseClient.js');
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  async function sincronizarEstadoFavorito() {
+    if (!usuarioId) {
+      esFavorito = false;
+      actualizarUI();
+      return;
+    }
+    const { data, error } = await supabase
+      .from('favoritosusuarios')
+      .select('id')
+      .eq('idusuario', usuarioId)
+      .eq('idcomercio', parseInt(idComercio, 10))
+      .maybeSingle();
+    if (error) {
+      console.error('❌ Error verificando favorito:', error.message);
+      return;
+    }
+    esFavorito = !!data;
+    actualizarUI();
+  }
 
-  usuarioId = user.id;
-
-  // Verificar si ya es favorito
-  const { data } = await supabase
-    .from('favoritosusuarios')
-    .select('id')
-    .eq('idusuario', usuarioId)
-    .eq('idcomercio', parseInt(idComercio))
-    .maybeSingle();
-
-  esFavorito = !!data;
-  actualizarUI();
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      usuarioId = user.id;
+      await sincronizarEstadoFavorito();
+    } else {
+      actualizarUI();
+    }
+  } catch (error) {
+    console.warn('⚠️ No se pudo obtener el usuario actual:', error?.message);
+    actualizarUI();
+  }
 
   // Toggle favorito
   btn.addEventListener('click', async () => {
     if (!usuarioId) {
-      alert(`Para añadir a este comercio a favoritos debes iniciar sesión.`);
-      window.location.href = `${basePath}/logearse.html`;
-      return;
+      try {
+        const user = await requireAuth('favoriteCommerce');
+        if (!user?.id) return;
+        usuarioId = user.id;
+        await sincronizarEstadoFavorito();
+      } catch {
+        return;
+      }
     }
 
     if (esFavorito) {

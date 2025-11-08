@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { requireAuth } from './authGuard.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';
@@ -7,8 +8,6 @@ import { mostrarLugaresCercanos } from './lugaresCercanos.js';
 const idComercio = new URLSearchParams(window.location.search).get('id');
 let latUsuario = null;
 let lonUsuario = null;
-const isLocalHost = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-const loginPath = isLocalHost ? '/public/logearse.html' : '/logearse.html';
 const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
 const CUPON_PLACEHOLDER = 'https://placehold.co/600x400?text=Cup%C3%B3n';
 
@@ -61,6 +60,7 @@ if (error) {
   }
 
   const { data: { user } } = await supabase.auth.getUser();
+  let currentUser = user ?? null;
   console.log('Cupones del comercio:', cupones);
   console.log('Usuario actual (cupones):', user?.id);
 
@@ -146,9 +146,10 @@ if (error) {
 
     const estadoRow = document.createElement('div');
     estadoRow.className = 'flex items-center justify-between text-xs text-gray-500';
-    const cantidadTexto = disponiblesTotal > 0
-      ? `Disponibles: ${Math.max(disponiblesTotal - usados, 0)} de ${disponiblesTotal}`
-;      : 'Disponibilidad ilimitada'
+    const cantidadTexto =
+  disponiblesTotal > 0
+    ? `Disponibles: ${Math.max(disponiblesTotal - usados, 0)} de ${disponiblesTotal}`
+    : 'Disponibilidad ilimitada';
     estadoRow.innerHTML = `<span>${cantidadTexto}</span>`;
     card.appendChild(estadoRow);
 
@@ -158,16 +159,7 @@ if (error) {
     const guardado = guardadosMap.get(cupon.id);
     console.log('Guardado encontrado:', cupon.id, guardado);
 
-    if (!user) {
-      const btnLogin = document.createElement('button');
-      btnLogin.type = 'button';
-      btnLogin.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition w-full';
-      btnLogin.textContent = 'Guardar cupón';
-      btnLogin.addEventListener('click', () => {
-        window.location.href = loginPath;
-      });
-      acciones.appendChild(btnLogin);
-    } else if (guardado) {
+    if (guardado) {
       const estado = document.createElement('span');
       estado.className = guardado.redimido
         ? 'inline-flex items-center px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full'
@@ -187,6 +179,21 @@ if (error) {
       btnGuardar.addEventListener('click', async () => {
         btnGuardar.disabled = true;
         btnGuardar.textContent = 'Guardando...';
+        if (!currentUser) {
+          try {
+            const authUser = await requireAuth('saveCoupon');
+            if (!authUser?.id) {
+              btnGuardar.disabled = false;
+              btnGuardar.textContent = 'Guardar cupón';
+              return;
+            }
+            currentUser = authUser;
+          } catch {
+            btnGuardar.disabled = false;
+            btnGuardar.textContent = 'Guardar cupón';
+            return;
+          }
+        }
         try {
           const codigoqr = crypto.randomUUID();
           const qrUrl = `${QR_REDIMIR_URL}?qr=${codigoqr}`;
@@ -195,7 +202,7 @@ if (error) {
             .from('cuponesUsuarios')
             .insert({
               idCupon: cupon.id,
-              idUsuario: user.id,
+              idUsuario: currentUser.id,
               codigoqr,
               redimido: false,
               fechaGuardado: new Date().toISOString()

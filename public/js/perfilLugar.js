@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { requireAuth } from './authGuard.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';
@@ -18,9 +19,6 @@ const tiempoEl = document.getElementById('tiempoVehiculo');
 const btnFavorito = document.getElementById('btnFavorito');
 const estadoHorarioIcono = document.querySelector('#estadoHorarioContainer i');
 const estadoHorarioTexto = document.querySelector('#estadoHorarioContainer p');
-
-const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
-const basePath = isLocal ? '/public' : '';
 
 let usuarioId = null;
 let lugarFavorito = false;
@@ -74,43 +72,51 @@ function aplicarColoresLugar(colorPrimario, colorSecundario) {
   if (colorSecundario) root.style.setProperty('--lugar-color-secundario', colorSecundario);
 }
 
-async function inicializarFavorito(lugarId) {
-  if (!btnFavorito) return;
-  const icono = btnFavorito.querySelector('i');
-  const texto = btnFavorito.querySelector('span');
-
-  const { data: { user } } = await supabase.auth.getUser();
-  console.log('Usuario actual:', user?.id);
-  if (!user) {
-    btnFavorito.addEventListener('click', () => {
-      window.location.href = `${basePath}/logearse.html`;
-    });
-    btnFavorito.classList.add('opacity-70');
+async function sincronizarFavoritoLugar(lugarId) {
+  if (!usuarioId) {
+    lugarFavorito = false;
     return;
   }
-
-  usuarioId = user.id;
-
-  console.log('Verificando si es favorito...');
-  const { data: favoritoData, error: favoritoError } = await supabase
+  const { data, error } = await supabase
     .from('favoritosLugares')
     .select('id')
     .eq('idusuario', usuarioId)
     .eq('idlugar', lugarId)
     .maybeSingle();
-
-  if (favoritoError) {
-    console.error('Error verificando favorito:', favoritoError);
+  if (error) {
+    console.error('Error verificando favorito:', error);
+    return;
   }
-  console.log('Resultado favorito:', favoritoData);
+  lugarFavorito = !!data;
+}
 
-  lugarFavorito = !!favoritoData;
+async function inicializarFavorito(lugarId) {
+  if (!btnFavorito || !lugarId) return;
+  const icono = btnFavorito.querySelector('i');
+  const texto = btnFavorito.querySelector('span');
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      usuarioId = user.id;
+      await sincronizarFavoritoLugar(lugarId);
+    }
+  } catch (error) {
+    console.warn('⚠️ No se pudo obtener el usuario actual:', error?.message);
+  }
   actualizarFavoritoUI(icono, texto);
 
   btnFavorito.addEventListener('click', async () => {
     if (!usuarioId) {
-      window.location.href = `${basePath}/logearse.html`;
-      return;
+      try {
+        const authUser = await requireAuth('favoritePlace');
+        if (!authUser?.id) return;
+        usuarioId = authUser.id;
+        await sincronizarFavoritoLugar(lugarId);
+        actualizarFavoritoUI(icono, texto);
+      } catch {
+        return;
+      }
     }
 
     if (lugarFavorito) {
