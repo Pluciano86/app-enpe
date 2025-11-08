@@ -132,19 +132,27 @@ async function cargarEventos() {
     return;
   }
 
-  eventos = (data ?? []).map((evento) => {
-    const { eventoFechas, ...resto } = evento;
-    // 🔍 Filtrar eventos expirados (todas las fechas pasaron)
-eventos = eventos.filter(ev => !eventoExpirado(ev));
-    const categoriaInfo = categorias[resto.categoria] || {};
-    return {
-      ...resto,
-      municipioNombre: municipios[resto.municipio_id] || '',
-      categoriaNombre: categoriaInfo.nombre || '',
-      categoriaIcono: categoriaInfo.icono || '',
-      fechas: ordenarFechas(eventoFechas || [])
-    };
-  });
+  const hoyISO = new Date().toISOString().slice(0, 10);
+
+  eventos = (data ?? [])
+    .map((evento) => {
+      const { eventoFechas, ...resto } = evento;
+      const fechasOrdenadas = ordenarFechas(eventoFechas || []);
+      const ultimaFecha = fechasOrdenadas.length
+        ? fechasOrdenadas[fechasOrdenadas.length - 1].fecha
+        : null;
+      const categoriaInfo = categorias[resto.categoria] || {};
+      const eventoNormalizado = {
+        ...resto,
+        municipioNombre: municipios[resto.municipio_id] || '',
+        categoriaNombre: categoriaInfo.nombre || '',
+        categoriaIcono: categoriaInfo.icono || '',
+        fechas: fechasOrdenadas,
+        ultimaFecha
+      };
+      return eventoNormalizado;
+    })
+    .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO);
 
   await renderizarEventos();
 }

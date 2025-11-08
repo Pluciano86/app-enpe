@@ -81,6 +81,19 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
 
     console.log("🎟️ Eventos obtenidos (municipio/área):", eventos);
 
+    const hoyISO = new Date().toISOString().slice(0, 10);
+    const filtrarExpirados = (lista = []) =>
+      (lista || []).map((evento) => ({
+        ...evento,
+        eventoFechas: (evento.eventoFechas || []).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+        ultimaFecha: evento.eventoFechas?.length
+          ? evento.eventoFechas[evento.eventoFechas.length - 1].fecha
+          : null,
+      }))
+      .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO);
+
+    eventos = filtrarExpirados(eventos);
+
     let mensajeFallback = "";
 
     // 🔹 Si no hay eventos en municipio → buscar en el área
@@ -108,7 +121,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
         .limit(20);
 
       if (areaError) throw areaError;
-      eventos = eventosArea || [];
+      eventos = filtrarExpirados(eventosArea || []);
 
       // Mostrar mensaje visual
       if (nombreMunicipio && nombreArea) {
