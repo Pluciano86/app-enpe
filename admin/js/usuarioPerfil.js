@@ -48,7 +48,7 @@ async function cargarUsuario() {
       telefono,
       email,
       imagen,
-      created_at,
+      creado_en,
       municipio,
       Municipios(nombre),
       UsuarioComercios(

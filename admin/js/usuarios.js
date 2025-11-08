@@ -167,7 +167,7 @@ async function cargarUsuarios() {
       nombre,
       apellido,
       imagen,
-      created_at,
+      creado_en,
       Municipios:Municipios(nombre),
       UsuarioComercios:UsuarioComercios(
         rol,

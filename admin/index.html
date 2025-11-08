@@ -1360,7 +1360,7 @@ console.log("📅 range:", range);
       try {
         const { data: usersData, error: usersError } = await supabase
           .from("usuarios")
-          .select("id, created_at, municipio, fechaNacimiento");
+          .select("id, creado_en, municipio, fechaNacimiento");
 
         if (usersError) {
           throw usersError;
@@ -1389,7 +1389,7 @@ console.log("📅 range:", range);
             (municipioKey && municipioNameById.get(municipioKey)) || UNKNOWN_MUNICIPALITY_LABEL;
 
           return {
-            createdAt: item.created_at ? new Date(item.created_at) : null,
+            createdAt: item.creado_en ? new Date(item.creado_en) : null,
             municipioId: municipioId ?? null,
             municipioName,
             birthDate: item.fechaNacimiento ? new Date(item.fechaNacimiento) : null,

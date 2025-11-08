@@ -66,7 +66,20 @@ const filtroOrdenPlayas = document.getElementById('filtroOrdenPlayas');
 const btnCupones = document.getElementById('btnCupones');
 const modalCupones = document.getElementById('modalCupones');
 const btnCerrarCupones = document.getElementById('btnCerrarCupones');
-const listaCuponesModal = document.getElementById('listaCuponesModal');
+const cuponFiltroComercio = document.getElementById('cuponFiltroComercio');
+const cuponFiltroMunicipio = document.getElementById('cuponFiltroMunicipio');
+const cuponFiltroCategoria = document.getElementById('cuponFiltroCategoria');
+const btnLimpiarFiltrosCupones = document.getElementById('btnLimpiarFiltrosCupones');
+const cuponesGuardadosLista = document.getElementById('cuponesGuardadosLista');
+const cuponesRedimidosLista = document.getElementById('cuponesRedimidosLista');
+const cuponesGuardadosMensaje = document.getElementById('cuponesGuardadosMensaje');
+const cuponesRedimidosMensaje = document.getElementById('cuponesRedimidosMensaje');
+const cuponesGuardadosBadge = document.getElementById('cuponesGuardadosBadge');
+const cuponesRedimidosBadge = document.getElementById('cuponesRedimidosBadge');
+const cuponesPanels = document.querySelectorAll('[data-cupon-panel]');
+const cuponesTabs = document.querySelectorAll('[data-cupon-tab]');
+const btnCargarMasGuardados = document.getElementById('btnCargarMasGuardados');
+const btnCargarMasRedimidos = document.getElementById('btnCargarMasRedimidos');
 const cuponesModalMensaje = document.getElementById('cuponesModalMensaje');
 const modalCuponQr = document.getElementById('modalCuponQr');
 const btnCerrarCuponQr = document.getElementById('btnCerrarCuponQr');
@@ -98,6 +111,18 @@ let favoritosPlayas = [];
 let searchQueryPlayas = '';
 let cuponesUsuario = [];
 const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
+const CUPONES_POR_PAGINA = 6;
+let cuponesGuardadosPagina = 1;
+let cuponesRedimidosPagina = 1;
+let cuponesTabActiva = 'guardados';
+const filtrosCupones = {
+  guardados: { comercio: '', municipio: '', categoria: '' },
+  redimidos: { comercio: '', municipio: '', categoria: '' }
+};
+const opcionesFiltrosCupones = {
+  guardados: { comercios: [], municipios: [], categorias: [] },
+  redimidos: { comercios: [], municipios: [], categorias: [] }
+};
 
 async function restaurarSesionDesdeHash() {
   const hash = window.location.hash;
@@ -730,10 +755,133 @@ async function cargarFavoritosPlayas() {
 }
 
 
+function resetPaginacionCupones() {
+  cuponesGuardadosPagina = 1;
+  cuponesRedimidosPagina = 1;
+}
+
+function llenarSelectCupones(select, placeholder, items, getValue, getLabel, selectedValue = '') {
+  if (!select) return;
+  select.innerHTML = '';
+  const option = document.createElement('option');
+  option.value = '';
+  option.textContent = placeholder;
+  select.appendChild(option);
+
+  let valueStillAvailable = selectedValue === '';
+
+  (items || []).forEach((item) => {
+    const value = String(getValue(item));
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = getLabel(item);
+    if (value === String(selectedValue)) {
+      valueStillAvailable = true;
+    }
+    select.appendChild(opt);
+  });
+
+  select.value = valueStillAvailable ? String(selectedValue) : '';
+  if (!valueStillAvailable) {
+    const filtros = filtrosCupones[cuponesTabActiva];
+    if (select === cuponFiltroComercio) filtros.comercio = '';
+    if (select === cuponFiltroMunicipio) filtros.municipio = '';
+    if (select === cuponFiltroCategoria) filtros.categoria = '';
+  }
+}
+
+function generarOpcionesDesdeCupones(lista) {
+  const comerciosMap = new Map();
+  const municipiosMap = new Map();
+  const categoriasMap = new Map();
+
+  lista.forEach((registro) => {
+    if (registro.comercioId) {
+      const key = String(registro.comercioId);
+      if (!comerciosMap.has(key)) {
+        comerciosMap.set(key, {
+          value: key,
+          label: registro.comercioNombre || `Comercio #${registro.comercioId}`
+        });
+      }
+    }
+
+    if (registro.comercioMunicipioId) {
+      const key = String(registro.comercioMunicipioId);
+      if (!municipiosMap.has(key)) {
+        municipiosMap.set(key, {
+          value: key,
+          label: registro.comercioMunicipioNombre || `Municipio #${registro.comercioMunicipioId}`
+        });
+      }
+    }
+
+    (registro.categoriasIds || []).forEach((categoriaId, index) => {
+      if (!categoriaId) return;
+      const key = String(categoriaId);
+      if (!categoriasMap.has(key)) {
+        const nombre = registro.categorias?.[index] || `Categoría #${categoriaId}`;
+        categoriasMap.set(key, { value: key, label: nombre });
+      }
+    });
+  });
+
+  return {
+    comercios: Array.from(comerciosMap.values()),
+    municipios: Array.from(municipiosMap.values()),
+    categorias: Array.from(categoriasMap.values())
+  };
+}
+
+function refrescarSelectsCupones() {
+  const opciones = opcionesFiltrosCupones[cuponesTabActiva];
+  const filtros = filtrosCupones[cuponesTabActiva];
+
+  llenarSelectCupones(
+    cuponFiltroComercio,
+    'Todos los comercios',
+    opciones?.comercios || [],
+    (item) => item.value,
+    (item) => item.label,
+    filtros?.comercio || ''
+  );
+  llenarSelectCupones(
+    cuponFiltroMunicipio,
+    'Todos los municipios',
+    opciones?.municipios || [],
+    (item) => item.value,
+    (item) => item.label,
+    filtros?.municipio || ''
+  );
+  llenarSelectCupones(
+    cuponFiltroCategoria,
+    'Todas las categorías',
+    opciones?.categorias || [],
+    (item) => item.value,
+    (item) => item.label,
+    filtros?.categoria || ''
+  );
+}
+
+function aplicarFiltrosACupones(lista, tab) {
+  const filtros = filtrosCupones[tab] || {};
+  return lista.filter((registro) => {
+    if (filtros.comercio && String(registro.comercioId) !== filtros.comercio) return false;
+    if (filtros.municipio && String(registro.comercioMunicipioId) !== filtros.municipio) return false;
+    if (
+      filtros.categoria &&
+      !(registro.categoriasIds || []).map(String).includes(filtros.categoria)
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
 async function cargarCuponesUsuario() {
   if (!usuarioId) return;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('cuponesUsuarios')
     .select(`
       id,
@@ -749,11 +897,26 @@ async function cargarCuponesUsuario() {
         descuento,
         imagen,
         fechafin,
-        idComercio
+        idComercio,
+        Comercios:Comercios (
+          id,
+          nombre,
+          municipio,
+          idMunicipio,
+          ComercioCategorias:ComercioCategorias (
+            idCategoria,
+            Categorias:Categorias (
+              id,
+              nombre
+            )
+          )
+        )
       )
     `)
     .eq('idUsuario', usuarioId)
     .order('fechaGuardado', { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('❌ Error cargando cupones del usuario:', error);
@@ -816,10 +979,23 @@ async function cargarCuponesUsuario() {
 
   cuponesUsuario = registros.map((registro) => {
     const cupon = registro.cupon || {};
-    const comercioId = cupon.idComercio;
-    const comercioNombre = comercioId ? comercioNombreMap.get(comercioId) || 'Comercio' : 'Comercio';
+    const comercioId = cupon.idComercio ?? cupon.Comercios?.id ?? null;
+    const comercioNombre = comercioId
+      ? comercioNombreMap.get(comercioId) || cupon.Comercios?.nombre || 'Comercio'
+      : cupon.Comercios?.nombre || 'Comercio';
     const comercioLogo = comercioId ? comercioLogoMap.get(comercioId) || null : null;
-    const comercioMunicipio = comercioId ? comercioMunicipioMap.get(comercioId) || '' : '';
+    const comercioMunicipioId = cupon.Comercios?.idMunicipio ?? null;
+    const comercioMunicipioNombre =
+      comercioId
+        ? comercioMunicipioMap.get(comercioId) ||
+          cupon.Comercios?.municipio ||
+          ''
+        : cupon.Comercios?.municipio || '';
+    const categoriasRaw = cupon.Comercios?.ComercioCategorias || [];
+    const categorias = categoriasRaw.map((rel) => rel.Categorias?.nombre).filter(Boolean);
+    const categoriasIds = categoriasRaw
+      .map((rel) => rel.idCategoria ?? rel.Categorias?.id)
+      .filter((id) => id !== null && id !== undefined);
     const qrUrl = `${QR_REDIMIR_URL}?qr=${registro.codigoqr}`;
     return {
       ...registro,
@@ -827,45 +1003,69 @@ async function cargarCuponesUsuario() {
         ...cupon,
         fechaFin: cupon.fechaFin ?? cupon.fechafin ?? null
       },
+      comercioId,
       comercioNombre,
       comercioLogo,
-      comercioMunicipio,
+      comercioMunicipioId,
+      comercioMunicipioNombre,
+      categorias,
+      categoriasIds,
       qrUrl
     };
   });
 
+  resetPaginacionCupones();
   renderCuponesModal();
 }
 
-function renderCuponesModal(mensaje = '') {
-  if (!listaCuponesModal || !cuponesModalMensaje) return;
+function formatearFechaCorta(fechaISO) {
+  if (!fechaISO) return '--';
+  const fecha = new Date(fechaISO);
+  if (Number.isNaN(fecha.getTime())) return '--';
+  return fecha.toLocaleDateString('es-PR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
 
-  listaCuponesModal.innerHTML = '';
+function renderListaCupones(lista, contenedor, mensajeEl, { esRedimido }) {
+  if (!contenedor) return;
 
-  if (mensaje) {
-    cuponesModalMensaje.textContent = mensaje;
-    cuponesModalMensaje.classList.remove('hidden');
+  contenedor.innerHTML = '';
+
+  if (!lista.length) {
+    const mensaje = esRedimido
+      ? 'Aún no has redimido cupones con estos criterios.'
+      : 'No tienes cupones guardados con estos criterios.';
+    if (mensajeEl) {
+      mensajeEl.textContent = mensaje;
+      mensajeEl.classList.remove('hidden');
+    } else {
+      contenedor.innerHTML = `<p class="text-sm text-gray-500 text-center">${mensaje}</p>`;
+    }
     return;
   }
 
-  if (!cuponesUsuario.length) {
-    cuponesModalMensaje.textContent = 'No has guardado cupones todavía.';
-    cuponesModalMensaje.classList.remove('hidden');
-    return;
-  }
+  if (mensajeEl) mensajeEl.classList.add('hidden');
 
-  cuponesModalMensaje.classList.add('hidden');
-
-  cuponesUsuario.forEach((registro) => {
+  lista.forEach((registro) => {
     const card = document.createElement('div');
-    card.className = 'flex items-center gap-4 bg-white rounded-2xl shadow p-4 cursor-pointer hover:shadow-md transition';
-    card.addEventListener('click', () => abrirModalCuponQr(registro));
+    card.className = `flex flex-col gap-3 bg-white rounded-2xl border shadow-sm p-4 transition ${
+      esRedimido ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'
+    }`;
 
-    const infoWrapper = document.createElement('div');
-    infoWrapper.className = 'flex items-start gap-3 flex-1';
+    if (!esRedimido) {
+      card.addEventListener('click', () => abrirModalCuponQr(registro));
+    }
 
+    const header = document.createElement('div');
+    header.className = 'flex items-start gap-3';
+
+    const logoWrapper = document.createElement('div');
+    logoWrapper.className = 'w-14 h-14 rounded-full overflow-hidden border border-gray-200 flex-shrink-0 bg-gray-50';
     const logo = document.createElement('img');
-    logo.className = 'w-14 h-14 rounded-full object-cover border border-gray-200 flex-shrink-0';
+    logo.className = 'w-full h-full object-cover';
     if (registro.comercioLogo) {
       logo.src = registro.comercioLogo;
       logo.alt = registro.comercioNombre || 'Comercio';
@@ -873,33 +1073,56 @@ function renderCuponesModal(mensaje = '') {
       logo.src = PLACEHOLDER_COMERCIO_LOGO;
       logo.alt = 'Logo';
     }
+    logoWrapper.appendChild(logo);
 
     const textos = document.createElement('div');
     textos.className = 'flex-1 text-left';
+
+    const municipioTexto = registro.comercioMunicipioNombre
+      ? `<p class="text-xs text-gray-500">${registro.comercioMunicipioNombre}</p>`
+      : '';
+    const categoriasTexto = registro.categorias?.length
+      ? `<p class="text-xs text-gray-400 mt-1">${registro.categorias.join(', ')}</p>`
+      : '';
+
+    textos.innerHTML = `
+      <p class="text-sm font-semibold text-gray-800">${registro.comercioNombre || 'Comercio'}</p>
+      ${municipioTexto}
+      ${categoriasTexto}
+    `;
+
+    header.appendChild(logoWrapper);
+    header.appendChild(textos);
+
+    if (esRedimido) {
+      const badge = document.createElement('span');
+      badge.className =
+        'inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700';
+      badge.innerHTML = `<i class="fa-solid fa-check-circle"></i> Redimido · ${formatearFechaCorta(registro.fechaRedimido)}`;
+      header.appendChild(badge);
+    }
+
+    const cuerpo = document.createElement('div');
+    cuerpo.className = 'flex flex-col md:flex-row md:items-center gap-3';
+
+    const textosCupon = document.createElement('div');
+    textosCupon.className = 'flex-1 text-left';
     const venceTexto = registro.cupon?.fechaFin
       ? new Date(registro.cupon.fechaFin).toLocaleDateString('es-PR')
       : '--';
     const descripcionTexto = registro.cupon?.descripcion
       ? `<p class="text-sm text-gray-600 mt-2 leading-snug">${registro.cupon.descripcion}</p>`
       : '';
-    const municipioTexto = registro.comercioMunicipio
-      ? `<p class="text-xs text-gray-500">${registro.comercioMunicipio}</p>`
-      : '';
-    textos.innerHTML = `
-      <p class="text-sm font-semibold text-[#424242]">${registro.comercioNombre || 'Comercio'}</p>
-      ${municipioTexto}
-      <p class="text-xl font-extrabold text-red-600 mt-3">${registro.cupon?.titulo || 'Cupón'}</p>
+
+    textosCupon.innerHTML = `
+      <p class="text-lg font-extrabold text-red-600">${registro.cupon?.titulo || 'Cupón'}</p>
       ${descripcionTexto}
       <p class="text-xs text-gray-500 mt-2">Vence: ${venceTexto}</p>
     `;
 
-    infoWrapper.appendChild(logo);
-    infoWrapper.appendChild(textos);
-
-    card.appendChild(infoWrapper);
-
     const imagenWrapper = document.createElement('div');
-    imagenWrapper.className = 'flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-gray-100 bg-gray-100';
+    imagenWrapper.className =
+      'flex-shrink-0 w-full md:w-28 md:h-28 h-40 rounded-xl overflow-hidden border border-gray-100 bg-gray-100';
     const imagenCupon = document.createElement('img');
     imagenCupon.className = 'w-full h-full object-cover';
     if (registro.cupon?.imagen) {
@@ -911,13 +1134,114 @@ function renderCuponesModal(mensaje = '') {
     }
     imagenWrapper.appendChild(imagenCupon);
 
-    card.appendChild(imagenWrapper);
+    cuerpo.appendChild(textosCupon);
+    cuerpo.appendChild(imagenWrapper);
 
-    listaCuponesModal.appendChild(card);
+    card.appendChild(header);
+    card.appendChild(cuerpo);
+
+    contenedor.appendChild(card);
   });
 }
 
+function renderCuponesModal(mensaje = '') {
+  if (
+    !cuponesModalMensaje ||
+    !cuponesGuardadosLista ||
+    !cuponesRedimidosLista ||
+    !cuponesGuardadosMensaje ||
+    !cuponesRedimidosMensaje
+  ) {
+    return;
+  }
+
+  if (mensaje) {
+    cuponesModalMensaje.textContent = mensaje;
+    cuponesModalMensaje.classList.remove('hidden');
+    cuponesGuardadosLista.innerHTML = '';
+    cuponesRedimidosLista.innerHTML = '';
+    cuponesGuardadosMensaje.classList.add('hidden');
+    cuponesRedimidosMensaje.classList.add('hidden');
+    btnCargarMasGuardados?.classList.add('hidden');
+    btnCargarMasRedimidos?.classList.add('hidden');
+    return;
+  }
+
+  const guardados = cuponesUsuario.filter((registro) => !registro.redimido);
+  const redimidos = cuponesUsuario.filter((registro) => registro.redimido);
+
+  opcionesFiltrosCupones.guardados = generarOpcionesDesdeCupones(guardados);
+  opcionesFiltrosCupones.redimidos = generarOpcionesDesdeCupones(redimidos);
+  refrescarSelectsCupones();
+
+  const guardadosFiltrados = aplicarFiltrosACupones(guardados, 'guardados');
+  const redimidosFiltrados = aplicarFiltrosACupones(redimidos, 'redimidos');
+
+  const guardadosMostrados = guardadosFiltrados.slice(0, cuponesGuardadosPagina * CUPONES_POR_PAGINA);
+  const redimidosMostrados = redimidosFiltrados.slice(0, cuponesRedimidosPagina * CUPONES_POR_PAGINA);
+
+  if (!guardados.length && !redimidos.length) {
+    cuponesModalMensaje.textContent = 'No has guardado cupones todavía.';
+    cuponesModalMensaje.classList.remove('hidden');
+  } else {
+    cuponesModalMensaje.classList.add('hidden');
+  }
+
+  if (cuponesGuardadosBadge) cuponesGuardadosBadge.textContent = `${guardadosFiltrados.length}`;
+  if (cuponesRedimidosBadge) cuponesRedimidosBadge.textContent = `${redimidosFiltrados.length}`;
+
+  renderListaCupones(guardadosMostrados, cuponesGuardadosLista, cuponesGuardadosMensaje, {
+    esRedimido: false
+  });
+  renderListaCupones(redimidosMostrados, cuponesRedimidosLista, cuponesRedimidosMensaje, {
+    esRedimido: true
+  });
+
+  const puedeCargarMasGuardados = guardadosMostrados.length < guardadosFiltrados.length;
+  const puedeCargarMasRedimidos = redimidosMostrados.length < redimidosFiltrados.length;
+
+  if (btnCargarMasGuardados) {
+    btnCargarMasGuardados.classList.toggle(
+      'hidden',
+      cuponesTabActiva !== 'guardados' || !puedeCargarMasGuardados
+    );
+  }
+  if (btnCargarMasRedimidos) {
+    btnCargarMasRedimidos.classList.toggle(
+      'hidden',
+      cuponesTabActiva !== 'redimidos' || !puedeCargarMasRedimidos
+    );
+  }
+}
+
+function actualizarTabsVisuales() {
+  cuponesTabs?.forEach((btn) => {
+    const esActivo = btn.dataset.cuponTab === cuponesTabActiva;
+    btn.classList.toggle('text-blue-600', esActivo);
+    btn.classList.toggle('border-blue-600', esActivo);
+    btn.classList.toggle('border-transparent', !esActivo);
+    btn.classList.toggle('text-gray-500', !esActivo);
+  });
+
+  cuponesPanels?.forEach((panel) => {
+    const esActivo = panel.dataset.cuponPanel === cuponesTabActiva;
+    panel.classList.toggle('hidden', !esActivo);
+    panel.classList.toggle('opacity-0', !esActivo);
+    panel.classList.toggle('pointer-events-none', !esActivo);
+  });
+}
+
+function cambiarTabCupones(tab) {
+  if (!tab || tab === cuponesTabActiva) return;
+  cuponesTabActiva = tab;
+  resetPaginacionCupones();
+  actualizarTabsVisuales();
+  refrescarSelectsCupones();
+  renderCuponesModal();
+}
+
 function abrirModalCuponQr(registro) {
+  if (registro?.redimido) return;
   if (!modalCuponQr || !modalCuponQrImg || !modalCuponQrComercio || !modalCuponQrNombre) return;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(registro.qrUrl)}`;
   modalCuponQrImg.src = qrImageUrl;
@@ -1030,14 +1354,14 @@ function actualizarListadoFavoritos() {
 
   const filtrados = obtenerFavoritosFiltrados();
   const ordenados = ordenarFavoritos(filtrados);
-  mostrarFavoritos(ordenados);
+  mostrarFavoritos(ordenados); 
 }
 
 async function cargarPerfil(uid) {
   console.log('Ejecutando operación select en tabla usuarios', { filtro: { id: uid } });
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, apellido, telefono, email, imagen, created_at, municipio, notificartext')
+    .select('id, nombre, apellido, telefono, email, imagen, creado_en, municipio, notificartext')
     .eq('id', uid)
     .maybeSingle();
 
@@ -1683,6 +2007,9 @@ btnCupones?.addEventListener('click', async () => {
     window.location.href = `${basePath}/logearse.html`;
     return;
   }
+  cuponesTabActiva = 'guardados';
+  actualizarTabsVisuales();
+  refrescarSelectsCupones();
   renderCuponesModal('Cargando cupones...');
   modalCupones?.classList.remove('hidden');
   await cargarCuponesUsuario();
@@ -1701,6 +2028,53 @@ modalCuponQr?.addEventListener('click', (event) => {
     cerrarModalCuponQr();
   }
 });
+
+cuponFiltroComercio?.addEventListener('change', (event) => {
+  filtrosCupones[cuponesTabActiva].comercio = event.target.value || '';
+  resetPaginacionCupones();
+  renderCuponesModal();
+});
+
+cuponFiltroMunicipio?.addEventListener('change', (event) => {
+  filtrosCupones[cuponesTabActiva].municipio = event.target.value || '';
+  resetPaginacionCupones();
+  renderCuponesModal();
+});
+
+cuponFiltroCategoria?.addEventListener('change', (event) => {
+  filtrosCupones[cuponesTabActiva].categoria = event.target.value || '';
+  resetPaginacionCupones();
+  renderCuponesModal();
+});
+
+btnLimpiarFiltrosCupones?.addEventListener('click', () => {
+  const filtros = filtrosCupones[cuponesTabActiva];
+  filtros.comercio = '';
+  filtros.municipio = '';
+  filtros.categoria = '';
+  if (cuponFiltroComercio) cuponFiltroComercio.value = '';
+  if (cuponFiltroMunicipio) cuponFiltroMunicipio.value = '';
+  if (cuponFiltroCategoria) cuponFiltroCategoria.value = '';
+  resetPaginacionCupones();
+  renderCuponesModal();
+});
+
+btnCargarMasGuardados?.addEventListener('click', () => {
+  cuponesGuardadosPagina += 1;
+  renderCuponesModal();
+});
+
+btnCargarMasRedimidos?.addEventListener('click', () => {
+  cuponesRedimidosPagina += 1;
+  renderCuponesModal();
+});
+
+cuponesTabs?.forEach((btn) => {
+  btn.addEventListener('click', () => cambiarTabCupones(btn.dataset.cuponTab));
+});
+
+actualizarTabsVisuales();
+refrescarSelectsCupones();
 
 inputBuscar?.addEventListener('input', (e) => {
   searchQuery = e.target.value.toLowerCase();
