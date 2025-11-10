@@ -66,6 +66,8 @@ async function init() {
   const previewFoto = document.getElementById('previewFoto');
   const consentimientoSms = document.getElementById('consentimientoSms');
   const telefonoInput = document.getElementById('telefonoRegistro');
+  const telefonoLabel = document.getElementById('telefonoLabel');
+  const telefonoError = document.getElementById('telefonoError');
   const passwordRegistroInput = document.getElementById('passwordRegistro');
   const passwordRegistroMensaje = document.getElementById('passwordRegistroMensaje');
   const tipoCuentaButtons = document.querySelectorAll('.tipo-cuenta-btn');
@@ -150,6 +152,18 @@ async function init() {
   avatarPreview?.addEventListener('click', triggerAvatarPicker);
   avatarText?.addEventListener('click', triggerAvatarPicker);
 
+  const setTelefonoErrorState = (visible) => {
+    if (!telefonoInput) return;
+    if (visible) {
+      telefonoInput.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+      telefonoError?.classList.remove('hidden');
+    } else {
+      telefonoInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500');
+      telefonoInput.classList.add('border-transparent');
+      telefonoError?.classList.add('hidden');
+    }
+  };
+
   const actualizarUIporTipoCuenta = (tipo) => {
     if (!tipoCuentaInput) return;
     const tipoNormalizado = tipo === 'up' ? 'up' : 'regular';
@@ -174,6 +188,16 @@ async function init() {
         tipoNormalizado === 'up'
           ? 'Registrándote con una Membresía Up'
           : 'Registrándote con una Cuenta Regular';
+    }
+
+    if (telefonoInput) {
+      telefonoInput.required = esMembresiaUp;
+      if (telefonoLabel) {
+        telefonoLabel.textContent = esMembresiaUp ? 'Teléfono' : 'Teléfono (opcional)';
+      }
+      if (!esMembresiaUp) {
+        setTelefonoErrorState(false);
+      }
     }
 
     if (membresiaUpInfo) {
@@ -282,11 +306,23 @@ async function init() {
       return;
     }
 
+    if (esMembresiaUp && !telefonoDigits) {
+      errorRegistro.textContent = 'El número de teléfono es obligatorio para activar tu Membresía Up.';
+      errorRegistro.classList.remove('hidden');
+      setTelefonoErrorState(true);
+      telefonoInput?.focus();
+      return;
+    } else {
+      setTelefonoErrorState(false);
+    }
+
     if (telefonoDigits && telefonoDigits.length !== 10) {
       errorRegistro.textContent = 'Por favor, introduce un número válido de 10 dígitos.';
       errorRegistro.classList.remove('hidden');
+      setTelefonoErrorState(true);
       return;
     }
+    setTelefonoErrorState(false);
 
     if (esMembresiaUp && !foto) {
       errorRegistro.textContent = 'Para completar tu Membresía Up, sube una foto de perfil.';

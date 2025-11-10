@@ -131,7 +131,8 @@
         <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP.png" alt="Logo Membresía Up" class="max-w-[100px] w-full h-auto object-contain select-none pointer-events-none" />
       </div>
       <div class="space-y-2">
-        <p class="text-lg font-normal text-white">💎 Membresía Up — Gratis hasta el 31 de diciembre</p>
+        <p class="text-lg font-normal text-white">💎 Membresía Up — Gratis hasta el 31 de diciembre de 2025</p>
+        <p class="text-sm text-celeste font-normal">$9.95 mensual a partir de enero 2026.</p>
         <p class="text-sm text-white/90 font-normal">Disfruta todos los privilegios En Pe Erre sin costo por tiempo limitado.</p>
       </div>
       <ul class="text-white/90 text-sm space-y-2 w-full max-w-sm font-normal">
@@ -160,9 +161,10 @@
     <label class="block text-white text-sm mb-1">Email</label>
     <input type="email" id="emailRegistro" class="w-full px-3 py-2 rounded bg-white text-black mb-3" required />
 
-    <label class="block text-white text-sm mb-1">Teléfono (opcional)</label>
-    <input type="tel" id="telefonoRegistro" class="w-full px-3 py-2 rounded bg-white text-black mb-1" placeholder="(787) 123-4567" />
-    <p class="text-xs text-gray-300 italic mb-3">Formato sugerido: 10 dígitos</p>
+    <label id="telefonoLabel" class="block text-white text-sm mb-1">Teléfono (opcional)</label>
+    <input type="tel" id="telefonoRegistro" class="w-full px-3 py-2 rounded bg-white text-black mb-1 border border-transparent" placeholder="(787) 123-4567" />
+    <p id="telefonoError" class="text-red-500 text-sm mt-1 hidden">El número de teléfono es obligatorio para activar tu Membresía Up.</p>
+    <div class="mb-3"></div>
 
     <label class="flex items-start gap-2 text-white text-sm mb-3">
       <input type="checkbox" id="consentimientoSms" class="mt-1" checked />
