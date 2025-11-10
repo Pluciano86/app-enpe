@@ -68,6 +68,11 @@ async function init() {
   const telefonoInput = document.getElementById('telefonoRegistro');
   const passwordRegistroInput = document.getElementById('passwordRegistro');
   const passwordRegistroMensaje = document.getElementById('passwordRegistroMensaje');
+  const tipoCuentaButtons = document.querySelectorAll('.tipo-cuenta-btn');
+  const tipoCuentaInput = document.getElementById('tipoCuentaSeleccion');
+  const membresiaUpInfo = document.getElementById('membresiaUpInfo');
+  const avatarSection = document.getElementById('avatarSection');
+  const tipoCuentaMensaje = document.getElementById('tipoCuentaMensaje');
 
   // Redirigir si ya hay sesión activa
   const { data: sessionData } = await supabase.auth.getSession();
@@ -145,6 +150,66 @@ async function init() {
   avatarPreview?.addEventListener('click', triggerAvatarPicker);
   avatarText?.addEventListener('click', triggerAvatarPicker);
 
+  const actualizarUIporTipoCuenta = (tipo) => {
+    if (!tipoCuentaInput) return;
+    const tipoNormalizado = tipo === 'up' ? 'up' : 'regular';
+    tipoCuentaInput.value = tipoNormalizado;
+    const esMembresiaUp = tipoNormalizado === 'up';
+
+    tipoCuentaButtons.forEach((btn) => {
+      const activo = btn.dataset.tipo === tipoNormalizado;
+      const esBtnUp = btn.dataset.tipo === 'up';
+      btn.classList.toggle('bg-white/10', activo && !esBtnUp);
+      btn.classList.toggle('border-celeste/60', activo);
+      btn.classList.toggle('shadow-[0_15px_40px_rgba(35,180,233,0.25)]', activo && esMembresiaUp);
+      btn.classList.toggle('ring-2', activo);
+      btn.classList.toggle('ring-celeste', activo);
+      if (esBtnUp) {
+        btn.classList.toggle('membresia-up-btn-active', activo);
+      }
+    });
+
+    if (tipoCuentaMensaje) {
+      tipoCuentaMensaje.textContent =
+        tipoNormalizado === 'up'
+          ? 'Registrándote con una Membresía Up'
+          : 'Registrándote con una Cuenta Regular';
+    }
+
+    if (membresiaUpInfo) {
+      if (esMembresiaUp) {
+        membresiaUpInfo.classList.remove('hidden');
+        membresiaUpInfo.classList.add('fade-up-enter');
+      } else {
+        membresiaUpInfo.classList.add('hidden');
+        membresiaUpInfo.classList.remove('fade-up-enter');
+      }
+    }
+
+    if (avatarSection) {
+      if (esMembresiaUp) {
+        avatarSection.classList.remove('hidden');
+        avatarSection.classList.add('fade-up-enter');
+      } else {
+        avatarSection.classList.add('hidden');
+        avatarSection.classList.remove('fade-up-enter');
+      }
+    }
+
+    if (!esMembresiaUp && fotoInput) {
+      fotoInput.value = '';
+      previewFoto?.classList.add('hidden');
+      avatarPlaceholder?.classList.remove('hidden');
+    }
+  };
+
+  if (tipoCuentaButtons.length) {
+    actualizarUIporTipoCuenta(tipoCuentaInput?.value || 'regular');
+    tipoCuentaButtons.forEach((btn) => {
+      btn.addEventListener('click', () => actualizarUIporTipoCuenta(btn.dataset.tipo));
+    });
+  }
+
   // 🔹 Preview de imagen
   fotoInput?.addEventListener('change', () => {
     const file = fotoInput.files[0];
@@ -199,6 +264,8 @@ async function init() {
     const telefonoDigits = telefonoInput?.dataset.digits || telefonoInput?.value.replace(/\D/g, '') || '';
     const municipio = document.getElementById('municipio').value;
     const notificarText = consentimientoSms?.checked ?? true;
+    const tipoCuentaSeleccion = tipoCuentaInput?.value || 'regular';
+    const esMembresiaUp = tipoCuentaSeleccion === 'up';
 
     if (password.length < 6) {
       passwordRegistroMensaje?.classList.remove('hidden');
@@ -215,9 +282,16 @@ async function init() {
       return;
     }
 
-    if (telefonoDigits.length !== 10) {
+    if (telefonoDigits && telefonoDigits.length !== 10) {
       errorRegistro.textContent = 'Por favor, introduce un número válido de 10 dígitos.';
       errorRegistro.classList.remove('hidden');
+      return;
+    }
+
+    if (esMembresiaUp && !foto) {
+      errorRegistro.textContent = 'Para completar tu Membresía Up, sube una foto de perfil.';
+      errorRegistro.classList.remove('hidden');
+      avatarSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -258,7 +332,15 @@ async function init() {
         }
       }
 
-      const payload = { nombre, apellido, telefono: telefonoDigits, municipio, imagen, notificartext: notificarText };
+      const payload = {
+        nombre,
+        apellido,
+        telefono: telefonoDigits || null,
+        municipio,
+        imagen,
+        notificartext: notificarText,
+        membresiaUp: esMembresiaUp
+      };
       const actualizado = await actualizarPerfilUsuario(userId, payload);
 
       if (!actualizado) {

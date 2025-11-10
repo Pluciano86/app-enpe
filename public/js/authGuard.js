@@ -11,7 +11,7 @@ const ACTION_MESSAGES = {
   favoriteCommerce: 'Debes iniciar sesión para agregar este comercio a tus favoritos.',
   favoritePlace: 'Debes iniciar sesión para agregar este lugar a tus favoritos.',
   favoriteBeach: 'Debes iniciar sesión para agregar esta playa a tus favoritos.',
-  saveCoupon: 'Para guardar y disfrutar de este y otros privilegios En Pe Erre, necesitas una cuenta Up. Aprovecha la promoción y obtén tu membresía completamente gratis hasta el 31 de diciembre.',
+  saveCoupon: 'Para guardar y disfrutar de este y otros privilegios EnPeErre, necesitas una Cuenta Up. Aprovecha la promoción y obtén tu membresía completamente GRATIS hasta el 31 de diciembre.',
   default: 'Debes iniciar sesión para continuar.'
 };
 
