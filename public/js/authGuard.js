@@ -1,17 +1,23 @@
 import { supabase } from '../shared/supabaseClient.js';
 
-const LOGIN_URL = '/public/usuarios/login.html';
+const getLoginUrl = () => {
+  const basePath = window.location.href.includes('127.0.0.1') ? '/public/logearse.html' : '/logearse.html';
+  return `${window.location.origin}${basePath}`;
+};
+const LOGO_ENPR_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/LOGO.png';
+const LOGO_UP_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP.png';
 
 const ACTION_MESSAGES = {
   favoriteCommerce: 'Debes iniciar sesión para agregar este comercio a tus favoritos.',
   favoritePlace: 'Debes iniciar sesión para agregar este lugar a tus favoritos.',
   favoriteBeach: 'Debes iniciar sesión para agregar esta playa a tus favoritos.',
-  saveCoupon: 'Debes tener una cuenta Plus para guardar este cupón.',
+  saveCoupon: 'Para guardar y disfrutar de este y otros privilegios En Pe Erre, necesitas una cuenta Up. Aprovecha la promoción y obtén tu membresía completamente gratis hasta el 31 de diciembre.',
   default: 'Debes iniciar sesión para continuar.'
 };
 
 let modalOverlay = null;
 let modalMessageEl = null;
+let modalLogoEl = null;
 
 function ensureModal() {
   if (modalOverlay) return;
@@ -27,8 +33,8 @@ function ensureModal() {
         <i class="fas fa-times text-lg"></i>
       </button>
       <div class="flex flex-col items-center gap-3">
-        <div class="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-2xl">
-          <i class="fas fa-user-lock"></i>
+        <div class="flex items-center justify-center">
+          <img src="${LOGO_ENPR_URL}" alt="Logo En Pe Erre" class="auth-guard-logo object-contain" loading="lazy" />
         </div>
         <p id="auth-guard-message" class="text-sm text-gray-700 leading-relaxed"></p>
       </div>
@@ -46,12 +52,13 @@ function ensureModal() {
   document.body.appendChild(modalOverlay);
 
   modalMessageEl = modalOverlay.querySelector('#auth-guard-message');
+  modalLogoEl = modalOverlay.querySelector('.auth-guard-logo');
   modalOverlay.querySelectorAll('.auth-guard-close').forEach((btn) => {
     btn.addEventListener('click', hideAuthModal);
   });
   modalOverlay.querySelector('.auth-guard-login')?.addEventListener('click', () => {
     hideAuthModal();
-    window.location.href = LOGIN_URL;
+    window.location.href = getLoginUrl();
   });
 
   modalOverlay.addEventListener('click', (event) => {
@@ -61,10 +68,22 @@ function ensureModal() {
   });
 }
 
-function showAuthModal(message) {
+function showAuthModal(message, actionKey) {
   ensureModal();
   if (modalMessageEl) {
     modalMessageEl.textContent = message || ACTION_MESSAGES.default;
+  }
+  if (modalLogoEl) {
+    const isCouponAction = actionKey === 'saveCoupon';
+    modalLogoEl.src = isCouponAction ? LOGO_UP_URL : LOGO_ENPR_URL;
+    modalLogoEl.alt = isCouponAction ? 'Logo Up' : 'Logo En Pe Erre';
+    if (isCouponAction) {
+      modalLogoEl.style.width = '100px';
+      modalLogoEl.style.height = 'auto';
+    } else {
+      modalLogoEl.style.width = '150px';
+      modalLogoEl.style.height = 'auto';
+    }
   }
   modalOverlay?.classList.remove('hidden');
 }
@@ -88,6 +107,6 @@ export async function requireAuth(actionKey) {
   }
 
   const message = ACTION_MESSAGES[actionKey] || ACTION_MESSAGES.default;
-  showAuthModal(message);
+  showAuthModal(message, actionKey);
   throw new Error('AUTH_REQUIRED');
 }
