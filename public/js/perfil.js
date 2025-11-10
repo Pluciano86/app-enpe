@@ -11,6 +11,17 @@ let lonUsuario = null;
 const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
 const CUPON_PLACEHOLDER = 'https://placehold.co/600x400?text=Cup%C3%B3n';
 
+const formatearFechaLegible = (fecha) => {
+  if (!fecha) return '--';
+  const date = new Date(fecha);
+  if (Number.isNaN(date.getTime())) return '--';
+  return date.toLocaleDateString('es-PR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
+
 async function cargarCuponesComercio(idComercio) {
   const seccion = document.getElementById('seccionCupones');
   const contenedor = document.getElementById('cuponContainer');
@@ -104,7 +115,11 @@ if (error) {
   cupones.forEach((cupon, index) => {
     const card = document.createElement('div');
     card.className =
-      'border border-gray-200 rounded-xl shadow-sm p-4 flex flex-col gap-4 bg-white min-w-[260px] max-w-[260px] snap-center flex-shrink-0';
+      'border border-gray-200 rounded-xl shadow-sm p-4 flex flex-col justify-between bg-white min-w-[260px] max-w-[260px] h-[420px] snap-center flex-shrink-0';
+
+    const topContent = document.createElement('div');
+    topContent.className = 'flex flex-col gap-4 flex-1';
+    card.appendChild(topContent);
 
     const imgWrapper = document.createElement('div');
     imgWrapper.className = 'relative rounded-xl overflow-hidden h-48 md:h-40';
@@ -114,47 +129,54 @@ if (error) {
     img.loading = 'lazy';
     img.className = 'w-full h-full object-cover';
     imgWrapper.appendChild(img);
-    card.appendChild(imgWrapper);
+    topContent.appendChild(imgWrapper);
 
     const tituloEl = document.createElement('h3');
     tituloEl.className = 'text-lg font-semibold text-[#424242] leading-tight';
     tituloEl.textContent = cupon.titulo || 'Cupón';
-    card.appendChild(tituloEl);
+    topContent.appendChild(tituloEl);
 
     if (cupon.descripcion) {
+      const descWrapper = document.createElement('div');
+      descWrapper.className = 'min-h-[60px] flex items-center';
       const descEl = document.createElement('p');
-      descEl.className = 'text-sm text-gray-600 leading-snug';
+      descEl.className = 'text-sm text-gray-600 leading-snug line-clamp-3';
       descEl.textContent = cupon.descripcion;
-      card.appendChild(descEl);
+      descWrapper.appendChild(descEl);
+      topContent.appendChild(descWrapper);
     }
 
     if (cupon.descuento != null) {
       const desc = document.createElement('p');
       desc.className = 'text-sm font-medium text-green-600';
       desc.textContent = `Descuento: ${cupon.descuento}%`;
-      card.appendChild(desc);
+      topContent.appendChild(desc);
     }
-
-    const fechasEl = document.createElement('p');
-    fechasEl.className = 'text-xs text-gray-500';
-    fechasEl.textContent = `Válido del ${cupon.fechaInicio?.slice(0, 10) || '--'} al ${cupon.fechaFin?.slice(0, 10) || '--'}`;
-    card.appendChild(fechasEl);
 
     const disponiblesTotal = cupon.cantidadDisponible ?? 0;
     const usados = totalesMap.get(cupon.id) || 0;
     const agotado = disponiblesTotal > 0 && usados >= disponiblesTotal;
 
-    const estadoRow = document.createElement('div');
-    estadoRow.className = 'flex items-center justify-between text-xs text-gray-500';
-    const cantidadTexto =
-  disponiblesTotal > 0
-    ? `Disponibles: ${Math.max(disponiblesTotal - usados, 0)} de ${disponiblesTotal}`
-    : 'Disponibilidad ilimitada';
-    estadoRow.innerHTML = `<span>${cantidadTexto}</span>`;
-    card.appendChild(estadoRow);
+    let estadoRow = null;
+    if (disponiblesTotal > 0) {
+      estadoRow = document.createElement('div');
+      estadoRow.className = 'flex items-center justify-between text-xs text-gray-500';
+      estadoRow.innerHTML = `<span>Disponibles: ${Math.max(disponiblesTotal - usados, 0)} de ${disponiblesTotal}</span>`;
+      topContent.appendChild(estadoRow);
+    }
+
+    const footer = document.createElement('div');
+    footer.className = 'flex flex-col gap-2 pt-2 border-t border-gray-100 w-full';
+    card.appendChild(footer);
+
+    const fechasEl = document.createElement('p');
+    fechasEl.className = 'text-xs text-gray-500';
+    const fechaFinLegible = formatearFechaLegible(cupon.fechaFin || cupon.fechafin);
+    fechasEl.textContent = `Válido hasta el ${fechaFinLegible}`;
+    footer.appendChild(fechasEl);
 
     const acciones = document.createElement('div');
-    acciones.className = 'mt-2';
+    acciones.className = 'flex flex-col gap-2 w-full';
 
     const guardado = guardadosMap.get(cupon.id);
     console.log('Guardado encontrado:', cupon.id, guardado);
@@ -227,7 +249,10 @@ if (error) {
           estado.className = 'inline-flex items-center px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full';
           estado.textContent = 'Ya guardado';
           acciones.appendChild(estado);
-          estadoRow.innerHTML = `<span>${disponiblesTotal > 0 ? `Disponibles: ${Math.max(disponiblesTotal - (totalesMap.get(cupon.id) || 0), 0)} de ${disponiblesTotal}` : 'Disponibilidad ilimitada'}</span>`;
+          if (estadoRow) {
+            const nuevosUsados = totalesMap.get(cupon.id) || 0;
+            estadoRow.innerHTML = `<span>Disponibles: ${Math.max(disponiblesTotal - nuevosUsados, 0)} de ${disponiblesTotal}</span>`;
+          }
         } catch (error) {
           console.error('🛑 Error inesperado guardando cupón:', error);
           alert('No se pudo guardar el cupón. Intenta nuevamente.');
@@ -238,7 +263,7 @@ if (error) {
       acciones.appendChild(btnGuardar);
     }
 
-    card.appendChild(acciones);
+    footer.appendChild(acciones);
     contenedor.appendChild(card);
   });
 
