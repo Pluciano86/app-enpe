@@ -75,6 +75,16 @@ async function init() {
   const membresiaUpInfo = document.getElementById('membresiaUpInfo');
   const avatarSection = document.getElementById('avatarSection');
   const tipoCuentaMensaje = document.getElementById('tipoCuentaMensaje');
+  const terminosWrapper = document.getElementById('terminosWrapper');
+  const terminosCheckbox = document.getElementById('terminosCheckbox');
+  const terminosError = document.getElementById('terminosError');
+  const abrirTerminos = document.getElementById('abrirTerminos');
+  const modalTerminos = document.getElementById('modalTerminos');
+  const modalContenido = document.getElementById('modalContenido');
+  const aceptarTerminosBtn = document.getElementById('aceptarTerminosBtn');
+  const cancelarModalTerminos = document.getElementById('cancelarModalTerminos');
+  const cerrarModalTerminos = document.getElementById('cerrarModalTerminos');
+  const globalLoader = document.getElementById('globalLoader');
 
   // Redirigir si ya hay sesión activa
   const { data: sessionData } = await supabase.auth.getSession();
@@ -164,6 +174,61 @@ async function init() {
     }
   };
 
+  const setTerminosErrorState = (visible) => {
+    if (terminosError) {
+      terminosError.classList.toggle('hidden', !visible);
+    }
+  };
+
+  const resetTerminosAceptados = () => {
+    if (!terminosCheckbox) return;
+    terminosCheckbox.checked = false;
+    terminosCheckbox.dataset.accepted = 'false';
+    setTerminosErrorState(false);
+  };
+
+  const cerrarModal = () => {
+    if (!modalTerminos) return;
+    modalTerminos.classList.add('hidden');
+    modalTerminos.classList.remove('flex');
+  };
+
+  const abrirModal = () => {
+    if (!modalTerminos) return;
+    modalTerminos.classList.remove('hidden');
+    modalTerminos.classList.add('flex');
+    if (modalContenido) {
+      modalContenido.scrollTop = 0;
+    }
+    if (aceptarTerminosBtn) {
+      aceptarTerminosBtn.disabled = true;
+    }
+  };
+
+  modalContenido?.addEventListener('scroll', () => {
+    if (!modalContenido || !aceptarTerminosBtn) return;
+    const atBottom = modalContenido.scrollTop + modalContenido.clientHeight >= modalContenido.scrollHeight - 10;
+    if (atBottom) {
+      aceptarTerminosBtn.disabled = false;
+    }
+  });
+
+  abrirTerminos?.addEventListener('click', (e) => {
+    e.preventDefault();
+    abrirModal();
+  });
+
+  aceptarTerminosBtn?.addEventListener('click', () => {
+    if (!terminosCheckbox) return;
+    terminosCheckbox.checked = true;
+    terminosCheckbox.dataset.accepted = 'true';
+    setTerminosErrorState(false);
+    cerrarModal();
+  });
+
+  cancelarModalTerminos?.addEventListener('click', cerrarModal);
+  cerrarModalTerminos?.addEventListener('click', cerrarModal);
+
   const actualizarUIporTipoCuenta = (tipo) => {
     if (!tipoCuentaInput) return;
     const tipoNormalizado = tipo === 'up' ? 'up' : 'regular';
@@ -225,6 +290,15 @@ async function init() {
       previewFoto?.classList.add('hidden');
       avatarPlaceholder?.classList.remove('hidden');
     }
+
+    if (terminosWrapper) {
+      if (esMembresiaUp) {
+        terminosWrapper.classList.remove('hidden');
+      } else {
+        terminosWrapper.classList.add('hidden');
+        resetTerminosAceptados();
+      }
+    }
   };
 
   if (tipoCuentaButtons.length) {
@@ -279,6 +353,40 @@ async function init() {
     e.preventDefault();
     errorRegistro.classList.add('hidden');
 
+    const deshabilitarFormulario = (state) => {
+      const elementos = formRegistro.querySelectorAll('input, select, button, textarea');
+      elementos.forEach((el) => {
+        el.disabled = state;
+      });
+    };
+
+    const mostrarLoader = () => {
+      if (!globalLoader) return;
+      globalLoader.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        globalLoader.classList.add('flex');
+        globalLoader.classList.remove('opacity-0');
+        globalLoader.classList.add('opacity-100');
+      });
+    };
+
+    const ocultarLoader = () => {
+      if (!globalLoader) return;
+      globalLoader.classList.remove('opacity-100');
+      globalLoader.classList.add('opacity-0');
+      setTimeout(() => {
+        globalLoader.classList.remove('flex');
+        globalLoader.classList.add('hidden');
+      }, 500);
+    };
+
+    const finalizarConError = (mensaje) => {
+      errorRegistro.textContent = mensaje;
+      errorRegistro.classList.remove('hidden');
+      ocultarLoader();
+      deshabilitarFormulario(false);
+    };
+
     const nombre = document.getElementById('nombreRegistro').value.trim();
     const apellido = document.getElementById('apellidoRegistro').value.trim();
     const email = document.getElementById('emailRegistro').value.trim();
@@ -324,6 +432,16 @@ async function init() {
     }
     setTelefonoErrorState(false);
 
+    if (esMembresiaUp && !terminosCheckbox?.checked) {
+      errorRegistro.textContent = 'Debes aceptar los Términos y Condiciones de la Membresía UP.';
+      errorRegistro.classList.remove('hidden');
+      setTerminosErrorState(true);
+      terminosWrapper?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    } else {
+      setTerminosErrorState(false);
+    }
+
     if (esMembresiaUp && !foto) {
       errorRegistro.textContent = 'Para completar tu Membresía Up, sube una foto de perfil.';
       errorRegistro.classList.remove('hidden');
@@ -332,6 +450,8 @@ async function init() {
     }
 
     try {
+      mostrarLoader();
+      deshabilitarFormulario(true);
       const { data: signup, error: errorSignup } = await supabase.auth.signUp({
         email,
         password
@@ -387,16 +507,20 @@ async function init() {
 
       const { error: loginError } = await supabase.auth.signInWithPassword({ email, password });
       if (!loginError) {
-        window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
+        ocultarLoader();
+        setTimeout(() => {
+          window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
+        }, 200);
       } else {
+        ocultarLoader();
+        deshabilitarFormulario(false);
         const mensaje = loginError?.message || 'Cuenta creada, pero necesitas iniciar sesión.';
         alert(mensaje);
         window.location.reload();
       }
     } catch (err) {
       console.error("Error en registro:", err);
-      errorRegistro.textContent = err?.message || "Error al crear la cuenta.";
-      errorRegistro.classList.remove('hidden');
+      finalizarConError(err?.message || "Error al crear la cuenta.");
     }
   });
 }

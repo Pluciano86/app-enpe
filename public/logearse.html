@@ -48,6 +48,18 @@
         box-shadow: 0 0 0 rgba(0, 200, 255, 0.25);
       }
     }
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    @keyframes blink {
+      0% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
     .membresia-up-btn {
       background-color: rgba(0, 200, 255, 0.25);
       border: 1px solid rgba(0, 200, 255, 0.35);
@@ -64,6 +76,10 @@
 </head>
 
 <body class="bg-oscuro min-h-screen text-white flex flex-col justify-center items-center gap-6 px-6 text-center font-sans">
+  <div id="globalLoader" class="fixed inset-0 bg-black/70 z-[9998] hidden items-center justify-center flex-col gap-4 transition-opacity duration-500 opacity-0">
+    <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Favicon.svg" alt="Loader" class="w-20 h-20 md:w-24 md:h-24 animate-spin" style="animation: spin 1.5s linear infinite;">
+    <p class="text-white text-lg font-medium tracking-wide" style="animation: blink 1.5s ease-in-out infinite alternate;">Creando tu cuenta...</p>
+  </div>
 
   <!-- Logo -->
   <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo_fondo%20oscuro.png" alt="Logo" class="w-48 mt-12 mb-8">
@@ -128,11 +144,11 @@
 
     <div id="membresiaUpInfo" class="hidden flex-col items-center text-center gap-4 bg-white/5 border border-celeste/40 rounded-2xl p-5 mb-6 shadow-[0_15px_40px_rgba(35,180,233,0.25)] transition-all duration-300">
       <div class="flex items-center justify-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP.png" alt="Logo Membresía Up" class="max-w-[100px] w-full h-auto object-contain select-none pointer-events-none" />
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP_FondoOscuro.png" alt="Logo Membresía Up" class="max-w-[100px] w-full h-auto object-contain select-none pointer-events-none" />
       </div>
       <div class="space-y-2">
         <p class="text-lg font-normal text-white">💎 Membresía Up — Gratis hasta el 31 de diciembre de 2025</p>
-        <p class="text-sm text-celeste font-normal">$9.95 mensual a partir de enero 2026.</p>
+        <p class="text-sm text-[#CCCCCC] font-normal">A partir del 1 de enero de 2026 el costo será de $9.95 al mes.</p>
         <p class="text-sm text-white/90 font-normal">Disfruta todos los privilegios En Pe Erre sin costo por tiempo limitado.</p>
       </div>
       <ul class="text-white/90 text-sm space-y-2 w-full max-w-sm font-normal">
@@ -170,6 +186,14 @@
       <input type="checkbox" id="consentimientoSms" class="mt-1" checked />
       <span>Recibir notificaciones por texto de ofertas exclusivas de En Pe Erre y de tus comercios favoritos.</span>
     </label>
+
+    <div id="terminosWrapper" class="hidden flex-col gap-2 mb-4 text-left">
+      <label class="flex items-start gap-2 text-white text-sm">
+        <input type="checkbox" id="terminosCheckbox" class="mt-1 accent-celeste" disabled />
+        <span>Aceptar <button type="button" id="abrirTerminos" class="text-celeste underline">Términos y Condiciones</button> de la Membresía UP.</span>
+      </label>
+      <p id="terminosError" class="text-red-500 text-sm hidden">Debes aceptar los Términos y Condiciones de la Membresía UP.</p>
+    </div>
 
     <label class="block text-white text-sm mb-1">Municipio (opcional)</label>
     <select id="municipio" class="w-full px-3 py-2 rounded bg-white text-black mb-3">
@@ -294,5 +318,47 @@
   <script type="module" src="./js/logearse.js"></script>
 
   <script src="js/bloquearPantalla.js"></script>
+  <div id="modalTerminos" class="fixed inset-0 bg-black/50 z-[10000] hidden items-center justify-center px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+      <div class="text-center flex items-center justify-between px-6 py-4 border-b">
+        <h2 class="text-center text-lg font-semibold text-gray-800">Términos y Condiciones</h2>
+        <button type="button" id="cerrarModalTerminos" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div id="modalContenido" class="px-6 py-4 overflow-y-auto text-sm text-gray-700 space-y-4" style="max-height: 60vh;">
+        <p><strong>Términos y Condiciones de la Membresía UP</strong></p>
+        <p>Al crear tu cuenta y activar tu Membresía UP, aceptas los siguientes términos:</p>
+        <ol class="text-start list-decimal pl-5 space-y-3">
+          <li>
+            <strong>Costo y renovación automática:</strong><br />
+            La Membresía UP tiene un costo de <strong>$9.95 mensuales</strong>, con renovación automática cada mes a través del método de pago registrado.<br />
+            Actualmente, el servicio es <strong>gratis hasta el 31 de diciembre de 2025</strong>. A partir de esa fecha, comenzará el cobro mensual sin interrupción, salvo que el usuario cancele su suscripción antes de la fecha de facturación.
+          </li>
+          <li>
+            <strong>Cancelación:</strong><br />
+            Puedes cancelar tu membresía en cualquier momento desde tu perfil o comunicándote con nuestro equipo de soporte. No se emitirán reembolsos parciales por periodos no utilizados.
+          </li>
+          <li>
+            <strong>Promociones y comunicaciones:</strong><br />
+            Al aceptar estos términos, autorizas a En Pe Erre a enviarte <strong>mensajes de texto, correos electrónicos o notificaciones</strong> con promociones, descuentos, actualizaciones o información relacionada con tu cuenta y comercios afiliados.
+          </li>
+          <li>
+            <strong>Uso responsable:</strong><br />
+            La membresía es personal e intransferible. El uso indebido, la reventa o el intento de fraude con beneficios o cupones puede conllevar la cancelación inmediata de la cuenta.
+          </li>
+          <li>
+            <strong>Modificaciones:</strong><br />
+            En Pe Erre se reserva el derecho de modificar estos términos, precios o beneficios en cualquier momento. Cualquier cambio será notificado con antelación a los usuarios activos.
+          </li>
+        </ol>
+        <p>Al continuar, confirmas que has leído y aceptas estos términos y condiciones.</p>
+      </div>
+      <div class="px-6 py-4 border-t flex justify-end gap-3">
+        <button type="button" id="cancelarModalTerminos" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100">Cancelar</button>
+        <button type="button" id="aceptarTerminosBtn" class="px-4 py-2 rounded-lg bg-celeste text-white font-semibold disabled:opacity-40 disabled:cursor-not-allowed" disabled>Aceptar</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

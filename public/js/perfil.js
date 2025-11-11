@@ -1,5 +1,4 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { requireAuth } from './authGuard.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';
@@ -10,6 +9,174 @@ let latUsuario = null;
 let lonUsuario = null;
 const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
 const CUPON_PLACEHOLDER = 'https://placehold.co/600x400?text=Cup%C3%B3n';
+const isLocalEnv = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+const LOGIN_URL = isLocalEnv ? '/public/logearse.html' : '/logearse.html';
+const UPGRADE_URL = isLocalEnv ? '/public/upgradeUp.html' : '/upgradeUp.html';
+let perfilUsuarioCache = null;
+
+const modalMembresiaOverlay = document.getElementById('modalMembresiaUp');
+const modalMembresiaCard = document.getElementById('modalMembresiaUpCard');
+const modalUpSubmit = document.getElementById('modalUpSubmit');
+const modalUpClose = document.getElementById('modalUpClose');
+const modalUpCloseIcon = document.getElementById('modalUpCloseIcon');
+
+const ocultarModalMembresia = () => {
+  if (!modalMembresiaOverlay || !modalMembresiaCard) return;
+  modalMembresiaCard.classList.remove('opacity-100', 'scale-100');
+  modalMembresiaCard.classList.add('opacity-0', 'scale-95');
+  setTimeout(() => {
+    modalMembresiaOverlay.classList.add('hidden');
+    modalMembresiaOverlay.classList.remove('flex');
+  }, 200);
+};
+
+const mostrarModalMembresia = () => {
+  if (!modalMembresiaOverlay || !modalMembresiaCard) return;
+  modalMembresiaOverlay.classList.remove('hidden');
+  modalMembresiaCard.classList.add('opacity-0', 'scale-95');
+  modalMembresiaCard.classList.remove('opacity-100', 'scale-100');
+  requestAnimationFrame(() => {
+    modalMembresiaOverlay.classList.add('flex');
+    modalMembresiaCard.classList.remove('opacity-0', 'scale-95');
+    modalMembresiaCard.classList.add('opacity-100', 'scale-100');
+  });
+};
+
+modalUpClose?.addEventListener('click', ocultarModalMembresia);
+modalUpCloseIcon?.addEventListener('click', ocultarModalMembresia);
+modalMembresiaOverlay?.addEventListener('click', (event) => {
+  if (event.target === modalMembresiaOverlay) {
+    ocultarModalMembresia();
+  }
+});
+modalUpSubmit?.addEventListener('click', () => {
+  window.location.href = UPGRADE_URL;
+});
+
+const obtenerUsuarioActual = async () => {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) {
+      window.location.href = LOGIN_URL;
+      return null;
+    }
+    return data.user;
+  } catch (err) {
+    console.error('Error obteniendo usuario actual:', err);
+    window.location.href = LOGIN_URL;
+    return null;
+  }
+};
+
+const obtenerPerfilUsuario = async (userId) => {
+  if (perfilUsuarioCache && perfilUsuarioCache.id === userId) {
+    return perfilUsuarioCache;
+  }
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, telefono, imagen, membresiaUp')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error obteniendo perfil del usuario:', error);
+      return null;
+    }
+    perfilUsuarioCache = data;
+    return data;
+  } catch (err) {
+    console.error('Error inesperado obteniendo perfil del usuario:', err);
+    return null;
+  }
+};
+
+const asegurarMembresiaUp = async (perfil) => {
+  if (perfil?.membresiaUp) return true;
+  mostrarModalMembresia();
+  return false;
+};
+
+const procesarGuardadoCupon = async ({
+  cupon,
+  btnGuardar,
+  acciones,
+  estadoRow,
+  disponiblesTotal,
+  guardadosMap,
+  totalesMap
+}) => {
+  btnGuardar.disabled = true;
+  btnGuardar.textContent = 'Guardando...';
+
+  const user = await obtenerUsuarioActual();
+  if (!user) {
+    btnGuardar.disabled = false;
+    btnGuardar.textContent = 'Guardar cupón';
+    return;
+  }
+
+  let perfil = await obtenerPerfilUsuario(user.id);
+  if (!perfil) {
+    alert('No pudimos validar tu perfil. Intenta nuevamente.');
+    btnGuardar.disabled = false;
+    btnGuardar.textContent = 'Guardar cupón';
+    return;
+  }
+
+  const membershipOk = await asegurarMembresiaUp(perfil);
+  perfil = perfilUsuarioCache || perfil;
+
+  if (!membershipOk) {
+    btnGuardar.disabled = false;
+    btnGuardar.textContent = 'Guardar cupón';
+    return;
+  }
+
+  try {
+    const codigoqr = crypto.randomUUID();
+    const qrUrl = `${QR_REDIMIR_URL}?qr=${codigoqr}`;
+    console.log('Generando QR para cupón:', cupon.id, codigoqr, qrUrl);
+    const { error: insertError } = await supabase
+      .from('cuponesUsuarios')
+      .insert({
+        idCupon: cupon.id,
+        idUsuario: user.id,
+        codigoqr,
+        redimido: false,
+        fechaGuardado: new Date().toISOString()
+      });
+
+    if (insertError) {
+      if (insertError.code === '23505') {
+        alert('Ya guardaste este cupón.');
+      } else {
+        console.error('❌ Error guardando cupón:', insertError);
+        alert('Ocurrió un error al guardar el cupón.');
+      }
+      btnGuardar.disabled = false;
+      btnGuardar.textContent = 'Guardar cupón';
+      return;
+    }
+
+    guardadosMap.set(cupon.id, { redimido: false, codigoqr });
+    totalesMap.set(cupon.id, (totalesMap.get(cupon.id) || 0) + 1);
+    btnGuardar.remove();
+    const estado = document.createElement('span');
+    estado.className = 'inline-flex items-center px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full';
+    estado.textContent = 'Ya guardado';
+    acciones.appendChild(estado);
+    if (estadoRow) {
+      const nuevosUsados = totalesMap.get(cupon.id) || 0;
+      estadoRow.innerHTML = `<span>Disponibles: ${Math.max(disponiblesTotal - nuevosUsados, 0)} de ${disponiblesTotal}</span>`;
+    }
+  } catch (error) {
+    console.error('🛑 Error inesperado guardando cupón:', error);
+    alert('No se pudo guardar el cupón. Intenta nuevamente.');
+    btnGuardar.disabled = false;
+    btnGuardar.textContent = 'Guardar cupón';
+  }
+};
 
 const formatearFechaLegible = (fecha) => {
   if (!fecha) return '--';
@@ -71,7 +238,6 @@ if (error) {
   }
 
   const { data: { user } } = await supabase.auth.getUser();
-  let currentUser = user ?? null;
   console.log('Cupones del comercio:', cupones);
   console.log('Usuario actual (cupones):', user?.id);
 
@@ -198,68 +364,17 @@ if (error) {
       btnGuardar.type = 'button';
       btnGuardar.className = 'px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition w-full';
       btnGuardar.textContent = 'Guardar cupón';
-      btnGuardar.addEventListener('click', async () => {
-        btnGuardar.disabled = true;
-        btnGuardar.textContent = 'Guardando...';
-        if (!currentUser) {
-          try {
-            const authUser = await requireAuth('saveCoupon');
-            if (!authUser?.id) {
-              btnGuardar.disabled = false;
-              btnGuardar.textContent = 'Guardar cupón';
-              return;
-            }
-            currentUser = authUser;
-          } catch {
-            btnGuardar.disabled = false;
-            btnGuardar.textContent = 'Guardar cupón';
-            return;
-          }
-        }
-        try {
-          const codigoqr = crypto.randomUUID();
-          const qrUrl = `${QR_REDIMIR_URL}?qr=${codigoqr}`;
-          console.log('Generando QR para cupón:', cupon.id, codigoqr, qrUrl);
-          const { error: insertError } = await supabase
-            .from('cuponesUsuarios')
-            .insert({
-              idCupon: cupon.id,
-              idUsuario: currentUser.id,
-              codigoqr,
-              redimido: false,
-              fechaGuardado: new Date().toISOString()
-            });
-
-          if (insertError) {
-            if (insertError.code === '23505') {
-              alert('Ya guardaste este cupón.');
-            } else {
-              console.error('❌ Error guardando cupón:', insertError);
-              alert('Ocurrió un error al guardar el cupón.');
-            }
-            btnGuardar.disabled = false;
-            btnGuardar.textContent = 'Guardar cupón';
-            return;
-          }
-
-          guardadosMap.set(cupon.id, { redimido: false, codigoqr });
-          totalesMap.set(cupon.id, (totalesMap.get(cupon.id) || 0) + 1);
-          btnGuardar.remove();
-          const estado = document.createElement('span');
-          estado.className = 'inline-flex items-center px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full';
-          estado.textContent = 'Ya guardado';
-          acciones.appendChild(estado);
-          if (estadoRow) {
-            const nuevosUsados = totalesMap.get(cupon.id) || 0;
-            estadoRow.innerHTML = `<span>Disponibles: ${Math.max(disponiblesTotal - nuevosUsados, 0)} de ${disponiblesTotal}</span>`;
-          }
-        } catch (error) {
-          console.error('🛑 Error inesperado guardando cupón:', error);
-          alert('No se pudo guardar el cupón. Intenta nuevamente.');
-          btnGuardar.disabled = false;
-          btnGuardar.textContent = 'Guardar cupón';
-        }
-      });
+      btnGuardar.addEventListener('click', () =>
+        procesarGuardadoCupon({
+          cupon,
+          btnGuardar,
+          acciones,
+          estadoRow,
+          disponiblesTotal,
+          guardadosMap,
+          totalesMap
+        })
+      );
       acciones.appendChild(btnGuardar);
     }
 
