@@ -1,6 +1,6 @@
-import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { cardComercio } from './CardComercio.js';
-import { supabase } from '../shared/supabaseClient.js';
+import { cardComercioNoActivo } from './CardComercioNoActivo.js';
+import { fetchCercanosParaCoordenadas } from './buscarComerciosListado.js';
 
 // Ajusta estos IDs según tu Supabase
 const ID_PLAYAS = 1;
@@ -21,9 +21,9 @@ export function cargarCercanosDesdeUsuario() {
       };
 
       await Promise.all([
-        cargarCercanosCategoria(IDS_COMIDA, 10, 'sliderCercanosComida', 'cercanosComidaContainer'),
-        cargarCercanosCategoria([ID_PLAYAS], 45, 'sliderPlayasCercanas', 'cercanosPlayasContainer'),
-        cargarCercanosCategoria([ID_LUGARES], 45, 'sliderCercanosLugares', 'cercanosLugaresContainer'),
+        cargarCercanosCategoria(IDS_COMIDA, 10, 'sliderCercanosComida', 'cercanosComidaContainer', origen),
+        cargarCercanosCategoria([ID_PLAYAS], 45, 'sliderPlayasCercanas', 'cercanosPlayasContainer', origen),
+        cargarCercanosCategoria([ID_LUGARES], 45, 'sliderCercanosLugares', 'cercanosLugaresContainer', origen),
       ]);
     },
     (err) => {
@@ -32,39 +32,62 @@ export function cargarCercanosDesdeUsuario() {
   );
 }
 
-async function cargarCercanosCategoria(idCategorias, minutosMax, idSlider, idContainer) {
-  const { data: comercios, error } = await supabase
-    .from('Comercios')
-    .select('*')
-    .overlaps('idCategoria', idCategorias);
+async function cargarCercanosCategoria(idCategorias, minutosMax, idSlider, idContainer, origen) {
+  if (!origen || !Number.isFinite(origen.lat) || !Number.isFinite(origen.lon)) return;
 
-  if (error) {
-    console.error(`❌ Error cargando comercios para categoría ${idCategorias}:`, error);
-    return;
-  }
+  const radioKm = Math.max(10, (minutosMax / 60) * 45);
 
-  const origen = {
-    lat: navigator.geolocation?.lastPosition?.coords?.latitude,
-    lon: navigator.geolocation?.lastPosition?.coords?.longitude,
-  };
+  try {
+    const peticiones =
+      Array.isArray(idCategorias) && idCategorias.length > 0
+        ? idCategorias.map((catId) =>
+            fetchCercanosParaCoordenadas({
+              latitud: origen.lat,
+              longitud: origen.lon,
+              radioKm,
+              categoriaOpcional: catId,
+              abiertoAhora: null,
+            })
+          )
+        : [
+            fetchCercanosParaCoordenadas({
+              latitud: origen.lat,
+              longitud: origen.lon,
+              radioKm,
+              categoriaOpcional: null,
+              abiertoAhora: null,
+            }),
+          ];
 
-  const conCoords = comercios.filter(c =>
-    typeof c.latitud === 'number' &&
-    typeof c.longitud === 'number'
-  );
+    const respuestas = await Promise.all(peticiones);
+    const mapa = new Map();
+    respuestas.flat().forEach((comercio) => {
+      if (!mapa.has(comercio.id)) mapa.set(comercio.id, comercio);
+    });
+    const lista = Array.from(mapa.values());
 
-  const conTiempo = await calcularTiemposParaLista(conCoords, origen);
-  const cercanos = conTiempo.filter(c => c.minutosCrudos !== null && c.minutosCrudos <= minutosMax);
+    const filtrados = lista.filter((c) => {
+      if (!Array.isArray(c.categoriaIds) || !c.categoriaIds.length) return false;
+      return idCategorias.some((id) => c.categoriaIds.includes(id));
+    });
 
-  const container = document.getElementById(idContainer);
-  const slider = document.getElementById(idSlider);
-  if (!container || !slider) return;
+    const cercanos = filtrados.filter((c) => c.minutosCrudos == null || c.minutosCrudos <= minutosMax);
 
-  if (cercanos.length > 0) {
-    slider.innerHTML = '';
-    cercanos.forEach(c => slider.appendChild(cardComercio(c)));
-    container.classList.remove('hidden');
-  } else {
-    container.classList.add('hidden');
+    const container = document.getElementById(idContainer);
+    const slider = document.getElementById(idSlider);
+    if (!container || !slider) return;
+
+    if (cercanos.length > 0) {
+      slider.innerHTML = '';
+      cercanos.forEach((c) => {
+        const card = c.activo === true ? cardComercio(c) : cardComercioNoActivo(c);
+        slider.appendChild(card);
+      });
+      container.classList.remove('hidden');
+    } else {
+      container.classList.add('hidden');
+    }
+  } catch (error) {
+    console.error(`❌ Error cargando cercanos para categorías ${idCategorias}:`, error);
   }
 }

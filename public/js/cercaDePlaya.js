@@ -1,9 +1,14 @@
 // public/js/cercaDePlaya.js
 import { supabase } from '../shared/supabaseClient.js';
 import { cardComercio } from './CardComercio.js';
+import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 import { cardPlayaSlide } from './cardPlayaSlide.js';
 import { calcularDistancia } from './distanciaLugar.js';
 import { calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { fetchCercanosParaCoordenadas } from './buscarComerciosListado.js';
+
+const renderCardComercio = (item) =>
+  item.activo === true ? cardComercio(item) : cardComercioNoActivo(item);
 
 export async function mostrarCercanosPlaya(PLAYA_ID) {
   // 🔹 1. Obtener la playa base
@@ -25,13 +30,22 @@ export async function mostrarCercanosPlaya(PLAYA_ID) {
   }
 
   // 🟢 2. Comercios Cercanos
-  const { data: comercios } = await supabase
-    .from('Comercios')
-    .select('id, nombre, municipio, logo, latitud, longitud, activo')
-    .eq('activo', true);
+  let comerciosCercanos = [];
+  try {
+    comerciosCercanos = await fetchCercanosParaCoordenadas({
+      latitud: origen.lat,
+      longitud: origen.lon,
+      radioKm: 15,
+      categoriaOpcional: null,
+      abiertoAhora: null,
+    });
+  } catch (error) {
+    console.error('❌ Error cargando comercios cercanos a la playa:', error);
+  }
 
-  const comidaCercana = await procesarCercanos(origen, comercios, 15);
-  renderizarSlider('cercanosComidaContainer', 'sliderCercanosComida', comidaCercana, cardComercio);
+  const comidaCercana = comerciosCercanos
+    .filter((c) => c.minutosCrudos == null || c.minutosCrudos <= 15);
+  renderizarSlider('cercanosComidaContainer', 'sliderCercanosComida', comidaCercana, renderCardComercio);
 
   // 🟢 3. Playas Cercanas
   const { data: playas } = await supabase
@@ -42,15 +56,11 @@ export async function mostrarCercanosPlaya(PLAYA_ID) {
   const playasCercanas = await procesarCercanos(origen, playas, 20);
   renderizarSlider('cercanosPlayasContainer', 'sliderPlayasCercanas', playasCercanas, cardPlayaSlide);
 
-  // 🟢 4. Lugares de Interés Cercanos
-  const { data: lugares } = await supabase
-    .from('Comercios')
-    .select('id, nombre, municipio, logo, latitud, longitud, idCategoria, activo')
-    .eq('idCategoria', 15)
-    .eq('activo', true);
-
-  const lugaresCercanos = await procesarCercanos(origen, lugares, 20);
-  renderizarSlider('cercanosLugaresContainer', 'sliderCercanosLugares', lugaresCercanos, cardComercio);
+  // 🟢 4. Lugares de Interés Cercanos (categoría 15)
+  const lugaresCercanos = comerciosCercanos
+    .filter((c) => Array.isArray(c.categoriaIds) && c.categoriaIds.includes(15))
+    .filter((c) => c.minutosCrudos == null || c.minutosCrudos <= 20);
+  renderizarSlider('cercanosLugaresContainer', 'sliderCercanosLugares', lugaresCercanos, renderCardComercio);
 }
 
 // 🧮 Función para calcular distancias y tiempos

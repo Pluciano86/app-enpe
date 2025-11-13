@@ -84,12 +84,17 @@ export function cardComercio(comercio) {
     }
 
     <!-- Estado de apertura -->
-    <div class="flex justify-center items-center gap-1 
-                ${comercio.abierto ? 'text-green-600' : 'text-red-600'} 
-                font-medium mb-1 text-base">
-      <i class="far fa-clock ${comercio.abierto ? 'slow-spin text-green-600' : 'text-red-500'}"></i> 
-      ${comercio.abierto ? 'Abierto Ahora' : 'Cerrado Ahora'}
-    </div>
+    ${(() => {
+      const abiertoAhora = comercio.abierto_ahora === true;
+      return `
+        <div class="flex justify-center items-center gap-1 
+                    ${abiertoAhora ? 'text-green-600' : 'text-red-600'} 
+                    font-medium mb-1 text-base">
+          <i class="far fa-clock ${abiertoAhora ? 'slow-spin text-green-600' : 'text-red-500'}"></i> 
+          ${abiertoAhora ? 'Abierto Ahora' : 'Cerrado Ahora'}
+        </div>
+      `;
+    })()}
 
     <!-- Pueblo -->
     <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#23b4e9]">

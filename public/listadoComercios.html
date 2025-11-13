@@ -125,8 +125,20 @@
     .catch(error => console.error('Error cargando listado de comercios:', error));
 </script> -->
 
-  <!-- Código dinámico (JS) -->
-  <script type="module" src="js/main.js"></script>
+
+
+
+
+
+  <!-- Código dinámico (JS) 
+  <script type="module" src="js/main.js"></script> -->
+
+
+  <script type="module" src="./js/buscarComerciosListado.js"></script>
+<script type="module">
+  import { iniciarBusquedaComercios } from './js/buscarComerciosListado.js';
+  iniciarBusquedaComercios();
+</script>
   
 
   <script src="js/bloquearPantalla.js"></script>

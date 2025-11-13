@@ -1,8 +1,8 @@
 // public/js/cercaDeMi.js
 import { supabase } from '../shared/supabaseClient.js';
-import { calcularTiempoEnVehiculo } from '../shared/utils.js';
-import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 import { cardComercio } from './CardComercio.js';
+import { cardComercioNoActivo } from './CardComercioNoActivo.js';
+import { fetchCercanosParaCoordenadas } from './buscarComerciosListado.js';
 
 // 🧩 Muestra el marcador del usuario con su foto de perfil
 async function crearIconoUsuario(idUsuario) {
@@ -47,9 +47,6 @@ async function crearIconoUsuario(idUsuario) {
 const PLACEHOLDER_LOGO =
   'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgLogoNoDisponible.jpg';
 
-const PLACEHOLDER_PORTADA =
-  'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgComercioNoDisponible.jpg';
-
 const CATEGORY_COLORS = {
   1: '#2563eb',
   2: '#16a34a',
@@ -76,10 +73,12 @@ const $search = document.getElementById('searchNombre');
 const $filtroAbierto = document.getElementById('filtroAbierto');
 const $filtroActivos = document.getElementById('filtroActivos');
 const $filtroFavoritos = document.getElementById('filtroFavoritos');
+const $filtroCategoria = document.getElementById('filtroCategoria');
+const $btnToggleFiltros = document.getElementById('btnToggleFiltros');
+const $panelFiltros = document.getElementById('panelFiltros');
 const $categoriaRow = document.getElementById('categoriaFiltrosRow');
 
 let comerciosOriginales = [];
-let horariosCache = [];
 let searchDebounceId = null;
 let favoritosUsuarioIds = new Set();
 let favoritosPromise = null;
@@ -289,6 +288,32 @@ function toggleLoader(show) {
   if (!$loader) return;
   $loader.classList.toggle('hidden', !show);
   $loader.classList.toggle('flex', show);
+}
+
+function togglePanelFiltros() {
+  if (!$panelFiltros || !$btnToggleFiltros) return;
+  const estabaOculto = $panelFiltros.classList.toggle('hidden');
+  $btnToggleFiltros.setAttribute('aria-expanded', String(!estabaOculto));
+  $btnToggleFiltros.classList.toggle('bg-gray-100', estabaOculto);
+  $btnToggleFiltros.classList.toggle('bg-gray-200', !estabaOculto);
+}
+
+async function cargarCategoriasDropdown() {
+  if (!$filtroCategoria) return;
+  $filtroCategoria.innerHTML = '<option value=\"\">Todas las categorías</option>';
+  try {
+    const { data, error } = await supabase.from('Categorias').select('id, nombre').order('nombre');
+    if (error) throw error;
+    data?.forEach((categoria) => {
+      if (categoria?.id == null) return;
+      const option = document.createElement('option');
+      option.value = categoria.id;
+      option.textContent = categoria.nombre || `Categoría ${categoria.id}`;
+      $filtroCategoria.appendChild(option);
+    });
+  } catch (err) {
+    console.error('⚠️ No se pudieron cargar las categorías:', err?.message || err);
+  }
 }
 
 function normalizarTextoPlano(valor) {
@@ -523,7 +548,7 @@ function aplicarFiltros() {
   }
 
   // 🗺️ Renderizar resultados en el mapa
-  renderMarkers(resultado, { horariosAll: horariosCache });
+  renderMarkers(resultado);
 }
 
 async function obtenerIdUsuarioActual() {
@@ -589,30 +614,6 @@ async function obtenerFavoritosUsuarioIds() {
 
   favoritosUsuarioIds = await favoritosPromise;
   return favoritosUsuarioIds;
-}
-
-// 👇 Añade esto junto a las utilidades (arriba del archivo)
-async function inyectarPortadas(lista = []) {
-  const ids = lista.map(c => c.id).filter(Boolean);
-  if (ids.length === 0) return lista;
-
-  // Traemos portada exacta desde la tabla Comercios
-  const { data, error } = await supabase
-    .from('Comercios')              // <- nombre de la tabla con la columna 'portada'
-    .select('id, portada')
-    .in('id', ids);
-
-  if (error || !data) return lista;
-
-  const mapaPortadas = Object.fromEntries(
-    data.map(r => [r.id, (r.portada || '').trim()])
-  );
-
-  // Inyectamos en cada comercio; también exponemos 'imagenPortada' por si tu Card la usa con ese nombre
-  return lista.map(c => {
-    const url = mapaPortadas[c.id] || c.portada || null;
-    return { ...c, portada: url, imagenPortada: url };
-  });
 }
 
 function initMap() {
@@ -690,321 +691,68 @@ function createComercioIcon(comercio) {
 
 /* -------------------------- ENRIQUECEDORES -------------------------- */
 
-// Cache para evitar hits repetidos
-const portadaCache = new Map();
-const infoBasicaCache = new Map();
-
-async function obtenerPortada(idComercio) {
-  if (portadaCache.has(idComercio)) return portadaCache.get(idComercio);
-
-  try {
-    const { data } = await supabase
-      .from('imagenesComercios')
-      .select('imagen')
-      .eq('idComercio', idComercio)
-      .eq('portada', true)
-      .single();
-
-    const url = data?.imagen?.trim() || null;
-    portadaCache.set(idComercio, url);
-    return url;
-  } catch {
-    portadaCache.set(idComercio, null);
-    return null;
-  }
-}
-
-// ✅ Trae el municipio desde la tabla comercios y, si hace falta, desde la relación con Municipios
-async function obtenerInfoBasica(idComercio) {
-  if (infoBasicaCache.has(idComercio)) return infoBasicaCache.get(idComercio);
-
-  try {
-    const { data, error } = await supabase
-      .from('Comercios') // 👈 en minúsculas
-      .select(`
-        id,
-        municipio,
-        idMunicipio,
-        Municipios:Municipios ( nombre )
-      `)
-      .eq('id', idComercio)
-      .single();
-
-    const result = {
-      municipio: data?.municipio || data?.Municipios?.nombre || null,
-    };
-
-    infoBasicaCache.set(idComercio, result);
-    return result;
-  } catch {
-    infoBasicaCache.set(idComercio, { municipio: null });
-    return { municipio: null };
-  }
-}
-
-function normalizarMunicipio(c) {
-  return c.municipio || c.pueblo || c.municipio_nombre || '';
-}
-
-async function enriquecerParaCard(c) {
-  // Portada
-  const portada =
-    c.portada?.trim() ||
-    (await obtenerPortada(c.id)) ||
-    c.imagen?.trim() ||
-    PLACEHOLDER_PORTADA;
-
-  // Dirección / municipio / abierto
-  const info = await obtenerInfoBasica(c.id);
-  const direccion = c.direccion || info.direccion || '';
-  const municipio = normalizarMunicipio(c) || info.municipio || '';
-  const abierto =
-    c.abierto ?? c.abiertoAhora ?? info.abierto ?? null; // deja null si no hay
-
-  // cardComercio usa tiempoTexto (y a veces distanciaTexto)
-  const tiempoTexto = c.tiempoVehiculo || c.tiempoTexto || null;
-
-  return {
-    ...c,
-    portada,
-    direccion,
-    municipio,
-    abierto,
-    tiempoTexto,
-  };
-}
-
-/* ---------------------- DISTANCIA / TIEMPO AUTO --------------------- */
-
-async function adjuntarTiempoManejo(lista = []) {
-  if (!Array.isArray(lista) || lista.length === 0) return [];
-
-  const origenValido = Number.isFinite(userLat) && Number.isFinite(userLon);
-
-  return Promise.all(
-    lista.map(async (comercio) => {
-      const destinoLat = Number(comercio.latitud);
-      const destinoLon = Number(comercio.longitud);
-
-      let tiempoVehiculo = comercio.tiempoVehiculo || null;
-      let minutosCrudos = null;
-
-      if (origenValido && Number.isFinite(destinoLat) && Number.isFinite(destinoLon)) {
-        const r = await getDrivingDistance(
-          { lat: userLat, lng: userLon },
-          { lat: destinoLat, lng: destinoLon }
-        );
-        if (r?.duracion != null) {
-          minutosCrudos = Math.round(r.duracion / 60);
-          tiempoVehiculo = formatTiempo(r.duracion);
-        }
-      }
-
-      if (!tiempoVehiculo) {
-        const fb = calcularTiempoEnVehiculo(3);
-        minutosCrudos = fb.minutos;
-        tiempoVehiculo = formatTiempo(fb.minutos * 60);
-      }
-
-      return { ...comercio, tiempoVehiculo, minutosCrudos };
-    })
-  );
-}
-
-/* ------------------------------ MARCADORES ----------------------------- */
-// 🔹 Determina si el comercio está abierto ahora
-function estaAbiertoAhora(horarios = []) {
-  const ahora = new Date();
-  const dia = ahora.getDay(); // 0 = domingo, 6 = sábado
-  const horaActual = ahora.toTimeString().slice(0, 5);
-
-  const horarioDia = horarios.find((h) => h.diaSemana === dia);
-  if (!horarioDia || horarioDia.cerrado) return false;
-
-  const apertura = horarioDia.apertura?.slice(0, 5);
-  const cierre = horarioDia.cierre?.slice(0, 5);
-  if (!apertura || !cierre) return false;
-
-  return horaActual >= apertura && horaActual <= cierre;
-}
-
-async function renderMarkers(comercios = [], opciones = {}) {
+async function renderMarkers(comercios = []) {
   markersLayer.clearLayers();
-  if (!comercios.length) return;
+  if (!Array.isArray(comercios) || !comercios.length) return;
 
-  const ids = comercios.map(c => c.id).filter(Boolean);
-  const idsSet = new Set(ids);
+  comercios.forEach((comercio) => {
+    const lat = Number(comercio.latitud ?? comercio.lat ?? comercio.latitude);
+    const lon = Number(comercio.longitud ?? comercio.lon ?? comercio.longitude);
 
-  let horariosAll = Array.isArray(opciones.horariosAll) ? opciones.horariosAll : null;
-  if ((!horariosAll || !horariosAll.length) && ids.length) {
-    const { data } = await supabase
-      .from('Horarios')
-      .select('idComercio, apertura, cierre, cerrado, diaSemana')
-      .in('idComercio', ids);
-    horariosAll = data || [];
-    horariosCache = horariosAll;
-  }
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
-  const horariosPorId = new Map();
-  if (Array.isArray(horariosAll)) {
-    horariosAll.forEach(h => {
-      if (!idsSet.size || idsSet.has(h.idComercio)) {
-        if (!horariosPorId.has(h.idComercio)) horariosPorId.set(h.idComercio, []);
-        horariosPorId.get(h.idComercio).push(h);
-      }
-    });
-  }
-
-  const ahora = new Date();
-  const diaActual = ahora.getDay();
-  const horaActual = ahora.toTimeString().slice(0, 5);
-
-
-  // 🕓 Función auxiliar segura
-  function minutosDesdeMedianoche(horaStr) {
-    if (!horaStr || typeof horaStr !== "string" || !horaStr.includes(":")) return null;
-    const [h, m] = horaStr.split(":").map(Number);
-    return !isNaN(h) && !isNaN(m) ? h * 60 + m : null;
-  }
-
-  function estaAbierto(horarios, diaActual, horaActual, nombre) {
-    const horaMin = minutosDesdeMedianoche(horaActual);
-    const hoy = horarios.find(h => h.diaSemana === diaActual);
-    const ayer = horarios.find(h => h.diaSemana === (diaActual + 6) % 7);
-
-    const getMinutos = (hora) => minutosDesdeMedianoche(hora);
-
-    // 🔸 Validar horario de hoy
-    if (hoy && !hoy.cerrado) {
-      const apertura = getMinutos(hoy.apertura);
-      const cierre = getMinutos(hoy.cierre);
-      if (apertura != null && cierre != null) {
-        if (apertura < cierre) {
-          if (horaMin >= apertura && horaMin < cierre) {
-            return true;
-          }
-        } else if (horaMin >= apertura || horaMin < cierre) {
-          console.log(`✅ ${nombre} está ABIERTO (pasa medianoche)`);
-          return true;
-        }
-      }
-    }
-
-    // 🔸 Validar si aún está abierto por horario extendido de ayer
-    if (ayer && !ayer.cerrado) {
-      const apertura = getMinutos(ayer.apertura);
-      const cierre = getMinutos(ayer.cierre);
-      if (apertura != null && cierre != null && apertura > cierre && horaMin < cierre) {
-        console.log(`✅ ${nombre} sigue ABIERTO por horario de ayer`);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  // 🔹 Agregar estado de horario a cada comercio
-  const comerciosConHorario = comercios.map(c => {
-    const horarios = horariosPorId.get(c.id) || [];
-    const abierto = estaAbierto(horarios, diaActual, horaActual, c.nombre);
-    return { ...c, abiertoAhora: abierto };
-  });
-
-  const abiertoMap = new Map(comerciosConHorario.map(c => [c.id, c.abiertoAhora]));
-  comerciosOriginales = comerciosOriginales.map(c => {
-    if (abiertoMap.has(c.id)) {
-      return { ...c, abiertoAhora: abiertoMap.get(c.id) };
-    }
-    return c;
-  });
-
-  // 🔹 Renderizar los marcadores
-  comerciosConHorario.forEach((comercio) => {
-    if (typeof comercio.latitud !== "number" || typeof comercio.longitud !== "number") return;
-
-    const marker = L.marker([comercio.latitud, comercio.longitud], {
+    const marker = L.marker([lat, lon], {
       icon: createComercioIcon(comercio),
     });
 
-const comercioAdaptado = {
-  ...comercio,
-  abierto: comercio.abiertoAhora,
-  municipio: comercio.municipio ?? null,
-  pueblo: '',
-};
+    const cardFactory = comercio.activo === true ? cardComercio : cardComercioNoActivo;
+    const cardNode = cardFactory({
+      ...comercio,
+      abierto: Boolean(comercio.abierto ?? comercio.abiertoAhora ?? comercio.abierto_ahora),
+      tiempoVehiculo: comercio.tiempoVehiculo || comercio.tiempoTexto,
+      pueblo: comercio.municipio || comercio.pueblo || '',
+    });
 
+    cardNode.querySelector('div[class*="text-[#23b4e9]"]')?.remove();
+    cardNode.querySelector('.municipio-info')?.remove();
 
-// 🧩 Generar la tarjeta del comercio
-const cardNode = cardComercio(comercioAdaptado);
+    const municipioTexto = typeof comercio.municipio === 'string' ? comercio.municipio.trim() : '';
+    if (municipioTexto) {
+      const municipioEl = document.createElement('div');
+      municipioEl.className =
+        'flex items-center gap-1 justify-center text-[#23b4e9] text-sm font-medium municipio-info';
+      municipioEl.innerHTML = `<i class="fas fa-map-pin"></i> ${municipioTexto}`;
 
-// 🕒 Insertar o actualizar el ícono de reloj dentro del popup
-const horarioContainer = cardNode.querySelector('.flex.justify-center.items-center.gap-1');
-const relojIcon = horarioContainer?.querySelector('.fa-clock');
-
-if (horarioContainer) {
-  const esAbierto = horarioContainer.textContent.toLowerCase().includes('abierto');
-  const colorIcono = esAbierto ? 'text-green-600' : 'text-red-500';
-  const iconClass = esAbierto
-    ? 'far fa-clock slow-spin'
-    : 'far fa-clock';
-
-  if (relojIcon) {
-    // ✅ Si ya existe el ícono, actualizamos clase y color
-    relojIcon.className = `${iconClass} ${colorIcono} mr-1`;
-  } else {
-    // ✅ Si no existe, lo insertamos al inicio del texto
-    horarioContainer.insertAdjacentHTML(
-      'afterbegin',
-      `<i class="${iconClass} ${colorIcono} mr-1"></i>`
-    );
-  }
-}
-
-// 🏙️ Inserta el municipio directo de la tabla (sin fallbacks)
-cardNode.querySelector('div[class*="text-[#23b4e9]"]')?.remove();
-cardNode.querySelector('.municipio-info')?.remove();
-
-const municipioTexto = typeof comercio.municipio === 'string' ? comercio.municipio.trim() : '';
-if (municipioTexto) {
-  const municipioEl = document.createElement('div');
-  municipioEl.className = 'flex items-center gap-1 justify-center text-[#23b4e9] text-sm font-medium municipio-info';
-  municipioEl.innerHTML = `
-    <i class="fas fa-map-pin"></i> ${municipioTexto}
-  `;
-
-  const anchorNombre = cardNode.querySelector('a[href*="perfilComercio.html"]');
-  if (anchorNombre) {
-    anchorNombre.insertAdjacentElement('afterend', municipioEl);
-  } else {
-    cardNode.insertBefore(municipioEl, cardNode.firstChild);
-  }
-}
-
-
-// 🔹 Crear contenedor del popup
-const wrapper = document.createElement("div");
-wrapper.style.width = "340px";
-wrapper.appendChild(cardNode);
-
-marker.bindPopup(wrapper, {
-  maxWidth: 360,
-  className: "popup-card--clean",
-  autoPan: true,
-  keepInView: true,
-});
-
-    // ✅ Corrige color del botón de teléfono
-    marker.on("popupopen", (e) => {
-      const popupEl = e.popup._contentNode;
-      if (popupEl) {
-        const telButtons = popupEl.querySelectorAll('a[href^="tel:"], button[href^="tel:"]');
-        telButtons.forEach((btn) => {
-          btn.style.color = "#ffffff";
-          btn.style.backgroundColor = "#dc2626";
-          btn.style.border = "none";
-        });
-        const telIcons = popupEl.querySelectorAll('a[href^="tel:"] i, a[href^="tel:"] span');
-        telIcons.forEach((icon) => (icon.style.color = "#ffffff"));
+      const anchorNombre = cardNode.querySelector('a[href*="perfilComercio.html"]');
+      if (anchorNombre) {
+        anchorNombre.insertAdjacentElement('afterend', municipioEl);
+      } else {
+        cardNode.insertBefore(municipioEl, cardNode.firstChild);
       }
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.style.width = '340px';
+    wrapper.appendChild(cardNode);
+
+    marker.bindPopup(wrapper, {
+      maxWidth: 360,
+      className: 'popup-card--clean',
+      autoPan: true,
+      keepInView: true,
+    });
+
+    marker.on('popupopen', (e) => {
+      const popupEl = e.popup._contentNode;
+      if (!popupEl) return;
+      const telButtons = popupEl.querySelectorAll('a[href^="tel:"], button[href^="tel:"]');
+      telButtons.forEach((btn) => {
+        btn.style.color = '#ffffff';
+        btn.style.backgroundColor = '#dc2626';
+        btn.style.border = 'none';
+      });
+      const telIcons = popupEl.querySelectorAll('a[href^="tel:"] i, a[href^="tel:"] span');
+      telIcons.forEach((icon) => (icon.style.color = '#ffffff'));
     });
 
     markersLayer.addLayer(marker);
@@ -1017,152 +765,35 @@ async function loadNearby() {
   if (typeof userLat !== 'number' || typeof userLon !== 'number') return;
 
   const radioMiles = Number($radio?.value ?? 5) || 5;
-  const radioMetros = Math.max(0.5, radioMiles) * 1609.34;
+  const radioKm = Math.max(0.5, radioMiles) * 1.60934;
   toggleLoader(true);
 
-  try {
-    const { data, error } = await supabase.rpc('comercios_cerca_v2', {
-  p_lat: userLat,
-  p_lon: userLon,
-  p_radio_m: radioMetros,
-});
-if (error) throw error;
-
-async function loadNearby() {
-  if (typeof userLat !== 'number' || typeof userLon !== 'number') return;
-
-  const radioMiles = Number($radio?.value ?? 5) || 5;
-  const radioMetros = Math.max(0.5, radioMiles) * 1609.34;
-  toggleLoader(true);
+  const abiertoAhoraFiltro = $filtroAbierto?.checked ? true : null;
+  const categoriaSeleccionada = ($filtroCategoria?.value ?? '').trim();
+  const categoriaOpcional = categoriaSeleccionada ? Number(categoriaSeleccionada) || null : null;
+  const incluirInactivos = false; // solo mostrar inactivos si se habilita explícitamente un filtro futuro
 
   try {
-    const { data, error } = await supabase.rpc('comercios_cerca_v2', {
-      p_lat: userLat,
-      p_lon: userLon,
-      p_radio_m: radioMetros,
+    const lista = await fetchCercanosParaCoordenadas({
+      latitud: userLat,
+      longitud: userLon,
+      radioKm,
+      categoriaOpcional,
+      abiertoAhora: abiertoAhoraFiltro,
+      incluirInactivos,
     });
-    if (error) throw error;
-
-    // ✅ Enriquecer resultados con Categorías y Subcategorías reales
-    const idsComercios = data.map((c) => c.id);
-
-    // 🔹 Categorías
-    const { data: categoriasData } = await supabase
-      .from('ComercioCategorias')
-      .select(`
-        idComercio,
-        idCategoria,
-        categoria:Categorias ( nombre )
-      `)
-      .in('idComercio', idsComercios);
-
-    // 🔹 Subcategorías
-    const { data: subcatsData } = await supabase
-      .from('ComercioSubcategorias')
-      .select(`
-        idComercio,
-        idSubcategoria,
-        subcategoria:subCategoria ( nombre )
-      `)
-      .in('idComercio', idsComercios);
-
-    // 🔹 Agrupar por comercio
-    const categoriasPorComercio = {};
-    categoriasData?.forEach((c) => {
-      if (!categoriasPorComercio[c.idComercio])
-        categoriasPorComercio[c.idComercio] = [];
-      categoriasPorComercio[c.idComercio].push(c.categoria?.nombre);
-    });
-
-    const subcategoriasPorComercio = {};
-    subcatsData?.forEach((s) => {
-      if (!subcategoriasPorComercio[s.idComercio])
-        subcategoriasPorComercio[s.idComercio] = [];
-      subcategoriasPorComercio[s.idComercio].push(s.subcategoria?.nombre);
-    });
-
-    // 🔹 Combinar todo
-    const listaEnriquecida = data.map((c) => ({
-      ...c,
-      categoriasNombre: categoriasPorComercio[c.id] || [],
-      subcategoriasNombre: subcategoriasPorComercio[c.id] || [],
-    }));
-
-    // ⚙️ Reemplaza la lista base original
-    const listaBase = listaEnriquecida;
-
-    // 🔹 Resto del código original (para pintar los resultados)
-    // ... continúa desde aquí con tu renderizado original ...
-
-  } catch (err) {
-    console.error('❌ Error al cargar comercios cercanos:', err);
-  } finally {
-    toggleLoader(false);
-  }
-}
-
-const lista = Array.isArray(data) ? data : [];
-
-// ✅ Recolecta los IDs sin municipio
-const idsSinMunicipio = lista
-  .filter(c => !c.municipio || c.municipio === 'Sin municipio')
-  .map(c => c.id);
-
-let municipiosExtra = [];
-if (idsSinMunicipio.length) {
-  const { data } = await supabase
-    .from('Comercios')
-    .select('id, municipio')
-    .in('id', idsSinMunicipio);
-
-  municipiosExtra = data || [];
-}
-
-// ✅ Une los resultados en memoria
-const listaConMunicipio = lista.map(c => {
-  const extra = municipiosExtra.find(x => x.id === c.id);
-  const municipioBase = c.municipio ?? extra?.municipio ?? null;
-  return { ...c, municipio: municipioBase };
-});
-
-    // 1) Base
-    const listaBase = listaConMunicipio;
-
-    // 2) 💡 Inyectar portada desde la tabla Comercios
-    const listaConPortadas = await inyectarPortadas(listaBase);
-
-    // 3) Tiempos de manejo (para que CardComercio muestre el carro + minutos)
-    const listaConTiempos = await adjuntarTiempoManejo(listaConPortadas);
 
     const favoritosIds = await obtenerFavoritosUsuarioIds();
 
-    const listaConFavoritos = listaConTiempos.map(c => {
-      const claveTexto = String(c.id);
-      const claveNumerica = Number(c.id);
-      const esFavorito = favoritosIds.has(claveTexto) || favoritosIds.has(claveNumerica);
-      const categoriasOriginales = obtenerCategoriasOriginales(c);
-      const categoriasNormalizadas = categoriasOriginales.map(normalizarTextoPlano);
-      const idsCategoria = extraerIdsCategoria(c);
-
-      return {
-        ...c,
-        favorito: esFavorito,
-        categoriasNombre: Array.isArray(c.categoriasNombre) && c.categoriasNombre.length
-          ? c.categoriasNombre
-          : categoriasOriginales,
-        categoriasNormalizadas,
-        categoriasId: Array.isArray(c.categoriasId) && c.categoriasId.length
-          ? c.categoriasId
-          : idsCategoria,
-        categoriaPrincipal: categoriasOriginales[0] || c.categoria || c.categoriaNombre || null,
-      };
+    const listaConFavoritos = lista.map((c) => {
+      const esFavorito = favoritosIds.has(c.id) || favoritosIds.has(String(c.id));
+      return { ...c, favorito: esFavorito };
     });
 
-    // 4) Guardar para filtros y renderizar
-    comerciosOriginales = listaConFavoritos.map(c => ({ ...c }));
-    horariosCache = [];
-  // renderCategoryButtons();
+    comerciosOriginales = listaConFavoritos;
     aplicarFiltros();
+  } catch (err) {
+    console.error('❌ Error al cargar comercios cercanos:', err);
   } finally {
     toggleLoader(false);
   }
@@ -1311,11 +942,14 @@ async function locateUser() {
 (function init() {
   initMap();
   updateRadioLabel();
+  cargarCategoriasDropdown();
 
   $radio?.addEventListener('input', updateRadioLabel);
-  $radio?.addEventListener('change', loadNearby);
+  $radio?.addEventListener('change', () => loadNearby());
   $btnCentrarme?.addEventListener('click', locateUser);
-  $btnRecargar?.addEventListener('click', loadNearby);
+  $btnRecargar?.addEventListener('click', () => loadNearby());
+  $btnToggleFiltros?.addEventListener('click', togglePanelFiltros);
+  $filtroCategoria?.addEventListener('change', () => loadNearby());
 
   if ($search) {
     $search.addEventListener('input', () => {
