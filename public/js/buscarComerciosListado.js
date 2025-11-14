@@ -7,6 +7,18 @@ import { mostrarCargando, mostrarError } from './mensajesUI.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
 
+const EMOJIS_CATEGORIA = {
+  "Restaurantes": "🍽️",
+  "Coffee Shops": "☕",
+  "Jangueo": "🍻",
+  "Antojitos Dulces": "🍰",
+  "Food Trucks": "🚚",
+  "Dispensarios": "🚬",
+  "Panadería": "🥖",
+  "Bares": "🍸",
+  "Playgrounds": "🛝",
+};
+
 
 const LIMITE_POR_PAGINA = 25;
 const RADIO_DEFAULT_KM = 50;
@@ -117,6 +129,7 @@ function obtenerIdCategoriaDesdeURL() {
 const idCategoriaDesdeURL = obtenerIdCategoriaDesdeURL();
 
 const estado = {
+  categoria: '',
   filtros: {
     textoBusqueda: '',
     municipio: '',
@@ -264,6 +277,7 @@ async function cargarNombreCategoria() {
     if (input) input.placeholder = `Buscar en ${data.nombre}`;
 
     actualizarEtiquetaSubcategoria(data.nombre);
+    estado.categoria = data.nombre || '';
   } catch (err) {
     console.error('Error cargando categoría:', err);
   }
@@ -326,41 +340,41 @@ async function cargarSubcategorias(idCategoria) {
 }
 
 function normalizarComercio(record, referencia = obtenerReferenciaUsuarioParaCalculos()) {
-  const distanciaKm = calcularDistanciaConFallback(record, referencia);
+  // 🔥 1. Usar SIEMPRE la ubicación REAL del usuario si existe
+  const refUsuario = obtenerReferenciaUsuarioParaCalculos();
+  const ref = refUsuario || referencia; // preferencia a usuario real
+
+  // 🔥 2. Calcular distancia usando SIEMPRE la referencia correcta
+  const distanciaKm = calcularDistanciaConFallback(record, ref);
+
   const tiempoCalculado =
     Number.isFinite(distanciaKm) && distanciaKm >= 0
       ? calcularTiempoEnVehiculo(distanciaKm)
       : { texto: 'N/D', minutos: null };
-  const minutosTotales = Number.isFinite(tiempoCalculado.minutos) ? tiempoCalculado.minutos : null;
+
+  const minutosTotales = Number.isFinite(tiempoCalculado.minutos)
+    ? tiempoCalculado.minutos
+    : null;
+
   const textoLargo = formatearTextoLargo(minutosTotales);
   const abiertoDesdeRPC = record.abierto_ahora;
-  const abiertoBool = typeof abiertoDesdeRPC === 'boolean' ? abiertoDesdeRPC : Boolean(abiertoDesdeRPC);
+  const abiertoBool = typeof abiertoDesdeRPC === 'boolean'
+    ? abiertoDesdeRPC
+    : Boolean(abiertoDesdeRPC);
 
   return {
+    ...record,
     id: record.id,
     nombre: record.nombre ?? 'Sin nombre',
-    descripcion: record.descripcion ?? '',
     telefono: record.telefono ?? '',
     pueblo: record.municipio ?? record.pueblo ?? '',
     municipio: record.municipio ?? record.pueblo ?? '',
     latitud: Number(record.latitud),
     longitud: Number(record.longitud),
-    imagenPortada: record.portada ?? record.imagenPortada ?? '',
-    portada: record.portada ?? record.imagenPortada ?? '',
-    logo: record.logo ?? '',
     distanciaKm: Number.isFinite(distanciaKm) ? distanciaKm : null,
     tiempoVehiculo: textoLargo,
     tiempoTexto: textoLargo,
     minutosCrudos: minutosTotales,
-    categoriaIds: Array.isArray(record.categoriaIds) ? record.categoriaIds : [],
-    categoriaNombres: Array.isArray(record.categoriaNombres) ? record.categoriaNombres : [],
-    categoriaDisplay: record.categoriaDisplay || (record.categoriaNombres?.join(', ') || 'Sin categoría'),
-    subcategoriaIds: Array.isArray(record.subcategoriaIds) ? record.subcategoriaIds : [],
-    subcategoriaNombres: Array.isArray(record.subcategoriaNombres) ? record.subcategoriaNombres : [],
-    subcategoriaDisplay:
-      record.subcategoriaDisplay || (record.subcategoriaNombres?.join(', ') || 'Sin subcategoría'),
-    activo: record.activo,
-    favorito: Boolean(record.favorito),
     abierto: abiertoBool,
     abiertoAhora: abiertoBool,
     abierto_ahora: abiertoBool,
@@ -1009,7 +1023,8 @@ async function cargarComercios({ append = false, mostrarLoader = true } = {}) {
   if (!append) {
     estado.offset = 0;
     if (mostrarLoader && contenedorListado) {
-      mostrarCargando(contenedorListado, 'Cargando comercios...', '🍽️');
+      const emoji = EMOJIS_CATEGORIA[estado.categoria] || "🍽️";
+      mostrarCargando(contenedorListado, 'Cargando comercios...', emoji);
     }
   }
 

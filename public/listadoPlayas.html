@@ -24,7 +24,8 @@
   <!-- Filtros estilizados -->
 <!-- Título y buscador para playas -->
 <section class="p-4">
-  <h1 class="text-center text-2xl font-medium mb-4">Playas de Puerto Rico</h1>
+  <h1 id="tituloPlayas" class="text-center text-2xl font-medium mb-2">Playas de Puerto Rico</h1>
+  <p id="mensajeUbicacion" class="text-center text-sm text-gray-500 mb-4">Activa tu ubicación para ver primero las playas más cercanas.</p>
 
   <div class="rounded-xl border border-gray-300 p-3 flex flex-col gap-3 bg-white">
     <!-- Input de búsqueda con ícono -->
@@ -93,7 +94,9 @@
   </div>
 
   
-</section>
+  </section>
+
+  <div id="filtros-activos" class="flex items-center gap-2 flex-wrap text-[15px] px-4 py-2"></div>
 
   <div id="mensajeSinResultados" class="hidden text-center text-gray-500 py-6">
   No se encontraron playas con los filtros seleccionados.
@@ -160,7 +163,7 @@
 <div id="footerContainer"></div>
 <script type="module" src="js/footer.js"></script>
 
-<script type="module" src="js/listadoPlayas.js"></script>
+<script type="module" src="./js/buscarPlayasListado.js"></script>
 
   <script src="js/bloquearPantalla.js"></script>
 </body>
