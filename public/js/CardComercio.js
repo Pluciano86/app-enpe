@@ -22,9 +22,12 @@ export function cardComercio(comercio) {
   }
 
   // 🖼️ Imagen de portada y logo
-  const portadaUrl = comercio.imagenPortada?.startsWith('http')
-    ? comercio.imagenPortada
-    : getPublicBase(`galeriacomercios/${comercio.imagenPortada || 'NoActivoPortada.jpg'}`);
+  const fallbackPortada =
+    'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/lugarnodisponible.jpg';
+  const urlPortada =
+    comercio?.portada && comercio.portada.trim() !== ''
+      ? comercio.portada
+      : fallbackPortada;
 
   const logoUrl = comercio.logo?.startsWith('http')
     ? comercio.logo
@@ -44,8 +47,9 @@ export function cardComercio(comercio) {
     }
 
     <!-- Imagen de portada -->
-    <img src="${portadaUrl}" alt="Portada de ${comercio.nombre}" 
-      class="w-full h-20 object-cover" />
+    <div class="w-full h-20 overflow-hidden">
+      <img src="${urlPortada}" alt="${comercio.nombre}" class="w-full h-full object-cover" />
+    </div>
 
     <!-- Logo y nombre con enlace -->
     <a href="${resolveAppBase()}perfilComercio.html?id=${comercio.id}" 
