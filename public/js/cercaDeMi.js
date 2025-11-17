@@ -3,6 +3,8 @@ import { supabase } from '../shared/supabaseClient.js';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 import { fetchCercanosParaCoordenadas } from './buscarComerciosListado.js';
+import { mostrarPopupUbicacionDenegada, showPopupFavoritosVacios } from './popups.js';
+import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
 
 // 🧩 Muestra el marcador del usuario con su foto de perfil
 async function crearIconoUsuario(idUsuario) {
@@ -899,6 +901,9 @@ async function locateUser() {
 
   const handleError = (err) => {
     console.warn('⚠️ Error en seguimiento de ubicación:', err.message);
+    if (err && err.code === err.PERMISSION_DENIED) {
+      mostrarPopupUbicacionDenegada();
+    }
     toggleLoader(false);
   };
 
@@ -959,7 +964,29 @@ async function locateUser() {
   }
 
   [$filtroAbierto, $filtroActivos, $filtroFavoritos].forEach(toggle => {
-    toggle?.addEventListener('change', aplicarFiltros);
+    if (toggle === $filtroFavoritos) {
+      toggle?.addEventListener('change', async (e) => {
+        if (e.target.checked) {
+          const user = await requireAuthSilent('favoriteCommerce');
+          if (!user) {
+            e.target.checked = false;
+            showAuthModal(ACTION_MESSAGES.favoriteCommerce, 'favoriteCommerce');
+            aplicarFiltros();
+            return;
+          }
+          const favoritosIds = await obtenerFavoritosUsuarioIds();
+          if (!favoritosIds || favoritosIds.size === 0) {
+            showPopupFavoritosVacios("comercio");
+            desactivarSwitchFavoritos();
+            aplicarFiltros();
+            return;
+          }
+        }
+        aplicarFiltros();
+      });
+    } else {
+      toggle?.addEventListener('change', aplicarFiltros);
+    }
   });
 
  // renderCategoryButtons();
@@ -973,3 +1000,8 @@ map?.on('popupopen', () => {
     .querySelectorAll('.leaflet-popup-content .card-comercio a[href^="tel:"]')
     .forEach(el => (el.style.color = 'white'));
 });
+function desactivarSwitchFavoritos() {
+  if ($filtroFavoritos) {
+    $filtroFavoritos.checked = false;
+  }
+}

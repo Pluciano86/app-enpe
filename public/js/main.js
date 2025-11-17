@@ -1,6 +1,7 @@
 import { getPublicBase, calcularTiempoEnVehiculo, formatearHorario } from '../shared/utils.js';
 import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
+import { mostrarPopupUbicacionDenegada } from './popups.js';
 
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
@@ -8,6 +9,8 @@ import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 import { supabase } from '../shared/supabaseClient.js';
+import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
+import { showPopupFavoritosVacios } from './popups.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -39,6 +42,15 @@ if (idCategoriaDesdeURL) {
 let listaOriginal = [];
 let latUsuario = null;
 let lonUsuario = null;
+let tieneFavoritosUsuario = false;
+
+function desactivarSwitchFavoritos() {
+  const el = document.getElementById('filtro-favoritos');
+  if (el) {
+    el.checked = false;
+  }
+  filtrosActivos.favoritos = false;
+}
 
 const filtrosActivos = {
   textoBusqueda: '',
@@ -324,6 +336,7 @@ if (user) {
 
   favoritosUsuario = favoritosData?.map(f => f.idcomercio) ?? [];
 }
+tieneFavoritosUsuario = favoritosUsuario.length > 0;
 
 
   const { data: menusAll } = await supabase.from('menus').select('id, idComercio');
@@ -471,7 +484,12 @@ async function obtenerCoordenadasUsuario() {
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
         }),
-      () => resolve(null),
+      (error) => {
+        if (error && error.code === error.PERMISSION_DENIED) {
+          mostrarPopupUbicacionDenegada();
+        }
+        resolve(null);
+      },
       { enableHighAccuracy: true, timeout: 8000 }
     );
   });
@@ -836,6 +854,20 @@ function crearTagFiltro(texto, onClick) {
 
       // ✅ Nuevo console antes de aplicar
       console.log('🟡 Aplicando filtros con:', { ...filtrosActivos });
+
+      if (id === 'filtro-favoritos' && v.checked) {
+        const user = await requireAuthSilent('favoriteCommerce');
+        if (!user) {
+          desactivarSwitchFavoritos();
+          showAuthModal(ACTION_MESSAGES.favoriteCommerce, 'favoriteCommerce');
+          return;
+        }
+        if (!tieneFavoritosUsuario) {
+          showPopupFavoritosVacios("comercio");
+          desactivarSwitchFavoritos();
+          return;
+        }
+      }
 
       if (id === 'filtro-orden') {
         await cargarComerciosConOrden();

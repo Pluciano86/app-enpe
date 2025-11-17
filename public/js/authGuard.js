@@ -7,11 +7,11 @@ const getLoginUrl = () => {
 const LOGO_ENPR_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/LOGO.png';
 const LOGO_UP_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP.png';
 
-const ACTION_MESSAGES = {
-  favoriteCommerce: 'Debes iniciar sesión para agregar este comercio a tus favoritos.',
-  favoritePlace: 'Debes iniciar sesión para agregar este lugar a tus favoritos.',
-  favoriteBeach: 'Debes iniciar sesión para agregar esta playa a tus favoritos.',
-  saveCoupon: 'Para guardar y disfrutar de este y otros privilegios EnPeErre, necesitas una Cuenta Up. Aprovecha la promoción y obtén tu membresía completamente GRATIS hasta el 31 de diciembre.',
+export const ACTION_MESSAGES = {
+  favoriteCommerce: '✋🏼 Los favoritos son pal Corillo de EnPeErre. Debes iniciar sesión para agregar este lugar a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
+  favoritePlace: '✋🏼Los favoritos son pal Corillo de EnPeErre. Debes iniciar sesión para agregar este lugar a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
+  favoriteBeach: '✋🏼Los favoritos son pal Corillo de EnPeErre. Debes iniciar sesión para agregar esta Playa a tus favoritos, Crea tu cuenta ahora pa’ que no pierdas tus favoritos cada vez que cierres la app.',
+  saveCoupon: '😎⬆️ Este privilegio es solo pa’ la gente UP... <br> Ahora mismo está GRATIS, pero solo hasta el 31 de enero. Métele ahora… Después no digas que no te avisé… 😏🔥',
   default: 'Debes iniciar sesión para continuar.'
 };
 
@@ -68,10 +68,10 @@ function ensureModal() {
   });
 }
 
-function showAuthModal(message, actionKey) {
+export function showAuthModal(message, actionKey) {
   ensureModal();
   if (modalMessageEl) {
-    modalMessageEl.textContent = message || ACTION_MESSAGES.default;
+    modalMessageEl.innerHTML = message || ACTION_MESSAGES.default;
   }
   if (modalLogoEl) {
     const isCouponAction = actionKey === 'saveCoupon';
@@ -109,4 +109,20 @@ export async function requireAuth(actionKey) {
   const message = ACTION_MESSAGES[actionKey] || ACTION_MESSAGES.default;
   showAuthModal(message, actionKey);
   throw new Error('AUTH_REQUIRED');
+}
+
+/**
+ * Variante silenciosa: sólo devuelve false si no hay usuario, sin mostrar modal.
+ * @param {'favoriteCommerce'|'favoritePlace'|'favoriteBeach'|'saveCoupon'} actionKey
+ */
+export async function requireAuthSilent(actionKey) {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data?.user) {
+      return data.user;
+    }
+  } catch (err) {
+    console.warn('⚠️ No se pudo obtener el usuario actual:', err);
+  }
+  return false;
 }

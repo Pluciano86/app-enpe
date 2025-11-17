@@ -6,6 +6,8 @@ import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 import { mostrarCargando, mostrarError } from './mensajesUI.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
+import { mostrarPopupUbicacionDenegada, showPopupFavoritosVacios } from './popups.js';
+import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
 
 const EMOJIS_CATEGORIA = {
   "Restaurantes": "🍽️",
@@ -144,6 +146,7 @@ const estado = {
     comerciosPorMenus: [],
   },
   coordsUsuario: null,
+  favoritosUsuarioSet: new Set(),
   lista: [],
   offset: 0,
   ultimoFetchCount: 0,
@@ -156,6 +159,14 @@ if (idCategoriaDesdeURL != null) {
 
 if (typeof window !== 'undefined') {
   window.__estadoListadoComercios = estado;
+}
+
+function desactivarSwitchFavoritos() {
+  const el = getElement('filtro-favoritos');
+  if (el) {
+    el.checked = false;
+  }
+  estado.filtros.favoritos = false;
 }
 
 function obtenerReferenciaUsuarioParaCalculos() {
@@ -419,7 +430,12 @@ async function obtenerCoordenadasUsuario() {
             lat: pos.coords.latitude,
             lon: pos.coords.longitude,
           }),
-        () => resolve(null),
+        (error) => {
+          if (error && error.code === error.PERMISSION_DENIED) {
+            mostrarPopupUbicacionDenegada();
+          }
+          resolve(null);
+        },
         { enableHighAccuracy: true, timeout: 8000 }
       );
     });
@@ -1158,7 +1174,29 @@ function registrarEventos() {
     ['filtro-subcategoria', 'change', (valor) => (estado.filtros.subcategoria = valor)],
     ['filtro-orden', 'change', (valor) => (estado.filtros.orden = valor)],
     ['filtro-abierto', 'change', (_, checked) => (estado.filtros.abiertoAhora = checked)],
-    ['filtro-favoritos', 'change', (_, checked) => (estado.filtros.favoritos = checked)],
+    [
+      'filtro-favoritos',
+      'change',
+      async (_, checked, elemento) => {
+        if (checked) {
+          const user = await requireAuthSilent('favoriteCommerce');
+          if (!user) {
+            desactivarSwitchFavoritos();
+            showAuthModal(ACTION_MESSAGES.favoriteCommerce, 'favoriteCommerce');
+            return false;
+          }
+          const favoritosSet = await obtenerFavoritosSet();
+          estado.favoritosUsuarioSet = favoritosSet;
+          if (!favoritosSet || favoritosSet.size === 0) {
+            desactivarSwitchFavoritos();
+            showPopupFavoritosVacios("comercio");
+            return false;
+          }
+        }
+        estado.filtros.favoritos = checked;
+        return true;
+      },
+    ],
     ['filtro-destacados', 'change', (_, checked) => (estado.filtros.destacadosPrimero = checked)],
   ];
 
@@ -1169,7 +1207,10 @@ function registrarEventos() {
       const target = e.target;
       const valor = target.value ?? '';
       const checked = target.checked ?? false;
-      asignador(valor, checked);
+      const seguir = await asignador(valor, checked, target);
+      if (seguir === false) {
+        return;
+      }
 
       if (id === 'filtro-nombre') {
         await actualizarBusquedaPorTexto(typeof valor === 'string' ? valor.trim() : '');

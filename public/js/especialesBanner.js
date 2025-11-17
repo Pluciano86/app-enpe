@@ -1,36 +1,48 @@
 // public/js/especialesBanner.js
 document.addEventListener("DOMContentLoaded", () => {
-  const video = document.getElementById("videoEspeciales");
-  const source = document.getElementById("videoSource");
-  if (!video || !source) return;
+  const contenedor = document.getElementById("bannerContenido");
+  if (!contenedor) return;
 
-  // 🕒 Obtener la hora actual en minutos totales
+  // Hora actual
   const ahora = new Date();
-  const hora = ahora.getHours();
-  const minutos = ahora.getMinutes();
-  const totalMin = hora * 60 + minutos;
+  const totalMin = ahora.getHours() * 60 + ahora.getMinutes();
 
-  // 🕒 2:00 am → 3:30 pm = Almuerzos | 3:30 pm → 2:00 am = Happy Hour
+  // Almuerzo = 2:00am → 3:30pm
   const esAlmuerzo = totalMin >= 120 && totalMin < 930;
 
-  // 🎥 URLs de los videos en Supabase (por ahora la misma para ambos)
+  // URLs de banners
   const urlAlmuerzos =
-    "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/Lunch.mp4";
+    "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/EA.png";
+
   const urlHappyHours =
-    "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/HH.mp4";
+    "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/HH.png";
 
-  // 🔁 Cambiar dinámicamente el video según la hora
-  source.src = esAlmuerzo ? urlAlmuerzos : urlHappyHours;
+  const urlFinal = esAlmuerzo ? urlAlmuerzos : urlHappyHours;
 
-  // 🔄 Recargar el video con la nueva fuente
-  video.load();
+  // Detectar si es video por extensión
+  const esVideo = /\.(mp4|webm|ogg)$/i.test(urlFinal);
 
-  // ▶️ Intentar reproducir automáticamente
-  video.play().catch(() => {
-    console.warn("🔇 El navegador bloqueó el autoplay. El usuario debe interactuar para reproducir.");
-  });
+  // Limpiar contenido
+  contenedor.innerHTML = "";
 
-  // 🖱️ Efecto opcional: pausar al pasar el mouse y reanudar al salir
-  video.addEventListener("mouseenter", () => video.pause());
-  video.addEventListener("mouseleave", () => video.play());
+  if (esVideo) {
+    const video = document.createElement("video");
+    video.src = urlFinal;
+    video.autoplay = true;
+    video.loop = true;
+    video.muted = true;
+    video.playsinline = true;
+    video.className =
+      "w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300";
+
+    contenedor.appendChild(video);
+  } else {
+    const img = document.createElement("img");
+    img.src = urlFinal;
+    img.alt = "Banner Especiales";
+    img.className =
+      "w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300";
+
+    contenedor.appendChild(img);
+  }
 });
