@@ -97,7 +97,6 @@ export async function renderComidaCarousel(containerId) {
                          alt="${comercio.nombre}"
                          class="w-full h-full object-cover" />
 
-                    <!-- Overlay info -->
                     <div class="absolute bottom-0 left-0 w-full p-2 flex items-end justify-start bg-gradient-to-t from-black/80 via-black/30 to-transparent">
                       <img src="${logoURL}" alt="logo"
                            class="w-9 h-9 rounded-full border border-white mr-2 object-cover bg-white" />

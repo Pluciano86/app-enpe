@@ -2,6 +2,7 @@ import { supabase } from '../shared/supabaseClient.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';
+import { showPopup } from './popups.js';
 import { mostrarLugaresCercanos } from './lugaresCercanos.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
@@ -68,6 +69,16 @@ const obtenerUsuarioActual = async () => {
   }
 };
 
+const getUserSinRedir = async () => {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) return null;
+    return data.user;
+  } catch (_) {
+    return null;
+  }
+};
+
 const obtenerPerfilUsuario = async (userId) => {
   if (perfilUsuarioCache && perfilUsuarioCache.id === userId) {
     return perfilUsuarioCache;
@@ -109,10 +120,11 @@ const procesarGuardadoCupon = async ({
   btnGuardar.disabled = true;
   btnGuardar.textContent = 'Guardando...';
 
-  const user = await obtenerUsuarioActual();
+  const user = await getUserSinRedir();
   if (!user) {
     btnGuardar.disabled = false;
     btnGuardar.textContent = 'Guardar cupón';
+    mostrarModalMembresia();
     return;
   }
 

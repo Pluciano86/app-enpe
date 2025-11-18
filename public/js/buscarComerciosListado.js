@@ -138,7 +138,7 @@ const estado = {
     municipioDetectado: '',
     categoria: '',
     subcategoria: '',
-    orden: 'ubicacion',
+    orden: 'az',
     abiertoAhora: false,
     favoritos: false,
     destacadosPrimero: true,
@@ -146,6 +146,8 @@ const estado = {
     comerciosPorMenus: [],
   },
   coordsUsuario: null,
+  tienePermisoUbicacion: false,
+  ordenSeleccionManual: false,
   favoritosUsuarioSet: new Set(),
   lista: [],
   offset: 0,
@@ -161,6 +163,14 @@ if (typeof window !== 'undefined') {
   window.__estadoListadoComercios = estado;
 }
 
+function setOrden(valor) {
+  estado.filtros.orden = valor;
+  const select = getElement('filtro-orden');
+  if (select && select.value !== valor) {
+    select.value = valor;
+  }
+}
+
 function desactivarSwitchFavoritos() {
   const el = getElement('filtro-favoritos');
   if (el) {
@@ -170,6 +180,7 @@ function desactivarSwitchFavoritos() {
 }
 
 function obtenerReferenciaUsuarioParaCalculos() {
+  if (!estado.tienePermisoUbicacion) return null;
   const lat = Number(estado.coordsUsuario?.lat);
   const lon = Number(estado.coordsUsuario?.lon);
   if (Number.isFinite(lat) && Number.isFinite(lon)) {
@@ -441,12 +452,102 @@ async function obtenerCoordenadasUsuario() {
     });
     if (coords) {
       estado.coordsUsuario = coords;
+      estado.tienePermisoUbicacion = true;
+      if (!estado.ordenSeleccionManual) {
+        setOrden('ubicacion');
+      }
       return coords;
     }
   } catch (error) {
     console.warn('⚠️ No se pudo obtener la ubicación del usuario:', error?.message || error);
   }
+  estado.tienePermisoUbicacion = false;
+  estado.coordsUsuario = null;
+  if (!estado.ordenSeleccionManual) {
+    setOrden('az');
+  }
   return estado.coordsUsuario || null;
+}
+
+async function solicitarUbicacionForzada() {
+  if (typeof navigator === 'undefined' || !navigator?.geolocation) return null;
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        estado.coordsUsuario = coords;
+        estado.tienePermisoUbicacion = true;
+        resolve(coords);
+      },
+      () => {
+        estado.tienePermisoUbicacion = false;
+        resolve(null);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+}
+
+function recalcularDistancias(lat, lon) {
+  if (!Array.isArray(estado.lista) || !Number.isFinite(lat) || !Number.isFinite(lon)) return;
+  estado.lista = estado.lista.map((comercio) => {
+    const distanciaKm = calcularDistanciaHaversine(lat, lon, Number(comercio.latitud), Number(comercio.longitud));
+    const tiempoData =
+      Number.isFinite(distanciaKm) && distanciaKm >= 0 ? calcularTiempoEnVehiculo(distanciaKm) : { texto: 'N/D', minutos: null };
+    const tiempoTexto = formatearTextoLargo(
+      Number.isFinite(tiempoData.minutos) ? tiempoData.minutos : null
+    );
+    return {
+      ...comercio,
+      distanciaKm: Number.isFinite(distanciaKm) ? distanciaKm : null,
+      tiempoVehiculo: tiempoTexto,
+      tiempoTexto,
+      minutosCrudos: Number.isFinite(tiempoData.minutos) ? tiempoData.minutos : null,
+    };
+  });
+}
+
+async function ordenarYRenderizar(modo) {
+  setOrden(modo);
+  await renderListado();
+}
+
+async function asegurarOrdenCercania({ forzarPopup = false } = {}) {
+  if (
+    estado.tienePermisoUbicacion &&
+    Number.isFinite(estado.coordsUsuario?.lat) &&
+    Number.isFinite(estado.coordsUsuario?.lon)
+  ) {
+    return true;
+  }
+
+  if (typeof navigator === 'undefined' || !navigator?.geolocation) {
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        estado.coordsUsuario = {
+          lat: pos.coords.latitude,
+          lon: pos.coords.longitude,
+        };
+        estado.tienePermisoUbicacion = true;
+        setOrden('ubicacion');
+        resolve(true);
+      },
+      (error) => {
+        if (error && error.code === error.PERMISSION_DENIED) {
+          mostrarPopupUbicacionDenegada(forzarPopup);
+        }
+        estado.tienePermisoUbicacion = false;
+        estado.coordsUsuario = null;
+        setOrden('az');
+        resolve(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
 }
 
 async function asegurarMunicipioInicial() {
@@ -486,7 +587,10 @@ async function asegurarMunicipioInicial() {
 
 function construirPayloadRPC() {
   const filtros = estado.filtros;
-  const coords = estado.coordsUsuario ?? COORDS_FALLBACK;
+  const coords =
+    estado.tienePermisoUbicacion && estado.coordsUsuario
+      ? estado.coordsUsuario
+      : { lat: null, lon: null };
 
   return {
     p_texto: null,
@@ -1207,9 +1311,25 @@ function registrarEventos() {
       const target = e.target;
       const valor = target.value ?? '';
       const checked = target.checked ?? false;
-      const seguir = await asignador(valor, checked, target);
-      if (seguir === false) {
-        return;
+      if (id === 'filtro-orden') {
+        estado.ordenSeleccionManual = true;
+        if (String(valor) === 'ubicacion') {
+          const coords = await solicitarUbicacionForzada();
+          if (coords) {
+            recalcularDistancias(coords.lat, coords.lon);
+            await ordenarYRenderizar('ubicacion');
+          } else {
+            setOrden('az');
+            await ordenarYRenderizar('az');
+          }
+          return;
+        }
+        setOrden(valor || 'az');
+      } else {
+        const seguir = await asignador(valor, checked, target);
+        if (seguir === false) {
+          return;
+        }
       }
 
       if (id === 'filtro-nombre') {
@@ -1289,6 +1409,7 @@ export async function iniciarBusquedaComercios() {
   }
 
   registrarEventos();
+  setOrden(estado.filtros.orden);
   await obtenerCoordenadasUsuario();
   await asegurarMunicipioInicial();
   await cargarComercios({ append: false, mostrarLoader: true });

@@ -18,6 +18,22 @@ function ensurePopupContainer() {
   }
 }
 
+function detectarNavegadorMovil() {
+  const ua = navigator.userAgent || navigator.vendor || "";
+
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+
+  // Chrome en iOS
+  if (isIOS && /CriOS/i.test(ua)) return "chrome-ios";
+  // Safari en iOS
+  if (isIOS && /Safari/i.test(ua) && !/CriOS/i.test(ua)) return "safari-ios";
+  // Chrome en Android
+  if (isAndroid && /Chrome/i.test(ua)) return "chrome-android";
+
+  return "otro";
+}
+
 // Mostrar popup genérico
 export function showPopup(html) {
   ensurePopupContainer();
@@ -26,7 +42,6 @@ export function showPopup(html) {
   container.innerHTML = `
     <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl animate-fadeIn flex flex-col items-center">
       
-      <!-- Logo -->
       <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/LOGO.png"
            alt="EnPeErre"
            class="w-24 mx-auto mb-3 select-none"/>
@@ -82,6 +97,57 @@ export function showPopupFavoritosVacios(tipo) {
   }
 }
 
+function mostrarPopupAyudaUbicacion() {
+  const navegador = detectarNavegadorMovil();
+  let mensaje = "";
+
+  if (navegador === "chrome-ios") {
+    mensaje = `
+💡 Para activar tu ubicación en Chrome (iPhone):<br>
+
+1. Abre **Ajustes** en tu iPhone. <br>
+2. Ve a **Chrome**.<br>
+3. Toca **Ubicación**.<br>
+4. Selecciona **Al usar la app**.<br>
+Luego vuelve a EnPeErre y recarga la página.`;
+  } else if (navegador === "safari-ios") {
+    mensaje = `
+💡 Para activar tu ubicación en Safari (iPhone):<br>
+
+1. Abre **Ajustes** en tu iPhone.<br>
+2. Ve a **Safari**.<br>
+3. En **Ubicación**, selecciona **Al usar la app**.<br>
+4. Vuelve a EnPeErre y recarga la página.`;
+  } else if (navegador === "chrome-android") {
+    mensaje = `
+💡 Para activar tu ubicación en Chrome (Android):<br>
+
+1. Toca el ícono de candado o info en la barra de direcciones.<br>
+2. En **Permisos** busca **Ubicación**.<br>
+3. Cámbialo a **Permitir**.<br>
+4. Recarga la página de EnPeErre.`;
+  } else {
+    mensaje = `
+💡 Para activar tu ubicación:<br>
+
+1. Abre la configuración del navegador.<br>
+2. Busca **Permisos** o **Ubicación**.<br>
+3. Activa **Permitir** para este sitio.<br>
+4. Recarga la página de EnPeErre.`;
+  }
+
+  showPopupManager({
+    title: "Activa tu ubicación 📍",
+    message: mensaje,
+    buttons: [
+      {
+        text: "Listo",
+        onClick: () => {},
+      },
+    ],
+  });
+}
+
 const UBICACION_BLOQUEADA_KEY = "ubicacionBloqueadaHasta";
 
 function cerrarPopupUbicacion() {
@@ -91,16 +157,17 @@ function cerrarPopupUbicacion() {
   }
 }
 
-function ejecutarCallbackUbicacionConcedida() {
+function ejecutarCallbackUbicacionConcedida(pos) {
   const posiblesCallbacks = [
     window.initUbicacionUsuario,
     window.locateUser,
     window.cargarCercanosDesdeUsuario,
+    window.onGeolocationGranted,
   ].filter((fn) => typeof fn === "function");
 
   posiblesCallbacks.forEach((fn) => {
     try {
-      fn();
+      fn(pos);
     } catch (error) {
       console.warn("Error al ejecutar callback de ubicación concedida:", error);
     }
@@ -118,36 +185,68 @@ export function solicitarUbicacionDesdePopup() {
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
-    () => {
-      try {
-        localStorage.removeItem(UBICACION_BLOQUEADA_KEY);
-      } catch (_) {
-        /* noop */
-      }
-      cerrarPopupUbicacion();
-      ejecutarCallbackUbicacionConcedida();
-    },
-    (error) => {
-      if (error && error.code === error.PERMISSION_DENIED) {
-        if (mensajeEl) {
-          mensajeEl.textContent =
-            "Debes habilitar los permisos de ubicación desde la configuración del navegador para continuar.";
-        }
-        return;
-      }
-      if (mensajeEl) {
-        mensajeEl.textContent = "No se pudo obtener la ubicación. Intenta nuevamente.";
-      }
+  const handleSuccess = (pos) => {
+    try {
+      localStorage.removeItem(UBICACION_BLOQUEADA_KEY);
+      localStorage.setItem("permisoUbicacion", "true");
+    } catch (_) {
+      /* noop */
     }
-  );
+    cerrarPopupUbicacion();
+    ejecutarCallbackUbicacionConcedida(pos);
+  };
+
+  const handleDenied = () => {
+    if (mensajeEl) {
+      mensajeEl.textContent =
+        "Debes habilitar los permisos de ubicación desde la configuración del navegador para continuar.";
+    }
+  };
+
+  const solicitarConPopup = () => {
+    navigator.geolocation.getCurrentPosition(
+      handleSuccess,
+      (error) => {
+        if (error && error.code === error.PERMISSION_DENIED) {
+          handleDenied();
+          return;
+        }
+        if (mensajeEl) {
+          mensajeEl.textContent = "No se pudo obtener la ubicación. Intenta nuevamente.";
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  if (navigator.permissions?.query) {
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((result) => {
+        if (result.state === "granted") {
+          navigator.geolocation.getCurrentPosition(handleSuccess, handleDenied, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+          });
+        } else if (result.state === "prompt") {
+          solicitarConPopup();
+        } else if (result.state === "denied") {
+          handleDenied();
+        }
+      })
+      .catch(() => {
+        solicitarConPopup();
+      });
+  } else {
+    solicitarConPopup();
+  }
 }
 
 // Popup para geolocalización denegada
-export function mostrarPopupUbicacionDenegada() {
+export function mostrarPopupUbicacionDenegada(forceShow = false) {
   const bloqueoHastaRaw = localStorage.getItem(UBICACION_BLOQUEADA_KEY);
   const bloqueoHasta = bloqueoHastaRaw ? Number(bloqueoHastaRaw) : null;
-  if (Number.isFinite(bloqueoHasta) && bloqueoHasta > Date.now()) {
+  if (!forceShow && Number.isFinite(bloqueoHasta) && bloqueoHasta > Date.now()) {
     return;
   }
 
@@ -197,7 +296,10 @@ export function mostrarPopupUbicacionDenegada() {
   };
 
   if (btnActivar) {
-    btnActivar.onclick = solicitarUbicacionDesdePopup;
+    btnActivar.onclick = () => {
+      closePopup();
+      mostrarPopupAyudaUbicacion();
+    };
   }
 
   if (btnMasTarde) {

@@ -27,14 +27,12 @@ export function cardComercioSlide(comercio) {
 
   // 🔹 Estructura visual idéntica al estilo de Playas
   card.innerHTML = `
-    <!-- Imagen portada -->
     <div class="w-full h-24 relative bg-gray-200">
       <img src="${
         portada || "https://placehold.co/200x120?text=Portada"
       }" alt="Portada"
            class="w-full h-full object-cover" />
 
-      <!-- Logo circular centrado -->
       <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-14 h-14 bg-white rounded-full shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.5)] overflow-hidden">
         <img src="${
           logo || "https://placehold.co/40x40?text=Logo"
@@ -42,9 +40,7 @@ export function cardComercioSlide(comercio) {
       </div>
     </div>
 
-    <!-- Info -->
     <div class="pt-8 px-2 pb-2 text-center">
-      <!-- Nombre -->
       <h3 class="text-[12px] font-semibold leading-tight h-10 overflow-hidden line-clamp-2">
         ${nombre}
       </h3>

@@ -20,7 +20,6 @@ export function cardPlayaSlide(playa) {
 
   // 🧱 Estructura HTML
   card.innerHTML = `
-    <!-- Imagen -->
     <div class="w-full h-24 relative bg-gray-200 overflow-hidden">
       ${playa.favorito ? `
         <div class="absolute top-2 right-2 z-50">
@@ -40,7 +39,6 @@ export function cardPlayaSlide(playa) {
       />
     </div>
 
-    <!-- Información -->
     <div class="pt-2 px-2 pb-2 text-center">
       <h3 class="text-sm font-semibold leading-tight h-10 overflow-hidden text-ellipsis line-clamp-2">
         ${nombre || "Playa sin nombre"}

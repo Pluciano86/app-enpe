@@ -26,17 +26,14 @@ video::-webkit-media-controls-overlay-play-button {
           body {font-family: 'Kanit', sans-serif;}
         </style>
 
-  <!-- Header -->
 <div id="headerContainer"></div>
 <script type="module" src="js/header.js"></script>
 
 
-<!-- Banner Home Top -->
 <div id="bannerHomeTop" class="w-full my-4 px-4 md:px-6 max-w-6xl mx-auto"></div>
 
 
 
-  <!-- Categorías más buscadas -->
 <section id="categoriasSection" class="text-center">
   <h2 class="text-2xl font-medium mb-4">Categorías más Buscadas</h2>
   <div id="categoriasContainer" class="grid grid-cols-3 gap-4 px-4"></div>
@@ -71,34 +68,28 @@ video::-webkit-media-controls-overlay-play-button {
   document.addEventListener("scroll", reproducirVideoEspeciales, { once: true });
 </script>
 
-<!-- Carrusel de Lugares para Comer -->
 <section class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4">¡Aquí <strong>EnPeErre</strong> se come Ca..Brutal!</h2>
   <div id="comidaCarousel"></div>
 </section>
 
-<!-- Carrusel de Jangueo -->
 <section class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4">¿Nos Fuimos pal Jangueo?</h2>
   <div id="jangueoCarousel"></div>
 </section>
 
-<!-- Carrusel de Eventos -->
 <section class="text-center my-6 px-4">
   <h2 class="text-2xl font-medium mb-4">Chequea los prósimos Eventos</h2>
   <div id="eventosCarousel"></div>
 </section>
 
 
-<!-- SwiperJS CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
-<!-- SwiperJS JS -->
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
-<!-- Tu script del carrusel -->
 <script type="module">
-  import { renderEventosCarousel } from "./js/eventosCarousel.js"; <!-- ajusta la ruta aquí -->
+  import { renderEventosCarousel } from "./js/eventosCarousel.js";
   
   document.addEventListener("DOMContentLoaded", () => {
     renderEventosCarousel("eventosCarousel");
@@ -118,9 +109,7 @@ video::-webkit-media-controls-overlay-play-button {
 
 
 
-  <!-- Video Card -->
 <section class="relative h-[260px] overflow-hidden">
-  <!-- Video oculto hasta que se active -->
   <video
     id="videoHero"
     muted
@@ -132,10 +121,8 @@ video::-webkit-media-controls-overlay-play-button {
     <source src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/videos/index_video.mp4" type="video/mp4">
   </video>
 
-  <!-- Overlay -->
   <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40 z-10"></div>
 
-  <!-- Texto -->
   <div class="relative z-20 flex items-center justify-center h-full">
     <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center">Vamos Pa' la Playa</a>
   </div>
@@ -156,7 +143,6 @@ video::-webkit-media-controls-overlay-play-button {
   document.addEventListener("scroll", reproducirVideo, { once: true });
 </script>
 
-  <!-- Descubre lo que hay en tu área -->
  <a href="listadoLugares.html" class="text-center my-6 px-4">
  <h2 class="text-2xl font-medium mb-4">Descubre lo que hay en tu Área</h2> </a>
 
@@ -186,11 +172,6 @@ video::-webkit-media-controls-overlay-play-button {
             </a>
     </div>
 
-  <!--  <div class="px-4">
-  <a href="listadoArea.html?idArea=7">
-      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/areas/ISLAS%20MUNICIPIO.jpg" class="rounded-lg col-span-2">
-              </a>
-    </div>-->
 
 <br>
 
@@ -198,7 +179,6 @@ video::-webkit-media-controls-overlay-play-button {
 
 
   
-<!-- Footer -->
 <div id="footerContainer"></div>
 <script type="module" src="js/footer.js"></script>
 
@@ -238,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script type="module">
   import { renderEventosCarousel } from "./js/eventosCarousel.js";
+
   document.addEventListener("DOMContentLoaded", () => {
     renderEventosCarousel("eventosCarousel");
   });
@@ -253,20 +234,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 </script>
 
-<!-- Modal -->
 <div id="modalEvento" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 hidden px-4 py-6">
   <div class="bg-white rounded-lg shadow-lg w-[95%] h-[72%] 
               overflow-y-auto relative">
-    <!-- header -->
     <div class="flex items-center justify-between px-4 py-2 bg-[#231F20] text-white rounded-t-lg sticky top-0 z-50">
       <h2 id="modalTitulo" class="flex-1 text-center text-2xl font-medium"></h2>
       <button id="cerrarModal" 
               class="text-white hover:text-gray-300 text-5xl font-extralight leading-none ml-2">&times;</button>
     </div>
     
-    <!-- contenido -->
     <div class="flex-1 overflow-y-auto px-4 pb-6 pt-4 space-y-2 text-center">
-      <!-- imagen -->
       <div class="w-full overflow-hidden rounded-lg bg-gray-200 aspect-[4/5]">
         <img id="modalImagen" src="" alt="Imagen evento" class="w-full h-full object-cover" />
       </div>

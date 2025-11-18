@@ -7,10 +7,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <!-- SwiperJS CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
-<!-- SwiperJS JS -->
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
   <style>
     html,
@@ -26,27 +24,21 @@
 </head>
 <body id="bodyPrincipal" class="bg-white text-gray-800 overflow-y-auto overflow-x-hidden pb-24">
 
-  <!-- Header -->
 <div id="headerContainer"></div>
 <script type="module" src="js/header.js"></script>
 
-  <!-- Galería Swipe de Imágenes -->
-<!-- Fragmento HTML para perfilComercio.html (galería) -->
 <section class="relative pb-8">
   <div id="galeriaImagenes" class="w-full h-64 overflow-x-auto scroll-smooth flex snap-x snap-mandatory whitespace-nowrap">
-    <!-- Las imágenes se insertarán aquí dinámicamente -->
   </div>
   
 </section>
 
-<!-- Modal -->
 <div id="modalGaleria" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden">
   <div class="relative w-full max-w-lg">
     <button id="cerrarModal" class="absolute top-3 right-4 text-white text-4xl font-bold z-50">&times;</button>
     
     <div class="relative overflow-hidden">
       <div id="sliderModal" class="flex overflow-hidden transition-transform duration-500 ease-in-out">
-        <!-- Imágenes se insertan aquí -->
       </div>
     <!--  <button id="prevModal" class="absolute left-0 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 text-white font-bold px-2 py-1 rounded-l">&#8249;</button>
       <button id="nextModal" class="absolute right-0 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 text-white font-bold px-2 py-1 rounded-r">&#8250;</button>
@@ -55,21 +47,17 @@
   </div>
 </div>
 
-  <!-- Encabezado con Logo, Favorito y Horario -->
 <section class="relative h-[120px] sm:h-[140px] flex items-center justify-center pb-16">
   
-  <!-- Botón Favorito (izquierda) -->
   <button id="btnFavorito" class="absolute left-4 top-1 flex flex-col items-center text-gray-600 text-sm">
     <i class="far fa-heart text-5xl mb-1"></i>
     <span class="text-sm font-medium">Favorito</span>
   </button>
 
-  <!-- Logo (centro) -->
   <div class="w-[180px] h-[180px] shadow-[0px_-21px_23px_-7px_rgba(0,_0,_0,_0.3)] bg-white rounded-full z-10 overflow-hidden">
     <img id="logoComercio" src="" alt="Logo" class="w-full h-full object-contain">
   </div>
 
-  <!-- Estado horario (derecha) -->
   <div id="estadoHorarioContainer" class="absolute right-4 top-3 text-center">
     <i id="iconoHorario" class="fa-regular fa-clock text-red-500 text-3xl" style="-webkit-text-stroke: 1.2px currentColor;"></i>
     <p id="textoHorario" class="text-sm text-red-600 font-medium">Cerrado Ahora</p>
@@ -77,7 +65,6 @@
 </section>
   
 
-  <!-- Info de Contacto -->
   <section class="px-2 text-center">
     <h2 id="nombreComercio" class="text-2xl text-[#424242] text-3xl mt-2 font-semibold mb-2">Nombre del Comercio</h2>
     <p id="nombreSucursal" class="text-xl text-gray-500 font-medium mt-[-10px] mt-4 mb-2"></p>
@@ -149,14 +136,12 @@
     <h2 id="tituloSucursales" class="text-center text-xl font-medium mb-4 text-[#424242]">
   Otras Sucursales </h2>
     <div id="listaSucursales" class="flex flex-wrap justify-center gap-3">
-      <!-- Botones de sucursales -->
     </div>
   </div>
 </section>
 
    <a id="btnVerMenu" class="hidden bg-primary text-xl text-white px-4 py-2 rounded">Ver Nuestro Menú</a>
 
-<!-- Contenedor de Especiales -->
 <section id="especialesBox" class="w-[80%] mx-auto mt-6 hidden">
   <h3 class="text-lg font-semibold mb-4" id="tituloEspecialesBox">Especiales para hoy</h3>
 
@@ -165,7 +150,6 @@
     <button id="btnToggleHappy" class="px-4 py-2 bg-pink-600 text-white rounded hidden">Ver Happy Hour</button>
   </div>
 
-  <!-- Tarjeta Almuerzo -->
   <div id="almuerzoCard" class="hidden">
     <h3 class="text-lg font-bold text-blue-500 mb-2 text-left">Especial de Almuerzo</h3>
     <div class="flex gap-4 items-start bg-white shadow p-4 rounded-lg text-left">
@@ -178,7 +162,6 @@
     </div>
   </div>
 
-  <!-- Tarjeta Happy Hour -->
   <div id="happyCard" class="hidden">
     <h3 class="text-lg font-bold text-pink-500 mb-2 text-left">Happy Hour</h3>
     <div class="flex gap-4 items-start bg-white shadow p-4 rounded-lg text-left">
@@ -215,7 +198,6 @@
       Abierto Ahora
     </p>
     <div id="tablaHorarios" class="w-full">
-      <!-- Horarios aquí -->
     </div>
   </div>
 </section>
@@ -224,14 +206,12 @@
   <div class="bg-white rounded-lg shadow-sm p-6">
     <h2 id="tituloAmenidades" class="text-center text-xl font-semibold mb-4 text-[#424242]">[Nombre] cuenta con:</h2>
     <div id="contenedorAmenidades" class="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 text-center">
-      <!-- Amenidades aquí -->
     </div>
   </div>
 </section>
 
 
 
-<!-- ==================== Comercios Cercanos ==================== -->
 <section id="cercanosComidaContainer" class="hidden mt-8 w-full">
   <h2 class="text-lg font-medium mb-4 px-4">
     Lugares para Comer a menos de 10 minutos de
@@ -243,7 +223,6 @@
   </div>
 </section>
 
-<!-- ==================== Lugares Cercanos ==================== -->
 <section id="cercanosLugaresContainer" class="hidden mt-8 w-full">
   <h2 class="text-lg font-medium mb-4 px-4">
     Lugares de interés cerca de
@@ -255,7 +234,6 @@
   </div>
 </section>
 
-<!-- ==================== Playas Cercanas ==================== -->
 <section id="cercanosPlayasContainer" class="hidden mt-8 w-full">
   <h2 class="text-lg font-medium mb-4 px-4">
     Playas a menos de 45 minutos de
@@ -269,7 +247,6 @@
 
 <br> <br>
 
-<!-- Modal Membresía Up -->
 <div id="modalMembresiaUp" class="fixed inset-0 bg-black/70 z-[11000] hidden items-center justify-center px-4">
   <div id="modalMembresiaUpCard" class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center space-y-5 transform transition duration-300 opacity-0 scale-95 relative">
     <button type="button" id="modalUpCloseIcon" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
@@ -292,7 +269,6 @@
 
 
 
-  <!-- Scripts principales -->
 <script type="module" src="./js/ubicacionGoogle.js"></script>
 <script type="module" src="./shared/supabaseClient.js"></script>
 <script type="module" src="./js/utils.js"></script>
@@ -312,7 +288,6 @@
 <script type="module" src="./js/toggleFavorito.js"></script>
 
 
-<!-- Animacion Reloj -->
 <style>
   @keyframes spin {
     from { transform: rotate(0deg); }

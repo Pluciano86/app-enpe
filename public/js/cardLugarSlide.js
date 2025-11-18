@@ -20,7 +20,6 @@ export function cardLugarSlide(lugar, opciones = {}) {
   `.trim();
 
   card.innerHTML = `
-    <!-- Imagen del lugar -->
 <div class="w-full h-42 relative bg-gray-200 overflow-hidden">
   ${lugar.favorito ? `
     <div class="absolute top-2 right-2 z-50">
@@ -41,21 +40,16 @@ export function cardLugarSlide(lugar, opciones = {}) {
   />
 </div>
 
-    <!-- Info -->
     <div class="pt-2 pb-2 text-center">
-      <!-- Nombre -->
       <h3 class="text-lg font-medium text-gray-800 truncate px-2 leading-tight">
         ${nombre}
       </h3>
 
-      <!-- Municipio y (opcional) distancia -->
       <div class="flex justify-center items-center gap-4 text-sm mt-1 text-gray-500">
-        <!-- Municipio -->
         <span class="flex items-center gap-1 text-[#23b4e9] font-normal">
           <i class="fas fa-map-pin"></i> ${municipio ?? ""}
         </span>
 
-        <!-- Solo mostrar distancia si no está oculto -->
         ${
           !ocultarDistancia && tiempoTexto
             ? `

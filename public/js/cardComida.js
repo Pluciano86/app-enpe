@@ -90,7 +90,6 @@ export async function cardComida(comercio) {
   // 🧩 Estructura interna
   card.innerHTML = `
     <div class="relative">
-      <!-- Imagen principal -->
       <img 
         src="${imagenUrl}" 
         alt="Imagen de ${comercio.nombre}" 
@@ -98,7 +97,6 @@ export async function cardComida(comercio) {
         onerror="this.src='${PLACEHOLDER_PORTADA}'"
       />
 
-      <!-- Logo circular -->
       <div class="absolute left-1/2 -bottom-6 transform -translate-x-1/2">
         <img 
           src="${logoUrl}" 

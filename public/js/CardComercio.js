@@ -46,12 +46,10 @@ export function cardComercio(comercio) {
       </div>` : ''
     }
 
-    <!-- Imagen de portada -->
     <div class="w-full h-20 overflow-hidden">
       <img src="${urlPortada}" alt="${comercio.nombre}" class="w-full h-full object-cover" />
     </div>
 
-    <!-- Logo y nombre con enlace -->
     <a href="${resolveAppBase()}perfilComercio.html?id=${comercio.id}" 
        class="relative w-full flex flex-col items-center pt-9 mt-6 no-underline">
 
@@ -73,7 +71,6 @@ export function cardComercio(comercio) {
       </div>
     </a>
 
-    <!-- ✅ Teléfono: solo mostrar si existe -->
     ${
       comercio.telefono && comercio.telefono.trim() !== ''
         ? `
@@ -87,7 +84,6 @@ export function cardComercio(comercio) {
         : ''
     }
 
-    <!-- Estado de apertura -->
     ${(() => {
       const abiertoAhora = comercio.abierto_ahora === true;
       return `
@@ -100,12 +96,10 @@ export function cardComercio(comercio) {
       `;
     })()}
 
-    <!-- Pueblo -->
     <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#23b4e9]">
       <i class="fas fa-map-pin text-[#23b4e9]"></i> ${comercio.pueblo}
     </div>
 
-    <!-- Tiempo estimado -->
     ${
       textoTiempoEstimado
         ? `<div class="flex justify-center items-center gap-1 text-[#9c9c9c] font-medium text-sm mb-4">

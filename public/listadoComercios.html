@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Listado Comercios - EnPe Erre</title>
 
-  <!-- Tailwind & fuentes -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -18,11 +17,9 @@
 </head>
 <body class="bg-white text-gray-800 pb-24">
 
-  <!-- Header -->
 <div id="headerContainer"></div>
 <script type="module" src="./js/header.js"></script>
 
-  <!-- Título y buscador -->
   <section class="p-4">
    <h1 id="tituloCategoria" class="text-center text-2xl font-medium mb-4"></h1>
     <div class="rounded-xl border border-gray-300 p-3 flex flex-col gap-2 bg-white">
@@ -63,9 +60,7 @@
 
 </div>
 
-<!-- Switches de filtros -->
 <div class="flex flex-wrap gap-4 text-sm mt-4 text-center w-full">
-  <!-- Abierto Ahora -->
   <div class="flex-1">
     <div class="mb-1 text-gray-700 font-medium">Abierto ahora</div>
     <label class="relative inline-flex items-center cursor-pointer">
@@ -75,7 +70,6 @@
     </label>
   </div>
 
-  <!-- Mis Favoritos -->
   <div class="flex-1">
     <div class="mb-1 text-gray-700 font-medium">Mis Favoritos</div>
     <label class="relative inline-flex items-center cursor-pointer">
@@ -85,7 +79,6 @@
     </label>
   </div>
 
-  <!-- Destacados -->
   <div class="flex-1">
     <div class="mb-1 text-gray-700 font-medium">Destacados Primero</div>
     <label class="relative inline-flex items-center cursor-pointer">
@@ -105,14 +98,12 @@
   </span>
 </div>
 
-  <!-- Listado de Comercios -->
  <section id="app" class="px-8 py-6 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-3"></section>
 
 
 
  <br><br>
 
-  <!-- Footer -->
 <div id="footerContainer"></div>
 <script type="module" src="js/footer.js"></script>
 

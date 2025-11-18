@@ -5,32 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Cerca de mí</title>
 
-  <!-- Fuente -->
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- ✅ Rotación funcional -->
   <script src="https://cdn.jsdelivr.net/gh/jieter/Leaflet.Rotate/src/leaflet-rotate.js"></script>
 
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-  <!-- Script principal -->
   <script type="module" src="./js/cercaDeMi.js"></script>
 </head>
 
 <body class="bg-white text-gray-800 h-screen flex flex-col" style="font-family: 'Kanit', sans-serif;">
 
-  <!-- Header dinámico -->
   <div id="headerContainer" class="h-16 shrink-0 z-40"></div>
 
- <!-- 🔍 Controles del mapa -->
 <section
   class="px-4 md:px-6 py-3 bg-white text-center border-b shadow space-y-4"
   style="position: sticky; top: 0; z-index: 1000;"
@@ -38,7 +30,6 @@
 
   <h2 class="text-2xl font-medium mb-4">COMERCIOS CERCA DE MI</h2>
 
-<!-- BUSCADOR -->
 <div class="mb-3">
   <label class="flex items-center gap-2 border border-gray-200 rounded-xl shadow-sm px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-blue-500 w-full">
     <i class="fas fa-search text-gray-400"></i>
@@ -51,10 +42,8 @@
   </label>
 </div>
 
-<!-- CATEGORÍA + FILTROS EN UNA SOLA LÍNEA -->
 <div class="flex flex-row items-center gap-3 w-full mb-3">
 
-  <!-- Dropdown categorías -->
   <select
     id="filtroCategoria"
     class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white shadow-sm 
@@ -63,7 +52,6 @@
     <option value="">Todas las categorías</option>
   </select>
 
-  <!-- Botón filtros -->
   <button
     id="btnToggleFiltros"
     type="button"
@@ -118,20 +106,16 @@
   </div>
 </section>
 
-  <!-- Mapa: ocupa todo el espacio libre -->
   <main class="flex-1 relative">
     <div id="map" class="absolute inset-0 w-full h-full pb-1 z-0"></div>
   </main>
 
-  <!-- Loader -->
   <div id="loader" class="fixed inset-0 bg-black/30 hidden items-center justify-center z-40">
     <div class="bg-white rounded px-4 py-3 shadow text-sm font-medium">Cargando comercios…</div>
   </div>
 
-  <!-- Footer dinámico -->
   <div id="footerContainer" class="h-16 shrink-0"></div>
 
-  <!-- Scripts -->
   <script src="https://kit.fontawesome.com/a2e0e6ad5b.js" crossorigin="anonymous"></script>
   <script type="module" src="./js/header.js"></script>
   <script type="module" src="./js/footer.js"></script>
