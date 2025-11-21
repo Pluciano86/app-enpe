@@ -1,4 +1,4 @@
-import { supabase } from '../shared/supabaseClient.js';
+import { supabase, SUPABASE_URL } from '../shared/supabaseClient.js';
 
 // Elementos vista de validación
 const vistaValidacionEl = document.getElementById('vistaValidacion');
@@ -73,6 +73,16 @@ const formatearFechaHora = (iso) => {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const formatearHora = (iso) => {
+  if (!iso) return '';
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return '';
+  return fecha.toLocaleTimeString('es-PR', {
     hour: '2-digit',
     minute: '2-digit'
   });
@@ -338,7 +348,7 @@ const cargarUsuarioDelCupon = async (usuarioId) => {
 
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id, nombre, apellido, email, imagen')
+    .select('id, nombre, apellido, email, imagen, telefono')
     .eq('id', usuarioId)
     .maybeSingle();
 
@@ -629,6 +639,37 @@ const redimirCupon = async () => {
 
       cuponUsuarioActual.redimido = true;
       cuponUsuarioActual.fechaRedimido = fechaRedimido;
+      const telefonoUsuario = usuarioDelCupon?.telefono;
+      const nombreUsuario = usuarioDelCupon?.nombre || '';
+      const nombreComercio = comercioActual?.nombre || '';
+      const fechaFormateada = formatearFecha(fechaRedimido);
+      const horaFormateada = formatearHora(fechaRedimido);
+
+      if (
+        telefonoUsuario &&
+        nombreUsuario &&
+        nombreComercio &&
+        fechaFormateada &&
+        fechaFormateada !== '--' &&
+        horaFormateada
+      ) {
+        const funcionesUrl = `${SUPABASE_URL}/functions/v1/send-sms-cupon`;
+        try {
+          await fetch(funcionesUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              telefono: telefonoUsuario,
+              nombreUsuario,
+              nombreComercio,
+              fecha: fechaFormateada,
+              hora: horaFormateada
+            })
+          });
+        } catch (smsError) {
+          console.warn('No se pudo enviar el SMS de cupón:', smsError);
+        }
+      }
     } else {
       const { error } = await supabase
         .from('cupones')
