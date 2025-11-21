@@ -156,7 +156,8 @@ const procesarGuardadoCupon = async ({
         idUsuario: user.id,
         codigoqr,
         redimido: false,
-        fechaGuardado: new Date().toISOString()
+        fechaGuardado: new Date().toISOString(),
+        telefonoUsuario: perfil.telefono || null
       });
 
     if (insertError) {
