@@ -1,6 +1,6 @@
 // supabaseClient.js
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/+esm';
 
 const hasProcessEnv = typeof process !== 'undefined' && typeof process.env !== 'undefined';
 const browserEnv = typeof window !== 'undefined' ? (window.__ENV__ || window.ENV || {}) : {};

@@ -1,4 +1,4 @@
-import { supabase, SUPABASE_URL } from '../shared/supabaseClient.js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseClient.js';
 
 // Elementos vista de validación
 const vistaValidacionEl = document.getElementById('vistaValidacion');
@@ -639,7 +639,11 @@ const redimirCupon = async () => {
 
       cuponUsuarioActual.redimido = true;
       cuponUsuarioActual.fechaRedimido = fechaRedimido;
-      const telefonoUsuario = usuarioDelCupon?.telefono;
+      const telefonoUsuario = usuarioDelCupon?.telefono
+        ? usuarioDelCupon.telefono.startsWith('+1')
+          ? usuarioDelCupon.telefono
+          : `+1${usuarioDelCupon.telefono}`
+        : null;
       const nombreUsuario = usuarioDelCupon?.nombre || '';
       const nombreComercio = comercioActual?.nombre || '';
       const fechaFormateada = formatearFecha(fechaRedimido);

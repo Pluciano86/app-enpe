@@ -149,6 +149,11 @@ const procesarGuardadoCupon = async ({
     const codigoqr = crypto.randomUUID();
     const qrUrl = `${QR_REDIMIR_URL}?qr=${codigoqr}`;
     console.log('Generando QR para cupón:', cupon.id, codigoqr, qrUrl);
+    const telefonoFormateado = perfil.telefono
+      ? perfil.telefono.startsWith('+1')
+        ? perfil.telefono
+        : `+1${perfil.telefono}`
+      : null;
     const { error: insertError } = await supabase
       .from('cuponesUsuarios')
       .insert({
@@ -157,7 +162,7 @@ const procesarGuardadoCupon = async ({
         codigoqr,
         redimido: false,
         fechaGuardado: new Date().toISOString(),
-        telefonoUsuario: perfil.telefono || null
+        telefonoUsuario: telefonoFormateado
       });
 
     if (insertError) {
