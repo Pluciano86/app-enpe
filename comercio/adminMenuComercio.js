@@ -1,4 +1,5 @@
 import { supabase } from './shared/supabaseClient.js';
+import { FONTS_MENU } from '../admin/fontsMenu.js';
 
 function getPublicBase() {
   return '/';
@@ -16,8 +17,480 @@ const inputActivo = document.getElementById('inputActivo');
 const btnCancelarSeccion = document.getElementById('btnCancelarSeccion');
 const btnGuardarSeccion = document.getElementById('btnGuardarSeccion');
 const linkLogo = document.getElementById('linkPerfilDelLogo');
+const inputBuscarFuente = document.getElementById('inputBuscarFuente');
+const filtroCategoriaFuente = document.getElementById('filtroCategoriaFuente');
+const fontBodySelect = document.getElementById('fontBodySelect');
+const fontTitleSelect = document.getElementById('fontTitleSelect');
+const fontNombreSelect = document.getElementById('fontNombreSelect');
+const fontMenuWordSelect = document.getElementById('fontMenuWordSelect');
+const fontBodySize = document.getElementById('fontBodySize');
+const fontTitleSize = document.getElementById('fontTitleSize');
+const nombreFontSize = document.getElementById('nombreFontSize');
+const menuFontSize = document.getElementById('menuFontSize');
+const previewFontBody = document.getElementById('previewFontBody');
+const previewFontTitle = document.getElementById('previewFontTitle');
+const previewFontNombre = document.getElementById('previewFontNombre');
+const previewFontMenuWord = document.getElementById('previewFontMenuWord');
+const colorTexto = document.getElementById('colorTexto');
+const colorTitulo = document.getElementById('colorTitulo');
+const colorPrecio = document.getElementById('colorPrecio');
+const colorBoton = document.getElementById('colorBoton');
+const colorBotonTexto = document.getElementById('colorBotonTexto');
+const overlayOscuro = document.getElementById('overlayOscuro');
+const backgroundColor = document.getElementById('backgroundColor');
+const textoMenu = document.getElementById('textoMenu');
+const pdfUrl = document.getElementById('pdfUrl');
+const inputPortada = document.getElementById('inputPortada');
+const btnQuitarPortada = document.getElementById('btnQuitarPortada');
+const previewPortada = document.getElementById('previewPortada');
+const inputBackgroundImg = document.getElementById('inputBackgroundImg');
+const btnQuitarBackground = document.getElementById('btnQuitarBackground');
+const previewBackground = document.getElementById('previewBackground');
+const btnGuardarTema = document.getElementById('btnGuardarTema');
+const previewHeader = document.getElementById('previewHeader');
+const previewHeaderBg = document.getElementById('previewHeaderBg');
+const previewHeaderOverlay = document.getElementById('previewHeaderOverlay');
+const previewTituloDemo = document.getElementById('previewTituloDemo');
+const previewItemCard = document.getElementById('previewItemCard');
+const previewItemOverlay = document.getElementById('previewItemOverlay');
+const previewItemNombre = document.getElementById('previewItemNombre');
+const previewItemTexto = document.getElementById('previewItemTexto');
+const previewItemPrecio = document.getElementById('previewItemPrecio');
+const previewNombreComercio = document.getElementById('previewNombreComercio');
+const previewMenuWord = document.getElementById('previewMenuWord');
+const itemBgColor = document.getElementById('itemBgColor');
+const itemOverlay = document.getElementById('itemOverlay');
+const nombreStrokeWidth = document.getElementById('nombreStrokeWidth');
+const nombreStrokeColor = document.getElementById('nombreStrokeColor');
+const nombreShadow = document.getElementById('nombreShadow');
+const menuStrokeWidth = document.getElementById('menuStrokeWidth');
+const menuStrokeColor = document.getElementById('menuStrokeColor');
+const menuShadow = document.getElementById('menuShadow');
+const titulosStrokeWidth = document.getElementById('titulosStrokeWidth');
+const titulosStrokeColor = document.getElementById('titulosStrokeColor');
+const titulosShadow = document.getElementById('titulosShadow');
+const botonStrokeWidth = document.getElementById('botonStrokeWidth');
+const botonStrokeColor = document.getElementById('botonStrokeColor');
+const botonShadow = document.getElementById('botonShadow');
 
 let editandoId = null;
+let linkFuente = null;
+let productoEditandoId = null;
+let idMenuActivo = null;
+let portadaUrl = '';
+let backgroundUrl = '';
+let temaActual = {};
+const COVER_BUCKET = 'galeriacomercios';
+const COVER_PREFIX = 'menus/portada';
+const BACKGROUND_PREFIX = 'menus/background';
+const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const fuentesSeleccionadas = {
+  body: null,
+  title: null,
+  nombre: null,
+  menu: null,
+};
+const DEFAULT_TEMA = {
+  colortexto: '#1f2937',
+  colortitulo: '#111827',
+  colorprecio: '#2563eb',
+  colorboton: '#2563eb',
+  colorbotontexto: '#ffffff',
+  overlayoscuro: 40,
+  pdfurl: '',
+  portadaimagen: '',
+  backgroundimagen: '',
+  backgroundcolor: '#ffffff',
+  textomenu: 'Menú',
+  fontbodyfamily: null,
+  fontbodyurl: null,
+  fonttitlefamily: null,
+  fonttitleurl: null,
+  fontnombrefamily: null,
+  fontnombreurl: null,
+  fontmenuwordfamily: null,
+  fontmenuwordurl: null,
+  fontbody_size: 16,
+  fonttitle_size: 18,
+  nombre_font_size: 28,
+  menu_font_size: 20,
+  item_bg_color: '#ffffff',
+  item_overlay: 0,
+  nombre_shadow: '',
+  nombre_stroke_width: 0,
+  nombre_stroke_color: '#000000',
+  menu_shadow: '',
+  menu_stroke_width: 0,
+  menu_stroke_color: '#000000',
+  titulos_shadow: '',
+  titulos_stroke_width: 0,
+  titulos_stroke_color: '#000000',
+  boton_shadow: '',
+  boton_stroke_width: 0,
+  boton_stroke_color: '#000000',
+};
+
+function colorConAlpha(color, alpha) {
+  const a = Math.min(Math.max(alpha, 0), 1);
+  if (!color) return `rgba(0,0,0,${a})`;
+  if (color.startsWith('rgb')) {
+    const parts = color.replace(/rgba?\\(|\\)/g, '').split(',').map((v) => v.trim());
+    const [r = 0, g = 0, b = 0] = parts;
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  // hex #rrggbb
+  const hex = color.replace('#', '');
+  const bigint = parseInt(hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function ensureFontLink(id, url) {
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('link');
+    el.rel = 'stylesheet';
+    el.id = id;
+    document.head.appendChild(el);
+  }
+  el.href = url;
+}
+
+function aplicarFuentePorRol(rol, fuente) {
+  if (!fuente?.url || !fuente.name) return;
+  ensureFontLink(`fuente-${rol}`, fuente.url);
+  fuentesSeleccionadas[rol] = fuente;
+
+  if (rol === 'body') {
+    if (previewItemTexto) previewItemTexto.style.fontFamily = `'${fuente.name}', 'Kanit', sans-serif`;
+    if (previewItemNombre) previewItemNombre.style.fontFamily = `'${fuente.name}', 'Kanit', sans-serif`;
+    if (previewItemPrecio) previewItemPrecio.style.fontFamily = `'${fuente.name}', 'Kanit', sans-serif`;
+  }
+  if (rol === 'title') {
+    if (previewTituloDemo) previewTituloDemo.style.fontFamily = `'${fuente.name}', 'Kanit', sans-serif`;
+  }
+  if (rol === 'nombre') {
+    if (previewNombreComercio) previewNombreComercio.style.fontFamily = `'${fuente.name}', 'Kanit', sans-serif`;
+  }
+  if (rol === 'menu') {
+    if (previewMenuWord) previewMenuWord.style.fontFamily = `'${fuente.name}', 'Kanit', sans-serif`;
+  }
+}
+
+function renderFontOptions() {
+  const texto = inputBuscarFuente?.value?.trim().toLowerCase() || '';
+  const filtroCat = filtroCategoriaFuente?.value || 'all';
+  const fuentes = FONTS_MENU.filter((f) => {
+    const matchTexto = f.name.toLowerCase().includes(texto);
+    const matchCat = filtroCat === 'all' || f.category === filtroCat;
+    return matchTexto && matchCat;
+  });
+
+  const selects = [
+    { el: fontBodySelect, rol: 'body', preview: previewFontBody },
+    { el: fontTitleSelect, rol: 'title', preview: previewFontTitle },
+    { el: fontNombreSelect, rol: 'nombre', preview: previewFontNombre },
+    { el: fontMenuWordSelect, rol: 'menu', preview: previewFontMenuWord },
+  ];
+
+  selects.forEach(({ el, rol, preview }) => {
+    if (!el) return;
+    const current = fuentesSeleccionadas[rol]?.name || '';
+    el.innerHTML = '';
+    fuentes.forEach((fuente) => {
+      const opt = document.createElement('option');
+      opt.value = fuente.name;
+      opt.textContent = `${fuente.name} (${fuente.category})`;
+      opt.dataset.url = fuente.url;
+      if (fuente.name === current) opt.selected = true;
+      el.appendChild(opt);
+    });
+    el.onchange = () => {
+      const selected = fuentes.find((f) => f.name === el.value);
+      if (selected) {
+        aplicarFuentePorRol(rol, selected);
+        if (preview) preview.style.fontFamily = `'${selected.name}', 'Kanit', sans-serif`;
+      }
+    };
+    // refrescar preview si ya hay selección
+    if (preview && current) preview.style.fontFamily = `'${current}', 'Kanit', sans-serif`;
+  });
+  aplicarTemaEnPreview(leerTemaDesdeInputs());
+}
+
+async function cargarFuenteGuardada() {
+  if (!idComercio) return;
+  const { data, error } = await supabase
+    .from('menu_tema')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+    .eq('idcomercio', idComercio)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('No se pudo cargar la fuente guardada:', error);
+    return;
+  }
+
+  // Cargar resto de tema
+  temaActual = data || {};
+  rellenarInputsTema(temaActual);
+  if (isDev) console.log('[adminMenu] Tema cargado:', { idComercio, tema: temaActual });
+}
+
+function getPublicCoverUrl(path) {
+  if (!path) return '';
+  const { data } = supabase.storage.from(COVER_BUCKET).getPublicUrl(path);
+  return data?.publicUrl || '';
+}
+
+function aplicarTemaEnPreview(tema) {
+  const t = { ...DEFAULT_TEMA, ...tema };
+  if (previewNombreComercio) previewNombreComercio.textContent = nombreEl?.textContent || 'Nombre Comercio';
+  if (previewMenuWord) previewMenuWord.textContent = t.textomenu || 'Menú';
+
+  const applyStroke = (el, width, color, shadow) => {
+    if (!el) return;
+    const w = Number(width) || 0;
+    el.style.webkitTextStroke = w > 0 ? `${w}px ${color || '#000'}` : '';
+    el.style.textShadow = shadow || '';
+  };
+
+  // Colores base
+  if (previewTituloDemo) {
+    previewTituloDemo.style.color = t.colorbotontexto || t.colortitulo;
+    previewTituloDemo.style.backgroundColor = t.colorboton;
+    previewTituloDemo.textContent = 'Aperitivos';
+  }
+  if (previewItemNombre) previewItemNombre.style.color = t.colortitulo;
+  if (previewItemTexto) previewItemTexto.style.color = t.colortexto;
+  if (previewItemPrecio) previewItemPrecio.style.color = t.colorprecio;
+
+  // Tamaños
+  if (previewNombreComercio && t.nombre_font_size) previewNombreComercio.style.fontSize = `${t.nombre_font_size}px`;
+  if (previewMenuWord && t.menu_font_size) previewMenuWord.style.fontSize = `${t.menu_font_size}px`;
+  if (previewTituloDemo && t.fonttitle_size) previewTituloDemo.style.fontSize = `${t.fonttitle_size}px`;
+  if (previewTituloDemo && t.fonttitle_size) previewTituloDemo.style.fontSize = `${t.fonttitle_size}px`;
+  if (previewItemNombre && t.fontbody_size) previewItemNombre.style.fontSize = `${t.fontbody_size}px`;
+  if (previewItemTexto && t.fontbody_size) previewItemTexto.style.fontSize = `${t.fontbody_size}px`;
+  if (previewItemPrecio && t.fontbody_size) previewItemPrecio.style.fontSize = `${t.fontbody_size}px`;
+
+  // Stroke y sombras
+  applyStroke(previewNombreComercio, t.nombre_stroke_width, t.nombre_stroke_color, t.nombre_shadow);
+  applyStroke(previewMenuWord, t.menu_stroke_width, t.menu_stroke_color, t.menu_shadow);
+  applyStroke(previewTituloDemo, t.titulos_stroke_width, t.titulos_stroke_color, t.titulos_shadow);
+  if (previewTituloDemo) {
+    const borderWidth = Number(t.boton_stroke_width) || 0;
+    previewTituloDemo.style.border = borderWidth > 0 ? `${borderWidth}px solid ${t.boton_stroke_color || '#000'}` : 'none';
+    previewTituloDemo.style.boxShadow = t.boton_shadow || '';
+  }
+
+  // Background header (usa backgroundimagen/color)
+  const fondo = t.backgroundimagen;
+  const fondoUrl = fondo?.startsWith('http') ? fondo : getPublicCoverUrl(fondo);
+  if (previewHeaderBg) {
+    if (fondoUrl) {
+      previewHeaderBg.src = fondoUrl;
+      previewHeaderBg.classList.remove('hidden');
+    } else {
+      previewHeaderBg.src = '';
+      previewHeaderBg.classList.add('hidden');
+    }
+  }
+  if (previewHeader) {
+    previewHeader.style.backgroundColor = fondoUrl ? 'transparent' : (t.backgroundcolor || '#ffffff');
+  }
+  if (previewHeaderOverlay) {
+    const alpha = Math.min(Math.max(Number(t.overlayoscuro) || 0, 0), 80) / 100;
+    previewHeaderOverlay.style.backgroundColor = `rgba(0,0,0,${alpha})`;
+  }
+
+  // Fondo item + overlay
+  if (previewItemCard) {
+    const alphaItem = 1 - Math.min(Math.max(Number(t.item_overlay) || 0, 0), 80) / 100;
+    previewItemCard.style.backgroundColor = colorConAlpha(t.item_bg_color || '#ffffff', alphaItem);
+  }
+  if (previewItemOverlay) {
+    previewItemOverlay.style.backgroundColor = 'rgba(0,0,0,0)';
+  }
+}
+
+function rellenarInputsTema(tema) {
+  const t = { ...DEFAULT_TEMA, ...tema };
+  if (colorTexto) colorTexto.value = t.colortexto;
+  if (colorTitulo) colorTitulo.value = t.colortitulo;
+  if (colorPrecio) colorPrecio.value = t.colorprecio;
+  if (colorBoton) colorBoton.value = t.colorboton;
+  if (colorBotonTexto) colorBotonTexto.value = t.colorbotontexto;
+  if (overlayOscuro) overlayOscuro.value = t.overlayoscuro;
+  if (pdfUrl) pdfUrl.value = t.pdfurl || '';
+  if (backgroundColor) backgroundColor.value = t.backgroundcolor || '#ffffff';
+  if (textoMenu) textoMenu.value = t.textomenu || 'Menú';
+  if (itemBgColor) itemBgColor.value = t.item_bg_color || DEFAULT_TEMA.item_bg_color;
+  if (itemOverlay) itemOverlay.value = t.item_overlay ?? DEFAULT_TEMA.item_overlay;
+
+  portadaUrl = t.portadaimagen || '';
+  const portadaPublic = portadaUrl?.startsWith('http') ? portadaUrl : getPublicCoverUrl(portadaUrl);
+  if (previewPortada) {
+    if (portadaPublic) {
+      previewPortada.src = portadaPublic;
+      previewPortada.classList.remove('hidden');
+    } else {
+      previewPortada.src = '';
+      previewPortada.classList.add('hidden');
+    }
+  }
+
+  backgroundUrl = t.backgroundimagen || '';
+  const bgPublic = backgroundUrl?.startsWith('http') ? backgroundUrl : getPublicCoverUrl(backgroundUrl);
+  if (previewBackground) {
+    if (bgPublic) {
+      previewBackground.src = bgPublic;
+      previewBackground.classList.remove('hidden');
+    } else {
+      previewBackground.src = '';
+      previewBackground.classList.add('hidden');
+    }
+  }
+
+  fuentesSeleccionadas.body =
+    (t.fontbodyfamily && { name: t.fontbodyfamily, url: t.fontbodyurl }) || fuentesSeleccionadas.body;
+  fuentesSeleccionadas.title =
+    (t.fonttitlefamily && { name: t.fonttitlefamily, url: t.fonttitleurl }) || fuentesSeleccionadas.title;
+  fuentesSeleccionadas.nombre =
+    (t.fontnombrefamily && { name: t.fontnombrefamily, url: t.fontnombreurl }) || fuentesSeleccionadas.nombre;
+  fuentesSeleccionadas.menu =
+    (t.fontmenuwordfamily && { name: t.fontmenuwordfamily, url: t.fontmenuwordurl }) || fuentesSeleccionadas.menu;
+  renderFontOptions();
+  aplicarFuentePorRol('body', fuentesSeleccionadas.body);
+  aplicarFuentePorRol('title', fuentesSeleccionadas.title);
+  aplicarFuentePorRol('nombre', fuentesSeleccionadas.nombre);
+  aplicarFuentePorRol('menu', fuentesSeleccionadas.menu);
+
+  if (fontBodySize) fontBodySize.value = t.fontbody_size ?? DEFAULT_TEMA.fontbody_size;
+  if (fontTitleSize) fontTitleSize.value = t.fonttitle_size ?? DEFAULT_TEMA.fonttitle_size;
+  if (nombreFontSize) nombreFontSize.value = t.nombre_font_size ?? DEFAULT_TEMA.nombre_font_size;
+  if (menuFontSize) menuFontSize.value = t.menu_font_size ?? DEFAULT_TEMA.menu_font_size;
+
+  if (nombreStrokeWidth) nombreStrokeWidth.value = t.nombre_stroke_width ?? 0;
+  if (nombreStrokeColor) nombreStrokeColor.value = t.nombre_stroke_color ?? '#000000';
+  if (nombreShadow) nombreShadow.value = t.nombre_shadow ?? '';
+  if (menuStrokeWidth) menuStrokeWidth.value = t.menu_stroke_width ?? 0;
+  if (menuStrokeColor) menuStrokeColor.value = t.menu_stroke_color ?? '#000000';
+  if (menuShadow) menuShadow.value = t.menu_shadow ?? '';
+  if (titulosStrokeWidth) titulosStrokeWidth.value = t.titulos_stroke_width ?? 0;
+  if (titulosStrokeColor) titulosStrokeColor.value = t.titulos_stroke_color ?? '#000000';
+  if (titulosShadow) titulosShadow.value = t.titulos_shadow ?? '';
+  if (botonStrokeWidth) botonStrokeWidth.value = t.boton_stroke_width ?? 0;
+  if (botonStrokeColor) botonStrokeColor.value = t.boton_stroke_color ?? '#000000';
+  if (botonShadow) botonShadow.value = t.boton_shadow ?? '';
+
+  aplicarTemaEnPreview(t);
+}
+
+function leerTemaDesdeInputs() {
+  return {
+    colortexto: colorTexto?.value || DEFAULT_TEMA.colortexto,
+    colortitulo: colorTitulo?.value || DEFAULT_TEMA.colortitulo,
+    colorprecio: colorPrecio?.value || DEFAULT_TEMA.colorprecio,
+    colorboton: colorBoton?.value || DEFAULT_TEMA.colorboton,
+    colorbotontexto: colorBotonTexto?.value || DEFAULT_TEMA.colorbotontexto,
+    overlayoscuro: Number(overlayOscuro?.value || DEFAULT_TEMA.overlayoscuro),
+    pdfurl: pdfUrl?.value?.trim() || '',
+    portadaimagen: portadaUrl || '',
+    backgroundimagen: backgroundUrl || '',
+    backgroundcolor: backgroundColor?.value || DEFAULT_TEMA.backgroundcolor,
+    textomenu: textoMenu?.value?.trim() || DEFAULT_TEMA.textomenu,
+    fontbodyfamily: fuentesSeleccionadas.body?.name || temaActual.fontbodyfamily || null,
+    fontbodyurl: fuentesSeleccionadas.body?.url || temaActual.fontbodyurl || null,
+    fontbody_size: Number(fontBodySize?.value) || DEFAULT_TEMA.fontbody_size,
+    fonttitlefamily: fuentesSeleccionadas.title?.name || temaActual.fonttitlefamily || null,
+    fonttitleurl: fuentesSeleccionadas.title?.url || temaActual.fonttitleurl || null,
+    fonttitle_size: Number(fontTitleSize?.value) || DEFAULT_TEMA.fonttitle_size,
+    fontnombrefamily: fuentesSeleccionadas.nombre?.name || temaActual.fontnombrefamily || null,
+    fontnombreurl: fuentesSeleccionadas.nombre?.url || temaActual.fontnombreurl || null,
+    nombre_font_size: Number(nombreFontSize?.value) || DEFAULT_TEMA.nombre_font_size,
+    fontmenuwordfamily: fuentesSeleccionadas.menu?.name || temaActual.fontmenuwordfamily || null,
+    fontmenuwordurl: fuentesSeleccionadas.menu?.url || temaActual.fontmenuwordurl || null,
+    menu_font_size: Number(menuFontSize?.value) || DEFAULT_TEMA.menu_font_size,
+    nombre_shadow: nombreShadow?.value || DEFAULT_TEMA.nombre_shadow,
+    nombre_stroke_width: Number(nombreStrokeWidth?.value || DEFAULT_TEMA.nombre_stroke_width),
+    nombre_stroke_color: nombreStrokeColor?.value || DEFAULT_TEMA.nombre_stroke_color,
+    menu_shadow: menuShadow?.value || DEFAULT_TEMA.menu_shadow,
+    menu_stroke_width: Number(menuStrokeWidth?.value || DEFAULT_TEMA.menu_stroke_width),
+    menu_stroke_color: menuStrokeColor?.value || DEFAULT_TEMA.menu_stroke_color,
+    titulos_shadow: titulosShadow?.value || DEFAULT_TEMA.titulos_shadow,
+    titulos_stroke_width: Number(titulosStrokeWidth?.value || DEFAULT_TEMA.titulos_stroke_width),
+    titulos_stroke_color: titulosStrokeColor?.value || DEFAULT_TEMA.titulos_stroke_color,
+    boton_shadow: botonShadow?.value || DEFAULT_TEMA.boton_shadow,
+    boton_stroke_width: Number(botonStrokeWidth?.value || DEFAULT_TEMA.boton_stroke_width),
+    boton_stroke_color: botonStrokeColor?.value || DEFAULT_TEMA.boton_stroke_color,
+    item_bg_color: itemBgColor?.value || DEFAULT_TEMA.item_bg_color,
+    item_overlay: Number(itemOverlay?.value || DEFAULT_TEMA.item_overlay),
+  };
+}
+
+async function cargarTema() {
+  if (!idComercio) return;
+  const { data, error } = await supabase
+    .from('menu_tema')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+    .eq('idcomercio', idComercio)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('No se pudo cargar tema:', error);
+  }
+
+  temaActual = data || {};
+  rellenarInputsTema(temaActual);
+  if (isDev) console.log('[adminMenu] Tema cargado', { idComercio, tema: temaActual, pdf: !!temaActual.pdfurl, portada: !!temaActual.portadaimagen, background: !!temaActual.backgroundimagen });
+}
+
+async function uploadAsset(file, prefix, nameBase) {
+  const ext = file.name.split('.').pop();
+  const path = `${prefix}/${idComercio}/${nameBase}.${ext}`;
+  const { error } = await supabase.storage.from(COVER_BUCKET).upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+    cacheControl: '3600',
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from(COVER_BUCKET).getPublicUrl(path);
+  return data?.publicUrl || '';
+}
+
+async function guardarTema() {
+  if (!idComercio) return;
+  const tema = leerTemaDesdeInputs();
+  const payload = {
+    idcomercio: parseInt(idComercio, 10),
+    ...tema,
+  };
+
+  if (isDev) console.log('[adminMenu] Payload a guardar:', payload);
+
+  const { error } = await supabase.from('menu_tema').upsert(payload, { onConflict: 'idcomercio' });
+  if (error) {
+    console.error('Error guardando diseño:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      raw: error,
+    });
+    alert('No se pudo guardar el diseño');
+    return;
+  }
+
+  await cargarFuenteGuardada();
+  await cargarTema();
+  aplicarTemaEnPreview(temaActual);
+
+  alert('Diseño guardado correctamente.');
+  if (isDev) console.log('[adminMenu] Diseño guardado', { idComercio, tema: temaActual });
+}
 
 async function cargarDatos() {
   if (!idComercio) return alert('ID de comercio no encontrado en la URL');
@@ -39,7 +512,7 @@ async function cargarDatos() {
   const { data: logoData } = await supabase
     .from('imagenesComercios')
     .select('imagen')
-    .eq('idComercio', idComercio)
+    .eq('idComercio', parseInt(idComercio, 10))
     .eq('logo', true)
     .maybeSingle();
 
@@ -48,6 +521,9 @@ async function cargarDatos() {
   }
 
   await cargarSecciones();
+  await cargarFuenteGuardada();
+  await cargarTema();
+  renderFontOptions();
 }
 
 async function cargarSecciones() {
@@ -172,8 +648,6 @@ const inputOrdenProducto = document.getElementById('inputOrdenProducto');
 const inputImagenProducto = document.getElementById('inputImagenProducto');
 const btnCancelarProducto = document.getElementById('btnCancelarProducto');
 const btnGuardarProducto = document.getElementById('btnGuardarProducto');
-let productoEditandoId = null;
-let idMenuActivo = null;
 
 window.abrirEditarProducto = (idMenu, producto = null) => {
   idMenuActivo = idMenu;
@@ -311,3 +785,93 @@ inputImagenProducto.addEventListener('change', () => {
     reader.readAsDataURL(archivo);
   }
 });
+
+if (inputBuscarFuente) {
+  inputBuscarFuente.addEventListener('input', (e) => {
+    renderFontOptions();
+  });
+}
+
+filtroCategoriaFuente?.addEventListener('change', () => renderFontOptions());
+
+colorTexto?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+colorTitulo?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+colorPrecio?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+colorBoton?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+colorBotonTexto?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+overlayOscuro?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+pdfUrl?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+backgroundColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+textoMenu?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+itemBgColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+itemOverlay?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+fontBodySize?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+fontTitleSize?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+nombreFontSize?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+menuFontSize?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+nombreStrokeWidth?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+nombreStrokeColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+nombreShadow?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+menuStrokeWidth?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+menuStrokeColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+menuShadow?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+titulosStrokeWidth?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+titulosStrokeColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+titulosShadow?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+botonStrokeWidth?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+botonStrokeColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+botonShadow?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+
+inputPortada?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const url = await uploadAsset(file, COVER_PREFIX, 'portada');
+    portadaUrl = url;
+    if (previewPortada) {
+      previewPortada.src = url;
+      previewPortada.classList.remove('hidden');
+    }
+    aplicarTemaEnPreview(leerTemaDesdeInputs());
+  } catch (err) {
+    console.error('Error subiendo portada:', err);
+    alert('No se pudo subir la portada');
+  }
+});
+
+btnQuitarPortada?.addEventListener('click', () => {
+  portadaUrl = '';
+  if (previewPortada) {
+    previewPortada.src = '';
+    previewPortada.classList.add('hidden');
+  }
+  aplicarTemaEnPreview(leerTemaDesdeInputs());
+});
+
+inputBackgroundImg?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const url = await uploadAsset(file, BACKGROUND_PREFIX, 'background');
+    backgroundUrl = url;
+    if (previewBackground) {
+      previewBackground.src = url;
+      previewBackground.classList.remove('hidden');
+    }
+    aplicarTemaEnPreview(leerTemaDesdeInputs());
+  } catch (err) {
+    console.error('Error subiendo background:', err);
+    alert('No se pudo subir el background');
+  }
+});
+
+btnQuitarBackground?.addEventListener('click', () => {
+  backgroundUrl = '';
+  if (previewBackground) {
+    previewBackground.src = '';
+    previewBackground.classList.add('hidden');
+  }
+  aplicarTemaEnPreview(leerTemaDesdeInputs());
+});
+
+btnGuardarTema?.addEventListener('click', guardarTema);

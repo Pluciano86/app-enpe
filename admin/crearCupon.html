@@ -6,13 +6,22 @@
   <title>Crear Cupón | En Pe Erre</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body class="bg-gray-100 min-h-screen font-[Kanit]">
-  <div id="adminHeaderContainer"></div>
-  <script type="module" src="./js/loadAdminHeader.js"></script>
+  <div id="headerContainer"></div>
+  <script type="module">
+    import { loadAdminHeader } from './js/loadAdminHeader.js';
+    loadAdminHeader();
+  </script>
 
   <main class="max-w-3xl mx-auto px-4 py-8">
-    <h1 class="text-3xl font-semibold text-gray-800 mb-6">Crear Nuevo Cupón</h1>
+    <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
+      <h1 class="text-3xl font-semibold text-gray-800">Crear Nuevo Cupón</h1>
+      <a id="btnAdminMenu" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow text-sm">
+        Administrar Menú
+      </a>
+    </div>
 
     <form id="formCrearCupon" class="bg-white rounded-xl shadow p-6 space-y-5">
       <div>
@@ -79,6 +88,7 @@
     <p id="mensajeResultado" class="mt-4 text-sm text-gray-600"></p>
   </main>
 
+  <script type="module" src="./js/botonAdminMenu.js"></script>
   <script type="module" src="./js/crearCupon.js"></script>
 </body>
 </html>

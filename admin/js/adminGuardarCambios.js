@@ -60,6 +60,12 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
   const webpage = document.getElementById('webpage')?.value.trim();
   const colorPrimario = document.getElementById('colorPrimario')?.value.trim();
   const colorSecundario = document.getElementById('colorSecundario')?.value.trim();
+  const idMunicipio = parseInt(municipio || '', 10);
+
+  if (!idMunicipio || Number.isNaN(idMunicipio)) {
+    alert('Selecciona un municipio válido antes de guardar.');
+    return;
+  }
 
   // ✅ Primero subimos el logo si hay uno nuevo
   console.log('📤 Verificando si hay logo nuevo...');
@@ -75,7 +81,7 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
     telefono,
     whatsapp,
     descripcion,
-    municipio,
+    municipio: idMunicipio,
     facebook,
     instagram,
     tiktok,
@@ -95,7 +101,7 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
         telefono,
         whatsapp,
         descripcion,
-        idMunicipio: municipio,
+        idMunicipio,
         facebook,
         instagram,
         tiktok,
