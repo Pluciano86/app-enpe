@@ -32,7 +32,7 @@
     </div>
   </section>
 
-      <main id="seccionesMenu" class="flex flex-col gap-3 py-6 px-4 mb-16">
+  <main id="seccionesMenu" class="flex flex-col gap-3 py-6 px-4 mb-28">
       <!-- Botones con títulos del menú -->
     </div>
 
@@ -51,18 +51,36 @@
   </div>
 
   
- <div id="promoPeErre" class="text-center px-4 pb-20 mt-8">
-  <p class="font-extralight text-[#424242]">
-    Sigue a <a id="linkPerfilComercio" href="#" class="font-semibold"></a><br>
-   en <a href="././index.html" class="font-normal text-red-600 ">EnPe-Erre</a><br> y enterate primero de Eventos, Happy Hour y Ofertas especiales.
-  </p>
-</div>
   <!-- Footer fijo -->
-  <footer class="fixed bottom-0 w-full bg-[#231F20] text-white py-4 px-4 text-center text-sm">
-    <a id="linkPerfil" href="#" class="block">
-      <img id="footerLogo" src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo_fondo%20oscuro.png" alt="Logo" class="mx-auto h-5 mb-1" />
-      
-    <p class="text-xs font-extralight opacity-80">Diseño y Creación por <a href="https://www.enpe-erre.com">www.EnPe-Erre.com</a> <br>Copyright © 2024. Todos los derechos reservados.</p>
+  <footer class="fixed bottom-0 w-full bg-[#231F20] text-white text-sm">
+    <div class="bg-[#4a4a4a] py-2 px-4">
+      <div class="max-w-5xl mx-auto grid grid-cols-[auto_1fr_auto] items-center gap-3">
+        <a id="linkPerfilComercio" href="#" class="w-12 h-12 sm:w-20 sm:h-20 bg-white rounded-full overflow-hidden flex items-center justify-center">
+          <img id="footerLogoComercio" src="" alt="Logo comercio" class="w-full h-full object-cover" />
+        </a>
+        <div class="text-left">
+          <span id="footerNombreComercio" class="text-lg sm:text-lg font-medium tracking-wide whitespace-nowrap"></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <a id="footerTelefono" href="#" class="hidden inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-[#3a3a3a] border border-white/10 shadow hover:bg-[#444] transition text-xs sm:text-sm">
+            <i class="fa-solid fa-phone"></i>
+            <span id="footerTelefonoText" class="font-normal"></span>
+          </a>
+          <a id="footerFacebook" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-[#3a3a3a] border border-white/10 shadow hover:bg-[#444] transition">
+            <i class="fa-brands fa-facebook text-sm sm:text-base"></i>
+          </a>
+          <a id="footerInstagram" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center justify-center px-3 py-1.5 rounded-full bg-[#3a3a3a] border border-white/10 shadow hover:bg-[#444] transition">
+            <i class="fa-brands fa-instagram text-sm sm:text-base"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="py-3 px-4 text-center">
+      <a id="linkPerfil" href="../index.html" class="inline-flex flex-col items-center gap-1">
+        <img id="footerLogo" src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo_fondo%20oscuro.png" alt="Logo" class="h-7 mx-auto" />
+        <span class="text-[10px] font-extralight opacity-80 leading-tight">Diseño y Creación por www.EnPe-Erre.com<br>Copyright © 2024. Todos los derechos reservados.</span>
+      </a>
+    </div>
   </footer>
 
   <!-- Scripts -->

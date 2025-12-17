@@ -31,6 +31,8 @@ const previewFontBody = document.getElementById('previewFontBody');
 const previewFontTitle = document.getElementById('previewFontTitle');
 const previewFontNombre = document.getElementById('previewFontNombre');
 const previewFontMenuWord = document.getElementById('previewFontMenuWord');
+const colorNombre = document.getElementById('colorNombre');
+const colorMenuWord = document.getElementById('colorMenuWord');
 const colorTexto = document.getElementById('colorTexto');
 const colorTitulo = document.getElementById('colorTitulo');
 const colorPrecio = document.getElementById('colorPrecio');
@@ -63,9 +65,11 @@ const itemOverlay = document.getElementById('itemOverlay');
 const nombreStrokeWidth = document.getElementById('nombreStrokeWidth');
 const nombreStrokeColor = document.getElementById('nombreStrokeColor');
 const nombreShadow = document.getElementById('nombreShadow');
+const nombreShadowColor = document.getElementById('nombreShadowColor');
 const menuStrokeWidth = document.getElementById('menuStrokeWidth');
 const menuStrokeColor = document.getElementById('menuStrokeColor');
 const menuShadow = document.getElementById('menuShadow');
+const menuShadowColor = document.getElementById('menuShadowColor');
 const titulosStrokeWidth = document.getElementById('titulosStrokeWidth');
 const titulosStrokeColor = document.getElementById('titulosStrokeColor');
 const titulosShadow = document.getElementById('titulosShadow');
@@ -78,7 +82,9 @@ let linkFuente = null;
 let productoEditandoId = null;
 let idMenuActivo = null;
 let portadaUrl = '';
+let portadaPath = '';
 let backgroundUrl = '';
+let backgroundPath = '';
 let temaActual = {};
 const COVER_BUCKET = 'galeriacomercios';
 const COVER_PREFIX = 'menus/portada';
@@ -96,6 +102,8 @@ const DEFAULT_TEMA = {
   colorprecio: '#2563eb',
   colorboton: '#2563eb',
   colorbotontexto: '#ffffff',
+  colorComercio: '#111827',
+  colorMenu: '#111827',
   overlayoscuro: 40,
   pdfurl: '',
   portadaimagen: '',
@@ -117,9 +125,11 @@ const DEFAULT_TEMA = {
   item_bg_color: '#ffffff',
   item_overlay: 0,
   nombre_shadow: '',
+  nombre_shadow_color: '#00000080',
   nombre_stroke_width: 0,
   nombre_stroke_color: '#000000',
   menu_shadow: '',
+  menu_shadow_color: '#00000080',
   menu_stroke_width: 0,
   menu_stroke_color: '#000000',
   titulos_shadow: '',
@@ -200,10 +210,15 @@ function renderFontOptions() {
     const current = fuentesSeleccionadas[rol]?.name || '';
     el.innerHTML = '';
     fuentes.forEach((fuente) => {
+      // precargar fuente para que se vea en el dropdown
+      const slug = fuente.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      ensureFontLink(`fuente-preview-${slug}`, fuente.url);
       const opt = document.createElement('option');
       opt.value = fuente.name;
       opt.textContent = `${fuente.name} (${fuente.category})`;
       opt.dataset.url = fuente.url;
+      opt.style.fontFamily = `'${fuente.name}', 'Kanit', sans-serif`;
+      opt.style.setProperty('--option-font-family', `'${fuente.name}', 'Kanit', sans-serif`);
       if (fuente.name === current) opt.selected = true;
       el.appendChild(opt);
     });
@@ -212,10 +227,12 @@ function renderFontOptions() {
       if (selected) {
         aplicarFuentePorRol(rol, selected);
         if (preview) preview.style.fontFamily = `'${selected.name}', 'Kanit', sans-serif`;
+        el.style.fontFamily = `'${selected.name}', 'Kanit', sans-serif`;
       }
     };
     // refrescar preview si ya hay selección
     if (preview && current) preview.style.fontFamily = `'${current}', 'Kanit', sans-serif`;
+    if (current) el.style.fontFamily = `'${current}', 'Kanit', sans-serif`;
   });
   aplicarTemaEnPreview(leerTemaDesdeInputs());
 }
@@ -224,7 +241,7 @@ async function cargarFuenteGuardada() {
   if (!idComercio) return;
   const { data, error } = await supabase
     .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu",overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
     .eq('idcomercio', idComercio)
     .maybeSingle();
 
@@ -245,16 +262,66 @@ function getPublicCoverUrl(path) {
   return data?.publicUrl || '';
 }
 
+function cacheBust(url) {
+  if (!url) return '';
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}cb=${Date.now()}`;
+}
+
+function sanitizeOffsets(str = '') {
+  return str.replace(/(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))/g, '').trim();
+}
+
+function parseShadowParts(shadowStr, fallbackColor) {
+  const trimmed = shadowStr?.trim() || '';
+  if (!trimmed) return { offsets: '', color: fallbackColor };
+  const colorMatches = trimmed.match(/(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\))/g);
+  const color = colorMatches?.[colorMatches.length - 1] || fallbackColor;
+  const offsets = sanitizeOffsets(trimmed);
+  return { offsets, color };
+}
+
 function aplicarTemaEnPreview(tema) {
   const t = { ...DEFAULT_TEMA, ...tema };
-  if (previewNombreComercio) previewNombreComercio.textContent = nombreEl?.textContent || 'Nombre Comercio';
-  if (previewMenuWord) previewMenuWord.textContent = t.textomenu || 'Menú';
+  const colorComercioVal = t.colorComercio || t.colortitulo;
+  const colorMenuVal = t.colorMenu || t.colortitulo;
+  if (previewNombreComercio) {
+    previewNombreComercio.textContent = nombreEl?.textContent || 'Nombre Comercio';
+    previewNombreComercio.style.color = colorComercioVal;
+  }
+  if (previewMenuWord) {
+    previewMenuWord.textContent = t.textomenu || 'Menú';
+    previewMenuWord.style.color = colorMenuVal;
+  }
 
   const applyStroke = (el, width, color, shadow) => {
     if (!el) return;
     const w = Number(width) || 0;
-    el.style.webkitTextStroke = w > 0 ? `${w}px ${color || '#000'}` : '';
-    el.style.textShadow = shadow || '';
+    const c = color || '#000';
+    const supportsStroke = 'webkitTextStroke' in el.style;
+    if (supportsStroke) {
+      el.style.webkitTextStroke = w > 0 ? `${w}px ${c}` : '';
+      el.style.paintOrder = 'stroke fill';
+      el.style.textShadow = shadow || '';
+    } else {
+      const shadows = [];
+      if (w > 0) {
+        const dirs = [
+          [w, 0],
+          [-w, 0],
+          [0, w],
+          [0, -w],
+          [w, w],
+          [-w, w],
+          [w, -w],
+          [-w, -w],
+        ];
+        dirs.forEach(([x, y]) => shadows.push(`${x}px ${y}px 0 ${c}`));
+      }
+      if (shadow) shadows.push(shadow);
+      el.style.webkitTextStroke = '';
+      el.style.textShadow = shadows.join(', ');
+    }
   };
 
   // Colores base
@@ -268,7 +335,10 @@ function aplicarTemaEnPreview(tema) {
   if (previewItemPrecio) previewItemPrecio.style.color = t.colorprecio;
 
   // Tamaños
-  if (previewNombreComercio && t.nombre_font_size) previewNombreComercio.style.fontSize = `${t.nombre_font_size}px`;
+  if (previewNombreComercio && t.nombre_font_size) {
+    previewNombreComercio.style.fontSize = `${t.nombre_font_size}px`;
+    previewNombreComercio.style.marginBottom = '8px';
+  }
   if (previewMenuWord && t.menu_font_size) previewMenuWord.style.fontSize = `${t.menu_font_size}px`;
   if (previewTituloDemo && t.fonttitle_size) previewTituloDemo.style.fontSize = `${t.fonttitle_size}px`;
   if (previewTituloDemo && t.fonttitle_size) previewTituloDemo.style.fontSize = `${t.fonttitle_size}px`;
@@ -277,8 +347,10 @@ function aplicarTemaEnPreview(tema) {
   if (previewItemPrecio && t.fontbody_size) previewItemPrecio.style.fontSize = `${t.fontbody_size}px`;
 
   // Stroke y sombras
-  applyStroke(previewNombreComercio, t.nombre_stroke_width, t.nombre_stroke_color, t.nombre_shadow);
-  applyStroke(previewMenuWord, t.menu_stroke_width, t.menu_stroke_color, t.menu_shadow);
+  const nombreShadowStr = `${sanitizeOffsets(nombreShadow?.value || '')} ${nombreShadowColor?.value || DEFAULT_TEMA.nombre_shadow_color}`.trim();
+  const menuShadowStr = `${sanitizeOffsets(menuShadow?.value || '')} ${menuShadowColor?.value || DEFAULT_TEMA.menu_shadow_color}`.trim();
+  applyStroke(previewNombreComercio, t.nombre_stroke_width, t.nombre_stroke_color, nombreShadowStr);
+  applyStroke(previewMenuWord, t.menu_stroke_width, t.menu_stroke_color, menuShadowStr);
   applyStroke(previewTituloDemo, t.titulos_stroke_width, t.titulos_stroke_color, t.titulos_shadow);
   if (previewTituloDemo) {
     const borderWidth = Number(t.boton_stroke_width) || 0;
@@ -323,10 +395,20 @@ function rellenarInputsTema(tema) {
   if (colorPrecio) colorPrecio.value = t.colorprecio;
   if (colorBoton) colorBoton.value = t.colorboton;
   if (colorBotonTexto) colorBotonTexto.value = t.colorbotontexto;
+  const colorComercioVal = t.colorComercio || DEFAULT_TEMA.colorComercio;
+  const colorMenuVal = t.colorMenu || DEFAULT_TEMA.colorMenu;
+  if (colorNombre) colorNombre.value = colorComercioVal;
+  if (colorMenuWord) colorMenuWord.value = colorMenuVal;
   if (overlayOscuro) overlayOscuro.value = t.overlayoscuro;
   if (pdfUrl) pdfUrl.value = t.pdfurl || '';
   if (backgroundColor) backgroundColor.value = t.backgroundcolor || '#ffffff';
   if (textoMenu) textoMenu.value = t.textomenu || 'Menú';
+  const nombreShadowParts = parseShadowParts(t.nombre_shadow, DEFAULT_TEMA.nombre_shadow_color);
+  if (nombreShadow) nombreShadow.value = nombreShadowParts.offsets || '';
+  if (nombreShadowColor) nombreShadowColor.value = nombreShadowParts.color || DEFAULT_TEMA.nombre_shadow_color;
+  const menuShadowParts = parseShadowParts(t.menu_shadow, DEFAULT_TEMA.menu_shadow_color);
+  if (menuShadow) menuShadow.value = menuShadowParts.offsets || '';
+  if (menuShadowColor) menuShadowColor.value = menuShadowParts.color || DEFAULT_TEMA.menu_shadow_color;
   if (itemBgColor) itemBgColor.value = t.item_bg_color || DEFAULT_TEMA.item_bg_color;
   if (itemOverlay) itemOverlay.value = t.item_overlay ?? DEFAULT_TEMA.item_overlay;
 
@@ -334,7 +416,7 @@ function rellenarInputsTema(tema) {
   const portadaPublic = portadaUrl?.startsWith('http') ? portadaUrl : getPublicCoverUrl(portadaUrl);
   if (previewPortada) {
     if (portadaPublic) {
-      previewPortada.src = portadaPublic;
+      previewPortada.src = cacheBust(portadaPublic);
       previewPortada.classList.remove('hidden');
     } else {
       previewPortada.src = '';
@@ -346,7 +428,7 @@ function rellenarInputsTema(tema) {
   const bgPublic = backgroundUrl?.startsWith('http') ? backgroundUrl : getPublicCoverUrl(backgroundUrl);
   if (previewBackground) {
     if (bgPublic) {
-      previewBackground.src = bgPublic;
+      previewBackground.src = cacheBust(bgPublic);
       previewBackground.classList.remove('hidden');
     } else {
       previewBackground.src = '';
@@ -390,12 +472,16 @@ function rellenarInputsTema(tema) {
 }
 
 function leerTemaDesdeInputs() {
+  const nombreOffsets = sanitizeOffsets(nombreShadow?.value || '');
+  const menuOffsets = sanitizeOffsets(menuShadow?.value || '');
   return {
     colortexto: colorTexto?.value || DEFAULT_TEMA.colortexto,
     colortitulo: colorTitulo?.value || DEFAULT_TEMA.colortitulo,
     colorprecio: colorPrecio?.value || DEFAULT_TEMA.colorprecio,
     colorboton: colorBoton?.value || DEFAULT_TEMA.colorboton,
     colorbotontexto: colorBotonTexto?.value || DEFAULT_TEMA.colorbotontexto,
+    colorComercio: colorNombre?.value || DEFAULT_TEMA.colorComercio,
+    colorMenu: colorMenuWord?.value || DEFAULT_TEMA.colorMenu,
     overlayoscuro: Number(overlayOscuro?.value || DEFAULT_TEMA.overlayoscuro),
     pdfurl: pdfUrl?.value?.trim() || '',
     portadaimagen: portadaUrl || '',
@@ -414,10 +500,10 @@ function leerTemaDesdeInputs() {
     fontmenuwordfamily: fuentesSeleccionadas.menu?.name || temaActual.fontmenuwordfamily || null,
     fontmenuwordurl: fuentesSeleccionadas.menu?.url || temaActual.fontmenuwordurl || null,
     menu_font_size: Number(menuFontSize?.value) || DEFAULT_TEMA.menu_font_size,
-    nombre_shadow: nombreShadow?.value || DEFAULT_TEMA.nombre_shadow,
+    nombre_shadow: `${nombreOffsets} ${nombreShadowColor?.value || DEFAULT_TEMA.nombre_shadow_color}`.trim(),
     nombre_stroke_width: Number(nombreStrokeWidth?.value || DEFAULT_TEMA.nombre_stroke_width),
     nombre_stroke_color: nombreStrokeColor?.value || DEFAULT_TEMA.nombre_stroke_color,
-    menu_shadow: menuShadow?.value || DEFAULT_TEMA.menu_shadow,
+    menu_shadow: `${menuOffsets} ${menuShadowColor?.value || DEFAULT_TEMA.menu_shadow_color}`.trim(),
     menu_stroke_width: Number(menuStrokeWidth?.value || DEFAULT_TEMA.menu_stroke_width),
     menu_stroke_color: menuStrokeColor?.value || DEFAULT_TEMA.menu_stroke_color,
     titulos_shadow: titulosShadow?.value || DEFAULT_TEMA.titulos_shadow,
@@ -435,7 +521,7 @@ async function cargarTema() {
   if (!idComercio) return;
   const { data, error } = await supabase
     .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu",overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
     .eq('idcomercio', idComercio)
     .maybeSingle();
 
@@ -454,11 +540,11 @@ async function uploadAsset(file, prefix, nameBase) {
   const { error } = await supabase.storage.from(COVER_BUCKET).upload(path, file, {
     upsert: true,
     contentType: file.type,
-    cacheControl: '3600',
+    cacheControl: '0',
   });
   if (error) throw error;
   const { data } = supabase.storage.from(COVER_BUCKET).getPublicUrl(path);
-  return data?.publicUrl || '';
+  return { path, publicUrl: data?.publicUrl || '' };
 }
 
 async function guardarTema() {
@@ -646,8 +732,10 @@ const inputDescripcionProducto = document.getElementById('inputDescripcionProduc
 const inputPrecioProducto = document.getElementById('inputPrecioProducto');
 const inputOrdenProducto = document.getElementById('inputOrdenProducto');
 const inputImagenProducto = document.getElementById('inputImagenProducto');
+const previewImagenProducto = document.getElementById('previewImagenProducto');
 const btnCancelarProducto = document.getElementById('btnCancelarProducto');
 const btnGuardarProducto = document.getElementById('btnGuardarProducto');
+let productoImagenActual = '';
 
 window.abrirEditarProducto = (idMenu, producto = null) => {
   idMenuActivo = idMenu;
@@ -657,6 +745,14 @@ window.abrirEditarProducto = (idMenu, producto = null) => {
   inputPrecioProducto.value = producto?.precio || '';
   inputOrdenProducto.value = producto?.orden || 1;
   inputImagenProducto.value = ''; // nunca prellena file input
+  productoImagenActual = producto?.imagen || '';
+  if (producto?.imagen) {
+    previewImagenProducto.src = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${producto.imagen}`;
+    previewImagenProducto.classList.remove('hidden');
+  } else {
+    previewImagenProducto.src = '';
+    previewImagenProducto.classList.add('hidden');
+  }
   modalProducto.classList.remove('hidden');
 };
 
@@ -670,6 +766,7 @@ window.abrirNuevoProducto = (idMenu) => {
   previewImagenProducto.src = '';
   previewImagenProducto.classList.add('hidden');
   inputImagenProducto.value = '';
+  productoImagenActual = '';
   modalProducto.classList.remove('hidden');
 
   // 🧼 Limpiar preview de imagen
@@ -747,12 +844,16 @@ if (archivo && productoId) {
   const ext = archivo.name.split('.').pop();
   const nombreArchivo = `menu/${productoId}.${ext}`;  // Ruta dentro de galeriacomercios
 
+  if (productoImagenActual && productoImagenActual !== nombreArchivo) {
+    await supabase.storage.from('galeriacomercios').remove([productoImagenActual]).catch(() => {});
+  }
+
   const { error: errorSubida } = await supabase.storage
     .from('galeriacomercios')
     .upload(nombreArchivo, archivo, {
       upsert: true,
       contentType: archivo.type,
-      cacheControl: '3600'
+      cacheControl: '0'
     });
 
   if (errorSubida) {
@@ -762,6 +863,7 @@ if (archivo && productoId) {
       .from('productos')
       .update({ imagen: nombreArchivo })
       .eq('id', productoId);
+    productoImagenActual = nombreArchivo;
   }
 }
 
@@ -799,6 +901,8 @@ colorTitulo?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeI
 colorPrecio?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 colorBoton?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 colorBotonTexto?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+colorNombre?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+colorMenuWord?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 overlayOscuro?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 pdfUrl?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 backgroundColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
@@ -812,9 +916,11 @@ menuFontSize?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesde
 nombreStrokeWidth?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 nombreStrokeColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 nombreShadow?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+nombreShadowColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 menuStrokeWidth?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 menuStrokeColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 menuShadow?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+menuShadowColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 titulosStrokeWidth?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 titulosStrokeColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 titulosShadow?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
@@ -826,10 +932,13 @@ inputPortada?.addEventListener('change', async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    const url = await uploadAsset(file, COVER_PREFIX, 'portada');
-    portadaUrl = url;
-    if (previewPortada) {
-      previewPortada.src = url;
+    const { path, publicUrl } = await uploadAsset(file, COVER_PREFIX, 'portada');
+    portadaPath = path || '';
+    portadaUrl = publicUrl || '';
+    temaActual.portadaimagen = path || '';
+    if (publicUrl && previewPortada) {
+      const bust = `${publicUrl}?t=${Date.now()}`;
+      previewPortada.src = bust;
       previewPortada.classList.remove('hidden');
     }
     aplicarTemaEnPreview(leerTemaDesdeInputs());
@@ -852,10 +961,13 @@ inputBackgroundImg?.addEventListener('change', async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    const url = await uploadAsset(file, BACKGROUND_PREFIX, 'background');
-    backgroundUrl = url;
-    if (previewBackground) {
-      previewBackground.src = url;
+    const { path, publicUrl } = await uploadAsset(file, BACKGROUND_PREFIX, 'background');
+    backgroundPath = path || '';
+    backgroundUrl = publicUrl || '';
+    temaActual.backgroundimagen = path || '';
+    if (publicUrl && previewBackground) {
+      const bust = `${publicUrl}?t=${Date.now()}`;
+      previewBackground.src = bust;
       previewBackground.classList.remove('hidden');
     }
     aplicarTemaEnPreview(leerTemaDesdeInputs());
@@ -867,6 +979,7 @@ inputBackgroundImg?.addEventListener('change', async (e) => {
 
 btnQuitarBackground?.addEventListener('click', () => {
   backgroundUrl = '';
+  backgroundPath = '';
   if (previewBackground) {
     previewBackground.src = '';
     previewBackground.classList.add('hidden');

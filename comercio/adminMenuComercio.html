@@ -27,50 +27,12 @@
     </div>
   </header>
 
-  <section class="bg-white shadow rounded-lg px-4 py-4 mx-4 mt-4 space-y-4">
-    <div class="flex items-center justify-between gap-3 flex-wrap">
-      <div>
-        <h2 class="text-lg font-semibold text-gray-800">Tipografía del menú</h2>
-        <p class="text-sm text-gray-500">Dropdown con buscador y categorías.</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <input id="inputBuscarFuente" type="text" placeholder="Buscar fuente..." class="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-400" />
-        <select id="filtroCategoriaFuente" class="border border-gray-300 rounded px-3 py-2 text-sm">
-          <option value="all">Todas</option>
-          <option value="Sans">Sans</option>
-          <option value="Classic/Serif">Classic/Serif</option>
-          <option value="Handwrite">Handwrite</option>
-          <option value="Display">Display</option>
-        </select>
-      </div>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3">
-      <div class="space-y-2">
-        <label class="text-sm font-semibold text-gray-700">Fuente Body</label>
-        <select id="fontBodySelect" class="w-full border rounded px-3 py-2 text-sm"></select>
-        <input id="fontBodySize" type="number" min="10" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
-        <p id="previewFontBody" class="text-sm text-gray-600">Texto de ejemplo Body</p>
-      </div>
-      <div class="space-y-2">
-        <label class="text-sm font-semibold text-gray-700">Fuente Títulos</label>
-        <select id="fontTitleSelect" class="w-full border rounded px-3 py-2 text-sm"></select>
-        <input id="fontTitleSize" type="number" min="10" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
-        <p id="previewFontTitle" class="text-sm text-gray-600">Texto de ejemplo Título</p>
-      </div>
-      <div class="space-y-2">
-        <label class="text-sm font-semibold text-gray-700">Fuente Nombre Comercio</label>
-        <select id="fontNombreSelect" class="w-full border rounded px-3 py-2 text-sm"></select>
-        <input id="nombreFontSize" type="number" min="12" max="60" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
-        <p id="previewFontNombre" class="text-sm text-gray-600">Ejemplo Nombre Comercio</p>
-      </div>
-      <div class="space-y-2">
-        <label class="text-sm font-semibold text-gray-700">Fuente palabra “Menú”</label>
-        <select id="fontMenuWordSelect" class="w-full border rounded px-3 py-2 text-sm"></select>
-        <input id="menuFontSize" type="number" min="12" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
-        <p id="previewFontMenuWord" class="text-sm text-gray-600">Texto “Menú”</p>
-      </div>
-    </div>
-  </section>
+  <style>
+    /* Aplica la fuente de cada option si el navegador lo permite */
+    select.fuente-preview option {
+      font-family: var(--option-font-family, 'Kanit', sans-serif);
+    }
+  </style>
 
   <section class="bg-white shadow rounded-lg px-4 py-4 mx-4 mt-4 space-y-4">
     <div class="flex items-center justify-between flex-wrap gap-3">
@@ -115,6 +77,20 @@
           <p class="text-sm font-semibold text-gray-700">Sección 1: Header</p>
           <span class="text-xs text-gray-500">Nombre + “Menú”</span>
         </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-700">Fuente Nombre Comercio</label>
+            <select id="fontNombreSelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            <input id="nombreFontSize" type="number" min="12" max="60" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
+            <p id="previewFontNombre" class="text-xs text-gray-500">Ejemplo Nombre Comercio</p>
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-700">Fuente palabra “Menú”</label>
+            <select id="fontMenuWordSelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            <input id="menuFontSize" type="number" min="12" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
+            <p id="previewFontMenuWord" class="text-xs text-gray-500">Texto “Menú”</p>
+          </div>
+        </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <label class="flex items-center justify-between gap-3">
             <span class="text-gray-700">Overlay oscuro (0-80)</span>
@@ -127,6 +103,14 @@
           <label class="col-span-1 sm:col-span-2 flex items-center justify-between gap-3">
             <span class="text-gray-700">Texto “Menú”</span>
             <input id="textoMenu" type="text" class="flex-1 border rounded px-2 py-1 text-sm" placeholder="Menú" />
+          </label>
+          <label class="flex items-center justify-between gap-3">
+            <span class="text-gray-700">Color Nombre</span>
+            <input id="colorNombre" type="color" class="w-16 h-10 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-3">
+            <span class="text-gray-700">Color “Menú”</span>
+            <input id="colorMenuWord" type="color" class="w-16 h-10 border rounded" />
           </label>
         </div>
         <div id="previewHeader" class="relative rounded-lg overflow-hidden h-44 flex items-center justify-center text-center text-white">
@@ -143,13 +127,15 @@
             <label class="text-xs text-gray-600">Nombre</label>
             <input id="nombreStrokeWidth" type="number" min="0" max="8" step="0.5" class="w-20 border rounded px-2 py-1 text-sm" />
             <input id="nombreStrokeColor" type="color" class="w-12 h-10 border rounded" />
-            <input id="nombreShadow" type="text" placeholder="0 2px 6px rgba(...)" class="flex-1 border rounded px-2 py-1 text-sm" />
+            <input id="nombreShadow" type="text" placeholder="0 2px 6px" class="flex-1 border rounded px-2 py-1 text-sm" />
+            <input id="nombreShadowColor" type="color" class="w-12 h-10 border rounded" title="Color sombra" />
           </div>
           <div class="flex items-center gap-3">
             <label class="text-xs text-gray-600">“Menú”</label>
             <input id="menuStrokeWidth" type="number" min="0" max="8" step="0.5" class="w-20 border rounded px-2 py-1 text-sm" />
             <input id="menuStrokeColor" type="color" class="w-12 h-10 border rounded" />
-            <input id="menuShadow" type="text" placeholder="0 2px 6px rgba(...)" class="flex-1 border rounded px-2 py-1 text-sm" />
+            <input id="menuShadow" type="text" placeholder="0 2px 6px" class="flex-1 border rounded px-2 py-1 text-sm" />
+            <input id="menuShadowColor" type="color" class="w-12 h-10 border rounded" title="Color sombra" />
           </div>
         </div>
       </div>
@@ -158,6 +144,14 @@
         <div class="flex items-center justify-between">
           <p class="text-sm font-semibold text-gray-700">Sección 2: Títulos + Botón</p>
           <span class="text-xs text-gray-500">Vista previa</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-700">Fuente Títulos</label>
+            <select id="fontTitleSelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            <input id="fontTitleSize" type="number" min="10" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
+            <p id="previewFontTitle" class="text-xs text-gray-500">Texto de ejemplo Título</p>
+          </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <label class="flex items-center justify-between gap-2">
@@ -193,6 +187,14 @@
         <div class="flex items-center justify-between">
           <p class="text-sm font-semibold text-gray-700">Sección 3: Item / Producto</p>
           <span class="text-xs text-gray-500">Preview en vivo</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-700">Fuente Body</label>
+            <select id="fontBodySelect" class="w-full border rounded px-3 py-2 text-sm fuente-preview"></select>
+            <input id="fontBodySize" type="number" min="10" max="48" class="w-24 border rounded px-2 py-1 text-sm" placeholder="px" />
+            <p id="previewFontBody" class="text-xs text-gray-500">Texto de ejemplo Body</p>
+          </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
           <label class="flex items-center justify-between gap-2">

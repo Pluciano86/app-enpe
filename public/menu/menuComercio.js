@@ -10,6 +10,12 @@ const heroOverlay = document.getElementById('heroOverlay');
 const heroImg = document.getElementById('heroImg');
 const heroNombre = document.getElementById('heroNombre');
 const heroMenuWord = document.getElementById('heroMenuWord');
+const footerLogoComercio = document.getElementById('footerLogoComercio');
+const footerNombreComercio = document.getElementById('footerNombreComercio');
+const footerTelefono = document.getElementById('footerTelefono');
+const footerTelefonoText = document.getElementById('footerTelefonoText');
+const footerFacebook = document.getElementById('footerFacebook');
+const footerInstagram = document.getElementById('footerInstagram');
 const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 const DEFAULT_TEMA = {
@@ -18,6 +24,12 @@ const DEFAULT_TEMA = {
   colorprecio: '#2563eb',
   colorboton: '#2563eb',
   colorbotontexto: '#ffffff',
+  fontbody_size: 16,
+  fonttitle_size: 18,
+  nombre_font_size: 28,
+  menu_font_size: 20,
+  colorComercio: '#111827',
+  colorMenu: '#111827',
   overlayoscuro: 40,
   pdfurl: '',
   portadaimagen: '',
@@ -53,6 +65,12 @@ let linkFuente = null;
 let coverUrl = '';
 let backgroundUrl = '';
 const fontLinks = new Set();
+
+function cacheBust(url) {
+  if (!url) return '';
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}cb=${Date.now()}`;
+}
 
 function ensureFontLink(url) {
   if (!url) return;
@@ -104,7 +122,7 @@ function setCssVars() {
 async function cargarTema() {
   const { data, error } = await supabase
     .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fonttitlefamily,fonttitleurl,fontnombrefamily,fontnombreurl,fontmenuwordfamily,fontmenuwordurl,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu",overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
     .eq('idcomercio', idComercio)
     .maybeSingle();
 
@@ -117,19 +135,22 @@ async function cargarTema() {
   // background/portada
   if (temaActual.portadaimagen) {
     if (temaActual.portadaimagen.startsWith('http')) {
-      coverUrl = temaActual.portadaimagen;
+      coverUrl = cacheBust(temaActual.portadaimagen);
     } else {
-      coverUrl =
-        supabase.storage.from('galeriacomercios').getPublicUrl(temaActual.portadaimagen).data?.publicUrl || '';
+      const pub = supabase.storage.from('galeriacomercios').getPublicUrl(temaActual.portadaimagen).data?.publicUrl || '';
+      coverUrl = cacheBust(pub);
     }
   } else {
     coverUrl = '';
   }
 
   if (temaActual.backgroundimagen) {
-    backgroundUrl = temaActual.backgroundimagen.startsWith('http')
-      ? temaActual.backgroundimagen
-      : supabase.storage.from('galeriacomercios').getPublicUrl(temaActual.backgroundimagen).data?.publicUrl || '';
+    if (temaActual.backgroundimagen.startsWith('http')) {
+      backgroundUrl = cacheBust(temaActual.backgroundimagen);
+    } else {
+      const pub = supabase.storage.from('galeriacomercios').getPublicUrl(temaActual.backgroundimagen).data?.publicUrl || '';
+      backgroundUrl = cacheBust(pub);
+    }
   } else {
     backgroundUrl = '';
   }
@@ -166,27 +187,33 @@ async function cargarDatos() {
 
   const { data: comercio, error: errorComercio } = await supabase
     .from('Comercios')
-    .select('id, nombre, colorPrimario, colorSecundario')
+    .select('id, nombre, colorPrimario, colorSecundario, logo, telefono, facebook, instagram')
     .eq('id', idComercio)
     .single();
 
   if (errorComercio || !comercio) return alert('Error cargando comercio');
 
   if (heroNombre) {
+    const colorComercioVal = temaActual.colorComercio || temaActual.colortitulo;
     heroNombre.textContent = comercio.nombre || heroNombre.textContent || '';
-    heroNombre.style.color = temaActual.colortitulo;
+    heroNombre.style.color = colorComercioVal;
+    if (temaActual.nombre_font_size) heroNombre.style.fontSize = `${temaActual.nombre_font_size}px`;
     const strokeW = Number(temaActual.nombre_stroke_width) || 0;
     heroNombre.style.webkitTextStroke = strokeW > 0 ? `${strokeW}px ${temaActual.nombre_stroke_color || '#000'}` : '';
+    heroNombre.style.paintOrder = 'stroke fill';
     heroNombre.style.textShadow = temaActual.nombre_shadow || '';
     heroNombre.style.fontFamily = temaActual.fontnombrefamily
       ? `'${temaActual.fontnombrefamily}', 'Kanit', sans-serif`
       : '';
   }
   if (heroMenuWord) {
+    const colorMenuVal = temaActual.colorMenu || temaActual.colortitulo;
     heroMenuWord.textContent = temaActual.textomenu || heroMenuWord.textContent || 'Menú';
-    heroMenuWord.style.color = temaActual.colortitulo;
+    heroMenuWord.style.color = colorMenuVal;
+    if (temaActual.menu_font_size) heroMenuWord.style.fontSize = `${temaActual.menu_font_size}px`;
     const strokeW = Number(temaActual.menu_stroke_width) || 0;
     heroMenuWord.style.webkitTextStroke = strokeW > 0 ? `${strokeW}px ${temaActual.menu_stroke_color || '#000'}` : '';
+    heroMenuWord.style.paintOrder = 'stroke fill';
     heroMenuWord.style.textShadow = temaActual.menu_shadow || '';
     heroMenuWord.style.fontFamily = temaActual.fontmenuwordfamily
       ? `'${temaActual.fontmenuwordfamily}', 'Kanit', sans-serif`
@@ -331,8 +358,46 @@ async function cargarDatos() {
   }
 
   const linkPerfil = document.getElementById('linkPerfilComercio');
-  linkPerfil.textContent = comercio.nombre;
-  linkPerfil.href = `/perfilComercio.html?id=${idComercio}`;
+  if (linkPerfil) {
+    linkPerfil.href = `/perfilComercio.html?id=${idComercio}`;
+    linkPerfil.setAttribute('aria-label', comercio.nombre || 'Perfil comercio');
+  }
+  if (footerNombreComercio) footerNombreComercio.textContent = comercio.nombre || '';
+  if (footerLogoComercio) {
+    const logoSrc = comercio.logo?.startsWith('http')
+      ? comercio.logo
+      : comercio.logo
+      ? `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${comercio.logo}`
+      : '';
+    footerLogoComercio.src = logoSrc || '';
+    footerLogoComercio.alt = comercio.nombre || 'Logo comercio';
+  }
+  if (footerTelefono && footerTelefonoText) {
+    const telefonoRaw = String(comercio.telefono || '').trim();
+    if (telefonoRaw && telefonoRaw.toLowerCase() !== 'null') {
+      footerTelefono.href = `tel:${telefonoRaw}`;
+      footerTelefonoText.textContent = telefonoRaw;
+      footerTelefono.classList.remove('hidden');
+    } else {
+      footerTelefono.classList.add('hidden');
+    }
+  }
+  if (footerFacebook) {
+    if (comercio.facebook) {
+      footerFacebook.href = comercio.facebook;
+      footerFacebook.classList.remove('hidden');
+    } else {
+      footerFacebook.classList.add('hidden');
+    }
+  }
+  if (footerInstagram) {
+    if (comercio.instagram) {
+      footerInstagram.href = comercio.instagram;
+      footerInstagram.classList.remove('hidden');
+    } else {
+      footerInstagram.classList.add('hidden');
+    }
+  }
 
   const logoLink = document.getElementById('logoLinkPerfil');
   if (logoLink) {
