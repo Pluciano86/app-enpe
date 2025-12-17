@@ -13,7 +13,6 @@ const heroMenuWord = document.getElementById('heroMenuWord');
 const footerLogoComercio = document.getElementById('footerLogoComercio');
 const footerNombreComercio = document.getElementById('footerNombreComercio');
 const footerTelefono = document.getElementById('footerTelefono');
-const footerTelefonoText = document.getElementById('footerTelefonoText');
 const footerFacebook = document.getElementById('footerFacebook');
 const footerInstagram = document.getElementById('footerInstagram');
 const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
@@ -372,11 +371,10 @@ async function cargarDatos() {
     footerLogoComercio.src = logoSrc || '';
     footerLogoComercio.alt = comercio.nombre || 'Logo comercio';
   }
-  if (footerTelefono && footerTelefonoText) {
+  if (footerTelefono) {
     const telefonoRaw = String(comercio.telefono || '').trim();
     if (telefonoRaw && telefonoRaw.toLowerCase() !== 'null') {
       footerTelefono.href = `tel:${telefonoRaw}`;
-      footerTelefonoText.textContent = telefonoRaw;
       footerTelefono.classList.remove('hidden');
     } else {
       footerTelefono.classList.add('hidden');
