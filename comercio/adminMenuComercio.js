@@ -617,9 +617,23 @@ async function guardarTema() {
     ...tema,
   };
 
-  if (isDev) console.log('[adminMenu] Payload a guardar:', payload);
+  if (isDev) console.log('[adminMenu] Payload a guardar:', {
+    ...payload,
+    log_shadows: {
+      nombre_shadow: payload.nombre_shadow,
+      menu_shadow: payload.menu_shadow,
+      nombre_stroke_width: payload.nombre_stroke_width,
+      nombre_stroke_color: payload.nombre_stroke_color,
+      menu_stroke_width: payload.menu_stroke_width,
+      menu_stroke_color: payload.menu_stroke_color,
+    },
+  });
 
-  const { error } = await supabase.from('menu_tema').upsert(payload, { onConflict: 'idcomercio' });
+  const { error } = await supabase
+    .from('menu_tema')
+    .upsert(payload, { onConflict: 'idcomercio', defaultToNull: false })
+    .select()
+    .single();
   if (error) {
     console.error('Error guardando diseño:', {
       message: error.message,
