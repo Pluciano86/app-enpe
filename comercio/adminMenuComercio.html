@@ -104,6 +104,16 @@
             <span class="text-gray-700">Texto “Menú”</span>
             <input id="textoMenu" type="text" class="flex-1 border rounded px-2 py-1 text-sm" placeholder="Menú" />
           </label>
+          <div class="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="flex items-center justify-between gap-3">
+              <span class="text-gray-700">Color botón PDF</span>
+              <input id="colorBotonPdf" type="color" class="w-16 h-10 border rounded" />
+            </label>
+            <label class="flex items-center justify-between gap-3">
+              <span class="text-gray-700">Opacidad botón PDF (0-100)</span>
+              <input id="opacidadBotonPdf" type="range" min="0" max="100" step="5" class="w-32" />
+            </label>
+          </div>
           <label class="flex items-center justify-between gap-3">
             <span class="text-gray-700">Color Nombre</span>
             <input id="colorNombre" type="color" class="w-16 h-10 border rounded" />
@@ -111,6 +121,14 @@
           <label class="flex items-center justify-between gap-3">
             <span class="text-gray-700">Color “Menú”</span>
             <input id="colorMenuWord" type="color" class="w-16 h-10 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-3 col-span-1 sm:col-span-2">
+            <span class="text-gray-700">Ocultar nombre del comercio</span>
+            <input id="hideNombre" type="checkbox" class="w-5 h-5 border rounded" />
+          </label>
+          <label class="flex items-center justify-between gap-3 col-span-1 sm:col-span-2">
+            <span class="text-gray-700">Ocultar palabra “Menú”</span>
+            <input id="hideMenuWord" type="checkbox" class="w-5 h-5 border rounded" />
           </label>
         </div>
         <div id="previewHeader" class="relative rounded-lg overflow-hidden h-44 flex items-center justify-center text-center text-white">
@@ -209,6 +227,19 @@
             <span class="text-gray-700">Color precio</span>
             <input id="colorPrecio" type="color" class="w-14 h-10 border rounded" />
           </label>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div class="flex items-center gap-3">
+            <span class="text-gray-700 text-xs sm:text-sm">Alineación texto</span>
+            <label class="flex items-center gap-1 text-xs sm:text-sm">
+              <input type="radio" name="itemAlign" id="itemAlignLeft" value="left" class="accent-blue-600" checked />
+              <span>Izquierda</span>
+            </label>
+            <label class="flex items-center gap-1 text-xs sm:text-sm">
+              <input type="radio" name="itemAlign" id="itemAlignCenter" value="center" class="accent-blue-600" />
+              <span>Centro</span>
+            </label>
+          </div>
         </div>
         <div id="previewItemCard" class="rounded-lg border overflow-hidden relative p-4 space-y-2 bg-white">
           <div id="previewItemOverlay" class="absolute inset-0 bg-black/0 pointer-events-none"></div>

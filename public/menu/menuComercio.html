@@ -26,7 +26,7 @@
       <p id="heroMenuWord" class="text-lg font-semibold">Menú</p>
     </div>
     <div class="mt-3">
-      <a id="btnMenuPdf" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm">
+      <a id="btnMenuPdf" href="#" target="_blank" rel="noopener noreferrer" class="hidden inline-flex items-center gap-2 bg-blue-600/80 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm">
         <i class="fas fa-file-pdf"></i> Ver menú PDF
       </a>
     </div>
@@ -53,15 +53,9 @@
   
   <!-- Footer fijo -->
   <footer class="fixed bottom-0 w-full bg-[#231F20] text-white text-sm">
-    <div class="bg-[#4a4a4a] py-2 px-4">
-      <div class="max-w-5xl mx-auto grid grid-cols-[auto_1fr_auto] items-center gap-3">
-        <a id="linkPerfilComercio" href="#" class="flex items-center gap-3">
-          <span class="w-12 h-12 sm:w-20 sm:h-20 bg-white rounded-full overflow-hidden flex items-center justify-center">
-            <img id="footerLogoComercio" src="" alt="Logo comercio" class="w-full h-full object-cover" />
-          </span>
-          <span id="footerNombreComercio" class="text-lg sm:text-lg font-medium tracking-wide whitespace-nowrap"></span>
-        </a>
-        <div class="flex items-center gap-2 justify-end">
+    <div class="text-center bg-[#4a4a4a] py-2 px-4">
+      <div class="max-w-5xl mx-auto flex flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <div class="flex items-center gap-2 justify-center sm:justify-start order-2 sm:order-1">
           <a id="footerTelefono" href="#" class="hidden inline-flex items-center justify-center w-9 h-9 rounded-full bg-[#3a3a3a] border border-white/10 shadow hover:bg-[#444] transition">
             <i class="fa-solid fa-phone text-sm sm:text-base"></i>
           </a>
@@ -72,6 +66,12 @@
             <i class="fa-brands fa-instagram text-sm sm:text-base"></i>
           </a>
         </div>
+        <a id="linkPerfilComercio" href="#" class="flex items-center gap-3 justify-center sm:justify-end order-1 sm:order-2">
+          <span class="w-12 h-12 sm:w-20 sm:h-20 bg-white rounded-full overflow-hidden flex items-center justify-center">
+            <img id="footerLogoComercio" src="" alt="Logo comercio" class="w-full h-full object-cover" />
+          </span>
+          <span id="footerNombreComercio" class="text-lg sm:text-lg font-medium tracking-wide whitespace-nowrap"></span>
+        </a>
       </div>
     </div>
     <div class="py-3 px-4 text-center">

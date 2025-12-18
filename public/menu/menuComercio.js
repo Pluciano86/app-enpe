@@ -31,10 +31,13 @@ const DEFAULT_TEMA = {
   colorMenu: '#111827',
   overlayoscuro: 40,
   pdfurl: '',
+  colorBotonPDF: 'rgba(37, 99, 235, 0.8)',
   portadaimagen: '',
   backgroundimagen: '',
   backgroundcolor: '#ffffff',
   textomenu: 'Menú',
+  ocultar_nombre: false,
+  ocultar_menu: false,
   fontbodyfamily: null,
   fontbodyurl: null,
   fonttitlefamily: null,
@@ -57,6 +60,7 @@ const DEFAULT_TEMA = {
   boton_stroke_color: '#000000',
   item_bg_color: '#ffffff',
   item_overlay: 0,
+  productoAlign: 'left',
 };
 
 let temaActual = { ...DEFAULT_TEMA };
@@ -69,6 +73,25 @@ function cacheBust(url) {
   if (!url) return '';
   const sep = url.includes('?') ? '&' : '?';
   return `${url}${sep}cb=${Date.now()}`;
+}
+
+function parseColorToHexAlpha(color, defaultHex = '#2563eb', defaultAlpha = 0.8) {
+  if (!color) return { hex: defaultHex, alpha: defaultAlpha };
+  if (color.startsWith('rgb')) {
+    const parts = color.replace(/rgba?\(|\)/g, '').split(',').map((v) => v.trim());
+    const [r = 0, g = 0, b = 0, a = defaultAlpha] = parts;
+    const hex = `#${[r, g, b]
+      .map((n) => {
+        const num = parseInt(n, 10);
+        const clamped = Number.isFinite(num) ? Math.min(Math.max(num, 0), 255) : 0;
+        return clamped.toString(16).padStart(2, '0');
+      })
+      .join('')}`;
+    const alpha = Number.parseFloat(a) || defaultAlpha;
+    return { hex, alpha: Math.min(Math.max(alpha, 0), 1) };
+  }
+  const hex = color.startsWith('#') ? color : `#${color}`;
+  return { hex, alpha: defaultAlpha };
 }
 
 function ensureFontLink(url) {
@@ -92,7 +115,6 @@ function ensureFontLink(url) {
 function aplicarFuentePublica(fuente) {
   if (!fuente?.url || !fuente.name) return;
   ensureFontLink(fuente.url);
-  document.body.style.fontFamily = `'${fuente.name}', 'Kanit', sans-serif`;
 }
 
 function setCssVars() {
@@ -109,9 +131,10 @@ function setCssVars() {
     const bgColor = t.backgroundcolor || '#ffffff';
     document.body.style.backgroundImage = `linear-gradient(rgba(0,0,0,${alpha}), rgba(0,0,0,${alpha})), url(${backgroundUrl})`;
     document.body.style.backgroundColor = bgColor;
-    document.body.style.backgroundSize = 'cover';
-    document.body.style.backgroundAttachment = 'fixed';
-    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundSize = '100% auto';
+    document.body.style.backgroundRepeat = 'repeat-y';
+    document.body.style.backgroundAttachment = 'scroll';
+    document.body.style.backgroundPosition = 'center top';
   } else {
     document.body.style.backgroundImage = '';
     document.body.style.backgroundColor = t.backgroundcolor || '#ffffff';
@@ -121,7 +144,7 @@ function setCssVars() {
 async function cargarTema() {
   const { data, error } = await supabase
     .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu",overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",ocultar_nombre,ocultar_menu,overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
     .eq('idcomercio', idComercio)
     .maybeSingle();
 
@@ -172,6 +195,9 @@ async function cargarTema() {
     if (temaActual.pdfurl) {
       btnMenuPdf.href = temaActual.pdfurl;
       btnMenuPdf.classList.remove('hidden');
+      const { hex, alpha } = parseColorToHexAlpha(temaActual.colorBotonPDF, '#2563eb', 0.8);
+      btnMenuPdf.style.backgroundColor = hex;
+      btnMenuPdf.style.opacity = alpha || 0.8;
     } else {
       btnMenuPdf.classList.add('hidden');
     }
@@ -194,29 +220,37 @@ async function cargarDatos() {
 
   if (heroNombre) {
     const colorComercioVal = temaActual.colorComercio || temaActual.colortitulo;
+    const oculto = !!temaActual.ocultar_nombre;
     heroNombre.textContent = comercio.nombre || heroNombre.textContent || '';
-    heroNombre.style.color = colorComercioVal;
-    if (temaActual.nombre_font_size) heroNombre.style.fontSize = `${temaActual.nombre_font_size}px`;
-    const strokeW = Number(temaActual.nombre_stroke_width) || 0;
-    heroNombre.style.webkitTextStroke = strokeW > 0 ? `${strokeW}px ${temaActual.nombre_stroke_color || '#000'}` : '';
-    heroNombre.style.paintOrder = 'stroke fill';
-    heroNombre.style.textShadow = temaActual.nombre_shadow || '';
-    heroNombre.style.fontFamily = temaActual.fontnombrefamily
-      ? `'${temaActual.fontnombrefamily}', 'Kanit', sans-serif`
-      : '';
+    heroNombre.style.display = oculto ? 'none' : 'block';
+    if (!oculto) {
+      heroNombre.style.color = colorComercioVal;
+      if (temaActual.nombre_font_size) heroNombre.style.fontSize = `${temaActual.nombre_font_size}px`;
+      const strokeW = Number(temaActual.nombre_stroke_width) || 0;
+      heroNombre.style.webkitTextStroke = strokeW > 0 ? `${strokeW}px ${temaActual.nombre_stroke_color || '#000'}` : '';
+      heroNombre.style.paintOrder = 'stroke fill';
+      heroNombre.style.textShadow = temaActual.nombre_shadow || '';
+      heroNombre.style.fontFamily = temaActual.fontnombrefamily
+        ? `'${temaActual.fontnombrefamily}', 'Kanit', sans-serif`
+        : '';
+    }
   }
   if (heroMenuWord) {
     const colorMenuVal = temaActual.colorMenu || temaActual.colortitulo;
+    const ocultoMenu = !!temaActual.ocultar_menu;
     heroMenuWord.textContent = temaActual.textomenu || heroMenuWord.textContent || 'Menú';
-    heroMenuWord.style.color = colorMenuVal;
-    if (temaActual.menu_font_size) heroMenuWord.style.fontSize = `${temaActual.menu_font_size}px`;
-    const strokeW = Number(temaActual.menu_stroke_width) || 0;
-    heroMenuWord.style.webkitTextStroke = strokeW > 0 ? `${strokeW}px ${temaActual.menu_stroke_color || '#000'}` : '';
-    heroMenuWord.style.paintOrder = 'stroke fill';
-    heroMenuWord.style.textShadow = temaActual.menu_shadow || '';
-    heroMenuWord.style.fontFamily = temaActual.fontmenuwordfamily
-      ? `'${temaActual.fontmenuwordfamily}', 'Kanit', sans-serif`
-      : '';
+    heroMenuWord.style.display = ocultoMenu ? 'none' : 'block';
+    if (!ocultoMenu) {
+      heroMenuWord.style.color = colorMenuVal;
+      if (temaActual.menu_font_size) heroMenuWord.style.fontSize = `${temaActual.menu_font_size}px`;
+      const strokeW = Number(temaActual.menu_stroke_width) || 0;
+      heroMenuWord.style.webkitTextStroke = strokeW > 0 ? `${strokeW}px ${temaActual.menu_stroke_color || '#000'}` : '';
+      heroMenuWord.style.paintOrder = 'stroke fill';
+      heroMenuWord.style.textShadow = temaActual.menu_shadow || '';
+      heroMenuWord.style.fontFamily = temaActual.fontmenuwordfamily
+        ? `'${temaActual.fontmenuwordfamily}', 'Kanit', sans-serif`
+        : '';
+    }
   }
   document.body.style.setProperty('--colorPrimario', comercio.colorPrimario || '#23b4e9');
   document.body.style.setProperty('--colorSecundario', comercio.colorSecundario || '#f5f5f5');
@@ -267,6 +301,7 @@ async function cargarDatos() {
     btn.textContent = menu.titulo;
     btn.style.backgroundColor = temaActual.colorboton || '#2563eb';
     btn.style.color = temaActual.colorbotontexto || '#ffffff';
+    if (temaActual.fonttitlefamily) btn.style.fontFamily = `'${temaActual.fonttitlefamily}', 'Kanit', sans-serif`;
     const strokeBtn = Number(temaActual.boton_stroke_width) || 0;
     btn.style.webkitTextStroke = strokeBtn > 0 ? `${strokeBtn}px ${temaActual.boton_stroke_color || '#000'}` : '';
     btn.style.textShadow = temaActual.boton_shadow || '';
@@ -297,9 +332,9 @@ async function cargarDatos() {
         return;
       }
 
-    productosContenedor.innerHTML = `
-      <h2 class="text-center text-xl font-bold mb-4" style="color:${temaActual.colortitulo};">${menu.titulo}</h2>
-    `;
+    const fontBody = temaActual.fontbodyfamily ? `'${temaActual.fontbodyfamily}', 'Kanit', sans-serif` : '';
+    // Se elimina el título dentro del panel para evitar duplicado
+    productosContenedor.innerHTML = '';
 
     const alphaItem = 1 - Math.min(Math.max(Number(temaActual.item_overlay) || 0, 0), 80) / 100;
     const itemBgColor = temaActual.item_bg_color || '#ffffff';
@@ -307,7 +342,7 @@ async function cargarDatos() {
       const alpha = Math.min(Math.max(a, 0), 1);
       if (!color) return `rgba(0,0,0,${alpha})`;
       if (color.startsWith('rgb')) {
-        const parts = color.replace(/rgba?\\(|\\)/g, '').split(',').map((v) => v.trim());
+        const parts = color.replace(/rgba?\(|\)/g, '').split(',').map((v) => v.trim());
         const [r = 0, g = 0, b = 0] = parts;
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
       }
@@ -320,6 +355,9 @@ async function cargarDatos() {
       return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     };
     const itemBg = toRgba(itemBgColor, alphaItem);
+    const alignVal = (temaActual.productoAlign || 'left').toLowerCase();
+    const alignItems = alignVal === 'center' ? 'center' : 'flex-start';
+    const textAlign = alignVal === 'center' ? 'center' : 'left';
 
     for (const p of productos) {
       const div = document.createElement('div');
@@ -338,12 +376,12 @@ async function cargarDatos() {
 
         div.innerHTML = `
           ${imagenHTML}
-          <div class="flex flex-col justify-between">
-            <div>
-              <h3 class="text-xl font-semibold" style="color:${temaActual.colortitulo};">${p.nombre}</h3>
-              <p class="text-base leading-5 font-light" style="color:${temaActual.colortexto};">${p.descripcion || ''}</p>
+          <div class="flex flex-col justify-between" style="text-align:${textAlign};align-items:${alignItems};width:100%;flex:1;">
+            <div class="w-full">
+              <h3 class="text-xl font-semibold" style="color:${temaActual.colortitulo};${fontBody ? `font-family:${fontBody};` : ''}">${p.nombre}</h3>
+              <p class="text-base leading-5 font-light" style="color:${temaActual.colortexto};${fontBody ? `font-family:${fontBody};` : ''}">${p.descripcion || ''}</p>
             </div>
-            <div class="font-bold text-xl mt-2" style="color:${temaActual.colorprecio};">$${p.precio.toFixed(2)}</div>
+            <div class="font-bold text-xl mt-2 w-full" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">$${p.precio.toFixed(2)}</div>
           </div>
         `;
 

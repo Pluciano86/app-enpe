@@ -42,6 +42,8 @@ const overlayOscuro = document.getElementById('overlayOscuro');
 const backgroundColor = document.getElementById('backgroundColor');
 const textoMenu = document.getElementById('textoMenu');
 const pdfUrl = document.getElementById('pdfUrl');
+const colorBotonPdf = document.getElementById('colorBotonPdf');
+const opacidadBotonPdf = document.getElementById('opacidadBotonPdf');
 const inputPortada = document.getElementById('inputPortada');
 const btnQuitarPortada = document.getElementById('btnQuitarPortada');
 const previewPortada = document.getElementById('previewPortada');
@@ -62,6 +64,10 @@ const previewNombreComercio = document.getElementById('previewNombreComercio');
 const previewMenuWord = document.getElementById('previewMenuWord');
 const itemBgColor = document.getElementById('itemBgColor');
 const itemOverlay = document.getElementById('itemOverlay');
+const hideNombre = document.getElementById('hideNombre');
+const hideMenuWord = document.getElementById('hideMenuWord');
+const itemAlignLeft = document.getElementById('itemAlignLeft');
+const itemAlignCenter = document.getElementById('itemAlignCenter');
 const nombreStrokeWidth = document.getElementById('nombreStrokeWidth');
 const nombreStrokeColor = document.getElementById('nombreStrokeColor');
 const nombreShadow = document.getElementById('nombreShadow');
@@ -106,10 +112,13 @@ const DEFAULT_TEMA = {
   colorMenu: '#111827',
   overlayoscuro: 40,
   pdfurl: '',
+  colorBotonPDF: 'rgba(37, 99, 235, 0.8)',
   portadaimagen: '',
   backgroundimagen: '',
   backgroundcolor: '#ffffff',
   textomenu: 'Menú',
+  ocultar_nombre: false,
+  ocultar_menu: false,
   fontbodyfamily: null,
   fontbodyurl: null,
   fonttitlefamily: null,
@@ -124,6 +133,7 @@ const DEFAULT_TEMA = {
   menu_font_size: 20,
   item_bg_color: '#ffffff',
   item_overlay: 0,
+  productoAlign: 'left',
   nombre_shadow: '',
   nombre_shadow_color: '#00000080',
   nombre_stroke_width: 0,
@@ -154,6 +164,35 @@ function colorConAlpha(color, alpha) {
   const r = (bigint >> 16) & 255;
   const g = (bigint >> 8) & 255;
   const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function parseColorToHexAndAlpha(color, defaultHex = '#2563eb', defaultAlpha = 0.8) {
+  if (!color) return { hex: defaultHex, alpha: defaultAlpha };
+  if (color.startsWith('rgb')) {
+    const parts = color.replace(/rgba?\\(|\\)/g, '').split(',').map((v) => v.trim());
+    const [r = 0, g = 0, b = 0, a = defaultAlpha] = parts;
+    const hex = `#${[r, g, b]
+      .map((n) => {
+        const num = parseInt(n, 10);
+        const clamped = Number.isFinite(num) ? Math.min(Math.max(num, 0), 255) : 0;
+        return clamped.toString(16).padStart(2, '0');
+      })
+      .join('')}`;
+    const alpha = Number.parseFloat(a) || defaultAlpha;
+    return { hex, alpha: Math.min(Math.max(alpha, 0), 1) };
+  }
+  const hex = color.startsWith('#') ? color : `#${color}`;
+  return { hex, alpha: defaultAlpha };
+}
+
+function buildRgba(hexColor, alpha) {
+  const hex = hexColor.replace('#', '');
+  const bigint = parseInt(hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  const a = Math.min(Math.max(alpha, 0), 1);
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
@@ -241,7 +280,7 @@ async function cargarFuenteGuardada() {
   if (!idComercio) return;
   const { data, error } = await supabase
     .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu",overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,ocultar_nombre,ocultar_menu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
     .eq('idcomercio', idComercio)
     .maybeSingle();
 
@@ -288,10 +327,12 @@ function aplicarTemaEnPreview(tema) {
   if (previewNombreComercio) {
     previewNombreComercio.textContent = nombreEl?.textContent || 'Nombre Comercio';
     previewNombreComercio.style.color = colorComercioVal;
+    previewNombreComercio.style.display = t.ocultar_nombre ? 'none' : 'block';
   }
   if (previewMenuWord) {
     previewMenuWord.textContent = t.textomenu || 'Menú';
     previewMenuWord.style.color = colorMenuVal;
+    previewMenuWord.style.display = t.ocultar_menu ? 'none' : 'block';
   }
 
   const applyStroke = (el, width, color, shadow) => {
@@ -333,6 +374,13 @@ function aplicarTemaEnPreview(tema) {
   if (previewItemNombre) previewItemNombre.style.color = t.colortitulo;
   if (previewItemTexto) previewItemTexto.style.color = t.colortexto;
   if (previewItemPrecio) previewItemPrecio.style.color = t.colorprecio;
+  const align = (t.productoAlign || 'left').toLowerCase();
+  const itemTextWrapper = previewItemNombre?.parentElement;
+  if (itemTextWrapper) {
+    itemTextWrapper.style.textAlign = align === 'center' ? 'center' : 'left';
+    itemTextWrapper.style.alignItems = align === 'center' ? 'center' : 'flex-start';
+    itemTextWrapper.style.width = '100%';
+  }
 
   // Tamaños
   if (previewNombreComercio && t.nombre_font_size) {
@@ -401,6 +449,9 @@ function rellenarInputsTema(tema) {
   if (colorMenuWord) colorMenuWord.value = colorMenuVal;
   if (overlayOscuro) overlayOscuro.value = t.overlayoscuro;
   if (pdfUrl) pdfUrl.value = t.pdfurl || '';
+  const { hex: pdfHex, alpha: pdfAlpha } = parseColorToHexAndAlpha(t.colorBotonPDF, '#2563eb', 0.8);
+  if (colorBotonPdf) colorBotonPdf.value = pdfHex;
+  if (opacidadBotonPdf) opacidadBotonPdf.value = Math.round(pdfAlpha * 100);
   if (backgroundColor) backgroundColor.value = t.backgroundcolor || '#ffffff';
   if (textoMenu) textoMenu.value = t.textomenu || 'Menú';
   const nombreShadowParts = parseShadowParts(t.nombre_shadow, DEFAULT_TEMA.nombre_shadow_color);
@@ -411,6 +462,13 @@ function rellenarInputsTema(tema) {
   if (menuShadowColor) menuShadowColor.value = menuShadowParts.color || DEFAULT_TEMA.menu_shadow_color;
   if (itemBgColor) itemBgColor.value = t.item_bg_color || DEFAULT_TEMA.item_bg_color;
   if (itemOverlay) itemOverlay.value = t.item_overlay ?? DEFAULT_TEMA.item_overlay;
+  const alignVal = (t.productoAlign || DEFAULT_TEMA.productoAlign || 'left').toLowerCase();
+  if (itemAlignLeft && itemAlignCenter) {
+    itemAlignCenter.checked = alignVal === 'center';
+    itemAlignLeft.checked = !itemAlignCenter.checked;
+  }
+  if (hideNombre) hideNombre.checked = !!t.ocultar_nombre;
+  if (hideMenuWord) hideMenuWord.checked = !!t.ocultar_menu;
 
   portadaUrl = t.portadaimagen || '';
   const portadaPublic = portadaUrl?.startsWith('http') ? portadaUrl : getPublicCoverUrl(portadaUrl);
@@ -484,10 +542,13 @@ function leerTemaDesdeInputs() {
     colorMenu: colorMenuWord?.value || DEFAULT_TEMA.colorMenu,
     overlayoscuro: Number(overlayOscuro?.value || DEFAULT_TEMA.overlayoscuro),
     pdfurl: pdfUrl?.value?.trim() || '',
+    colorBotonPDF: buildRgba(colorBotonPdf?.value || '#2563eb', (Number(opacidadBotonPdf?.value ?? 80) / 100) || 0.8),
     portadaimagen: portadaUrl || '',
     backgroundimagen: backgroundUrl || '',
     backgroundcolor: backgroundColor?.value || DEFAULT_TEMA.backgroundcolor,
     textomenu: textoMenu?.value?.trim() || DEFAULT_TEMA.textomenu,
+    ocultar_nombre: !!hideNombre?.checked,
+    ocultar_menu: !!hideMenuWord?.checked,
     fontbodyfamily: fuentesSeleccionadas.body?.name || temaActual.fontbodyfamily || null,
     fontbodyurl: fuentesSeleccionadas.body?.url || temaActual.fontbodyurl || null,
     fontbody_size: Number(fontBodySize?.value) || DEFAULT_TEMA.fontbody_size,
@@ -514,6 +575,7 @@ function leerTemaDesdeInputs() {
     boton_stroke_color: botonStrokeColor?.value || DEFAULT_TEMA.boton_stroke_color,
     item_bg_color: itemBgColor?.value || DEFAULT_TEMA.item_bg_color,
     item_overlay: Number(itemOverlay?.value || DEFAULT_TEMA.item_overlay),
+    productoAlign: itemAlignCenter?.checked ? 'center' : 'left',
   };
 }
 
@@ -521,7 +583,7 @@ async function cargarTema() {
   if (!idComercio) return;
   const { data, error } = await supabase
     .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu",overlayoscuro,pdfurl,portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,ocultar_nombre,ocultar_menu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
     .eq('idcomercio', idComercio)
     .maybeSingle();
 
@@ -711,14 +773,17 @@ btnGuardarSeccion.onclick = async () => {
 
   if (!nueva.titulo) return alert('El título es requerido');
 
-  if (editandoId) {
-    await supabase.from('menus').update(nueva).eq('id', editandoId);
-  } else {
-    const { error } = await supabase.from('menus').insert(nueva);
-if (error) {
-  console.error('❌ Error insertando menú:', error);
-  return alert('Error al crear la sección del menú');
-}
+  try {
+    if (editandoId) {
+      const { error } = await supabase.from('menus').update(nueva).eq('id', editandoId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('menus').insert(nueva);
+      if (error) throw error;
+    }
+  } catch (err) {
+    console.error('❌ Error guardando sección:', err);
+    return alert('Error al guardar la sección del menú');
   }
 
   modal.classList.add('hidden');
@@ -808,13 +873,16 @@ btnCancelarProducto.onclick = () => {
 };
 
 btnGuardarProducto.onclick = async () => {
+  if (!idMenuActivo) {
+    return alert('Selecciona una sección antes de guardar el producto.');
+  }
   const nuevo = {
     nombre: inputNombreProducto.value.trim(),
     descripcion: inputDescripcionProducto.value.trim(),
     precio: parseFloat(inputPrecioProducto.value),
-    orden: parseInt(inputOrdenProducto.value),
+    orden: parseInt(inputOrdenProducto.value) || 1,
     activo: true,
-    idMenu: idMenuActivo
+    idMenu: parseInt(idMenuActivo, 10)
   };
 
   if (!nuevo.nombre || isNaN(nuevo.precio)) {
@@ -823,26 +891,25 @@ btnGuardarProducto.onclick = async () => {
 
   let productoId = productoEditandoId;
 
-  if (productoId) {
-    const { error } = await supabase.from('productos').update(nuevo).eq('id', productoId);
-    if (error) {
-      console.error('Error actualizando producto:', error);
-      return alert('Error al actualizar producto');
+  try {
+    if (productoId) {
+      const { error } = await supabase.from('productos').update(nuevo).eq('id', productoId);
+      if (error) throw error;
+    } else {
+      const { data, error } = await supabase.from('productos').insert(nuevo).select().single();
+      if (error) throw error;
+      productoId = data.id;
     }
-  } else {
-    const { data, error } = await supabase.from('productos').insert(nuevo).select().single();
-    if (error) {
-      console.error('Error insertando producto:', error);
-      return alert('Error al guardar producto');
-    }
-    productoId = data.id;
+  } catch (err) {
+    console.error('Error guardando producto:', err);
+    return alert('Error al guardar producto');
   }
 
   // Subir imagen
   const archivo = inputImagenProducto.files[0];
 if (archivo && productoId) {
   const ext = archivo.name.split('.').pop();
-  const nombreArchivo = `menu/${productoId}.${ext}`;  // Ruta dentro de galeriacomercios
+  const nombreArchivo = `productos/${idComercio}/producto-${productoId}.${ext}`;
 
   if (productoImagenActual && productoImagenActual !== nombreArchivo) {
     await supabase.storage.from('galeriacomercios').remove([productoImagenActual]).catch(() => {});
@@ -905,10 +972,16 @@ colorNombre?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeI
 colorMenuWord?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 overlayOscuro?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 pdfUrl?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+colorBotonPdf?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+opacidadBotonPdf?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 backgroundColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 textoMenu?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+hideNombre?.addEventListener('change', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+hideMenuWord?.addEventListener('change', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 itemBgColor?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 itemOverlay?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+itemAlignLeft?.addEventListener('change', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
+itemAlignCenter?.addEventListener('change', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 fontBodySize?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 fontTitleSize?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
 nombreFontSize?.addEventListener('input', () => aplicarTemaEnPreview(leerTemaDesdeInputs()));
