@@ -256,8 +256,8 @@ async function cargarDatos() {
   document.body.style.setProperty('--colorSecundario', comercio.colorSecundario || '#f5f5f5');
 
   if (heroPortada) {
-    const alpha = Math.min(Math.max(Number(temaActual.overlayoscuro) || 0, 0), 80) / 100;
-    if (heroOverlay) heroOverlay.style.backgroundColor = `rgba(0,0,0,${alpha})`;
+    // Elimina overlay para evitar sombra detrás de PNG
+    if (heroOverlay) heroOverlay.style.backgroundColor = 'transparent';
     if (heroImg) {
       const heroSrc = coverUrl || backgroundUrl || '';
       heroImg.src = heroSrc;
@@ -301,6 +301,7 @@ async function cargarDatos() {
     btn.textContent = menu.titulo;
     btn.style.backgroundColor = temaActual.colorboton || '#2563eb';
     btn.style.color = temaActual.colorbotontexto || '#ffffff';
+    if (temaActual.fonttitle_size) btn.style.fontSize = `${temaActual.fonttitle_size}px`;
     if (temaActual.fonttitlefamily) btn.style.fontFamily = `'${temaActual.fonttitlefamily}', 'Kanit', sans-serif`;
     const strokeBtn = Number(temaActual.boton_stroke_width) || 0;
     btn.style.webkitTextStroke = strokeBtn > 0 ? `${strokeBtn}px ${temaActual.boton_stroke_color || '#000'}` : '';
