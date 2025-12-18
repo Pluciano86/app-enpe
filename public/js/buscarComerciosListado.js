@@ -153,6 +153,7 @@ const estado = {
   offset: 0,
   ultimoFetchCount: 0,
   municipioSeleccionadoManualmente: false,
+  usarMunicipioDetectado: true,
 };
 
 if (idCategoriaDesdeURL != null) {
@@ -563,6 +564,7 @@ async function asegurarMunicipioInicial() {
     estado.filtros.municipio = municipioDetectado;
     estado.filtros.municipioDetectado = municipioDetectado;
     estado.municipioSeleccionadoManualmente = false;
+    estado.usarMunicipioDetectado = true;
     try {
       localStorage.setItem('municipioUsuario', municipioDetectado);
     } catch (_) {
@@ -587,20 +589,28 @@ async function asegurarMunicipioInicial() {
 
 function construirPayloadRPC() {
   const filtros = estado.filtros;
+  const textoBusqueda = (filtros.textoBusqueda || '').trim();
+  const usandoBusquedaTexto = textoBusqueda.length > 0;
+  const municipioFiltro =
+    estado.municipioSeleccionadoManualmente && filtros.municipio
+      ? filtros.municipio.trim()
+      : estado.usarMunicipioDetectado && filtros.municipioDetectado
+      ? filtros.municipioDetectado.trim()
+      : null;
   const coords =
-    estado.tienePermisoUbicacion && estado.coordsUsuario
+    !usandoBusquedaTexto && estado.tienePermisoUbicacion && estado.coordsUsuario
       ? estado.coordsUsuario
       : { lat: null, lon: null };
 
   return {
-    p_texto: null,
-    p_municipio: filtros.municipio?.trim() || null,
+    p_texto: usandoBusquedaTexto ? textoBusqueda : null,
+    p_municipio: usandoBusquedaTexto ? null : municipioFiltro,
     p_categoria: filtros.categoria ? Number(filtros.categoria) || null : null,
     p_subcategoria: filtros.subcategoria ? Number(filtros.subcategoria) || null : null,
     p_activo: null,
-    p_latitud: Number.isFinite(coords.lat) ? coords.lat : null,
-    p_longitud: Number.isFinite(coords.lon) ? coords.lon : null,
-    p_radio: null,
+    p_latitud: usandoBusquedaTexto ? null : Number.isFinite(coords.lat) ? coords.lat : null,
+    p_longitud: usandoBusquedaTexto ? null : Number.isFinite(coords.lon) ? coords.lon : null,
+    p_radio: usandoBusquedaTexto ? null : null,
     p_limit: LIMITE_POR_PAGINA,
     p_offset: estado.offset,
     p_abierto_ahora: filtros.abiertoAhora ? true : null,
@@ -742,8 +752,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
     const idsPorNombre = filtrados
       .filter((c) => {
         const nombre = normalizarTexto(c.nombre || '');
-        const descripcion = normalizarTexto(c.descripcion || '');
-        return nombre.includes(textoNormalizado) || descripcion.includes(textoNormalizado);
+        return nombre.includes(textoNormalizado);
       })
       .map((c) => c.id);
     const idsCombinados = new Set([...idsPorNombre, ...idsPorProductos, ...idsPorMenus]);
@@ -819,18 +828,27 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
     municipioUsuario &&
     municipioActivo.toLowerCase() === municipioUsuario.toLowerCase();
 
+  // Luego de la primera carga, no seguir aplicando municipio detectado automáticamente
+  if (estado.usarMunicipioDetectado) {
+    estado.usarMunicipioDetectado = false;
+  }
+
   if (filtrosDiv) {
     const labelTotal = document.createElement('div');
     labelTotal.className = 'inline-block text-gray-800 text-[15px] font-medium text-center w-full';
-    labelTotal.textContent = `${total} ${categoriaNombre} ${
-      municipioActivo
-        ? esUbicacionActual
-          ? 'en tu ubicación actual en'
-          : 'en el municipio de'
-        : ''
-    }`;
+    if (hayBusquedaNombre) {
+      labelTotal.textContent = `${total} ${categoriaNombre} con la búsqueda: "${textoBusquedaRaw}"`;
+    } else {
+      labelTotal.textContent = `${total} ${categoriaNombre} ${
+        municipioActivo
+          ? esUbicacionActual
+            ? 'en tu ubicación actual en'
+            : 'en el municipio de'
+          : ''
+      }`;
+    }
 
-    if (municipioActivo) {
+    if (municipioActivo && !hayBusquedaNombre) {
       const btnEliminar = document.createElement('button');
       btnEliminar.innerHTML = `✕ ${municipioActivo}`;
       btnEliminar.className =
@@ -1151,7 +1169,44 @@ async function cargarComercios({ append = false, mostrarLoader = true } = {}) {
   const payload = construirPayloadRPC();
   try {
     const [datos, favoritosSet] = await Promise.all([ejecutarRPC(payload), obtenerFavoritosSet()]);
-    const datosConFavoritos = datos.map((comercio) => {
+
+    // Si hay búsqueda por texto, reforzar resultados con los comercios que coincidan por productos/menús
+    const textoBusqueda = (estado.filtros.textoBusqueda || '').trim();
+    const hayBusquedaNombre = textoBusqueda.length >= 3;
+    let datosRefuerzo = [];
+    if (hayBusquedaNombre) {
+      const idsExtra = new Set([
+        ...(estado.filtros.comerciosPorPlato || []),
+        ...(estado.filtros.comerciosPorMenus || []),
+      ]
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id)));
+
+      // Solo pedir refuerzo si hay ids que puedan no venir por texto
+      if (idsExtra.size > 0) {
+        const payloadRefuerzo = {
+          ...payload,
+          p_texto: null,
+          p_municipio: null,
+          p_latitud: null,
+          p_longitud: null,
+          p_radio: null,
+          p_limit: 200,
+          p_offset: 0,
+        };
+        const refuerzo = await ejecutarRPC(payloadRefuerzo);
+        datosRefuerzo = refuerzo.filter((c) => idsExtra.has(Number(c.id)));
+      }
+    }
+
+    // Dedupe por id
+    const baseMap = new Map();
+    [...datos, ...datosRefuerzo].forEach((c) => {
+      if (!baseMap.has(c.id)) baseMap.set(c.id, c);
+    });
+    let base = Array.from(baseMap.values());
+
+    const datosConFavoritos = base.map((comercio) => {
       const esFavorito =
         comercio.favorito === true ||
         favoritosSet.has(comercio.id) ||

@@ -42,6 +42,8 @@ const overlayOscuro = document.getElementById('overlayOscuro');
 const backgroundColor = document.getElementById('backgroundColor');
 const textoMenu = document.getElementById('textoMenu');
 const pdfUrl = document.getElementById('pdfUrl');
+const compartirSucursales = document.getElementById('compartirSucursales');
+const listaSucursales = document.getElementById('listaSucursales');
 const colorBotonPdf = document.getElementById('colorBotonPdf');
 const opacidadBotonPdf = document.getElementById('opacidadBotonPdf');
 const inputPortada = document.getElementById('inputPortada');
@@ -92,6 +94,7 @@ let portadaPath = '';
 let backgroundUrl = '';
 let backgroundPath = '';
 let temaActual = {};
+let tieneSucursales = false;
 const COVER_BUCKET = 'galeriacomercios';
 const COVER_PREFIX = 'menus/portada';
 const BACKGROUND_PREFIX = 'menus/background';
@@ -646,6 +649,30 @@ async function guardarTema() {
     return;
   }
 
+  // Replicar a sucursales seleccionadas
+  if (tieneSucursales && listaSucursales) {
+    const seleccionados = Array.from(
+      listaSucursales.querySelectorAll('input[type="checkbox"]:checked')
+    )
+      .map((cb) => parseInt(cb.value, 10))
+      .filter((id) => Number.isFinite(id));
+
+    if (seleccionados.length > 0) {
+      const payloadSucursales = seleccionados.map((id) => ({
+        ...tema,
+        idcomercio: id,
+      }));
+      const { error: errSuc } = await supabase
+        .from('menu_tema')
+        .upsert(payloadSucursales, { onConflict: 'idcomercio', defaultToNull: false });
+      if (errSuc) {
+        console.warn('No se pudo replicar a sucursales:', errSuc);
+      } else if (isDev) {
+        console.log('[adminMenu] Tema replicado en sucursales', payloadSucursales.map((p) => p.idcomercio));
+      }
+    }
+  }
+
   await cargarFuenteGuardada();
   await cargarTema();
   aplicarTemaEnPreview(temaActual);
@@ -659,7 +686,7 @@ async function cargarDatos() {
 
   const { data: comercio, error } = await supabase
     .from('Comercios')
-    .select('id, nombre')
+    .select('id, nombre, tieneSucursales')
     .eq('id', idComercio)
     .single();
 
@@ -670,6 +697,12 @@ async function cargarDatos() {
 
   nombreEl.textContent = comercio.nombre;
   linkLogo.href = `${getPublicBase()}perfilComercio.html?id=${idComercio}`;
+  tieneSucursales = comercio.tieneSucursales === true;
+  if (tieneSucursales) {
+    await cargarSucursalesRelacionadas();
+  } else if (compartirSucursales) {
+    compartirSucursales.classList.add('hidden');
+  }
 
   const { data: logoData } = await supabase
     .from('imagenesComercios')
@@ -686,6 +719,57 @@ async function cargarDatos() {
   await cargarFuenteGuardada();
   await cargarTema();
   renderFontOptions();
+}
+
+async function cargarSucursalesRelacionadas() {
+  if (!listaSucursales || !compartirSucursales) return;
+  listaSucursales.innerHTML = '';
+  compartirSucursales.classList.add('hidden');
+
+  const { data: relaciones, error } = await supabase
+    .from('ComercioSucursales')
+    .select('comercio_id, sucursal_id')
+    .or(`comercio_id.eq.${idComercio},sucursal_id.eq.${idComercio}`);
+
+  if (error) {
+    console.warn('No se pudieron cargar sucursales relacionadas:', error);
+    return;
+  }
+
+  const idsRelacionados = (relaciones || []).flatMap((r) => [r.comercio_id, r.sucursal_id]);
+  const idsUnicos = [...new Set(idsRelacionados.filter((id) => id !== parseInt(idComercio, 10)))];
+  if (idsUnicos.length === 0) return;
+
+  const { data: sucursales, error: errSuc } = await supabase
+    .from('Comercios')
+    .select('id, nombre, nombreSucursal')
+    .in('id', idsUnicos);
+
+  if (errSuc) {
+    console.warn('No se pudieron obtener detalles de sucursales:', errSuc);
+    return;
+  }
+
+  if (!sucursales || sucursales.length === 0) return;
+
+  sucursales.forEach((sucursal) => {
+    const label = document.createElement('label');
+    label.className = 'flex items-center gap-2';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = sucursal.id;
+    checkbox.className = 'accent-blue-600';
+
+    const span = document.createElement('span');
+    span.textContent = sucursal.nombreSucursal || sucursal.nombre || `Sucursal ${sucursal.id}`;
+
+    label.appendChild(checkbox);
+    label.appendChild(span);
+    listaSucursales.appendChild(label);
+  });
+
+  compartirSucursales.classList.remove('hidden');
 }
 
 async function cargarSecciones() {
