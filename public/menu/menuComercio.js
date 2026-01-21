@@ -142,17 +142,22 @@ function setCssVars() {
 }
 
 async function cargarTema() {
-  const { data, error } = await supabase
-    .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",ocultar_nombre,ocultar_menu,overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
-    .eq('idcomercio', idComercio)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from('menu_tema')
+      .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",ocultar_nombre,ocultar_menu,overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+      .eq('idcomercio', idComercio)
+      .maybeSingle();
 
-  if (error) {
-    console.warn('No se pudo cargar tema de menú:', error?.message || error);
+    if (error) {
+      console.warn('No se pudo cargar tema de menú:', error?.message || error);
+    }
+
+    temaActual = { ...DEFAULT_TEMA, ...(data || {}) };
+  } catch (err) {
+    console.warn('Error inesperado cargando tema, usando defaults:', err);
+    temaActual = { ...DEFAULT_TEMA };
   }
-
-  temaActual = { ...DEFAULT_TEMA, ...(data || {}) };
 
   // background/portada
   if (temaActual.portadaimagen) {

@@ -47,7 +47,7 @@ export function cardComercio(comercio) {
     }
 
     <div class="w-full h-20 overflow-hidden">
-      <img src="${urlPortada}" alt="${comercio.nombre}" class="w-full h-full object-cover" />
+      <img src="${urlPortada}" alt="${comercio.nombre}" class="w-full h-full object-cover" loading="lazy" />
     </div>
 
     <a href="${resolveAppBase()}perfilComercio.html?id=${comercio.id}" 
@@ -59,6 +59,7 @@ export function cardComercio(comercio) {
         class="w-24 h-24 rounded-full absolute left-1/2 -top-10 transform -translate-x-1/2 
                bg-white object-contain shadow-[0px_-17px_11px_-5px_rgba(0,_0,_0,_0.3)] 
                border-4 border-white z-20" 
+        loading="lazy"
       />
 
       <div class="relative h-12 w-full">

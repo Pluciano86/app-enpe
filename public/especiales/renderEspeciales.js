@@ -33,13 +33,13 @@ async function renderizarEspeciales(lista) {
 
   for (const grupo of lista) {
     const { comercio, especiales } = grupo;
-    const urlLogo = comercio.logo;
-    const nombreComercio = comercio.nombre || 'Comercio';
-    const municipio = comercio.municipio || '';
+    const urlLogo = comercio?.logo || '';
+    const nombreComercio = comercio?.nombre || comercio?.nombreComercio || comercio?.nombreSucursal || 'Comercio';
+    const municipio = comercio?.municipio || comercio?.pueblo || '';
     const categorias = comercio.categorias || [];
-
     const categoriasTexto = categorias.join(', ');
-    const subtitulo = `${categoriasTexto} en ${municipio}`;
+    const municipioTxt = municipio ? `en ${municipio}` : '';
+    const subtitulo = categoriasTexto ? `${categoriasTexto} ${municipioTxt}` : municipioTxt || '';
 
     const especialesFiltrados = especiales.filter(esp => esp.tipo === tipoSeleccionado);
     if (especialesFiltrados.length === 0) continue;
@@ -65,7 +65,9 @@ async function renderizarEspeciales(lista) {
       <div class="flex items-center justify-start gap-4 mb-3">
         ${urlLogo ? `<img src="${urlLogo}" class="w-24 h-24 rounded-full object-cover">` : ''}
         <div>
-          <h2 class="text-xl font-semibold leading-tight text-gray-800">${nombreComercio}</h2>
+          <a href="../perfilComercio.html?id=${comercio.id}" class="text-xl font-semibold leading-tight text-gray-800 hover:text-blue-600 transition" aria-label="Ir al perfil de ${nombreComercio}">
+            ${nombreComercio}
+          </a>
           <p class="text-sm text-gray-500">${subtitulo}</p>
         </div>
       </div>

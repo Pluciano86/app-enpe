@@ -95,6 +95,7 @@ let backgroundUrl = '';
 let backgroundPath = '';
 let temaActual = {};
 let tieneSucursales = false;
+let tema;
 const COVER_BUCKET = 'galeriacomercios';
 const COVER_PREFIX = 'menus/portada';
 const BACKGROUND_PREFIX = 'menus/background';
@@ -197,6 +198,20 @@ function buildRgba(hexColor, alpha) {
   const b = bigint & 255;
   const a = Math.min(Math.max(alpha, 0), 1);
   return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function setLoading(button, isLoading, texto = 'Guardando...') {
+  if (!button) return;
+  if (isLoading) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = texto;
+    button.disabled = true;
+    button.classList.add('opacity-60', 'cursor-not-allowed');
+  } else {
+    button.textContent = button.dataset.originalText || button.textContent;
+    button.disabled = false;
+    button.classList.remove('opacity-60', 'cursor-not-allowed');
+  }
 }
 
 function ensureFontLink(id, url) {
@@ -584,17 +599,22 @@ function leerTemaDesdeInputs() {
 
 async function cargarTema() {
   if (!idComercio) return;
-  const { data, error } = await supabase
-    .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,ocultar_nombre,ocultar_menu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
-    .eq('idcomercio', idComercio)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from('menu_tema')
+      .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,ocultar_nombre,ocultar_menu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+      .eq('idcomercio', idComercio)
+      .maybeSingle();
 
-  if (error) {
-    console.warn('No se pudo cargar tema:', error);
+    if (error) {
+      console.warn('No se pudo cargar tema:', error);
+    }
+
+    temaActual = data || {};
+  } catch (err) {
+    console.warn('Error inesperado al cargar tema, usando defaults', err);
+    temaActual = { ...DEFAULT_TEMA };
   }
-
-  temaActual = data || {};
   rellenarInputsTema(temaActual);
   if (isDev) console.log('[adminMenu] Tema cargado', { idComercio, tema: temaActual, pdf: !!temaActual.pdfurl, portada: !!temaActual.portadaimagen, background: !!temaActual.backgroundimagen });
 }
@@ -614,6 +634,7 @@ async function uploadAsset(file, prefix, nameBase) {
 
 async function guardarTema() {
   if (!idComercio) return;
+  setLoading(btnGuardarTema, true);
   const tema = leerTemaDesdeInputs();
   const payload = {
     idcomercio: parseInt(idComercio, 10),
@@ -646,6 +667,7 @@ async function guardarTema() {
       raw: error,
     });
     alert('No se pudo guardar el diseño');
+    setLoading(btnGuardarTema, false);
     return;
   }
 
@@ -667,8 +689,10 @@ async function guardarTema() {
         .upsert(payloadSucursales, { onConflict: 'idcomercio', defaultToNull: false });
       if (errSuc) {
         console.warn('No se pudo replicar a sucursales:', errSuc);
+        alert('Diseño guardado. No se pudo replicar en algunas sucursales.');
       } else if (isDev) {
         console.log('[adminMenu] Tema replicado en sucursales', payloadSucursales.map((p) => p.idcomercio));
+        alert('Diseño guardado y replicado en sucursales seleccionadas.');
       }
     }
   }
@@ -679,6 +703,7 @@ async function guardarTema() {
 
   alert('Diseño guardado correctamente.');
   if (isDev) console.log('[adminMenu] Diseño guardado', { idComercio, tema: temaActual });
+  setLoading(btnGuardarTema, false);
 }
 
 async function cargarDatos() {
@@ -1005,32 +1030,45 @@ btnGuardarProducto.onclick = async () => {
 
   // Subir imagen
   const archivo = inputImagenProducto.files[0];
-if (archivo && productoId) {
-  const ext = archivo.name.split('.').pop();
-  const nombreArchivo = `productos/${idComercio}/producto-${productoId}.${ext}`;
+  if (archivo && productoId) {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!tiposPermitidos.includes(archivo.type)) {
+      alert('Formato de imagen no permitido. Usa JPG, PNG o WEBP.');
+      return;
+    }
+    if (archivo.size > maxSize) {
+      alert('La imagen supera los 5MB. Por favor sube una más liviana.');
+      return;
+    }
 
-  if (productoImagenActual && productoImagenActual !== nombreArchivo) {
-    await supabase.storage.from('galeriacomercios').remove([productoImagenActual]).catch(() => {});
+    const ext = archivo.name.split('.').pop();
+    const nombreArchivo = `productos/${idComercio}/producto-${productoId}.${ext}`;
+
+    if (productoImagenActual && productoImagenActual !== nombreArchivo) {
+      await supabase.storage.from('galeriacomercios').remove([productoImagenActual]).catch(() => {});
+    }
+
+    const { error: errorSubida } = await supabase.storage
+      .from('galeriacomercios')
+      .upload(nombreArchivo, archivo, {
+        upsert: true,
+        contentType: archivo.type,
+        cacheControl: '0'
+      });
+
+    if (errorSubida) {
+      console.error('🛑 Error subiendo imagen:', errorSubida);
+      alert('No se pudo subir la imagen del producto. Intenta de nuevo.');
+      return;
+    } else {
+      await supabase
+        .from('productos')
+        .update({ imagen: nombreArchivo })
+        .eq('id', productoId);
+      productoImagenActual = nombreArchivo;
+    }
   }
-
-  const { error: errorSubida } = await supabase.storage
-    .from('galeriacomercios')
-    .upload(nombreArchivo, archivo, {
-      upsert: true,
-      contentType: archivo.type,
-      cacheControl: '0'
-    });
-
-  if (errorSubida) {
-    console.error('🛑 Error subiendo imagen:', errorSubida);
-  } else {
-    await supabase
-      .from('productos')
-      .update({ imagen: nombreArchivo })
-      .eq('id', productoId);
-    productoImagenActual = nombreArchivo;
-  }
-}
 
   modalProducto.classList.add('hidden');
   await cargarSecciones();

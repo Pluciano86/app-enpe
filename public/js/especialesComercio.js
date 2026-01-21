@@ -7,6 +7,7 @@ const btnToggleAlmuerzo = document.getElementById('btnToggleAlmuerzo');
 const btnToggleHappy = document.getElementById('btnToggleHappy');
 const almuerzoCard = document.getElementById('almuerzoCard');
 const happyCard = document.getElementById('happyCard');
+const ESPECIAL_PLACEHOLDER = 'https://via.placeholder.com/120x120.png?text=Especial';
 
 btnToggleAlmuerzo?.addEventListener('click', () => {
   almuerzoCard.classList.toggle('hidden');
@@ -50,12 +51,18 @@ async function cargarEspecialesComercio() {
   const listaHappy = [];
 
   for (const especial of especiales) {
-    const url = await obtenerImagenDeEspecial(especial.id);
+    let url = null;
+    if (especial.imagen) {
+      url = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${encodeURIComponent(especial.imagen)}`;
+    } else {
+      url = await obtenerImagenDeEspecial(especial.id);
+    }
+    const imgSrc = url || ESPECIAL_PLACEHOLDER;
     console.log(`🖼️ Imagen para ${especial.nombre} (${especial.tipo}):`, url);
 
     const card = `
       <div class="flex gap-4 items-start bg-white shadow p-4 rounded-lg mb-2">
-        <img src="${url || ''}" alt="Imagen Especial" class="w-24 h-24 object-cover rounded-md">
+        <img src="${imgSrc}" alt="Imagen Especial" class="w-24 h-24 object-cover rounded-md" loading="lazy">
         <div>
           <p class="font-semibold text-left text-md">${especial.nombre}</p>
           <p class="text-sm text-left text-gray-600 mb-1">${especial.descripcion || ''}</p>

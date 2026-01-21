@@ -38,6 +38,14 @@ function normalizarTexto(value) {
     .toLowerCase();
 }
 
+function debounce(fn, delay = 300) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+
 async function obtenerIdsComerciosPorProductos(textoRaw) {
   const termino = typeof textoRaw === 'string' ? textoRaw.trim() : '';
   if (termino.length < 3) return [];
@@ -1359,6 +1367,12 @@ function registrarEventos() {
     ['filtro-destacados', 'change', (_, checked) => (estado.filtros.destacadosPrimero = checked)],
   ];
 
+  const dispararBusquedaDebounce = debounce(async (valor) => {
+    await actualizarBusquedaPorTexto(typeof valor === 'string' ? valor.trim() : '');
+    resetSugerencias();
+    await cargarComercios({ append: false });
+  }, 350);
+
   mapaEventos.forEach(([id, evento, asignador]) => {
     const elemento = getElement(id);
     if (!elemento) return;
@@ -1388,7 +1402,8 @@ function registrarEventos() {
       }
 
       if (id === 'filtro-nombre') {
-        await actualizarBusquedaPorTexto(typeof valor === 'string' ? valor.trim() : '');
+        await dispararBusquedaDebounce(valor);
+        return;
       }
 
       resetSugerencias();

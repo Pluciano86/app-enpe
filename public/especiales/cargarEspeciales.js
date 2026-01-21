@@ -44,7 +44,10 @@ async function cargarEspecialesDelDia() {
         .select(`
           id,
           nombre,
+          nombreComercio,
+          nombreSucursal,
           municipio,
+          pueblo,
           idCategoria,
           idSubcategoria
         `)
@@ -73,8 +76,8 @@ async function cargarEspecialesDelDia() {
             agrupados[comercioId] = {
         comercio: {
           id: comercio?.id,
-          nombre: comercio?.nombre || 'Comercio',
-          municipio: comercio?.municipio || '',
+          nombre: comercio?.nombre || comercio?.nombreComercio || comercio?.nombreSucursal || 'Comercio',
+          municipio: comercio?.municipio || comercio?.pueblo || '',
           categorias: categorias,
           logo: logoData?.imagen
             ? `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${logoData.imagen}`
