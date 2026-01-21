@@ -31,15 +31,15 @@ async function renderizarEspeciales(lista) {
 
   let hayResultados = false;
 
+  console.log('[especiales] Lista recibida:', lista);
+
   for (const grupo of lista) {
     const { comercio, especiales } = grupo;
     const urlLogo = comercio?.logo || '';
-    const nombreComercio = comercio?.nombre || comercio?.nombreComercio || comercio?.nombreSucursal || 'Comercio';
-    const municipio = comercio?.municipio || comercio?.pueblo || '';
-    const categorias = comercio.categorias || [];
-    const categoriasTexto = categorias.join(', ');
-    const municipioTxt = municipio ? `en ${municipio}` : '';
-    const subtitulo = categoriasTexto ? `${categoriasTexto} ${municipioTxt}` : municipioTxt || '';
+    const idComercio = Number(comercio?.id);
+    const nombreComercio = comercio?.nombre || comercio?.nombreSucursal || 'Comercio';
+    const municipio = comercio?.municipio || '';
+    const subtitulo = municipio ? `en ${municipio}` : '';
 
     const especialesFiltrados = especiales.filter(esp => esp.tipo === tipoSeleccionado);
     if (especialesFiltrados.length === 0) continue;
@@ -61,13 +61,18 @@ async function renderizarEspeciales(lista) {
 
     const tarjeta = document.createElement('div');
     tarjeta.className = 'bg-white rounded-lg shadow p-4';
+    const linkPerfil =
+      Number.isFinite(idComercio) && idComercio > 0
+        ? `<a href="../perfilComercio.html?id=${idComercio}" class="text-xl font-semibold leading-tight text-gray-800 hover:text-blue-600 transition" aria-label="Ir al perfil de ${nombreComercio}">
+            ${nombreComercio}
+          </a>`
+        : `<span class="text-xl font-semibold leading-tight text-gray-800">${nombreComercio}</span>`;
+
     tarjeta.innerHTML = `
       <div class="flex items-center justify-start gap-4 mb-3">
-        ${urlLogo ? `<img src="${urlLogo}" class="w-24 h-24 rounded-full object-cover">` : ''}
+        ${urlLogo ? `<img src="${urlLogo}" class="w-24 h-24 rounded-full object-cover" loading="lazy">` : ''}
         <div>
-          <a href="../perfilComercio.html?id=${comercio.id}" class="text-xl font-semibold leading-tight text-gray-800 hover:text-blue-600 transition" aria-label="Ir al perfil de ${nombreComercio}">
-            ${nombreComercio}
-          </a>
+          ${linkPerfil}
           <p class="text-sm text-gray-500">${subtitulo}</p>
         </div>
       </div>

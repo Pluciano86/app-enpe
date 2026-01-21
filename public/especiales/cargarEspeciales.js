@@ -39,49 +39,50 @@ async function cargarEspecialesDelDia() {
     const comercioId = especial.idcomercio;
 
     if (!agrupados[comercioId]) {
-            const { data: comercio } = await supabase
-        .from('Comercios')
-        .select(`
-          id,
-          nombre,
-          nombreComercio,
-          nombreSucursal,
-          municipio,
-          pueblo,
-          idCategoria,
-          idSubcategoria
-        `)
-        .eq('id', comercioId)
-        .single();
+      let comercio = null;
+      try {
+        const { data: comercioData, error: comercioErr } = await supabase
+          .from('Comercios')
+          .select('id,nombre,nombreSucursal,municipio,logo,categoria')
+          .eq('id', comercioId)
+          .maybeSingle();
+        if (comercioErr) {
+          console.warn('No se pudo cargar comercio de especial:', comercioId, comercioErr?.message || comercioErr);
+        } else {
+          comercio = comercioData;
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar comercio de especial:', comercioId, err?.message || err);
+      }
 
       const categorias = [];
+      if (comercio?.categoria) categorias.push(comercio.categoria);
 
-      if (comercio?.idCategoria?.length > 0) {
-        const { data: catData } = await supabase
-          .from('Categorias')
-          .select('nombre, id')
-          .in('id', comercio.idCategoria);
-
-        if (catData) {
-          categorias.push(...catData.map(c => c.nombre));
+      // Logo: ahora se almacena la URL en Comercios.logo. Si no está, intentamos fallback a imagenesComercios.
+      let logoUrl = null;
+      if (comercio?.logo) {
+        logoUrl = comercio.logo.startsWith('http')
+          ? comercio.logo
+          : `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${comercio.logo}`;
+      } else {
+        const { data: logoData } = await supabase
+          .from('imagenesComercios')
+          .select('imagen')
+          .eq('idComercio', comercioId)
+          .eq('logo', true)
+          .maybeSingle();
+        if (logoData?.imagen) {
+          logoUrl = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${logoData.imagen}`;
         }
       }
-      const { data: logoData } = await supabase
-        .from('imagenesComercios')
-        .select('imagen')
-        .eq('idComercio', comercioId)
-        .eq('logo', true)
-        .maybeSingle();
 
-            agrupados[comercioId] = {
+      agrupados[comercioId] = {
         comercio: {
-          id: comercio?.id,
-          nombre: comercio?.nombre || comercio?.nombreComercio || comercio?.nombreSucursal || 'Comercio',
-          municipio: comercio?.municipio || comercio?.pueblo || '',
+          id: comercio?.id ?? comercioId,
+          nombre: comercio?.nombre || comercio?.nombreSucursal || 'Comercio',
+          municipio: comercio?.municipio || '',
           categorias: categorias,
-          logo: logoData?.imagen
-            ? `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${logoData.imagen}`
-            : null
+          logo: logoUrl,
         },
         especiales: []
       };
