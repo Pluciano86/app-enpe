@@ -5,6 +5,8 @@ const contenedorAlmuerzos = document.getElementById('contenedorAlmuerzos');
 const contenedorHappy = document.getElementById('contenedorHappy');
 const seccionAlmuerzo = contenedorAlmuerzos.closest('section');
 const seccionHappy = contenedorHappy.closest('section');
+let coordsUsuario = null;
+let listaCache = null;
 
 const claseBaseAlmuerzos = contenedorAlmuerzos?.className || '';
 const claseBaseHappy = contenedorHappy?.className || '';
@@ -16,6 +18,7 @@ function restaurarContenedor(contenedor, claseBase) {
 }
 
 async function renderizarEspeciales(lista) {
+  listaCache = lista;
   const ahora = new Date();
   const hora = ahora.getHours() + ahora.getMinutes() / 60;
 
@@ -39,7 +42,22 @@ async function renderizarEspeciales(lista) {
     const idComercio = Number(comercio?.id);
     const nombreComercio = comercio?.nombre || comercio?.nombreSucursal || 'Comercio';
     const municipio = comercio?.municipio || '';
-    const subtitulo = municipio ? `en ${municipio}` : '';
+    const telefono = comercio?.telefono || '';
+    let tiempoTexto = '';
+    const lat = Number(comercio?.latitud);
+    const lon = Number(comercio?.longitud);
+    if (coordsUsuario && Number.isFinite(lat) && Number.isFinite(lon)) {
+      const km = calcularDistanciaKm(coordsUsuario.lat, coordsUsuario.lon, lat, lon);
+      console.log('[especiales] distancia calculada', { idComercio, km, coordsUsuario, lat, lon });
+      if (km > 0) {
+        const minutos = Math.round((km / 40) * 60); // asumiendo 40 km/h promedio
+        tiempoTexto = `a unos ${minutos} min en vehículo`;
+      }
+    }
+    const partesUbicacion = [];
+    if (municipio) partesUbicacion.push(`<i class="fa-solid fa-location-dot text-[#23b4e9]"></i> en ${municipio}`);
+    if (tiempoTexto) partesUbicacion.push(`<i class="fa-solid fa-car-side text-gray-500"></i> ${tiempoTexto}`);
+    const subtitulo = partesUbicacion.join(' · ');
 
     const especialesFiltrados = especiales.filter(esp => esp.tipo === tipoSeleccionado);
     if (especialesFiltrados.length === 0) continue;
@@ -74,6 +92,10 @@ async function renderizarEspeciales(lista) {
         <div>
           ${linkPerfil}
           <p class="text-sm text-gray-500">${subtitulo}</p>
+          ${telefono ? `
+            <a href="tel:${telefono}" class="inline-flex items-center gap-2 bg-red-600 text-white text-sm font-semibold px-3 py-1 rounded-full mt-2 shadow hover:bg-red-700 transition">
+              <i class="fa-solid fa-phone text-sm"></i> ${telefono}
+            </a>` : ''}
         </div>
       </div>
       <hr class="border-t border-gray-200 mb-2">
@@ -105,3 +127,40 @@ async function renderizarEspeciales(lista) {
 }
 
 export { renderizarEspeciales };
+
+// Utilidades de distancia
+function calcularDistanciaKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+function deg2rad(deg) {
+  return deg * (Math.PI / 180);
+}
+
+if (navigator.geolocation) {
+  let logGeoErrorOnce = false;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      coordsUsuario = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      console.log('[especiales] ubicación usuario', coordsUsuario);
+      if (listaCache) {
+        renderizarEspeciales(listaCache);
+      }
+    },
+    (err) => {
+      if (!logGeoErrorOnce) {
+        console.info('Ubicación no disponible para estimar tiempo en vehículo:', err?.message || err);
+        logGeoErrorOnce = true;
+      }
+      coordsUsuario = null;
+    },
+    { enableHighAccuracy: false, maximumAge: 300000, timeout: 5000 }
+  );
+}

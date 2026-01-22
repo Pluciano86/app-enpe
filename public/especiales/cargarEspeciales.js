@@ -43,7 +43,7 @@ async function cargarEspecialesDelDia() {
       try {
         const { data: comercioData, error: comercioErr } = await supabase
           .from('Comercios')
-          .select('id,nombre,nombreSucursal,municipio,logo,categoria')
+          .select('id,nombre,nombreSucursal,municipio,logo,categoria,telefono,latitud,longitud')
           .eq('id', comercioId)
           .maybeSingle();
         if (comercioErr) {
@@ -81,7 +81,10 @@ async function cargarEspecialesDelDia() {
           id: comercio?.id ?? comercioId,
           nombre: comercio?.nombre || comercio?.nombreSucursal || 'Comercio',
           municipio: comercio?.municipio || '',
+          latitud: comercio?.latitud != null ? Number(comercio.latitud) : null,
+          longitud: comercio?.longitud != null ? Number(comercio.longitud) : null,
           categorias: categorias,
+          telefono: comercio?.telefono || '',
           logo: logoUrl,
         },
         especiales: []
