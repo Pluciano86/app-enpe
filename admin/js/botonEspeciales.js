@@ -1,8 +1,11 @@
 // admin/js/botonEspeciales.js
-const idComercioEspecial = new URLSearchParams(window.location.search).get('id');
+const paramsEspeciales = new URLSearchParams(window.location.search);
+const idComercioEspecial =
+  paramsEspeciales.get('idcomercio') || paramsEspeciales.get('id');
 const btnAdministrarEspeciales = document.getElementById('btnAdministrarEspeciales');
 
 if (btnAdministrarEspeciales && idComercioEspecial) {
-  // Ruta relativa para live-server y producción
-  btnAdministrarEspeciales.href = `../comercio/especiales/adminEspeciales.html?id=${idComercioEspecial}`;
+  const destino = new URL('/comercio/especiales/adminEspeciales.html', window.location.origin);
+  destino.searchParams.set('idcomercio', idComercioEspecial);
+  btnAdministrarEspeciales.href = destino.toString();
 }
