@@ -7,5 +7,10 @@ const btnAdministrarEspeciales = document.getElementById('btnAdministrarEspecial
 if (btnAdministrarEspeciales && idComercioEspecial) {
   const destino = new URL('/comercio/especiales/adminEspeciales.html', window.location.origin);
   destino.searchParams.set('idcomercio', idComercioEspecial);
+  destino.searchParams.set('id', idComercioEspecial); // compatibilidad
   btnAdministrarEspeciales.href = destino.toString();
+  btnAdministrarEspeciales.addEventListener('click', (event) => {
+    event.preventDefault();
+    window.location.assign(destino.toString());
+  });
 }

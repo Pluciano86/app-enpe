@@ -178,11 +178,15 @@ loadAdminHeader();
     <br>
 
     <!-- Botones extra -->
-    <a id="btnAdminMenu" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow">Administrar Menú</a>
-    <a id="btnAdministrarEspeciales" href="#" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-      🥘 Administrar Almuerzos y Happy Hours
-    </a>
-    <button id="btn-guardar" class="mt-6 bg-blue-600 text-white px-4 py-2 rounded">Guardar Cambios</button>
+    <div class="flex flex-col sm:flex-row sm:flex-wrap gap-3 mt-6 mb-2">
+      <a id="btnAdminMenu" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow block text-center sm:inline-flex sm:items-center sm:justify-center">
+        Administrar Menú
+      </a>
+      <a id="btnAdministrarEspeciales" href="#" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition shadow">
+        🥘 Administrar Almuerzos y Happy Hours
+      </a>
+    </div>
+    <button id="btn-guardar" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded">Guardar Cambios</button>
   </div>
 </main>
 
@@ -203,18 +207,6 @@ loadAdminHeader();
 <script type="module" src="./js/adminSucursalesComercio.js"></script>
 <script type="module" src="./js/adminEditarComercio.js"></script>
 <script type="module" src="./js/adminGuardarCambios.js"></script>
-<script type="module" src="./js/botonAdminMenu.js"></script>
-
-<!-- Botón Almuerzos/HH -->
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const params = new URLSearchParams(window.location.search);
-    const idComercio = params.get('id');
-    if (idComercio) {
-      document.getElementById('btnAdministrarEspeciales').href = `/comercio/especiales/adminEspeciales.html?id=${idComercio}`;
-    }
-  });
-</script>
 
 
 <!-- ✅ Bloque final: carga logo, portada y horarios -->
