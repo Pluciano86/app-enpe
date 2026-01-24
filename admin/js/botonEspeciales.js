@@ -1,15 +1,33 @@
-// admin/js/botonEspeciales.js
-const COMERCIO_ORIGIN = 'https://comercio.enpe-erre.com';
-const paramsEspeciales = new URLSearchParams(window.location.search);
-const idComercioEspecial = paramsEspeciales.get('idcomercio') || paramsEspeciales.get('id');
+import { idComercio as idComercioImportado } from '../shared/supabaseClient.js';
+
+const params = new URLSearchParams(window.location.search);
+const idQuery =
+  params.get('id') ||
+  params.get('idcomercio') ||
+  params.get('idComercio') ||
+  params.get('comercioId');
+const idFinal = idComercioImportado || idQuery;
+
+const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const BASE_COMERCIO = isLocal ? `${location.origin}/comercio` : 'https://comercio.enpe-erre.com';
+
 const btnAdministrarEspeciales = document.getElementById('btnAdministrarEspeciales');
 
-if (btnAdministrarEspeciales && idComercioEspecial) {
-  const destino = new URL('/especiales/adminEspeciales.html', COMERCIO_ORIGIN);
-  destino.searchParams.set('idcomercio', idComercioEspecial);
-  console.log('REDIRECT FINAL (Especiales):', destino.toString());
-  btnAdministrarEspeciales.addEventListener('click', (event) => {
-    event.preventDefault();
-    window.location.href = destino.toString();
-  });
+if (btnAdministrarEspeciales) {
+  if (!idFinal) {
+    console.error('ID comercio faltante');
+    btnAdministrarEspeciales.href = '#';
+    btnAdministrarEspeciales.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('No se encontró el ID del comercio.');
+    });
+  } else {
+    const urlFinal = `${BASE_COMERCIO}/especiales/adminEspeciales.html?id=${encodeURIComponent(idFinal)}`;
+    btnAdministrarEspeciales.href = urlFinal;
+    console.log({ host: location.hostname, BASE_COMERCIO, idFinal, urlFinal });
+    btnAdministrarEspeciales.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.assign(urlFinal);
+    });
+  }
 }
