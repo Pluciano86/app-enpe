@@ -25,14 +25,14 @@ async function cargarMunicipiosSelect(idSeleccionado = null) {
   try {
     const { data, error } = await supabase
       .from('Municipios')
-      .select('id, Municipio')
-      .order('Municipio', { ascending: true });
+      .select('id, nombre')
+      .order('nombre', { ascending: true });
     if (error) throw error;
     selectMunicipio.innerHTML = '<option value=\"\">Selecciona un municipio</option>';
     (data || []).forEach((m) => {
       const opt = document.createElement('option');
       opt.value = m.id;
-      opt.textContent = m.Municipio || m.nombre || '';
+      opt.textContent = m.nombre || '';
       selectMunicipio.appendChild(opt);
     });
     if (idSeleccionado) {
