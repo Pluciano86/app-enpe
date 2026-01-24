@@ -1,12 +1,15 @@
 // adminLogoComercio.js
-import { supabase } from '../shared/supabaseClient.js';
+import { supabase, idComercio as idComercioImportado } from '../shared/supabaseClient.js';
 
-const idComercio = new URLSearchParams(window.location.search).get('id');
-const idComercioNumero = Number(idComercio);
+const rawId =
+  idComercioImportado ||
+  new URLSearchParams(window.location.search).get('idcomercio') ||
+  new URLSearchParams(window.location.search).get('id');
+const idComercioNumero = Number(rawId);
 const idComercioDB = Number.isFinite(idComercioNumero)
   ? idComercioNumero
   : (() => {
-      const parsed = Number.parseInt(idComercio, 10);
+      const parsed = Number.parseInt(rawId, 10);
       return Number.isFinite(parsed) ? parsed : null;
     })();
 

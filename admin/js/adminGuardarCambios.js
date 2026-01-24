@@ -1,9 +1,11 @@
 // adminGuardarCambios.js
-import { supabase } from '../shared/supabaseClient.js';
+import { supabase, idComercio as idComercioImportado } from '../shared/supabaseClient.js';
 import { guardarLogoSiAplica } from './adminLogoComercio.js';
 import { guardarAmenidadesSeleccionadas } from './adminAmenidadesComercio.js';
 
-const idComercio = new URLSearchParams(window.location.search).get('id');
+const idComercio =
+  idComercioImportado ||
+  new URLSearchParams(window.location.search).get('id');
 
 function normalizarIds(lista) {
   return (Array.isArray(lista) ? lista : [])
@@ -148,29 +150,51 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
 async function guardarHorarios() {
   const contenedor = document.getElementById('horariosContainer');
   if (!contenedor) return;
+  if (!idComercio) {
+    console.error('❌ idComercio no definido. No se pueden guardar horarios.');
+    alert('No se encontró el ID del comercio para guardar horarios.');
+    return;
+  }
 
   const diasSemana = Array.from(contenedor.children);
-  const nuevosHorarios = diasSemana.map((row, i) => {
-    const apertura = row.querySelector('.apertura')?.value || null;
-    const cierre = row.querySelector('.cierre')?.value || null;
-    const cerrado = row.querySelector('.cerrado')?.checked || false;
+  const nuevosHorarios = diasSemana
+    .map((row) => {
+      const diaReal = Number(row.dataset.diaReal ?? row.dataset.diase ?? row.dataset.day);
+      if (!Number.isFinite(diaReal) || diaReal < 0 || diaReal > 6) return null;
+      const apertura = row.querySelector('.apertura')?.value || null;
+      const cierre = row.querySelector('.cierre')?.value || null;
+      const cerrado = row.querySelector('.cerrado')?.checked || false;
 
-    return {
-      idComercio,
-      diaSemana: i,
-      apertura: cerrado ? null : apertura,
-      cierre: cerrado ? null : cierre,
-      cerrado
-    };
-  });
+      // Si falta apertura o cierre y no está marcado cerrado, lo tratamos como cerrado para evitar datos inválidos
+      const aperturaValida = apertura && apertura.length >= 4;
+      const cierreValida = cierre && cierre.length >= 4;
+      const esCerrado = cerrado || !aperturaValida || !cierreValida;
+
+      return {
+        idComercio,
+        diaSemana: diaReal,
+        apertura: esCerrado ? null : apertura,
+        cierre: esCerrado ? null : cierre,
+        cerrado: esCerrado
+      };
+    })
+    .filter(Boolean);
 
   console.log('📅 Horarios a guardar:', nuevosHorarios);
 
-  await supabase.from('Horarios').delete().eq('idComercio', idComercio);
-  const { error } = await supabase.from('Horarios').insert(nuevosHorarios);
+  try {
+    const { error, data } = await supabase
+      .from('Horarios')
+      .upsert(nuevosHorarios, { onConflict: 'idComercio,diaSemana' });
 
-  if (error) {
-    console.error('❌ Error guardando horarios:', error);
+    if (error) {
+      console.error('❌ Error guardando horarios:', error);
+      alert('Hubo un problema al guardar los horarios');
+    } else {
+      console.log('✅ Horarios guardados', data);
+    }
+  } catch (err) {
+    console.error('❌ Excepción guardando horarios:', err);
     alert('Hubo un problema al guardar los horarios');
   }
 }

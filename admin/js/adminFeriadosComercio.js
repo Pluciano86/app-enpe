@@ -1,7 +1,10 @@
 // adminFeriadosComercio.js
-import { supabase } from '../shared/supabaseClient.js';
+import { supabase, idComercio as idComercioImportado } from '../shared/supabaseClient.js';
 
-const idComercio = new URLSearchParams(window.location.search).get('id');
+const idComercio =
+  idComercioImportado ||
+  new URLSearchParams(window.location.search).get('idcomercio') ||
+  new URLSearchParams(window.location.search).get('id');
 
 document.addEventListener('DOMContentLoaded', async () => {
   await cargarFeriadosComercio();

@@ -10,6 +10,7 @@ subtituloEl.className = 'text-xs text-gray-500 font-light';
 textoEl.insertAdjacentElement('afterend', subtituloEl);
 
 function formato12Horas(horaStr) {
+  if (!horaStr) return '--:--';
   const [h, m] = horaStr.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
   const hora12 = h % 12 === 0 ? 12 : h % 12;
@@ -17,6 +18,7 @@ function formato12Horas(horaStr) {
 }
 
 function minutosDesdeMedianoche(horaStr) {
+  if (!horaStr) return null;
   const [hora, minuto] = horaStr.split(':').map(Number);
   return hora * 60 + minuto;
 }
@@ -47,13 +49,29 @@ async function verificarHorario() {
     .select('diaSemana, apertura, cierre, cerrado')
     .eq('idComercio', idComercio);
 
-  const hoyHorario = horarios.find(h => h.diaSemana === diaSemana);
-  const ayerHorario = horarios.find(h => h.diaSemana === (diaSemana + 6) % 7); // día anterior
+  const horariosValidos = (horarios || []).filter(
+    (h) =>
+      h &&
+      h.diaSemana !== null &&
+      h.diaSemana !== undefined &&
+      h.diaSemana >= 0 &&
+      h.diaSemana <= 6
+  );
+
+  if (!Array.isArray(horariosValidos) || !horariosValidos.length || horaMinutos === null) {
+    textoEl.textContent = 'Horario no disponible';
+    subtituloEl.textContent = '';
+    iconoEl.className = 'fa-regular fa-clock text-gray-400 text-4xl';
+    return;
+  }
+
+  const hoyHorario = horariosValidos.find(h => h.diaSemana === diaSemana);
+  const ayerHorario = horariosValidos.find(h => h.diaSemana === (diaSemana + 6) % 7); // día anterior
 
   let abierto = false;
   let cierre = null;
 
-  if (hoyHorario && !hoyHorario.cerrado) {
+  if (hoyHorario && !hoyHorario.cerrado && hoyHorario.apertura && hoyHorario.cierre) {
     const aperturaMin = minutosDesdeMedianoche(hoyHorario.apertura.slice(0, 5));
     const cierreMin = minutosDesdeMedianoche(hoyHorario.cierre.slice(0, 5));
 
@@ -67,7 +85,7 @@ async function verificarHorario() {
   }
 
   // Verifica si sigue abierto desde ayer (pasó medianoche)
-  if (!abierto && ayerHorario && !ayerHorario.cerrado) {
+  if (!abierto && ayerHorario && !ayerHorario.cerrado && ayerHorario.apertura && ayerHorario.cierre) {
     const aperturaMin = minutosDesdeMedianoche(ayerHorario.apertura.slice(0, 5));
     const cierreMin = minutosDesdeMedianoche(ayerHorario.cierre.slice(0, 5));
 
@@ -101,7 +119,7 @@ async function verificarHorario() {
     textoEl.className = 'text-sm text-red-600 font-medium';
 
     // ¿Abre más tarde hoy?
-    if (hoyHorario && !hoyHorario.cerrado && horaMinutos < minutosDesdeMedianoche(hoyHorario.apertura.slice(0, 5))) {
+    if (hoyHorario && !hoyHorario.cerrado && hoyHorario.apertura && horaMinutos < minutosDesdeMedianoche(hoyHorario.apertura.slice(0, 5))) {
       subtituloEl.innerHTML = `Abre hoy<br><span class="text-sm ">${formato12Horas(hoyHorario.apertura.slice(0, 5))}</span>`;
     } else {
       const proximo = obtenerProximoDiaAbierto(horarios, diaSemana);
