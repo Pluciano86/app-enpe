@@ -37,7 +37,7 @@ async function cargarCategorias() {
     contenedor.appendChild(div);
   });
 
-  contenedor.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+ contenedor.querySelectorAll('input[type="checkbox"]').forEach((input) => {
     input.addEventListener('change', () => {
       const id = parseInt(input.value);
       if (input.checked) {
@@ -109,7 +109,10 @@ function mostrarSeleccionadas(wrapperId, array, listaReferencia, fnName) {
   const wrapper = document.getElementById(wrapperId);
   if (!wrapper) return;
   wrapper.innerHTML = '';
+  const vistos = new Set();
   array.forEach((id) => {
+    if (vistos.has(id)) return;
+    vistos.add(id);
     const nombre = (listaReferencia.find((x) => x.id === id) || {}).nombre || id;
     const chip = document.createElement('span');
     chip.className =
@@ -150,13 +153,21 @@ async function cargarRelacionesComercio() {
     if (errorCat) console.error('Error cargando categorías del comercio:', errorCat);
     if (errorSub) console.error('Error cargando subcategorías del comercio:', errorSub);
 
-    window.categoriasSeleccionadas = (categoriasRel || [])
-      .map((rel) => Number(rel.idCategoria))
-      .filter((id) => !Number.isNaN(id));
+    window.categoriasSeleccionadas = Array.from(
+      new Set(
+        (categoriasRel || [])
+          .map((rel) => Number(rel.idCategoria))
+          .filter((id) => !Number.isNaN(id))
+      )
+    );
 
-    window.subcategoriasSeleccionadas = (subcategoriasRel || [])
-      .map((rel) => Number(rel.idSubcategoria))
-      .filter((id) => !Number.isNaN(id));
+    window.subcategoriasSeleccionadas = Array.from(
+      new Set(
+        (subcategoriasRel || [])
+          .map((rel) => Number(rel.idSubcategoria))
+          .filter((id) => !Number.isNaN(id))
+      )
+    );
 
   } catch (error) {
 

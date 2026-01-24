@@ -187,17 +187,25 @@ export async function cargarDatosComercio() {
   const categoriasRel = Array.isArray(data.ComercioCategorias) ? data.ComercioCategorias : [];
   const subcategoriasRel = Array.isArray(data.ComercioSubcategorias) ? data.ComercioSubcategorias : [];
 
-  const categoriasDesdeRel = categoriasRel
-    .map(rel => rel?.idCategoria)
-    .filter(id => id !== null && id !== undefined && id !== '')
-    .map(id => Number(id))
-    .filter(id => !Number.isNaN(id));
+  const categoriasDesdeRel = Array.from(
+    new Set(
+      categoriasRel
+        .map(rel => rel?.idCategoria)
+        .filter(id => id !== null && id !== undefined && id !== '')
+        .map(id => Number(id))
+        .filter(id => !Number.isNaN(id))
+    )
+  );
 
-  const subcategoriasDesdeRel = subcategoriasRel
-    .map(rel => rel?.idSubcategoria)
-    .filter(id => id !== null && id !== undefined && id !== '')
-    .map(id => Number(id))
-    .filter(id => !Number.isNaN(id));
+  const subcategoriasDesdeRel = Array.from(
+    new Set(
+      subcategoriasRel
+        .map(rel => rel?.idSubcategoria)
+        .filter(id => id !== null && id !== undefined && id !== '')
+        .map(id => Number(id))
+        .filter(id => !Number.isNaN(id))
+    )
+  );
 
   const categoriasFallback = Array.isArray(data.idCategoria)
     ? data.idCategoria
