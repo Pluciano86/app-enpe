@@ -1,4 +1,5 @@
 // adminEditarComercio.js
+import { supabase, idComercio } from '/shared/supabaseClient.js';
 import { guardarLogoSiAplica, duplicarLogoDesdePrincipal } from './adminLogoComercio.js';
 import {
   cargarGaleriaComercio,
@@ -11,7 +12,36 @@ import { cargarFeriadosComercio } from './adminFeriadosComercio.js';
 import { cargarAmenidadesComercio } from './adminAmenidadesComercio.js';
 import { cargarCategoriasYSubcategorias } from './adminCategoriasComercio.js';
 import { cargarSucursalesRelacionadas } from './adminSucursalesComercio.js';
-import { idComercio, supabase } from '../shared/supabaseClient.js';
+
+console.log('adminEditarComercio loaded', { supabase });
+
+async function cargarMunicipiosSelect(idSeleccionado = null) {
+  const selectMunicipio = document.getElementById('municipio');
+  if (!selectMunicipio) return;
+  if (!supabase) {
+    console.error('Supabase no disponible para cargar municipios');
+    return;
+  }
+  try {
+    const { data, error } = await supabase
+      .from('Municipios')
+      .select('id, Municipio')
+      .order('Municipio', { ascending: true });
+    if (error) throw error;
+    selectMunicipio.innerHTML = '<option value=\"\">Selecciona un municipio</option>';
+    (data || []).forEach((m) => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.Municipio || m.nombre || '';
+      selectMunicipio.appendChild(opt);
+    });
+    if (idSeleccionado) {
+      selectMunicipio.value = String(idSeleccionado);
+    }
+  } catch (err) {
+    console.error('Error cargando municipios:', err);
+  }
+}
 
 let categoriaFallbackActual = '';
 let subcategoriaFallbackActual = '';
@@ -66,6 +96,12 @@ async function sincronizarRelacionesComercio(id, categoriasIds, subcategoriasIds
 // 🚀 Flujo de carga con logs paso a paso
 document.addEventListener('DOMContentLoaded', async () => {
   try {
+    if (!supabase) {
+      console.error('Supabase no disponible en adminEditarComercio');
+      alert('No se pudo inicializar Supabase. Revisa la carga de shared/supabaseClient.js');
+      return;
+    }
+    await cargarMunicipiosSelect();
     await cargarGaleriaComercio();
     await mostrarPortadaEnPreview();
     if (typeof activarBotonesGaleria === 'function') {
@@ -159,8 +195,5 @@ async function cargarDatosGenerales() {
     }
   });
 
-  const selectMunicipio = document.getElementById('municipio');
-  if (selectMunicipio && comercio.idMunicipio) {
-    selectMunicipio.value = String(comercio.idMunicipio);
-  }
+  await cargarMunicipiosSelect(comercio.idMunicipio);
 }
