@@ -9,6 +9,7 @@ if (btnAdminMenu && idComercio) {
   destino.searchParams.set('idcomercio', idComercio);
   destino.searchParams.set('id', idComercio); // compatibilidad con páginas que aún leen "id"
   btnAdminMenu.href = destino.toString();
+  console.log('REDIRECT FINAL (Menú):', destino.toString());
   btnAdminMenu.addEventListener('click', (event) => {
     event.preventDefault();
     window.location.assign(destino.toString());

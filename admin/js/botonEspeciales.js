@@ -9,6 +9,7 @@ if (btnAdministrarEspeciales && idComercioEspecial) {
   destino.searchParams.set('idcomercio', idComercioEspecial);
   destino.searchParams.set('id', idComercioEspecial); // compatibilidad
   btnAdministrarEspeciales.href = destino.toString();
+  console.log('REDIRECT FINAL (Especiales):', destino.toString());
   btnAdministrarEspeciales.addEventListener('click', (event) => {
     event.preventDefault();
     window.location.assign(destino.toString());
