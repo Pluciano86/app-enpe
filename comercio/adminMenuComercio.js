@@ -1,5 +1,5 @@
 import { supabase } from './shared/supabaseClient.js';
-import { FONTS_MENU } from '../admin/fontsMenu.js';
+import { FONTS_MENU } from './js/fontsMenu.js';
 
 function getPublicBase() {
   return '/';
