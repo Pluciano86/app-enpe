@@ -20,11 +20,6 @@
     </div>
     <h1 class="text-2xl font-bold">Administrar Menú</h1>
     <p id="nombreComercio" class="text-xl font-semibold text-[#424242]"></p>
-    <div class="my-4">
-      <button id="btnAgregarSeccion" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition">
-        + Nueva Sección
-      </button>
-    </div>
   </header>
 
   <style>
@@ -269,9 +264,22 @@
     </div>
   </section>
 
-  <main id="seccionesMenu" class="flex flex-col gap-3 py-6 px-4 mb-16">
-    <!-- Secciones del menú -->
-  </main>
+  <section class="py-6 px-4 mb-16">
+    <div class="max-w-5xl mx-auto bg-white shadow rounded-lg p-4 space-y-3">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Secciones y productos</h2>
+          <p class="text-sm text-gray-500">Abre la sección que quieras editar, añade o ajusta productos desde el mismo panel.</p>
+        </div>
+        <button id="btnAgregarSeccion" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm">
+          + Nueva Sección
+        </button>
+      </div>
+      <div id="seccionesMenu" class="flex flex-col gap-3">
+        <!-- Secciones del menú -->
+      </div>
+    </div>
+  </section>
 
   <!-- Modal de imagen -->
   <div id="modalImagen" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden">
@@ -284,6 +292,8 @@
       <h2 class="text-xl font-bold mb-4">Editar Sección</h2>
       <label class="block mb-2 text-sm font-medium">Nombre de la sección</label>
       <input id="inputTitulo" type="text" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" />
+      <label class="block mb-2 text-sm font-medium">Subtítulo (opcional)</label>
+      <input id="inputSubtitulo" type="text" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" placeholder="Ej. Solo lunes" />
       <label class="block mb-2 text-sm font-medium">Orden</label>
       <input id="inputOrden" type="number" class="w-full border border-gray-300 rounded px-3 py-2 mb-4" />
       <div class="flex items-center gap-2 mb-4">
@@ -332,7 +342,7 @@
     </a>
   </footer>
 
-  <script type="module" src="./shared/supabaseClient.js"></script>
+  <script type="module" src="../shared/supabaseClient.js"></script>
   <script type="module" src="./adminMenuComercio.js"></script>
 </body>
 </html>

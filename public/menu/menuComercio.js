@@ -280,7 +280,7 @@ async function cargarDatos() {
 
   const { data: menus, error: errorMenus } = await supabase
     .from('menus')
-    .select('id, titulo, orden')
+    .select('id, titulo, subtitulo, orden')
     .eq('idComercio', idComercio)
     .eq('activo', true)
     .order('orden', { ascending: true });
@@ -302,8 +302,28 @@ async function cargarDatos() {
     wrapper.className = 'w-[90%] mx-auto';
 
     const btn = document.createElement('button');
-    btn.className = 'w-full text-xl px-4 py-2 rounded mb-2 shadow font-medium hover:opacity-90 transition text-center';
-    btn.textContent = menu.titulo;
+    btn.className = 'w-full text-xl px-4 py-2 rounded mb-2 shadow font-medium hover:opacity-90 transition text-center space-y-1';
+
+    const textWrap = document.createElement('div');
+    textWrap.className = 'space-y-0.5';
+
+    const titulo = document.createElement('span');
+    titulo.className = 'block leading-tight';
+    titulo.textContent = menu.titulo;
+    textWrap.appendChild(titulo);
+
+    const subtituloTexto = (menu.subtitulo || '').trim();
+    const sizeTitulo = Number(temaActual.fonttitle_size) || 18;
+    const sizeSub = Math.max(12, Math.round(sizeTitulo * 0.8));
+    if (subtituloTexto) {
+      const sub = document.createElement('span');
+      sub.className = 'block leading-tight opacity-90';
+      sub.textContent = subtituloTexto;
+      sub.style.fontSize = `${sizeSub}px`;
+      textWrap.appendChild(sub);
+    }
+
+    btn.appendChild(textWrap);
     btn.style.backgroundColor = temaActual.colorboton || '#2563eb';
     btn.style.color = temaActual.colorbotontexto || '#ffffff';
     if (temaActual.fonttitle_size) btn.style.fontSize = `${temaActual.fonttitle_size}px`;

@@ -1,4 +1,4 @@
-import { supabase } from './shared/supabaseClient.js';
+import { supabase } from '../shared/supabaseClient.js';
 import { FONTS_MENU } from './js/fontsMenu.js';
 
 function getPublicBase() {
@@ -12,6 +12,7 @@ const seccionesEl = document.getElementById('seccionesMenu');
 const btnAgregarSeccion = document.getElementById('btnAgregarSeccion');
 const modal = document.getElementById('modalSeccion');
 const inputTitulo = document.getElementById('inputTitulo');
+const inputSubtitulo = document.getElementById('inputSubtitulo');
 const inputOrden = document.getElementById('inputOrden');
 const inputActivo = document.getElementById('inputActivo');
 const btnCancelarSeccion = document.getElementById('btnCancelarSeccion');
@@ -153,6 +154,9 @@ const DEFAULT_TEMA = {
   boton_stroke_width: 0,
   boton_stroke_color: '#000000',
 };
+
+let draggingSeccion = null;
+let guardandoOrden = false;
 
 function colorConAlpha(color, alpha) {
   const a = Math.min(Math.max(alpha, 0), 1);
@@ -797,6 +801,282 @@ async function cargarSucursalesRelacionadas() {
   compartirSucursales.classList.remove('hidden');
 }
 
+function crearProductoCard(idSeccion, producto) {
+  const contenedor = document.createElement('div');
+  contenedor.className = 'bg-white border rounded p-3 flex justify-between gap-3 hover:shadow-sm transition cursor-pointer';
+  contenedor.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.abrirEditarProducto(idSeccion, producto);
+  });
+
+  const info = document.createElement('div');
+  info.className = 'flex gap-3 items-start';
+
+  if (producto?.imagen) {
+    const img = document.createElement('img');
+    img.src = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${producto.imagen}`;
+    img.alt = producto.nombre || 'Producto';
+    img.className = 'w-14 h-14 object-cover rounded';
+    info.appendChild(img);
+  }
+
+  const texto = document.createElement('div');
+  texto.className = 'space-y-1 text-left';
+
+  const nombre = document.createElement('p');
+  nombre.className = 'text-sm font-semibold text-gray-900';
+  nombre.textContent = producto?.nombre || 'Sin nombre';
+
+  const descripcion = document.createElement('p');
+  descripcion.className = 'text-xs text-gray-600';
+  descripcion.textContent = producto?.descripcion || 'Sin descripción';
+
+  texto.appendChild(nombre);
+  texto.appendChild(descripcion);
+  info.appendChild(texto);
+
+  const acciones = document.createElement('div');
+  acciones.className = 'flex flex-col items-end gap-2';
+
+  const precio = document.createElement('p');
+  precio.className = 'text-sm font-semibold text-blue-600';
+  const precioNumber = Number.parseFloat(producto?.precio);
+  precio.textContent = Number.isFinite(precioNumber) ? `$${precioNumber.toFixed(2)}` : '';
+
+  const eliminar = document.createElement('button');
+  eliminar.type = 'button';
+  eliminar.className = 'text-xs text-red-600 hover:text-red-700 underline';
+  eliminar.textContent = 'Eliminar';
+  eliminar.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.eliminarProducto(producto.id, producto.nombre, producto.imagen ?? '');
+  });
+
+  acciones.appendChild(precio);
+  acciones.appendChild(eliminar);
+
+  contenedor.appendChild(info);
+  contenedor.appendChild(acciones);
+
+  return contenedor;
+}
+
+function handleDragStart(event, wrapper) {
+  draggingSeccion = wrapper;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', wrapper.dataset.idSeccion);
+  wrapper.classList.add('opacity-60', 'ring-2', 'ring-blue-200');
+}
+
+function handleDragOver(event) {
+  event.preventDefault();
+  if (!draggingSeccion) return;
+  const target = event.currentTarget;
+  if (target === draggingSeccion) return;
+  const rect = target.getBoundingClientRect();
+  const shouldInsertAfter = event.clientY - rect.top > rect.height / 2;
+  if (shouldInsertAfter) {
+    target.after(draggingSeccion);
+  } else {
+    target.before(draggingSeccion);
+  }
+}
+
+function handleDragEnd() {
+  if (draggingSeccion) {
+    draggingSeccion.classList.remove('opacity-60', 'ring-2', 'ring-blue-200');
+  }
+  draggingSeccion = null;
+}
+
+async function guardarNuevoOrdenSecciones() {
+  if (guardandoOrden) return;
+  const items = Array.from(seccionesEl?.querySelectorAll('[data-id-seccion]') || []);
+  if (items.length === 0) return;
+
+  const updates = items
+    .map((item, idx) => ({
+      id: parseInt(item.dataset.idSeccion, 10),
+      orden: idx + 1,
+    }))
+    .filter((i) => Number.isFinite(i.id));
+
+  // Refrescar numeración en la UI inmediatamente
+  updates.forEach(({ id, orden }) => {
+    const item = seccionesEl.querySelector(`[data-id-seccion="${id}"]`);
+    const ordenLabel = item?.querySelector('[data-orden-label]');
+    if (ordenLabel) ordenLabel.textContent = `#${orden}`;
+    const infoOrden = item?.querySelector('[data-info-orden]');
+    if (infoOrden) infoOrden.textContent = `Orden ${orden} · ${infoOrden.dataset.productos || 0} productos`;
+  });
+
+  guardandoOrden = true;
+  try {
+    const resultados = await Promise.all(
+      updates.map(({ id, orden }) => supabase.from('menus').update({ orden }).eq('id', id))
+    );
+    const fallo = resultados.find((r) => r.error)?.error;
+    if (fallo) throw fallo;
+    if (isDev) console.log('[adminMenu] Orden de secciones actualizado', updates);
+  } catch (err) {
+    console.error('Error actualizando orden de secciones:', err);
+    alert('No se pudo actualizar el orden. Intenta de nuevo.');
+  } finally {
+    guardandoOrden = false;
+    await cargarSecciones();
+  }
+}
+
+function crearSeccionAccordion(seccion, productos = [], expandir = false) {
+  const totalProductos = productos?.length || 0;
+  const wrapper = document.createElement('article');
+  wrapper.className = 'border border-gray-200 rounded-lg shadow-sm overflow-hidden bg-white cursor-grab';
+  wrapper.dataset.idSeccion = seccion.id;
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'w-full flex justify-between items-center px-4 py-3 text-left hover:bg-gray-50 transition';
+
+  const izquierda = document.createElement('div');
+  izquierda.className = 'flex flex-col';
+
+  const titulo = document.createElement('span');
+  titulo.className = 'text-base font-semibold text-gray-900';
+  titulo.textContent = seccion.titulo;
+
+  const subtituloTexto = (seccion.subtitulo || '').trim();
+  if (subtituloTexto) {
+    const subtitulo = document.createElement('span');
+    subtitulo.className = 'text-sm text-gray-600 leading-tight';
+    subtitulo.textContent = subtituloTexto;
+    izquierda.appendChild(subtitulo);
+  }
+
+  const meta = document.createElement('span');
+  meta.className = 'text-xs text-gray-500';
+  meta.dataset.infoOrden = 'true';
+  meta.dataset.productos = totalProductos;
+  meta.textContent = `Orden ${seccion.orden} · ${totalProductos} producto${totalProductos === 1 ? '' : 's'}`;
+
+  izquierda.appendChild(titulo);
+  izquierda.appendChild(meta);
+
+  const derecha = document.createElement('div');
+  derecha.className = 'flex items-center gap-3';
+
+  const estado = document.createElement('span');
+  estado.className = `text-xs px-2 py-1 rounded-full ${seccion.activo ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}`;
+  estado.textContent = seccion.activo ? 'Activa' : 'Inactiva';
+
+  const handle = document.createElement('div');
+  handle.className = 'flex items-center gap-2 text-gray-400 hover:text-gray-600 cursor-grab drag-handle select-none';
+  handle.title = 'Arrastra para reordenar';
+  handle.setAttribute('draggable', 'true');
+
+  const iconoGrip = document.createElement('i');
+  iconoGrip.className = 'fa-solid fa-grip-vertical text-lg';
+
+  const ordenBadge = document.createElement('span');
+  ordenBadge.className = 'text-xs font-semibold text-gray-700 px-2 py-1 bg-gray-100 rounded';
+  ordenBadge.dataset.ordenLabel = 'true';
+  ordenBadge.textContent = `#${seccion.orden}`;
+
+  handle.appendChild(iconoGrip);
+  handle.appendChild(ordenBadge);
+
+  const chevron = document.createElement('i');
+  chevron.className = 'fa-solid fa-chevron-down text-gray-500 transition-transform duration-200';
+
+  derecha.appendChild(estado);
+  derecha.appendChild(handle);
+  derecha.appendChild(chevron);
+
+  toggle.appendChild(izquierda);
+  toggle.appendChild(derecha);
+
+  const body = document.createElement('div');
+  body.className = 'border-t border-gray-200 bg-gray-50 hidden';
+
+  const contenido = document.createElement('div');
+  contenido.className = 'p-4 space-y-3';
+
+  const acciones = document.createElement('div');
+  acciones.className = 'flex items-center justify-between gap-2 flex-wrap';
+
+  const copy = document.createElement('p');
+  copy.className = 'text-sm text-gray-600';
+  copy.textContent = 'Abre la sección para editar productos o ajustes.';
+
+  const botones = document.createElement('div');
+  botones.className = 'flex gap-2';
+
+  const btnEditarSeccion = document.createElement('button');
+  btnEditarSeccion.type = 'button';
+  btnEditarSeccion.className = 'px-3 py-2 rounded border border-gray-300 text-sm hover:bg-gray-100';
+  btnEditarSeccion.textContent = 'Editar sección';
+  btnEditarSeccion.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.editarSeccion(seccion.id, seccion.titulo, seccion.orden, seccion.activo, seccion.subtitulo || '');
+  });
+
+  const btnAgregarProducto = document.createElement('button');
+  btnAgregarProducto.type = 'button';
+  btnAgregarProducto.className = 'px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700';
+  btnAgregarProducto.textContent = '+ Producto';
+  btnAgregarProducto.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.abrirEditarProducto(seccion.id);
+  });
+
+  botones.appendChild(btnEditarSeccion);
+  botones.appendChild(btnAgregarProducto);
+  acciones.appendChild(copy);
+  acciones.appendChild(botones);
+
+  const listaProductos = document.createElement('div');
+  listaProductos.className = 'space-y-2';
+
+  if (!productos || productos.length === 0) {
+    const vacio = document.createElement('p');
+    vacio.className = 'text-sm text-gray-500 bg-white border rounded p-3';
+    vacio.textContent = 'Aún no hay productos en esta sección.';
+    listaProductos.appendChild(vacio);
+  } else {
+    productos.forEach((producto) => {
+      listaProductos.appendChild(crearProductoCard(seccion.id, producto));
+    });
+  }
+
+  contenido.appendChild(acciones);
+  contenido.appendChild(listaProductos);
+  body.appendChild(contenido);
+
+  toggle.addEventListener('click', () => {
+    const estabaOculto = body.classList.contains('hidden');
+    body.classList.toggle('hidden');
+    chevron.classList.toggle('rotate-180', estabaOculto);
+  });
+
+  handle.addEventListener('click', (e) => e.stopPropagation());
+  handle.addEventListener('dragstart', (e) => handleDragStart(e, wrapper));
+  handle.addEventListener('dragend', handleDragEnd);
+  wrapper.addEventListener('dragover', handleDragOver);
+  wrapper.addEventListener('drop', (e) => {
+    e.preventDefault();
+    handleDragEnd();
+    guardarNuevoOrdenSecciones();
+  });
+
+  if (expandir) {
+    body.classList.remove('hidden');
+    chevron.classList.add('rotate-180');
+  }
+
+  wrapper.appendChild(toggle);
+  wrapper.appendChild(body);
+  return wrapper;
+}
+
 async function cargarSecciones() {
   const { data, error } = await supabase
     .from('menus')
@@ -810,65 +1090,29 @@ async function cargarSecciones() {
   }
 
   seccionesEl.innerHTML = '';
+  if (!data || data.length === 0) {
+    seccionesEl.innerHTML = '<p class="text-sm text-gray-500">Aún no hay secciones creadas. Usa "Nueva Sección" para comenzar.</p>';
+    return;
+  }
+
+  let primera = true;
   for (const seccion of data) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'bg-white rounded shadow p-4';
-
-    const header = document.createElement('div');
-    header.className = 'flex justify-between items-center mb-2';
-    header.innerHTML = `
-      <div>
-        <h3 class="text-lg font-bold">${seccion.titulo}</h3>
-        <p class="text-sm text-gray-500">Orden: ${seccion.orden} | ${seccion.activo ? 'Activo' : 'Inactivo'}</p>
-      </div>
-      <button class="text-blue-600 font-semibold underline" onclick="editarSeccion(${seccion.id}, '${seccion.titulo}', ${seccion.orden}, ${seccion.activo})">Editar</button>
-    `;
-
-    const productosContenedor = document.createElement('div');
-    productosContenedor.className = 'mt-4';
-
     const { data: productos } = await supabase
       .from('productos')
       .select('*')
       .eq('idMenu', seccion.id)
       .order('orden', { ascending: true });
 
-    productos?.forEach(producto => {
-      const div = document.createElement('div');
-      div.className = 'bg-gray-50 rounded p-3 mb-2 shadow cursor-pointer hover:bg-gray-100';
-      div.onclick = () => abrirEditarProducto(seccion.id, producto);
-
-      div.innerHTML = `
-  <div class="flex gap-4 justify-between items-start">
-    <div class="flex gap-4">
-      ${producto.imagen ? `<img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${producto.imagen}" class="w-16 h-16 object-cover rounded">` : ''}
-      <div>
-        <h4 class="text-md font-semibold">${producto.nombre}</h4>
-        <p class="text-sm text-gray-600">${producto.descripcion || ''}</p>
-        <p class="text-blue-600 font-bold mt-1">$${producto.precio.toFixed(2)}</p>
-      </div>
-    </div>
-   <button onclick="eliminarProducto(${producto.id}, '${producto.nombre}', '${producto.imagen ?? ''}')" class="text-red-600 text-sm underline ml-4">Eliminar</button>
-  </div>
-`;
-      productosContenedor.appendChild(div);
-    });
-
-    const btnAgregar = document.createElement('button');
-    btnAgregar.className = 'text-blue-600 font-semibold underline mt-2';
-    btnAgregar.textContent = '+ Añadir Producto';
-    btnAgregar.onclick = () => abrirEditarProducto(seccion.id);
-    productosContenedor.appendChild(btnAgregar);
-
-    wrapper.appendChild(header);
-    wrapper.appendChild(productosContenedor);
-    seccionesEl.appendChild(wrapper);
+    const card = crearSeccionAccordion(seccion, productos || [], primera);
+    seccionesEl.appendChild(card);
+    primera = false;
   }
 }
 
-window.editarSeccion = (id, titulo, orden, activo) => {
+window.editarSeccion = (id, titulo, orden, activo, subtitulo = '') => {
   editandoId = id;
   inputTitulo.value = titulo;
+  if (inputSubtitulo) inputSubtitulo.value = subtitulo || '';
   inputOrden.value = orden;
   inputActivo.checked = activo;
   modal.classList.remove('hidden');
@@ -877,6 +1121,7 @@ window.editarSeccion = (id, titulo, orden, activo) => {
 btnAgregarSeccion.onclick = () => {
   editandoId = null;
   inputTitulo.value = '';
+  if (inputSubtitulo) inputSubtitulo.value = '';
   inputOrden.value = 1;
   inputActivo.checked = true;
   modal.classList.remove('hidden');
@@ -889,6 +1134,7 @@ btnCancelarSeccion.onclick = () => {
 btnGuardarSeccion.onclick = async () => {
   const nueva = {
     titulo: inputTitulo.value.trim(),
+    subtitulo: inputSubtitulo?.value.trim() || '',
     orden: parseInt(inputOrden.value),
     activo: inputActivo.checked,
     idComercio: parseInt(idComercio),
