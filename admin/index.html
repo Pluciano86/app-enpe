@@ -35,7 +35,76 @@
     import { loadAdminHeader } from './js/loadAdminHeader.js';
     loadAdminHeader();
   </script>
+  <script type="module">
+    import { supabase } from './shared/supabaseClient.js';
 
+    const avatarEl = document.getElementById('adminAvatar');
+    const nombreEl = document.getElementById('adminNombre');
+    const emailEl = document.getElementById('adminEmail');
+    const logoutBtn = document.getElementById('btnLogout');
+    const profileCard = document.getElementById('adminProfileCard');
+
+    const PLACEHOLDER = 'https://placehold.co/96x96?text=User';
+
+    async function cargarPerfil() {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      const user = userData?.user;
+      if (userErr || !user) {
+        window.location.href = './login.html';
+        return;
+      }
+
+      emailEl.textContent = user.email || '—';
+
+      const { data: perfil, error } = await supabase
+        .from('usuarios')
+        .select('nombre, apellido, imagen, rol_app')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !perfil) {
+        nombreEl.textContent = 'No autorizado';
+        avatarEl.src = PLACEHOLDER;
+        return;
+      }
+
+      const fullName = `${perfil.nombre || ''} ${perfil.apellido || ''}`.trim() || 'Sin nombre';
+      nombreEl.textContent = fullName;
+      avatarEl.src = perfil.imagen
+        ? (perfil.imagen.startsWith('http')
+            ? perfil.imagen
+            : `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${perfil.imagen}`)
+        : PLACEHOLDER;
+    }
+
+    async function handleLogout() {
+      const confirmar = confirm('¿Seguro que deseas cerrar sesión?');
+      if (!confirmar) return;
+      await supabase.auth.signOut();
+      window.location.href = './login.html';
+    }
+
+    logoutBtn?.addEventListener('click', handleLogout);
+    document.addEventListener('DOMContentLoaded', cargarPerfil);
+  </script>
+
+  <!-- Perfil rápido del admin -->
+  <section class="px-6 lg:px-8 mt-4">
+    <div id="adminProfileCard" class="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-gray-100/70 p-4 flex items-center gap-4">
+      <div class="h-14 w-14 rounded-full overflow-hidden border border-gray-200 bg-gray-100">
+        <img id="adminAvatar" src="https://placehold.co/96x96?text=User" alt="Foto de perfil" class="h-full w-full object-cover">
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs uppercase tracking-wide text-gray-500">Administrador</p>
+        <h2 id="adminNombre" class="text-lg font-semibold text-gray-900 truncate">—</h2>
+        <p id="adminEmail" class="text-sm text-gray-500 truncate">—</p>
+      </div>
+      <button id="btnLogout" class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100 border border-red-100">
+        <i class="fa-solid fa-right-from-bracket"></i>
+        Cerrar sesión
+      </button>
+    </div>
+  </section>
 
   <!-- Header y Sidebar -->
 

@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
     body { font-family: 'Kanit', sans-serif; }
+    /* Evita zoom en móviles al enfocar inputs numéricos/texto */
+    input, select, textarea { font-size: 16px; }
   </style>
 </head>
 <body class="text-gray-800 pb-20">
@@ -29,7 +31,14 @@
     }
   </style>
 
-  <section class="bg-white shadow rounded-lg px-4 py-4 mx-4 mt-4 space-y-4">
+  <section class="bg-white shadow rounded-lg px-4 py-4 mx-4 mt-4 space-y-4 max-w-6xl mx-auto">
+    <details class="space-y-4" open>
+      <summary class="cursor-pointer text-lg font-semibold flex items-center gap-2 py-2 select-none">
+        <i class="fa-solid fa-sliders text-blue-600"></i>
+        Personalización del Menú
+        <span class="text-sm text-gray-500 font-normal">Opcional</span>
+      </summary>
+
     <div class="flex items-center justify-between flex-wrap gap-3">
       <div>
         <h2 class="text-lg font-semibold text-gray-800">Personalización del Menú</h2>
@@ -262,10 +271,11 @@
         </div>
       </div>
     </div>
+    </details>
   </section>
 
   <section class="py-6 px-4 mb-16">
-    <div class="max-w-5xl mx-auto bg-white shadow rounded-lg p-4 space-y-3">
+    <div class="max-w-6xl mx-auto bg-white shadow rounded-lg p-4 space-y-3">
       <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 class="text-lg font-semibold text-gray-800">Secciones y productos</h2>
@@ -334,6 +344,9 @@
     </div>
   </div>
 </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded shadow-lg text-white bg-black/80 hidden z-50"></div>
 
   <footer class="fixed bottom-0 w-full bg-[#231F20] text-white py-4 px-4 text-center text-sm">
     <a id="linkPerfil" href="#" class="block">

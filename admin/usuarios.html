@@ -11,7 +11,7 @@
     body { font-family: 'Kanit', sans-serif; }
   </style>
 </head>
-<body class="bg-gray-50">
+<body class="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-800 text-white">
 
   <!-- Header y Sidebar -->
   <div id="headerContainer"></div>
@@ -20,36 +20,42 @@
     loadAdminHeader();
   </script>
 
-  <main class="px-4 py-6 space-y-6">
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <h1 class="text-2xl text-center md:text-left font-medium">Listado de Usuarios</h1>
-      <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow inline-flex items-center gap-2 self-center">
-        <i class="fas fa-user-plus"></i>
-        Nuevo Usuario
-      </button>
-    </div>
+  <main class="px-4 lg:px-6 py-8 max-w-6xl mx-auto space-y-6">
+    <div class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-[0.25em] text-gray-400">Panel</p>
+          <h1 class="text-2xl font-semibold text-white">Listado de Usuarios</h1>
+        </div>
+        <button class="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg shadow inline-flex items-center gap-2 self-center">
+          <i class="fas fa-user-plus"></i>
+          Nuevo Usuario
+        </button>
+      </div>
 
-    <!-- Filtros -->
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      <input id="search-nombre" type="text" placeholder="Buscar por nombre..." class="border px-3 py-2 rounded w-full" />
+      <!-- Filtros -->
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
+        <input id="search-nombre" type="text" placeholder="Buscar por nombre o email..." class="border border-white/10 bg-white/10 text-white placeholder-gray-300 px-3 py-2 rounded-lg w-full focus:outline-none focus:ring focus:border-cyan-400" />
 
-      <select id="search-municipio" class="border px-3 py-2 rounded w-full">
-        <option value="">Todos los municipios</option>
-      </select>
+        <select id="search-municipio" class="border border-white/10 bg-white/10 text-white px-3 py-2 rounded-lg w-full focus:outline-none focus:ring focus:border-cyan-400">
+          <option value="">Todos los municipios</option>
+        </select>
 
-      <select id="search-tipo" class="border px-3 py-2 rounded w-full">
-        <option value="">Todos</option>
-        <option value="regulares">Regulares</option>
-        <option value="admins-comercio">Administradores de Comercio</option>
-        <option value="colaboradores-comercio">Colaboradores de Comercio</option>
-      </select>
+        <select id="search-tipo" class="border border-white/10 bg-white/10 text-white px-3 py-2 rounded-lg w-full focus:outline-none focus:ring focus:border-cyan-400">
+          <option value="">Todos</option>
+          <option value="up">Membresía Up</option>
+          <option value="regulares">Regulares</option>
+          <option value="admins-comercio">Administradores de Comercio</option>
+          <option value="colaboradores-comercio">Editores de Comercio</option>
+        </select>
+      </div>
     </div>
 
     <!-- Tabla responsive -->
-    <div class="overflow-x-auto bg-white rounded shadow hidden lg:block">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-100">
-          <tr class="text-left text-xs font-medium text-gray-700">
+    <div class="overflow-x-auto bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl hidden lg:block">
+      <table class="min-w-full divide-y divide-white/10 text-white">
+        <thead class="bg-white/5">
+          <tr class="text-left text-xs font-medium text-gray-200">
             <th class="px-4 py-3">Foto</th>
             <th class="px-4 py-3">Nombre</th>
             <th class="px-4 py-3">Municipio</th>
@@ -59,7 +65,7 @@
             <th class="px-4 py-3 text-center">Acciones</th>
           </tr>
         </thead>
-        <tbody id="tabla-usuarios" class="divide-y divide-gray-100 text-sm">
+        <tbody id="tabla-usuarios" class="divide-y divide-white/10 text-sm">
           <!-- Datos dinámicos -->
         </tbody>
       </table>

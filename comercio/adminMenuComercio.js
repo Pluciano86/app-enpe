@@ -100,6 +100,7 @@ let tema;
 const COVER_BUCKET = 'galeriacomercios';
 const COVER_PREFIX = 'menus/portada';
 const BACKGROUND_PREFIX = 'menus/background';
+const toastEl = document.getElementById('toast');
 const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const fuentesSeleccionadas = {
   body: null,
@@ -216,6 +217,19 @@ function setLoading(button, isLoading, texto = 'Guardando...') {
     button.disabled = false;
     button.classList.remove('opacity-60', 'cursor-not-allowed');
   }
+}
+
+function showToast(mensaje, tipo = 'info') {
+  if (!toastEl) return;
+  toastEl.textContent = mensaje;
+  const color = tipo === 'error' ? 'bg-red-600' : tipo === 'success' ? 'bg-green-600' : 'bg-black/80';
+  toastEl.className = `fixed top-4 right-4 px-4 py-3 rounded shadow-lg text-white z-50 transition-opacity duration-300 ${color}`;
+  toastEl.classList.remove('hidden');
+  toastEl.style.opacity = '1';
+  setTimeout(() => {
+    toastEl.style.opacity = '0';
+    setTimeout(() => toastEl.classList.add('hidden'), 300);
+  }, 2500);
 }
 
 function ensureFontLink(id, url) {
@@ -907,7 +921,7 @@ async function guardarNuevoOrdenSecciones() {
     const ordenLabel = item?.querySelector('[data-orden-label]');
     if (ordenLabel) ordenLabel.textContent = `#${orden}`;
     const infoOrden = item?.querySelector('[data-info-orden]');
-    if (infoOrden) infoOrden.textContent = `Orden ${orden} · ${infoOrden.dataset.productos || 0} productos`;
+    if (infoOrden) infoOrden.textContent = `${infoOrden.dataset.productos || 0} productos`;
   });
 
   guardandoOrden = true;
@@ -918,9 +932,10 @@ async function guardarNuevoOrdenSecciones() {
     const fallo = resultados.find((r) => r.error)?.error;
     if (fallo) throw fallo;
     if (isDev) console.log('[adminMenu] Orden de secciones actualizado', updates);
+    showToast('Orden actualizado', 'success');
   } catch (err) {
     console.error('Error actualizando orden de secciones:', err);
-    alert('No se pudo actualizar el orden. Intenta de nuevo.');
+    showToast('No se pudo actualizar el orden. Intenta de nuevo.', 'error');
   } finally {
     guardandoOrden = false;
     await cargarSecciones();
@@ -932,10 +947,13 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
   const wrapper = document.createElement('article');
   wrapper.className = 'border border-gray-200 rounded-lg shadow-sm overflow-hidden bg-white cursor-grab';
   wrapper.dataset.idSeccion = seccion.id;
+  const bodyId = `seccion-body-${seccion.id}`;
 
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'w-full flex justify-between items-center px-4 py-3 text-left hover:bg-gray-50 transition';
+  toggle.setAttribute('aria-expanded', expandir ? 'true' : 'false');
+  toggle.setAttribute('aria-controls', bodyId);
 
   const izquierda = document.createElement('div');
   izquierda.className = 'flex flex-col';
@@ -956,7 +974,7 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
   meta.className = 'text-xs text-gray-500';
   meta.dataset.infoOrden = 'true';
   meta.dataset.productos = totalProductos;
-  meta.textContent = `Orden ${seccion.orden} · ${totalProductos} producto${totalProductos === 1 ? '' : 's'}`;
+  meta.textContent = `${totalProductos} producto${totalProductos === 1 ? '' : 's'}`;
 
   izquierda.appendChild(titulo);
   izquierda.appendChild(meta);
@@ -969,8 +987,9 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
   estado.textContent = seccion.activo ? 'Activa' : 'Inactiva';
 
   const handle = document.createElement('div');
-  handle.className = 'flex items-center gap-2 text-gray-400 hover:text-gray-600 cursor-grab drag-handle select-none';
+  handle.className = 'flex items-center gap-2 text-gray-400 hover:text-gray-600 cursor-grab drag-handle select-none px-2 py-1 rounded hover:bg-gray-100';
   handle.title = 'Arrastra para reordenar';
+  handle.setAttribute('aria-label', 'Arrastrar para reordenar sección');
   handle.setAttribute('draggable', 'true');
 
   const iconoGrip = document.createElement('i');
@@ -996,6 +1015,7 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
 
   const body = document.createElement('div');
   body.className = 'border-t border-gray-200 bg-gray-50 hidden';
+  body.id = bodyId;
 
   const contenido = document.createElement('div');
   contenido.className = 'p-4 space-y-3';
@@ -1005,7 +1025,7 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
 
   const copy = document.createElement('p');
   copy.className = 'text-sm text-gray-600';
-  copy.textContent = 'Abre la sección para editar productos o ajustes.';
+  copy.textContent = 'Abre la sección para editar productos o ajustes. Arrastra el grip para reordenar.';
 
   const botones = document.createElement('div');
   botones.className = 'flex gap-2';
@@ -1038,8 +1058,17 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
 
   if (!productos || productos.length === 0) {
     const vacio = document.createElement('p');
-    vacio.className = 'text-sm text-gray-500 bg-white border rounded p-3';
+    vacio.className = 'text-sm text-gray-500 bg-white border rounded p-3 flex items-center justify-between';
     vacio.textContent = 'Aún no hay productos en esta sección.';
+    const ctaProd = document.createElement('button');
+    ctaProd.type = 'button';
+    ctaProd.className = 'ml-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700';
+    ctaProd.textContent = '+ Producto';
+    ctaProd.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.abrirEditarProducto(seccion.id);
+    });
+    vacio.appendChild(ctaProd);
     listaProductos.appendChild(vacio);
   } else {
     productos.forEach((producto) => {
@@ -1055,6 +1084,7 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
     const estabaOculto = body.classList.contains('hidden');
     body.classList.toggle('hidden');
     chevron.classList.toggle('rotate-180', estabaOculto);
+    toggle.setAttribute('aria-expanded', estabaOculto ? 'true' : 'false');
   });
 
   handle.addEventListener('click', (e) => e.stopPropagation());
@@ -1091,7 +1121,19 @@ async function cargarSecciones() {
 
   seccionesEl.innerHTML = '';
   if (!data || data.length === 0) {
-    seccionesEl.innerHTML = '<p class="text-sm text-gray-500">Aún no hay secciones creadas. Usa "Nueva Sección" para comenzar.</p>';
+    seccionesEl.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.className = 'border border-dashed border-gray-300 rounded-lg p-6 text-center text-sm text-gray-600 bg-gray-50';
+    empty.innerHTML = `
+      <p class="font-semibold text-gray-700 mb-2">Aún no hay secciones creadas.</p>
+      <p class="mb-4">Crea tu primera sección para añadir productos.</p>
+    `;
+    const cta = document.createElement('button');
+    cta.className = 'bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700';
+    cta.textContent = '+ Nueva Sección';
+    cta.onclick = () => btnAgregarSeccion?.click();
+    empty.appendChild(cta);
+    seccionesEl.appendChild(empty);
     return;
   }
 
@@ -1103,7 +1145,7 @@ async function cargarSecciones() {
       .eq('idMenu', seccion.id)
       .order('orden', { ascending: true });
 
-    const card = crearSeccionAccordion(seccion, productos || [], primera);
+    const card = crearSeccionAccordion(seccion, productos || [], false);
     seccionesEl.appendChild(card);
     primera = false;
   }
