@@ -88,27 +88,18 @@
       setTimeout(() => loader.classList.add('hidden'), 300);
     };
 
-    async function tieneComerciosAsignados(userId) {
-      // Primera opción: columna id_usuario
+    async function obtenerAsignaciones(userId) {
+      console.log('AUTH user.id', userId);
       const { data, error } = await supabase
-        .from('usuarios_comercios')
-        .select('id')
-        .eq('id_usuario', userId)
-        .eq('activo', true)
-        .limit(1)
-        .maybeSingle();
-      if (data) return true;
-      // Fallback: columna usuario_id
-      const { data: alt, error: errAlt } = await supabase
-        .from('usuarios_comercios')
-        .select('id')
-        .eq('usuario_id', userId)
-        .eq('activo', true)
-        .limit(1)
-        .maybeSingle();
-      if (alt) return true;
-      if (error || errAlt) console.warn('Error verificando comercios asignados', error || errAlt);
-      return false;
+        .from('UsuarioComercios')
+        .select('"idComercio", rol')
+        .eq('idUsuario', userId);
+
+      console.log('UsuarioComercios data', data, 'error', error);
+
+      if (error) return { error };
+      const asignaciones = Array.isArray(data) ? data : [];
+      return { asignaciones };
     }
 
     async function handleLogin() {
@@ -132,9 +123,28 @@
         return;
       }
 
+      const { data: userSession } = await supabase.auth.getUser();
+      const authUser = userSession?.user;
+      console.log('AUTH user.id:', authUser?.id);
+      if (!authUser?.id) {
+        setMsg('Error verificando permisos');
+        hideLoader();
+        return;
+      }
+
       showLoader();
-      const valido = await tieneComerciosAsignados(data.user.id);
-      if (!valido) {
+      const { asignaciones, error: errCheck } = await obtenerAsignaciones(authUser.id);
+      if (errCheck) {
+        console.error('Error verificando permisos de acceso', errCheck);
+        setMsg(errCheck.message || 'Error verificando permisos');
+        await supabase.auth.signOut();
+        btnLogin.disabled = false;
+        btnLogin.classList.remove('opacity-70', 'cursor-not-allowed');
+        hideLoader();
+        return;
+      }
+
+      if (!asignaciones || asignaciones.length === 0) {
         setMsg('No tienes comercios asignados');
         await supabase.auth.signOut();
         btnLogin.disabled = false;
@@ -143,8 +153,16 @@
         return;
       }
 
+      // Guardar asignaciones en storage
+      try {
+        localStorage.setItem('comercio_user_id', authUser.id);
+        localStorage.setItem('comercio_asignaciones', JSON.stringify(asignaciones));
+        localStorage.setItem('comercio_id_default', asignaciones[0]?.idComercio || '');
+      } catch (_) {}
+
       setMsg('Acceso concedido', 'ok');
-      window.location.href = './dashboard.html';
+      const idRedirect = asignaciones[0]?.idComercio || '';
+      window.location.href = `./dashboardComercio.html?id=${idRedirect}`;
     }
 
   btnLogin.addEventListener('click', handleLogin);

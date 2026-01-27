@@ -54,26 +54,40 @@ loadAdminHeader();
       <div class="md:col-span-2">
         <label for="categoria">Categorías</label>
         <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
-          <span class="text-sm text-gray-600">Selecciona una o varias categorías disponibles.</span>
-          <button type="button" id="btnNuevaCategoria" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition">
-            <i class="fas fa-plus"></i> Nueva Categoría
-          </button>
+          <span class="text-sm text-gray-700">Selecciona una o varias categorías disponibles.</span>
+          <div class="flex gap-2">
+            <button type="button" id="toggleCategorias" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-800 border border-gray-300 rounded hover:bg-gray-200 transition">
+              <i class="fa-solid fa-chevron-down"></i> Mostrar/ocultar
+            </button>
+            <button type="button" id="btnNuevaCategoria" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition">
+              <i class="fas fa-plus"></i> Nueva Categoría
+            </button>
+          </div>
         </div>
-        <div id="opcionesCategorias" class="grid grid-cols-2 gap-2 bg-white border p-4 rounded shadow"></div>
         <div id="categoriasSeleccionadas" class="flex flex-wrap mt-2"></div>
+        <div id="panelCategorias" class="mt-3 hidden">
+          <div id="opcionesCategorias" class="grid grid-cols-2 gap-2 bg-white border border-gray-200 p-4 rounded shadow"></div>
+        </div>
       </div>
 
       <!-- Subcategorías -->
       <div class="md:col-span-2">
         <label for="subcategoria">Subcategorías</label>
         <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
-          <span class="text-sm text-gray-600">Relaciona subcategorías para el comercio.</span>
-          <button type="button" id="btnNuevaSubcategoria" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition">
-            <i class="fas fa-plus"></i> Nueva Subcategoría
-          </button>
+          <span class="text-sm text-gray-700">Relaciona subcategorías para el comercio.</span>
+          <div class="flex gap-2">
+            <button type="button" id="toggleSubcategorias" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-800 border border-gray-300 rounded hover:bg-gray-200 transition">
+              <i class="fa-solid fa-chevron-down"></i> Mostrar/ocultar
+            </button>
+            <button type="button" id="btnNuevaSubcategoria" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 transition">
+              <i class="fas fa-plus"></i> Nueva Subcategoría
+            </button>
+          </div>
         </div>
-        <div id="opcionesSubcategorias" class="grid grid-cols-2 gap-2 bg-white border p-4 rounded shadow"></div>
         <div id="subcategoriasSeleccionadas" class="flex flex-wrap mt-2"></div>
+        <div id="panelSubcategorias" class="mt-3 hidden">
+          <div id="opcionesSubcategorias" class="grid grid-cols-2 gap-2 bg-white border border-gray-200 p-4 rounded shadow"></div>
+        </div>
       </div>
 
       <div><label for="whatsapp">Whatsapp</label><input id="whatsapp" class="w-full border rounded px-3 py-2 text-sm" /></div>
@@ -308,6 +322,25 @@ loadAdminHeader();
       console.error('❌ Error cargando horarios:', err);
     }
   });
+
+  // Toggle acordeones de categorías
+  const toggleCategorias = document.getElementById('toggleCategorias');
+  const toggleSubcategorias = document.getElementById('toggleSubcategorias');
+  const panelCategorias = document.getElementById('panelCategorias');
+  const panelSubcategorias = document.getElementById('panelSubcategorias');
+
+  const togglePanel = (btn, panel) => {
+    if (!btn || !panel) return;
+    btn.addEventListener('click', () => {
+      panel.classList.toggle('hidden');
+      const icon = btn.querySelector('i');
+      if (icon) icon.classList.toggle('rotate-180');
+    });
+  };
+
+  togglePanel(toggleCategorias, panelCategorias);
+  togglePanel(toggleSubcategorias, panelSubcategorias);
+
 </script>
 
 </body>

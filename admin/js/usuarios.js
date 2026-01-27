@@ -10,6 +10,23 @@ const filtroTipo = document.getElementById('search-tipo');
 const PLACEHOLDER_FOTO = 'https://placehold.co/80x80?text=User';
 
 let usuariosOriginales = [];
+let comerciosModal = [];
+let comerciosSeleccionados = new Set();
+
+const modalCrear = document.getElementById('modalCrearUsuario');
+const btnNuevoUsuario = document.getElementById('btnNuevoUsuario');
+const btnCerrarModal = document.getElementById('btnCerrarModal');
+const btnCancelarCrear = document.getElementById('btnCancelarCrear');
+const btnConfirmarCrear = document.getElementById('btnConfirmarCrear');
+const inputNombre = document.getElementById('nuevoNombre');
+const inputEmail = document.getElementById('nuevoEmail');
+const inputPassword = document.getElementById('nuevoPassword');
+const btnTogglePassword = document.getElementById('togglePassword');
+const checkForcePassword = document.getElementById('forcePasswordChange');
+const inputBuscarComercio = document.getElementById('buscarComercioModal');
+const listaComerciosModal = document.getElementById('listaComerciosModal');
+const contadorComercios = document.getElementById('contadorComercios');
+const crearUsuarioError = document.getElementById('crearUsuarioError');
 
 function formatearFecha(iso) {
   if (!iso) return '—';
@@ -245,6 +262,166 @@ function inicializarFiltros() {
   });
 }
 
+function toggleModalCrear(show = false) {
+  if (!modalCrear) return;
+  modalCrear.classList.toggle('hidden', !show);
+  modalCrear.classList.toggle('flex', show);
+  if (!show) resetModalCrear();
+}
+
+function resetModalCrear() {
+  [inputNombre, inputEmail, inputPassword, inputBuscarComercio].forEach(inp => {
+    if (inp) inp.value = '';
+  });
+  if (checkForcePassword) checkForcePassword.checked = false;
+  comerciosSeleccionados = new Set();
+  actualizarContadorComercios();
+  renderizarListaComercios();
+  mostrarErrorCrear('');
+}
+
+function mostrarErrorCrear(mensaje = '') {
+  if (!crearUsuarioError) return;
+  if (!mensaje) {
+    crearUsuarioError.classList.add('hidden');
+    crearUsuarioError.textContent = '';
+  } else {
+    crearUsuarioError.classList.remove('hidden');
+    crearUsuarioError.textContent = mensaje;
+  }
+}
+
+function actualizarContadorComercios() {
+  if (contadorComercios) contadorComercios.textContent = `Seleccionados: ${comerciosSeleccionados.size}`;
+}
+
+function normalizarTexto(str = '') {
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function renderizarListaComercios(filtro = '') {
+  if (!listaComerciosModal) return;
+  const term = normalizarTexto(filtro.trim());
+  listaComerciosModal.innerHTML = '';
+
+  const listaFiltrada = comerciosModal.filter(c =>
+    normalizarTexto(c.nombre).includes(term)
+  );
+
+  if (!listaFiltrada.length) {
+    listaComerciosModal.innerHTML = '<p class="p-3 text-sm text-gray-500">No hay comercios que coincidan</p>';
+    actualizarContadorComercios();
+    return;
+  }
+
+  listaFiltrada.forEach(comercio => {
+    const label = document.createElement('label');
+    label.className = 'flex items-center justify-between px-3 py-2 hover:bg-gray-50';
+
+    const left = document.createElement('div');
+    left.className = 'flex items-center gap-2';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = comercio.id;
+    checkbox.checked = comerciosSeleccionados.has(comercio.id);
+    checkbox.className = 'h-4 w-4';
+    checkbox.addEventListener('change', (e) => {
+      if (e.target.checked) comerciosSeleccionados.add(comercio.id);
+      else comerciosSeleccionados.delete(comercio.id);
+      actualizarContadorComercios();
+    });
+
+    const nombre = document.createElement('span');
+    nombre.className = 'text-sm text-gray-800';
+    nombre.textContent = comercio.nombre;
+
+    left.appendChild(checkbox);
+    left.appendChild(nombre);
+    label.appendChild(left);
+
+    listaComerciosModal.appendChild(label);
+  });
+
+  actualizarContadorComercios();
+}
+
+async function cargarComerciosModal() {
+  if (!listaComerciosModal) return;
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('id, nombre')
+    .order('nombre');
+
+  if (error) {
+    console.error('Error cargando comercios:', error);
+    mostrarErrorCrear('No se pudieron cargar los comercios');
+    return;
+  }
+
+  comerciosModal = data || [];
+  renderizarListaComercios(inputBuscarComercio?.value || '');
+}
+
+function validarFormularioCrear() {
+  const nombre = (inputNombre?.value || '').trim();
+  const email = (inputEmail?.value || '').trim();
+  const password = inputPassword?.value || '';
+
+  if (!nombre) return 'El nombre es obligatorio';
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) return 'Email inválido';
+  if (password.length < 6) return 'La contraseña debe tener al menos 6 caracteres';
+  return '';
+}
+
+async function crearUsuario() {
+  const errorValidacion = validarFormularioCrear();
+  if (errorValidacion) {
+    mostrarErrorCrear(errorValidacion);
+    return;
+  }
+  mostrarErrorCrear('');
+
+  if (!btnConfirmarCrear) return;
+  const textoOriginal = btnConfirmarCrear.textContent;
+  btnConfirmarCrear.disabled = true;
+  btnConfirmarCrear.textContent = 'Creando...';
+
+  const payload = {
+    nombre: (inputNombre?.value || '').trim(),
+    email: (inputEmail?.value || '').trim(),
+    password: inputPassword?.value || '',
+    comercios: Array.from(comerciosSeleccionados),
+    force_password_change: checkForcePassword?.checked || false
+  };
+
+  const { data, error } = await supabase.functions.invoke('crear_usuario_comercio', {
+    body: payload
+  });
+
+  btnConfirmarCrear.disabled = false;
+  btnConfirmarCrear.textContent = textoOriginal;
+
+  if (error) {
+    console.error('Error creando usuario:', error);
+    mostrarErrorCrear(error.message || 'No se pudo crear el usuario');
+    return;
+  }
+
+  if (data?.ok) {
+    toggleModalCrear(false);
+    alert('Usuario creado');
+    await cargarUsuarios();
+    return;
+  }
+
+  mostrarErrorCrear(data?.message || 'No se pudo crear el usuario');
+}
+
 async function cargarMunicipios() {
   if (!filtroMunicipio) return;
   const { data, error } = await supabase
@@ -311,6 +488,25 @@ async function init() {
   await cargarMunicipios();
   await cargarUsuarios();
   inicializarFiltros();
+  await cargarComerciosModal();
+
+  if (btnNuevoUsuario) btnNuevoUsuario.addEventListener('click', () => toggleModalCrear(true));
+  [btnCerrarModal, btnCancelarCrear].forEach(btn => {
+    if (btn) btn.addEventListener('click', () => toggleModalCrear(false));
+  });
+  if (inputBuscarComercio) {
+    inputBuscarComercio.addEventListener('input', (e) => renderizarListaComercios(e.target.value || ''));
+  }
+  if (btnConfirmarCrear) btnConfirmarCrear.addEventListener('click', crearUsuario);
+  if (btnTogglePassword && inputPassword) {
+    btnTogglePassword.addEventListener('click', () => {
+      const isHidden = inputPassword.type === 'password';
+      inputPassword.type = isHidden ? 'text' : 'password';
+      btnTogglePassword.innerHTML = isHidden
+        ? '<i class="fa-regular fa-eye-slash" aria-hidden="true"></i>'
+        : '<i class="fa-regular fa-eye" aria-hidden="true"></i>';
+    });
+  }
 }
 
 init();
