@@ -35,7 +35,7 @@
         <h2 id="userNombre" class="text-xl font-semibold text-gray-900 truncate">—</h2>
         <p id="userEmail" class="text-sm text-gray-600 truncate">—</p>
       </div>
-      <div class="flex flex-col items-center gap-1 justify-center self-start sm:self-center">
+      <div class="flex flex-col items-center gap-2 justify-center self-start sm:self-center">
         <button id="btnLogout" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-red-50 text-red-700 hover:bg-red-100 border border-red-100">
           <i class="fa-solid fa-right-from-bracket text-sm"></i>
         </button>
@@ -75,12 +75,13 @@
         <input type="hidden" id="modalRol" name="rol" value="">
         <label class="block">
           <span class="text-sm font-medium text-gray-700">Correo del colaborador</span>
-          <input id="inputColabEmail" name="email" type="email" required class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="persona@correo.com">
+          <input id="inputColabEmail" name="email" type="email" required class="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="persona@correo.com" autocomplete="off">
+          <div id="colabSuggestions" class="mt-1 bg-white border border-gray-200 rounded-lg shadow-md divide-y divide-gray-100 hidden"></div>
         </label>
-        <p class="text-xs text-gray-500">Nota: Este modal sólo prepara el envío; conecta aquí la lógica Supabase para invitar y asignar rol.</p>
+        <p class="text-xs text-gray-600">Se enviará una invitación a la persona seleccionada; al aceptarla, el rol del colaborador se activará automáticamente.</p>
         <div class="flex items-center justify-end gap-2">
           <button type="button" id="modalCancelar" class="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-100">Cancelar</button>
-          <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-600 text-white font-semibold hover:bg-cyan-700">Guardar</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-cyan-600 text-white font-semibold hover:bg-cyan-700">Enviar</button>
         </div>
       </form>
     </div>

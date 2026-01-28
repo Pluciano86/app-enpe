@@ -101,6 +101,21 @@ const modalCuponQrNombre = document.getElementById('modalCuponQrNombre');
 const modalCuponQrDescripcion = document.getElementById('modalCuponQrDescripcion');
 
 const btnLogout = document.getElementById('btnLogout');
+const btnMensajes = document.getElementById('btnMensajes');
+const modalMensajes = document.getElementById('modalMensajes');
+const modalMensajesCerrar = document.getElementById('modalMensajesCerrar');
+const mensajesLista = document.getElementById('mensajesLista');
+const mensajesVacio = document.getElementById('mensajesVacio');
+let mensajesUsuario = [];
+let mapaUsuariosMsg = {};
+let mapaComerciosMsg = {};
+
+const mapRolLegible = (rol) => {
+  const r = (rol || '').toLowerCase();
+  if (r === 'comercio_admin') return 'Administrador';
+  if (r === 'comercio_editor') return 'Editor';
+  return 'Colaborador';
+};
 
 const PLACEHOLDER_FOTO = 'https://placehold.co/100x100?text=User';
 const PLACEHOLDER_LUGAR = 'https://placehold.co/120x80?text=Lugar';
@@ -2323,5 +2338,224 @@ btnLogout?.addEventListener('click', async () => {
   await supabase.auth.signOut();
   window.location.href = `${basePath}/index.html`;
 });
+
+btnMensajes?.addEventListener('click', async () => {
+  await cargarMensajes();
+  modalMensajes?.classList.remove('hidden');
+  modalMensajes?.classList.add('flex');
+});
+
+modalMensajesCerrar?.addEventListener('click', () => {
+  modalMensajes?.classList.add('hidden');
+  modalMensajes?.classList.remove('flex');
+});
+
+modalMensajes?.addEventListener('click', (e) => {
+  if (e.target === modalMensajes) {
+    modalMensajes.classList.add('hidden');
+    modalMensajes.classList.remove('flex');
+  }
+});
+
+async function cargarMensajes() {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+    const uid = user?.id;
+    const email = user?.email;
+    if (!uid && !email) return;
+
+    const orParts = [];
+    if (uid) orParts.push(`destino_usuario.eq.${uid}`);
+    if (email) orParts.push(`destino_email.eq.${email}`);
+
+    const { data, error } = await supabase
+      .from('Mensajes')
+      .select('*')
+      .or(orParts.join(','))
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    console.log('AUTH UID:', uid, 'AUTH EMAIL:', email);
+    console.log('MENSAJES QUERY RESULT data:', data, 'error:', error);
+    if (error) throw error;
+    console.log('MENSAJES SIN FILTRO:', data);
+    mensajesUsuario = data || [];
+    if (!mensajesUsuario.length && Array.isArray(data) && data.length) {
+      mensajesUsuario = data; // fallback por si algún filtro vacía resultados
+    }
+    console.log('MENSAJES FILTRADOS:', mensajesUsuario);
+    await enriquecerMensajes(mensajesUsuario);
+    renderMensajes();
+  } catch (err) {
+    console.error('Error cargando mensajes', err);
+  }
+}
+
+async function enriquecerMensajes(mensajes) {
+  mapaUsuariosMsg = {};
+  mapaComerciosMsg = {};
+  const idsUsuarios = [...new Set(mensajes.map((m) => m.creado_por).filter(Boolean))];
+  const idsComercios = [...new Set(mensajes.map((m) => m.id_comercio).filter(Boolean))];
+
+  if (idsUsuarios.length) {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, apellido')
+      .in('id', idsUsuarios);
+    if (!error && Array.isArray(data)) {
+      data.forEach((u) => {
+        const nombre = `${u.nombre || ''} ${u.apellido || ''}`.trim() || u.id;
+        mapaUsuariosMsg[u.id] = nombre;
+      });
+    }
+  }
+
+  if (idsComercios.length) {
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select('id, nombre')
+      .in('id', idsComercios);
+    if (!error && Array.isArray(data)) {
+      data.forEach((c) => {
+        mapaComerciosMsg[c.id] = c.nombre || `Comercio ${c.id}`;
+      });
+    }
+  }
+}
+
+function renderMensajes() {
+  if (!mensajesLista) return;
+  mensajesLista.innerHTML = '';
+  if (!mensajesUsuario.length) {
+    mensajesVacio?.classList.remove('hidden');
+    mensajesLista.appendChild(mensajesVacio);
+    return;
+  }
+  mensajesVacio?.classList.add('hidden');
+
+  mensajesUsuario.forEach((m) => {
+    const payload = typeof m.payload === 'string' ? (() => { try { return JSON.parse(m.payload); } catch (_) { return {}; } })() : (m.payload || {});
+    const rolRaw = payload?.rol || m.rol;
+    const payloadComercio = payload?.comercio_id ?? payload?.comercioId ?? m.id_comercio;
+    const invitador =
+      (m.creado_por && mapaUsuariosMsg[m.creado_por]) ||
+      'Un usuario';
+    const rolLegible = mapRolLegible(rolRaw);
+    const comercioNombre =
+      (payloadComercio && mapaComerciosMsg[payloadComercio]) ||
+      (payloadComercio ? `Comercio ${payloadComercio}` : 'tu comercio');
+    const fechaEnvio = m.created_at || m.creado_en;
+    const fechaTexto = fechaEnvio
+      ? new Date(fechaEnvio).toLocaleString('es-ES', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })
+      : '';
+
+    const item = document.createElement('div');
+    item.className = 'border border-gray-200 rounded-lg p-3 flex flex-col gap-2';
+    const title = document.createElement('p');
+    title.className = 'font-semibold text-gray-900 text-sm';
+    title.textContent = m.tipo?.startsWith('invitacion') ? 'Invitación a colaborar' : (m.tipo || 'Mensaje');
+    const body = document.createElement('p');
+    body.className = 'text-sm text-gray-700 leading-snug';
+    const comercioTxt = payloadComercio ? `Comercio ID: ${payloadComercio}` : '';
+    body.textContent = m.tipo?.startsWith('invitacion')
+      ? `${invitador} te invitó a colaborar como ${rolLegible} en ${comercioNombre}.`
+      : `${payload?.mensaje || ''} ${payloadRol ? `Rol: ${payloadRol}.` : ''} ${comercioTxt}`;
+
+    if (fechaTexto) {
+      const fechaEl = document.createElement('span');
+      fechaEl.className = 'text-xs text-gray-500';
+      fechaEl.textContent = `Fecha: ${fechaTexto}`;
+      item.appendChild(fechaEl);
+    }
+    item.appendChild(title);
+    item.appendChild(body);
+
+    if (m.tipo?.startsWith('invitacion') && m.estado === 'pendiente') {
+      const actions = document.createElement('div');
+      actions.className = 'flex gap-2';
+      const btnAceptar = document.createElement('button');
+      btnAceptar.className = 'px-3 py-1 text-xs rounded bg-emerald-600 text-white hover:bg-emerald-700';
+      btnAceptar.textContent = 'Aceptar';
+      btnAceptar.addEventListener('click', () => responderMensaje(m, 'aceptada'));
+      const btnRechazar = document.createElement('button');
+      btnRechazar.className = 'px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700';
+      btnRechazar.textContent = 'Rechazar';
+      btnRechazar.addEventListener('click', () => responderMensaje(m, 'rechazada'));
+      actions.appendChild(btnAceptar);
+      actions.appendChild(btnRechazar);
+      item.appendChild(actions);
+    } else {
+      const estado = document.createElement('span');
+      estado.className = 'text-xs text-gray-500';
+      estado.textContent = `Estado: ${m.estado || '—'}`;
+      item.appendChild(estado);
+    }
+    mensajesLista.appendChild(item);
+  });
+}
+
+async function responderMensaje(mensaje, estado) {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData?.user;
+    if (!user) {
+      alert('Debes iniciar sesión.');
+      return;
+    }
+
+    const estadoValido = estado === 'aceptada' || estado === 'rechazada'
+      ? estado
+      : estado === 'aceptado'
+        ? 'aceptada'
+        : 'rechazada';
+
+    if (mensaje.destino_usuario && mensaje.destino_usuario !== user.id) {
+      alert('No puedes responder esta invitación.');
+      return;
+    }
+    if (mensaje.estado !== 'pendiente') {
+      alert('Esta invitación ya fue gestionada.');
+      return;
+    }
+
+    if (estadoValido === 'aceptada') {
+      if (!mensaje.id_comercio || !mensaje.rol) {
+        alert('Datos incompletos para aceptar la invitación.');
+        return;
+      }
+      const { error: upsertErr } = await supabase
+        .from('UsuarioComercios')
+        .upsert(
+          {
+            idUsuario: user.id,
+            idComercio: mensaje.id_comercio,
+            rol: mensaje.rol
+          },
+          { onConflict: 'idUsuario,idComercio' }
+        );
+      if (upsertErr) throw upsertErr;
+    }
+
+    const { error } = await supabase
+      .from('Mensajes')
+      .update({ estado: estadoValido })
+      .eq('id', mensaje.id);
+    if (error) throw error;
+
+    await cargarMensajes();
+    alert(`Invitación ${estadoValido}`);
+  } catch (err) {
+    console.error('Error actualizando mensaje', err);
+    alert('No se pudo actualizar el mensaje.');
+  }
+}
 
 init();

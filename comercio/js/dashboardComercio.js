@@ -16,6 +16,8 @@ const modalComercioId = document.getElementById('modalComercioId');
 const modalRol = document.getElementById('modalRol');
 const modalRolTexto = document.getElementById('modalRolTexto');
 const inputColabEmail = document.getElementById('inputColabEmail');
+const colabSuggestions = document.getElementById('colabSuggestions');
+let colabSearchTimer;
 
 async function getUser() {
   const { data, error } = await supabase.auth.getUser();
@@ -206,6 +208,7 @@ function abrirModalColab(comercio, rol) {
   modalRolTexto.textContent = rol === 'admin' ? 'Administrador' : 'Editor';
   inputColabEmail.value = '';
   inputColabEmail.focus();
+  limpiarSugerencias();
 }
 
 function cerrarModalColab() {
@@ -213,6 +216,7 @@ function cerrarModalColab() {
   modalColab.classList.add('hidden');
   modalColab.classList.remove('flex');
   formColab?.reset();
+  limpiarSugerencias();
 }
 
 modalCerrar?.addEventListener('click', cerrarModalColab);
@@ -223,13 +227,120 @@ modalColab?.addEventListener('click', (e) => {
 
 formColab?.addEventListener('submit', (e) => {
   e.preventDefault();
-  // TODO: Implementar lógica de invitación/asignación vía Supabase.
-  console.log('Pendiente implementar invitación', {
-    comercioId: modalComercioId.value,
-    rol: modalRol.value,
-    email: inputColabEmail.value,
-  });
-  cerrarModalColab();
+  enviarInvitacion();
+});
+
+async function enviarInvitacion() {
+  const emailInvitado = inputColabEmail.value.trim().toLowerCase();
+  if (!emailInvitado) return;
+  try {
+    const idComercio = Number(modalComercioId.value);
+    if (!idComercio) {
+      console.error('idComercio inválido', modalComercioId.value);
+      alert('No se pudo identificar el comercio.');
+      return;
+    }
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    const user = userData?.user;
+    if (userErr || !user) {
+      console.error('Error obteniendo usuario auth', userErr);
+      alert('No hay sesión activa. Intenta de nuevo.');
+      return;
+    }
+
+    const { data: usr, error: usrErr } = await supabase
+      .from('usuarios')
+      .select('id,email')
+      .ilike('email', emailInvitado)
+      .maybeSingle();
+
+    if (usrErr || !usr) {
+      console.error('Email no existe en usuarios', usrErr);
+      alert('Ese email no existe en usuarios (debe registrarse primero).');
+      return;
+    }
+
+    const rolSeleccionado = modalRol.value === 'admin' ? 'comercio_admin' : 'comercio_editor';
+
+    const { error } = await supabase.from('Mensajes').insert({
+      id_comercio: idComercio,
+      creado_por: user.id,
+      destino_usuario: usr.id,
+      destino_email: usr.email,
+      rol: rolSeleccionado,
+      tipo: 'invitacion_colaborador',
+      payload: {
+        comercio_id: idComercio,
+        rol: rolSeleccionado,
+      },
+      estado: 'pendiente',
+    });
+    if (error) throw error;
+    alert('Invitación enviada');
+  } catch (err) {
+    console.error('Error enviando invitación', err);
+    alert('No se pudo enviar la invitación. Intenta de nuevo.');
+  } finally {
+    cerrarModalColab();
+  }
+}
+
+function limpiarSugerencias() {
+  if (!colabSuggestions) return;
+  colabSuggestions.innerHTML = '';
+  colabSuggestions.classList.add('hidden');
+}
+
+async function buscarColaboradores(term) {
+  if (!term || term.length < 2) {
+    limpiarSugerencias();
+    return;
+  }
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('email, nombre, apellido')
+    .ilike('email', `%${term}%`)
+    .limit(5);
+
+  if (error || !Array.isArray(data)) {
+    limpiarSugerencias();
+    return;
+  }
+
+  colabSuggestions.innerHTML = '';
+  if (!data.length) {
+    const empty = document.createElement('div');
+    empty.className = 'px-3 py-2 text-sm text-gray-500';
+    empty.textContent = 'Sin resultados';
+    colabSuggestions.appendChild(empty);
+  } else {
+    data.forEach((u) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'w-full text-left px-3 py-2 text-sm hover:bg-gray-100';
+      const nombre = `${u.nombre || ''} ${u.apellido || ''}`.trim();
+      item.innerHTML = `<span class="font-semibold">${u.email}</span>${nombre ? ` · <span class="text-gray-600">${nombre}</span>` : ''}`;
+      item.addEventListener('click', () => {
+        inputColabEmail.value = u.email;
+        limpiarSugerencias();
+      });
+      colabSuggestions.appendChild(item);
+    });
+  }
+  colabSuggestions.classList.remove('hidden');
+}
+
+inputColabEmail?.addEventListener('input', (e) => {
+  const term = e.target.value.trim();
+  if (colabSearchTimer) clearTimeout(colabSearchTimer);
+  colabSearchTimer = setTimeout(() => buscarColaboradores(term), 200);
+});
+
+document.addEventListener('click', (e) => {
+  if (!colabSuggestions || colabSuggestions.classList.contains('hidden')) return;
+  if (modalColab && modalColab.contains(e.target) && (e.target === inputColabEmail || colabSuggestions.contains(e.target))) return;
+  limpiarSugerencias();
 });
 
 btnLogout?.addEventListener('click', async () => {
