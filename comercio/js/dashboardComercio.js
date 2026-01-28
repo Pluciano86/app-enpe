@@ -7,6 +7,15 @@ const userAvatar = document.getElementById('userAvatar');
 const userRol = document.getElementById('userRol');
 const comerciosLista = document.getElementById('comerciosLista');
 const comerciosVacio = document.getElementById('comerciosVacio');
+const modalColab = document.getElementById('modalColab');
+const modalCerrar = document.getElementById('modalCerrar');
+const modalCancelar = document.getElementById('modalCancelar');
+const formColab = document.getElementById('formColab');
+const modalComercioNombre = document.getElementById('modalComercioNombre');
+const modalComercioId = document.getElementById('modalComercioId');
+const modalRol = document.getElementById('modalRol');
+const modalRolTexto = document.getElementById('modalRolTexto');
+const inputColabEmail = document.getElementById('inputColabEmail');
 
 async function getUser() {
   const { data, error } = await supabase.auth.getUser();
@@ -57,13 +66,30 @@ async function cargarComercios(user) {
     return;
   }
 
+  // Obtener conteo de colaboradores por comercio
+  const colaboradoresMap = {};
+  const { data: colaboradores, error: errCols } = await supabase
+    .from('UsuarioComercios')
+    .select('idComercio, rol')
+    .in('idComercio', ids);
+
+  if (!errCols && Array.isArray(colaboradores)) {
+    colaboradores.forEach((col) => {
+      const key = col.idComercio;
+      if (!colaboradoresMap[key]) colaboradoresMap[key] = { admin: 0, editor: 0 };
+      const rol = (col.rol || '').toLowerCase();
+      if (rol.includes('admin')) colaboradoresMap[key].admin += 1;
+      if (rol.includes('editor')) colaboradoresMap[key].editor += 1;
+    });
+  }
+
   // Asignar rol principal (primera asignación)
   const rolPrincipal = relaciones?.[0]?.rol;
   if (userRol) userRol.textContent = rolPrincipal ? rolPrincipal.replace('comercio_', '').replace('_', ' ').toUpperCase() : 'USUARIO';
 
   const { data: comercios, error: errCom } = await supabase
     .from('Comercios')
-    .select('id, nombre, logo, direccion, municipio, telefono')
+    .select('id, nombre, logo')
     .in('id', ids);
 
   if (errCom || !comercios?.length) {
@@ -73,54 +99,138 @@ async function cargarComercios(user) {
 
   comercios.forEach((c) => {
     const card = document.createElement('div');
-    card.className = 'bg-white/5 border border-white/10 rounded-xl shadow p-4 flex gap-4';
+    const counts = colaboradoresMap[c.id] || { admin: 0, editor: 0 };
+    card.className = 'bg-white border border-gray-200 rounded-2xl shadow p-4 sm:p-5 flex flex-col gap-4 sm:gap-5';
+
+    // fila superior
+    const filaTop = document.createElement('div');
+    filaTop.className = 'flex justify-center';
+
+    const bloqueInfo = document.createElement('div');
+    bloqueInfo.className = 'flex flex-col items-center gap-3 sm:gap-4';
+
+    const logoWrap = document.createElement('div');
+    logoWrap.className = 'flex flex-col items-center';
 
     const logo = document.createElement('img');
-    logo.className = 'w-16 h-16 rounded object-cover border border-gray-200 bg-white';
+    logo.className = 'w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border border-gray-200 bg-white';
     logo.src = c.logo
       ? (c.logo.startsWith('http')
           ? c.logo
           : `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${c.logo}`)
-      : 'https://placehold.co/80x80?text=Logo';
+      : 'https://placehold.co/140x140?text=Logo';
     logo.alt = c.nombre || 'Logo';
 
-    const info = document.createElement('div');
-    info.className = 'flex-1 space-y-1 text-white';
-    info.innerHTML = `
-      <h4 class="text-lg font-semibold text-white">${c.nombre || 'Sin nombre'}</h4>
-      <p class="text-sm text-gray-200">${c.municipio || ''}</p>
-      <p class="text-sm text-gray-300">${c.direccion || ''}</p>
-      <p class="text-sm text-gray-300">${c.telefono || ''}</p>
-    `;
+    const logoName = document.createElement('p');
+    logoName.className = 'mt-2 text-xl sm:text-2xl font-bold text-gray-900 text-center truncate max-w-[14rem]';
+    logoName.textContent = c.nombre || 'Sin nombre';
 
-    const acciones = document.createElement('div');
-    acciones.className = 'flex flex-col gap-2';
+    logoWrap.appendChild(logo);
+    logoWrap.appendChild(logoName);
+
+    bloqueInfo.appendChild(logoWrap);
+
+    filaTop.appendChild(bloqueInfo);
+
+    // fila inferior botones principales
+    const filaBottom = document.createElement('div');
+    filaBottom.className = 'grid grid-cols-1 sm:grid-cols-3 gap-2';
 
     const btnEditar = document.createElement('a');
     btnEditar.href = `./editarPerfilComercio.html?id=${c.id}`;
-    btnEditar.className = 'px-3 py-2 text-sm bg-cyan-600 hover:bg-cyan-700 text-white rounded text-center';
-    btnEditar.textContent = 'Editar perfil';
+    btnEditar.className = 'w-full px-3 py-2 text-sm sm:text-base font-normal leading-snug bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-center flex items-center justify-center';
+    btnEditar.textContent = 'Editar Perfil';
 
     const btnMenu = document.createElement('a');
     btnMenu.href = `./adminMenuComercio.html?id=${c.id}`;
-    btnMenu.className = 'px-3 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded text-center';
-    btnMenu.textContent = 'Administrar Menú';
+    btnMenu.className = 'w-full px-3 py-2 text-sm sm:text-base font-normal leading-snug bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-center flex items-center justify-center';
+    btnMenu.textContent = 'Editar Menú';
 
     const btnEspeciales = document.createElement('a');
     btnEspeciales.href = `./especiales/adminEspeciales.html?id=${c.id}`;
-    btnEspeciales.className = 'px-3 py-2 text-sm bg-amber-500 hover:bg-amber-600 text-white rounded text-center';
+    btnEspeciales.className = 'w-full px-3 py-2 text-sm sm:text-base font-normal leading-snug bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-center flex items-center justify-center';
+
+    const filaColab = document.createElement('div');
+    filaColab.className = 'grid grid-cols-2 gap-2';
+
+    const baseBtnColab =
+      'w-full px-3 py-2 text-sm sm:text-base font-normal leading-snug bg-[#00a7e1] hover:bg-[#0092c5] text-white rounded-lg text-center flex items-center justify-center';
+
+    const btnAgregarAdmin = document.createElement('button');
+    btnAgregarAdmin.type = 'button';
+    btnAgregarAdmin.className = baseBtnColab;
+    btnAgregarAdmin.textContent = `Agregar Admin (${counts.admin})`;
+    btnAgregarAdmin.addEventListener('click', () => abrirModalColab(c, 'admin'));
+
+    const btnAgregarEditor = document.createElement('button');
+    btnAgregarEditor.type = 'button';
+    btnAgregarEditor.className = baseBtnColab;
+    btnAgregarEditor.textContent = `Agregar Editor (${counts.editor})`;
+    btnAgregarEditor.addEventListener('click', () => abrirModalColab(c, 'editor'));
+
+    filaColab.appendChild(btnAgregarAdmin);
+    filaColab.appendChild(btnAgregarEditor);
+
+    const verColab = document.createElement('button');
+    verColab.type = 'button';
+    verColab.className = 'text-sm text-cyan-700 font-semibold underline-offset-4 hover:underline';
+    verColab.textContent = 'Ver todos los colaboradores';
+    verColab.addEventListener('click', () => verColaboradores(c.id));
     btnEspeciales.textContent = 'Almuerzos & Happy Hours';
 
-    acciones.appendChild(btnEditar);
-    acciones.appendChild(btnMenu);
-    acciones.appendChild(btnEspeciales);
+    filaBottom.appendChild(btnEditar);
+    filaBottom.appendChild(btnMenu);
+    filaBottom.appendChild(btnEspeciales);
 
-    card.appendChild(logo);
-    card.appendChild(info);
-    card.appendChild(acciones);
+    card.appendChild(filaTop);
+    card.appendChild(filaBottom);
+    card.appendChild(filaColab);
+    card.appendChild(verColab);
     comerciosLista.appendChild(card);
   });
 }
+
+function verColaboradores(comercioId) {
+  // Placeholder de navegación/listado; enlazar a la vista real de colaboradores si existe.
+  console.log('Ver colaboradores de comercio', comercioId);
+  alert('Listado de colaboradores próximamente.');
+}
+
+function abrirModalColab(comercio, rol) {
+  if (!modalColab) return;
+  modalColab.classList.remove('hidden');
+  modalColab.classList.add('flex');
+  modalComercioId.value = comercio.id || '';
+  modalComercioNombre.textContent = comercio.nombre || 'Comercio';
+  modalRol.value = rol;
+  modalRolTexto.textContent = rol === 'admin' ? 'Administrador' : 'Editor';
+  inputColabEmail.value = '';
+  inputColabEmail.focus();
+}
+
+function cerrarModalColab() {
+  if (!modalColab) return;
+  modalColab.classList.add('hidden');
+  modalColab.classList.remove('flex');
+  formColab?.reset();
+}
+
+modalCerrar?.addEventListener('click', cerrarModalColab);
+modalCancelar?.addEventListener('click', cerrarModalColab);
+modalColab?.addEventListener('click', (e) => {
+  if (e.target === modalColab) cerrarModalColab();
+});
+
+formColab?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  // TODO: Implementar lógica de invitación/asignación vía Supabase.
+  console.log('Pendiente implementar invitación', {
+    comercioId: modalComercioId.value,
+    rol: modalRol.value,
+    email: inputColabEmail.value,
+  });
+  cerrarModalColab();
+});
 
 btnLogout?.addEventListener('click', async () => {
   await supabase.auth.signOut();
