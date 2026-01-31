@@ -1,5 +1,6 @@
 import { supabase } from "../shared/supabaseClient.js";
 import { abrirModal } from "./modalEventos.js";
+import { t } from "./i18n.js";
 
 /**
  * 🔹 Cargar eventos filtrados por área o municipio
@@ -15,7 +16,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
   let nombreArea = "";
 
   try {
-    container.innerHTML = `<p class="text-gray-500 text-center">Cargando eventos...</p>`;
+    container.innerHTML = `<p class="text-gray-500 text-center">${t('area.cargandoEventos')}</p>`;
 
     // 🧭 Obtener nombres del municipio y área
     if (idMunicipio) {
@@ -128,8 +129,8 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
         mensajeFallback = `
           <div class="text-center text-gray-600 my-4 leading-snug">
             <span class="inline-block text-[#23b4e9] text-xl mr-1">🎟️</span>
-            No hay eventos disponibles en <b>${nombreMunicipio}</b>.<br>
-            Te mostramos los más cercanos en el Área <b>${nombreArea}</b>.
+            ${t('area.noEventosMunicipio')} <b>${nombreMunicipio}</b>.<br>
+            ${t('area.mostrarArea')} <b>${nombreArea}</b>.
           </div>
         `;
       }
@@ -139,10 +140,10 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
     if (!eventos || eventos.length === 0) {
       const mensaje =
         nombreMunicipio
-          ? `No hay eventos disponibles en <b>${nombreMunicipio}</b>.`
+          ? `${t('area.noEventosMunicipio')} <b>${nombreMunicipio}</b>.`
           : nombreArea
-          ? `No hay eventos disponibles en el Área <b>${nombreArea}</b>.`
-          : "No hay eventos disponibles.";
+          ? `${t('area.noEventosArea')} <b>${nombreArea}</b>.`
+          : t('area.sinEventos');
       container.innerHTML = `<p class="text-center text-gray-500 my-6">${mensaje}</p>`;
       return;
     }
@@ -196,7 +197,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
 
     const btnVerMas = document.createElement("a");
     btnVerMas.href = "listadoEventos.html";
-    btnVerMas.textContent = "Ver más eventos";
+    btnVerMas.textContent = t('area.verMasEventos');
     btnVerMas.className =
       "bg-[#0B132B] hover:bg-[#1C2541] text-white font-light py-2 px-8 rounded-lg shadow transition";
 
@@ -205,6 +206,11 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
 
   } catch (err) {
     console.error("❌ Error cargando eventos:", err);
-    container.innerHTML = `<p class="text-red-500 text-center mt-6">Error al cargar los eventos.</p>`;
+    container.innerHTML = `<p class="text-red-500 text-center mt-6">${t('area.errorEventos')}</p>`;
   }
 }
+
+// Re-render al cambiar idioma
+window.addEventListener('lang:changed', () => {
+  renderEventosCarousel("eventosCarousel", window.filtrosArea || {});
+});

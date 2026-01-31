@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script type="module" src="./js/i18n.js"></script>
   <style>
     html,
     body {
@@ -41,14 +42,14 @@
         <i class="fa-solid fa-temperature-half text-4xl"></i>
         <p id="temperatura" class="text-5xl font-light leading-none">--°</p>
       </div>
-      <p id="rangoTemperatura" class="text-base opacity-80 mt-1">
+      <p id="rangoTemperatura" class="text-base opacity-80 mt-1" data-i18n="perfilPlaya.climaRango">
         Mínima: --° · Máxima: --°
       </p>
     </div>
 
     <!-- Estado del clima -->
     <div class="flex flex-col items-center">
-      <p id="descripcionClima" class="text-base font-semibold uppercase tracking-wide mt-1">
+      <p id="descripcionClima" class="text-base font-semibold uppercase tracking-wide mt-1" data-i18n="perfilPlaya.climaActualizando">
         Actualizando...
       </p>
     </div>
@@ -69,12 +70,12 @@
   <section class="p-5 space-y-4 text-center">
     <!-- Nombre -->
     <div>
-      <h1 id="nombrePlaya" class="text-3xl font-bold text-gray-900 mb-1">Cargando...</h1>
+      <h1 id="nombrePlaya" class="text-3xl font-bold text-gray-900 mb-1" data-i18n="perfilPlaya.cargandoInfo">Cargando...</h1>
       <p id="municipioPlaya" class="text-base text-gray-600">--</p>
     </div>
 
     <!-- Apta para -->
-    <h3 class="text-lg font-semibold text-[#424242]">Playa apta para:</h3>
+    <h3 class="text-lg font-semibold text-[#424242]" data-i18n="perfilPlaya.aptaPara">Playa apta para:</h3>
     <div id="aptitudesContainer" class="flex justify-center gap-6 text-center text-gray-700 text-sm">
       <!-- Se rellena dinámicamente -->
     </div>
@@ -85,7 +86,7 @@
 </div>
 
     <p id="tiempoVehiculo" class="text-[#9c9c9c] text-xl font-medium  mb-4">
-        <i class="fas fa-car"></i> Cargando distancia...
+        <i class="fas fa-car"></i> <span data-i18n="perfilPlaya.distancia">Cargando distancia...</span>
     </p>
     <!-- Botones de navegación -->
     <div class="flex justify-center gap-4 mt-5">
@@ -107,14 +108,14 @@
 
     <button id="btnFavoritoPlaya" class="flex items-center justify-center gap-2 text-xl font-medium text-[#555] mx-auto mt-4">
       <i class="far fa-heart text-xl transition-colors duration-200"></i>
-      <span class="leading-tight">Añadir a favoritos</span>
+      <span class="leading-tight" data-i18n="perfilPlaya.btnFavorito">Añadir a favoritos</span>
     </button>
 
 <!-- Descripción -->
     <div class="bg-white rounded-lg p- shadow mt-4">
-      <h2 class="text-lg font-semibold text-gray-800 mb-2">Descripción</h2>
+      <h2 class="text-lg font-semibold text-gray-800 mb-2" data-i18n="perfilPlaya.descripcion">Descripción</h2>
       <p id="descripcionPlaya" class="text-sm text-gray-700 leading-relaxed">
-        Disfruta de esta hermosa playa con aguas cristalinas, perfecta para relajarte y conectar con la naturaleza.
+        <span data-i18n="perfilPlaya.cargandoInfo">Cargando información...</span>
       </p>
     </div>
 
@@ -201,6 +202,11 @@
 <script type="module" src="./js/calcularTiemposParaLista.js"></script> <!-- solo si NO lo importas dentro -->
 <script type="module" src="./js/cercanosPlaya.js"></script>
   <script src="js/bloquearPantalla.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
+    });
+  </script>
 </div>
 </div>
 </body>

@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { getLang, t, interpolate } from './i18n.js';
 import { calcularTiempoEnVehiculo } from '../shared/utils.js';
 import { getDrivingDistance } from '../shared/osrmClient.js';
 import { cardComercio } from './CardComercio.js';
@@ -140,6 +141,8 @@ const idCategoriaDesdeURL = obtenerIdCategoriaDesdeURL();
 
 const estado = {
   categoria: '',
+  categoriaObj: null,
+  categoriaSlug: '',
   filtros: {
     textoBusqueda: '',
     municipio: '',
@@ -162,6 +165,8 @@ const estado = {
   ultimoFetchCount: 0,
   municipioSeleccionadoManualmente: false,
   usarMunicipioDetectado: true,
+  comerciosBase: [],
+  comerciosFiltrados: [],
 };
 
 if (idCategoriaDesdeURL != null) {
@@ -171,6 +176,14 @@ if (idCategoriaDesdeURL != null) {
 if (typeof window !== 'undefined') {
   window.__estadoListadoComercios = estado;
 }
+
+// Re-render categorías / textos cuando cambia el idioma
+window.addEventListener('lang:changed', () => {
+  estado.categoria = getCategoriaLabelPorIdioma();
+  actualizarEtiquetaSubcategoria(estado.categoria);
+  const base = estado.comerciosFiltrados.length ? estado.comerciosFiltrados : estado.lista;
+  renderListado(base, { omitRefinamiento: true, skipFilter: true });
+});
 
 function setOrden(valor) {
   estado.filtros.orden = valor;
@@ -286,9 +299,23 @@ async function renderBannerInferior() {
 async function cargarNombreCategoria() {
   if (idCategoriaDesdeURL == null) return;
   try {
+    const lang = getLang();
+    const colMap = {
+      es: 'nombre_es',
+      en: 'nombre_en',
+      zh: 'nombre_zh',
+      fr: 'nombre_fr',
+      pt: 'nombre_pt',
+      de: 'nombre_de',
+      it: 'nombre_it',
+      ko: 'nombre_ko',
+      ja: 'nombre_ja',
+    };
+    const col = colMap[lang] || 'nombre_es';
+
     const { data, error } = await supabase
       .from('Categorias')
-      .select('nombre, icono')
+      .select(`id, nombre, slug, icono, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja, ${col}`)
       .eq('id', idCategoriaDesdeURL)
       .single();
     if (error || !data) return;
@@ -296,8 +323,9 @@ async function cargarNombreCategoria() {
     const titulo = getElement('tituloCategoria');
     const icono = getElement('iconoCategoria');
     const input = getElement('filtro-nombre');
+    const nombreCat = data[col] || data.nombre_es || data.nombre;
 
-    if (titulo) titulo.textContent = data.nombre;
+    if (titulo) titulo.textContent = nombreCat;
     if (icono && data.icono) {
       if (data.icono.startsWith('<i')) {
         icono.innerHTML = data.icono;
@@ -305,30 +333,36 @@ async function cargarNombreCategoria() {
         icono.innerHTML = `<i class="fas ${data.icono}"></i>`;
       }
     }
-    if (input) input.placeholder = `Buscar en ${data.nombre}`;
+    if (input) {
+      input.placeholder = interpolate(t('listado.buscarEn'), { categoria: nombreCat });
+    }
 
-    actualizarEtiquetaSubcategoria(data.nombre);
-    estado.categoria = data.nombre || '';
+    actualizarEtiquetaSubcategoria(nombreCat);
+    estado.categoria = nombreCat || '';
+    estado.categoriaSlug = data.slug || '';
+    estado.categoriaObj = data;
   } catch (err) {
     console.error('Error cargando categoría:', err);
   }
 }
 
+function getCategoriaLabelPorIdioma() {
+  const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase();
+  const col = `nombre_${lang}`;
+  const c = estado.categoriaObj || {};
+  return c[col] || c.nombre_es || c.nombre || estado.categoria || '';
+}
+
 function actualizarEtiquetaSubcategoria(nombreCategoria) {
   const label = document.querySelector('label[for="filtro-subcategoria"]');
-  if (!label || !nombreCategoria) return;
-  switch (nombreCategoria.toLowerCase()) {
-    case 'restaurantes':
-      label.textContent = 'Tipo de Comida';
-      break;
-    case 'servicios':
-      label.textContent = 'Tipo de Servicio';
-      break;
-    case 'tiendas':
-      label.textContent = 'Tipo de Tienda';
-      break;
-    default:
-      label.textContent = 'Subcategoría';
+  if (!label) return;
+  const slug = (estado.categoriaSlug || '').toLowerCase();
+  if (slug === 'restaurantes' || slug === 'food_trucks') {
+    label.textContent = t('listado.tipoDeComida');
+  } else if (nombreCategoria) {
+    label.textContent = interpolate(t('listado.tipoDe'), { categoria: nombreCategoria });
+  } else {
+    label.textContent = interpolate(t('listado.tipoDe'), { categoria: t('listado.titulo') });
   }
 }
 
@@ -403,9 +437,7 @@ function normalizarComercio(record, referencia = obtenerReferenciaUsuarioParaCal
     latitud: Number(record.latitud),
     longitud: Number(record.longitud),
     distanciaKm: Number.isFinite(distanciaKm) ? distanciaKm : null,
-    tiempoVehiculo: textoLargo,
-    tiempoTexto: textoLargo,
-    minutosCrudos: minutosTotales,
+    minutosEstimados: minutosTotales,
     abierto: abiertoBool,
     abiertoAhora: abiertoBool,
     abierto_ahora: abiertoBool,
@@ -722,7 +754,7 @@ function limpiarMensajesPrevios() {
   mensajesContainer = null;
 }
 
-async function renderListado(lista = estado.lista, { omitRefinamiento = false } = {}) {
+async function renderListado(lista = estado.lista, { omitRefinamiento = false, skipFilter = false } = {}) {
   resetSugerencias();
   await renderTopBanner();
 
@@ -740,7 +772,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
   const listaOrdenada = ordenarLocalmente(lista);
   console.log('[main] renderizado final:', listaOrdenada.length, 'tarjetas');
 
-  let filtrados = [...listaOrdenada];
+  let filtrados = skipFilter ? [...lista] : [...listaOrdenada];
 
   const textoBusquedaRaw = estado.filtros.textoBusqueda?.trim() || '';
   const hayBusquedaNombre = textoBusquedaRaw.length >= 3;
@@ -756,7 +788,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
         .filter((id) => Number.isFinite(id))
     : [];
 
-  if (hayBusquedaNombre) {
+  if (!skipFilter && hayBusquedaNombre) {
     const idsPorNombre = filtrados
       .filter((c) => {
         const nombre = normalizarTexto(c.nombre || '');
@@ -765,23 +797,18 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
       .map((c) => c.id);
     const idsCombinados = new Set([...idsPorNombre, ...idsPorProductos, ...idsPorMenus]);
     filtrados = filtrados.filter((c) => idsCombinados.has(c.id));
-  } else if (idsPorProductos.length > 0 || idsPorMenus.length > 0) {
+  } else if (!skipFilter && (idsPorProductos.length > 0 || idsPorMenus.length > 0)) {
     const idsSet = new Set([...idsPorProductos, ...idsPorMenus]);
     filtrados = filtrados.filter((c) => idsSet.has(c.id));
   }
 
   const hayBusquedaPlato = idsPorProductos.length > 0 || idsPorMenus.length > 0;
 
-  const chipMunicipio = getElement('chipMunicipioActivo');
-  if (chipMunicipio) {
-    chipMunicipio.classList.toggle('hidden', hayBusquedaNombre || hayBusquedaPlato);
-  }
-
-  if (estado.filtros.municipio && !hayBusquedaNombre && !hayBusquedaPlato) {
+  if (!skipFilter && estado.filtros.municipio && !hayBusquedaNombre && !hayBusquedaPlato) {
     filtrados = filtrados.filter((c) => c.pueblo === estado.filtros.municipio);
   }
 
-  if (estado.filtros.subcategoria) {
+  if (!skipFilter && estado.filtros.subcategoria) {
     const subcategoriaFiltro = Number(estado.filtros.subcategoria);
     if (Number.isFinite(subcategoriaFiltro)) {
       filtrados = filtrados.filter(
@@ -791,17 +818,17 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
     }
   }
 
-  if (estado.filtros.abiertoAhora) {
+  if (!skipFilter && estado.filtros.abiertoAhora) {
     filtrados = filtrados.filter((c) => c.abierto === true || c.abiertoAhora === true);
   }
 
-  if (estado.filtros.favoritos) {
+  if (!skipFilter && estado.filtros.favoritos) {
     filtrados = filtrados.filter((c) => c.favorito === true);
   }
 
-  const categoriaCruda = document.getElementById('tituloCategoria')?.textContent || 'Resultados';
-  const categoriaNombre =
-    categoriaCruda.charAt(0).toUpperCase() + categoriaCruda.slice(1).toLowerCase();
+  estado.comerciosFiltrados = filtrados;
+  const categoriaNombre = getCategoriaLabelPorIdioma() || t('listado.titulo');
+  estado.categoria = categoriaNombre;
   const total = filtrados.length;
   const municipioActivo = estado.filtros.municipio || '';
   const hayComerciosEnMunicipio = municipioActivo
@@ -836,31 +863,35 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
     municipioUsuario &&
     municipioActivo.toLowerCase() === municipioUsuario.toLowerCase();
 
+  const textoResultados = (() => {
+    const categoriaLabel = estado.categoria || t('listado.titulo');
+    return interpolate(t('listado.resultadosSinMunicipio'), {
+      n: total,
+      categoria: categoriaLabel,
+    });
+  })();
+
+  const resumenEl = getElement('textoResultadosListado');
+  if (resumenEl) resumenEl.textContent = textoResultados;
+  const searchInput = getElement('filtro-nombre');
+  if (searchInput) {
+    const categoriaLabel = estado.categoria || t('listado.titulo');
+    searchInput.placeholder = interpolate(t('listado.buscarEn'), { categoria: categoriaLabel });
+  }
+
   // Luego de la primera carga, no seguir aplicando municipio detectado automáticamente
   if (estado.usarMunicipioDetectado) {
     estado.usarMunicipioDetectado = false;
   }
 
-  if (filtrosDiv) {
-    const labelTotal = document.createElement('div');
-    labelTotal.className = 'inline-block text-gray-800 text-[15px] font-medium text-center w-full';
-    if (hayBusquedaNombre) {
-      labelTotal.textContent = `${total} ${categoriaNombre} con la búsqueda: "${textoBusquedaRaw}"`;
-    } else {
-      labelTotal.textContent = `${total} ${categoriaNombre} ${
-        municipioActivo
-          ? esUbicacionActual
-            ? 'en tu ubicación actual en'
-            : 'en el municipio de'
-          : ''
-      }`;
-    }
-
+  const wrapChip = document.getElementById('chipMunicipioWrap');
+  if (wrapChip) {
+    wrapChip.innerHTML = '';
     if (municipioActivo && !hayBusquedaNombre) {
       const btnEliminar = document.createElement('button');
       btnEliminar.innerHTML = `✕ ${municipioActivo}`;
       btnEliminar.className =
-        'ml-3 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition-all';
+        'bg-blue-100 text-blue-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-blue-200 transition-all';
       btnEliminar.addEventListener('click', () => {
         estado.filtros.municipio = '';
         estado.municipioSeleccionadoManualmente = false;
@@ -868,10 +899,8 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
         if (selectMunicipio) selectMunicipio.value = '';
         cargarComercios({ append: false });
       });
-      labelTotal.appendChild(btnEliminar);
+      wrapChip.appendChild(btnEliminar);
     }
-
-    filtrosDiv.appendChild(labelTotal);
   }
 
     const fragment = document.createDocumentFragment();
@@ -885,11 +914,7 @@ async function renderListado(lista = estado.lista, { omitRefinamiento = false } 
       : cardComercioNoActivo(comercio);
     card.dataset.comercioId = comercio.id;
     const infoNodes = card.querySelectorAll('.flex.justify-center.items-center.gap-1');
-    if (infoNodes.length) {
-      const tiempoNode = infoNodes[infoNodes.length - 1];
-      tiempoNode.dataset.tiempoAuto = 'true';
-      tiempoNode.innerHTML = `<i class="fas fa-car"></i> ${comercio.tiempoVehiculo || comercio.tiempoTexto || 'N/D'}`;
-    }
+    // limpiar cualquier string previo de tiempo, se renderiza dentro de la card con i18n
     fragment.appendChild(card);
     cartasEnFila += 1;
 
@@ -928,7 +953,7 @@ async function mostrarMensajeSinResultados({
   const mensajesNode = ensureMensajesContainer();
   if (!mensajesNode) return;
 
-  const esBusquedaManual =
+    const esBusquedaManual =
     Boolean(municipioActivo) && municipioActivo !== estado.filtros.municipioDetectado;
   const textoBusquedaLimpio = typeof textoBusqueda === 'string' ? textoBusqueda.trim() : '';
   const tieneBusquedaTexto = textoBusquedaLimpio.length > 0;
@@ -947,23 +972,7 @@ async function mostrarMensajeSinResultados({
   mensajeBase.innerHTML = `<p class="text-gray-700 font-medium mb-3">${mensajePrincipal}</p>`;
   mensajesNode.appendChild(mensajeBase);
 
-  if (municipioActivo && !tieneBusquedaTexto) {
-    const btnMunicipio = document.createElement('button');
-    btnMunicipio.innerHTML = `✕ ${municipioActivo}`;
-    btnMunicipio.className =
-      'ml-2 bg-blue-100 text-blue-700 text-sm font-medium px-3 py-1 rounded-full hover:bg-blue-200 transition';
-    btnMunicipio.addEventListener('click', () => {
-      estado.filtros.municipio = '';
-      estado.municipioSeleccionadoManualmente = false;
-      const selectMunicipio = getElement('filtro-municipio');
-      if (selectMunicipio) selectMunicipio.value = '';
-      const mensajesContainerExistente = document.getElementById('mensajesContainer');
-      if (mensajesContainerExistente) mensajesContainerExistente.remove();
-      mensajesContainer = null;
-      cargarComercios({ append: false });
-    });
-    mensajeBase.appendChild(btnMunicipio);
-  }
+  // Botón de limpiar municipio se omite en el mensaje de no resultados para evitar duplicar textos.
 
   const debeUsarMunicipio = Boolean(municipioActivo) && !hayComerciosEnMunicipio;
   const encabezadoSugerencia = hayComerciosEnMunicipio
@@ -1225,10 +1234,12 @@ async function cargarComercios({ append = false, mostrarLoader = true } = {}) {
     const resultado = datosConFavoritos;
     estado.ultimoFetchCount = datosConFavoritos.length;
     if (append) {
-      estado.lista = [...estado.lista, ...datosConFavoritos];
+      estado.comerciosBase = [...estado.comerciosBase, ...datosConFavoritos];
+      estado.lista = [...estado.comerciosBase];
       estado.offset += datosConFavoritos.length;
     } else {
-      estado.lista = datosConFavoritos;
+      estado.comerciosBase = datosConFavoritos;
+      estado.lista = [...estado.comerciosBase];
       estado.offset = datosConFavoritos.length;
     }
     await renderListado(estado.lista, { omitRefinamiento: false });

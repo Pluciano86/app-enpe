@@ -74,6 +74,7 @@
     }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script type="module" src="./js/i18n.js"></script>
 </head>
 
 <body class="bg-oscuro min-h-screen text-white flex flex-col justify-center items-center gap-6 px-6 text-center font-sans">
@@ -361,5 +362,8 @@
       </div>
     </div>
   </div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => { if (window.initI18n) window.initI18n(); });
+</script>
 </body>
 </html>

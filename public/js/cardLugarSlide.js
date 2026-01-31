@@ -1,11 +1,13 @@
 // ✅ cardLugarSlide.js
+import { t } from "./i18n.js";
+
 export function cardLugarSlide(lugar, opciones = {}) {
   const {
     id,
     nombre,
     municipio,
     imagen,
-    tiempoTexto = "a 3 minutos", // valor por defecto si no hay distancia calculada
+    tiempoTexto = t('area.tiempoDefault'), // valor por defecto si no hay distancia calculada
   } = lugar;
   console.log("Renderizando corazón lugar:", nombre, lugar?.favorito);
 

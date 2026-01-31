@@ -1,10 +1,11 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { t } from './i18n.js';
 
 async function mostrarGridComida({ idArea, idMunicipio }) {
   const grid = document.getElementById("gridComida");
   if (!grid) return;
 
-  grid.innerHTML = `<p class="text-gray-400 text-center col-span-full animate-pulse">Cargando lugares...</p>`;
+  grid.innerHTML = `<p class="text-gray-400 text-center col-span-full animate-pulse">${t('area.cargandoLugares')}</p>`;
 
   try {
     let nombreMunicipio = "";
@@ -91,8 +92,8 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
         mensajeFallback = `
           <div class="text-center text-gray-600 my-4 leading-snug col-span-full">
             <span class="inline-block text-[#23b4e9] text-xl mr-1">🍽️</span>
-            No hay lugares disponibles en <b>${nombreMunicipio}</b>.<br>
-            Te mostramos los más cercanos en el Área <b>${nombreArea}</b>.
+            ${t('area.noLugaresMunicipio')} <b>${nombreMunicipio}</b>.<br>
+            ${t('area.mostrarArea')} <b>${nombreArea}</b>.
           </div>
         `;
       }
@@ -104,10 +105,10 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
         <p class="text-center text-gray-500 col-span-full my-6">
           ${
             nombreMunicipio
-              ? `No hay lugares disponibles en <b>${nombreMunicipio}</b>.`
+              ? `${t('area.noLugaresMunicipio')} <b>${nombreMunicipio}</b>.`
               : nombreArea
-              ? `No hay lugares disponibles en el Área <b>${nombreArea}</b>.`
-              : "No hay lugares disponibles."
+              ? `${t('area.noLugaresArea')} <b>${nombreArea}</b>.`
+              : t('area.sinLugares')
           }
         </p>`;
       return;
@@ -126,7 +127,7 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
 
     if (errorImgs) throw errorImgs;
     if (!imagenes?.length) {
-      grid.innerHTML += `<p class="text-gray-500 text-center col-span-full">No hay imágenes disponibles.</p>`;
+      grid.innerHTML += `<p class="text-gray-500 text-center col-span-full">${t('area.noImagenes')}</p>`;
       return;
     }
 
@@ -187,7 +188,7 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
       btnContainer.className = "col-span-full flex justify-center items-center w-full mt-6";
 
       const btnVerMas = document.createElement("button");
-      btnVerMas.textContent = "Ver más...";
+      btnVerMas.textContent = t('area.verMas');
       btnVerMas.className = "bg-[#0B132B] hover:bg-[#1C2541] text-white font-light py-2 px-8 rounded-lg shadow transition";
 
       btnVerMas.addEventListener("click", () => {
@@ -200,7 +201,7 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
 
   } catch (err) {
     console.error("❌ Error cargando imágenes:", err);
-    grid.innerHTML = `<p class="text-red-500 text-center col-span-full">Error al cargar los lugares.</p>`;
+    grid.innerHTML = `<p class="text-red-500 text-center col-span-full">${t('area.errorComida')}</p>`;
   }
 }
 
@@ -272,3 +273,8 @@ style.textContent = `
 document.head.appendChild(style);
 
 window.addEventListener("areaCargada", (e) => mostrarGridComida(e.detail));
+
+// Re-render al cambiar idioma
+window.addEventListener('lang:changed', () => {
+  mostrarGridComida(window.filtrosArea || {});
+});

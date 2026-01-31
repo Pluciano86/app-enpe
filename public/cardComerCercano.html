@@ -11,6 +11,7 @@
    <style>
     body { font-family: 'Kanit', sans-serif; }
   </style>
+  <script type="module" src="./js/i18n.js"></script>
 </head>
 <body class="bg-gray-100 p-4">
 
@@ -69,5 +70,8 @@
   </div>
   </div>
   <script src="js/bloquearPantalla.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => { if (window.initI18n) window.initI18n(); });
+</script>
 </body>
 </html>

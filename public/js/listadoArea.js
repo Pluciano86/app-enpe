@@ -4,6 +4,7 @@ import { cardPlayaSlide } from './cardPlayaSlide.js';
 import { cardEventoSlide } from './cardEventoSlide.js';
 import { renderEventosCarousel } from "./eventosCarousel.js";
 import { renderJangueoCarouselArea } from "./jangueoCarouselArea.js";
+import { t } from "./i18n.js";
 
 let municipioSeleccionado = null;
 let nombreAreaActual = '';
@@ -18,16 +19,23 @@ async function mostrarNombreArea(idArea, idMunicipio = null) {
   if (idMunicipio) {
     const { data: muni } = await supabase.from('Municipios').select('nombre, imagen').eq('id', idMunicipio).single();
     if (muni) {
-      h1.innerHTML = `<img src="${muni.imagen}" class="w-28 h-16 object-cover rounded-lg inline-block mr-3 align-middle shadow"/>Descubre ${muni.nombre}`;
+      h1.innerHTML = `<img src="${muni.imagen}" class="w-28 h-16 object-cover rounded-lg inline-block mr-3 align-middle shadow"/>${t('area.descubreMunicipio')} ${muni.nombre}`;
     }
   } else {
-    h1.textContent = `Descubre el Área ${area.nombre}`;
+    h1.textContent = `${t('area.descubreArea')} ${area.nombre}`;
   }
 }
 
 async function cargarDropdownMunicipios(idArea, idMunicipioSeleccionado) {
   const dropdown = document.getElementById('dropdownMunicipios');
-  dropdown.innerHTML = `<option value="">Cargando municipios...</option>`;
+  dropdown.innerHTML = "";
+  dropdown.onchange = null;
+
+  const loadingOpt = document.createElement('option');
+  loadingOpt.value = "";
+  loadingOpt.dataset.i18n = "area.cargandoMunicipios";
+  loadingOpt.textContent = t('area.cargandoMunicipios');
+  dropdown.appendChild(loadingOpt);
 
   const { data: municipios } = await supabase
     .from('Municipios')
@@ -35,7 +43,12 @@ async function cargarDropdownMunicipios(idArea, idMunicipioSeleccionado) {
     .eq('idArea', idArea)
     .order('nombre');
 
-  dropdown.innerHTML = `<option value="">Selecciona un municipio...</option>`;
+  dropdown.innerHTML = "";
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = "";
+  defaultOpt.dataset.i18n = "area.selectMunicipio";
+  defaultOpt.textContent = t('area.selectMunicipio');
+  dropdown.appendChild(defaultOpt);
   municipios.forEach((m) => {
     const opt = document.createElement('option');
     opt.value = m.id;
@@ -46,7 +59,7 @@ async function cargarDropdownMunicipios(idArea, idMunicipioSeleccionado) {
 
   const volverContainer = document.getElementById('volverAreaContainer');
   if (idMunicipioSeleccionado) {
-    volverContainer.innerHTML = `<button id="btnVolverArea" class="text-[#23b4e9] font-medium underline text-lg hover:text-blue-700">← Volver a descubrir el Área ${nombreAreaActual}</button>`;
+    volverContainer.innerHTML = `<button id="btnVolverArea" class="text-[#23b4e9] font-medium underline text-lg hover:text-blue-700">${t('area.volverArea')} ${nombreAreaActual}</button>`;
     document.getElementById('btnVolverArea').onclick = () => window.location.href = `listadoArea.html?idArea=${idArea}`;
     dropdown.parentElement.classList.add('hidden');
   } else {
@@ -55,7 +68,7 @@ async function cargarDropdownMunicipios(idArea, idMunicipioSeleccionado) {
   }
 
   // 🔹 Nuevo comportamiento dinámico sin recargar
-  dropdown.addEventListener('change', async (e) => {
+  dropdown.onchange = async (e) => {
     const idMunicipio = e.target.value ? parseInt(e.target.value) : null;
 
     // 🔸 Actualizar filtros globales
@@ -72,7 +85,7 @@ async function cargarDropdownMunicipios(idArea, idMunicipioSeleccionado) {
     window.dispatchEvent(new CustomEvent("areaCargada", {
       detail: { idArea, idMunicipio, ocultarDistancia: true },
     }));
-  }); // 👈 cierre correcto
+  }; // 👈 cierre correcto
 }
 
 export async function obtenerParametros() {
@@ -102,3 +115,14 @@ async function cargarTodo() {
 }
 
 cargarTodo();
+
+// 🔁 Re-traducir dinámicamente al cambiar idioma
+window.addEventListener('lang:changed', () => {
+  cargarDropdownMunicipios(idAreaGlobal, municipioSeleccionado);
+  mostrarNombreArea(idAreaGlobal, municipioSeleccionado);
+  renderEventosCarousel("eventosCarousel", window.filtrosArea || {});
+  renderJangueoCarouselArea("jangueoCarousel");
+  window.dispatchEvent(new CustomEvent('areaCargada', {
+    detail: { ...(window.filtrosArea || {}), ocultarDistancia: true },
+  }));
+});

@@ -7,13 +7,14 @@
   <title>Redimir Cupón | En Pe Erre</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <script type="module" src="./js/i18n.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen font-[Kanit]">
   <main class="min-h-screen flex items-center justify-center px-4 py-12">
     <div class="w-full max-w-lg space-y-8">
       <div class="text-center">
-        <h1 class="text-3xl font-semibold text-gray-800">Redimir Cupón</h1>
-        <p class="text-sm text-gray-500">Validación rápida y segura para comercios aliados.</p>
+        <h1 class="text-3xl font-semibold text-gray-800" data-i18n="cupon.titulo">Redimir Cupón</h1>
+        <p class="text-sm text-gray-500" data-i18n="cupon.subtitulo">Validación rápida y segura para comercios aliados.</p>
       </div>
 
       <!-- Vista de validación -->
@@ -27,12 +28,12 @@
         </div>
 
         <div class="space-y-4">
-          <p class="text-sm text-gray-600 text-center">Introduce el código secreto provisto por el sistema de En Pe Erre.</p>
+          <p class="text-sm text-gray-600 text-center" data-i18n="cupon.instruccion">Introduce el código secreto provisto por el sistema de En Pe Erre.</p>
           <div class="space-y-2">
-            <label for="inputCodigoSecreto" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Código secreto</label>
-            <input id="inputCodigoSecreto" type="number" inputmode="numeric" min="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500" placeholder="Ingresa el código">
+            <label for="inputCodigoSecreto" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide" data-i18n="cupon.labelCodigo">Código secreto</label>
+            <input id="inputCodigoSecreto" type="number" inputmode="numeric" min="0" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500" placeholder="Ingresa el código" data-i18n-placeholder="cupon.labelCodigo">
           </div>
-          <button id="btnValidarCodigo" class="w-full bg-sky-600 text-white font-semibold py-2.5 rounded-lg hover:bg-sky-700 transition">Validar Código</button>
+          <button id="btnValidarCodigo" class="w-full bg-sky-600 text-white font-semibold py-2.5 rounded-lg hover:bg-sky-700 transition" data-i18n="cupon.btnValidar">Validar</button>
           <p id="mensajeValidacion" class="text-sm text-center text-red-600 min-h-[1.25rem]"></p>
         </div>
       </section>
@@ -47,10 +48,10 @@
             </div>
           </div>
           <div>
-            <p class="text-xs text-gray-400 mb-1">Usuario:</p>
-            <h2 id="usuarioCuponNombre" class="text-2xl font-normal text-gray-800">—</h2>
-          </div>
+          <p class="text-xs text-gray-400 mb-1" data-i18n="cupon.usuario">Usuario:</p>
+          <h2 id="usuarioCuponNombre" class="text-2xl font-normal text-gray-800">—</h2>
         </div>
+      </div>
 
         <div class="bg-gray-50 rounded-2xl p-6 space-y-5 shadow-inner">
           <div class="flex items-center gap-4">
@@ -65,7 +66,7 @@
           </div>
 
           <div class="space-y-3">
-            <p class="text-xs text-gray-400 uppercase tracking-[0.3em]">Cupón</p>
+              <p class="text-xs text-gray-400 uppercase tracking-[0.3em]" data-i18n="cuenta.cupon">Cupón</p>
             <h2 id="cuponTitulo" class="text-2xl font-extrabold text-red-600 leading-tight">—</h2>
             <p id="cuponDescripcion" class="text-sm text-gray-600"></p>
             <p id="cuponFecha" class="text-xs text-gray-500 uppercase tracking-wide"></p>
@@ -73,7 +74,7 @@
         </div>
 
         <div>
-          <button id="btnRedimirCupon" class="w-full bg-emerald-600 text-white font-semibold py-3 rounded-lg hover:bg-emerald-700 transition">Redimir Cupón</button>
+          <button id="btnRedimirCupon" class="w-full bg-emerald-600 text-white font-semibold py-3 rounded-lg hover:bg-emerald-700 transition" data-i18n="cupon.titulo">Redimir Cupón</button>
           <p id="mensajeCupon" class="text-sm text-center mt-3 text-gray-600 min-h-[1.25rem]"></p>
         </div>
       </section>
@@ -82,5 +83,10 @@
 
   <script type="module" src="./shared/supabaseClient.js"></script>
   <script type="module" src="./js/redimirCupon.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
+    });
+  </script>
 </body>
 </html>

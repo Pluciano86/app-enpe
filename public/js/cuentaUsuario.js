@@ -1,6 +1,7 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { obtenerMapaCategorias } from './obtenerMapaCategorias.js';
 import { calcularDistancia } from './distanciaLugar.js';
+import { t } from './i18n.js';
 
 const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const basePath = isLocal ? '/public' : '';
@@ -249,7 +250,7 @@ function mostrarFavoritos(lista) {
   if (!listaFavoritos) return;
 
   if (!lista?.length) {
-    mostrarMensajeFavoritos('No tienes comercios favoritos aún.');
+    mostrarMensajeFavoritos(t('cuenta.sinFavs'));
     return;
   }
 
@@ -375,7 +376,7 @@ function renderFavoritosLugares(lista) {
   if (!listaFavoritosLugares) return;
 
   if (!lista?.length) {
-    mostrarMensajeFavoritosLugares('No tienes lugares favoritos todavía');
+    mostrarMensajeFavoritosLugares(t('cuenta.sinFavs'));
     return;
   }
 
@@ -529,7 +530,7 @@ function renderFavoritosPlayas(lista) {
   if (!listaFavoritosPlayas) return;
 
   if (!lista?.length) {
-    mostrarMensajeFavoritosPlayas('No tienes playas favoritas todavía');
+    mostrarMensajeFavoritosPlayas(t('cuenta.sinFavs'));
     return;
   }
 
@@ -548,12 +549,12 @@ function renderFavoritosPlayas(lista) {
     const imagen = document.createElement('img');
     imagen.className = 'w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0';
     imagen.src = item.imagen || PLACEHOLDER_PLAYA;
-    imagen.alt = item.nombre || 'Playa';
+    imagen.alt = item.nombre || t('area.playaSinNombre');
 
     const textos = document.createElement('div');
     textos.className = 'flex-1 text-left';
     textos.innerHTML = `
-      <p class="text-base font-semibold text-gray-800">${item.nombre || 'Playa sin nombre'}</p>
+      <p class="text-base font-semibold text-gray-800">${item.nombre || t('area.playaSinNombre')}</p>
       ${item.municipioNombre ? `<p class="text-xs text-gray-500 mt-1">${item.municipioNombre}</p>` : ''}
       ${item.categorias?.length ? `<p class="text-xs text-gray-400 mt-1">${item.categorias.join(', ')}</p>` : ''}
     `;
@@ -570,7 +571,7 @@ function renderFavoritosPlayas(lista) {
         window.location.href = `${basePath}/logearse.html`;
         return;
       }
-      const confirmar = confirm(`¿Eliminar ${item.nombre || 'esta playa'} de tus favoritos?`);
+      const confirmar = confirm(`${t('cuenta.eliminarConfirm')} ${item.nombre || t('area.playaSinNombre')}?`);
       if (!confirmar) return;
       console.log('Ícono eliminar clicado:', item.id);
       await eliminarFavoritoPlaya(item.id, card);
@@ -715,7 +716,7 @@ async function cargarFavoritosPlayas() {
     return [];
   }
 
-  mostrarMensajeFavoritosPlayas('Cargando playas favoritas...');
+  mostrarMensajeFavoritosPlayas(t('cuenta.cargandoFavs'));
 
   const { data, error } = await supabase
     .from('favoritosPlayas')
@@ -742,7 +743,7 @@ async function cargarFavoritosPlayas() {
 
   if (error) {
     console.error('🛑 Error al cargar playas favoritas:', error);
-    mostrarMensajeFavoritosPlayas('Error cargando playas favoritas.', 'text-red-500');
+    mostrarMensajeFavoritosPlayas(t('common.error') || 'Error', 'text-red-500');
     favoritosPlayas = [];
     return [];
   }
@@ -1691,7 +1692,7 @@ async function cargarFavoritos(uid) {
 
   if (error) {
     console.error('🛑 Error al cargar favoritos:', error);
-    mostrarMensajeFavoritos('Error cargando favoritos.', 'text-red-500');
+    mostrarMensajeFavoritos(t('common.error'), 'text-red-500');
     huboErrorCargandoFavoritos = true;
     return [];
   }
@@ -1808,7 +1809,7 @@ async function cargarFavoritosLugares() {
     return [];
   }
 
-  mostrarMensajeFavoritosLugares('Cargando lugares favoritos...');
+  mostrarMensajeFavoritosLugares(t('cuenta.cargandoFavs'));
   console.log("Cargando lugares favoritos...");
 
   const { data, error } = await supabase
@@ -1832,7 +1833,7 @@ async function cargarFavoritosLugares() {
 
   if (error) {
     console.log("Error al cargar favoritosLugares:", error);
-    mostrarMensajeFavoritosLugares('Error cargando lugares favoritos.', 'text-red-500');
+    mostrarMensajeFavoritosLugares(t('common.error'), 'text-red-500');
     favoritosLugares = [];
     return [];
   }
@@ -1951,7 +1952,7 @@ async function cargarFavoritosLugares() {
 async function cargarYMostrarFavoritos() {
   if (!usuarioId) return;
 
-  mostrarMensajeFavoritos('Cargando favoritos...');
+  mostrarMensajeFavoritos(t('cuenta.cargandoFavs'));
 
   favoritos = await cargarFavoritos(usuarioId);
   console.log("Favoritos:", favoritos);
@@ -2106,7 +2107,7 @@ btnCupones?.addEventListener('click', async () => {
   cuponesTabActiva = 'guardados';
   actualizarTabsVisuales();
   refrescarSelectsCupones();
-  renderCuponesModal('Cargando cupones...');
+  renderCuponesModal(t('cuenta.cargandoFavs'));
   modalCupones?.classList.remove('hidden');
   await cargarCuponesUsuario();
 });

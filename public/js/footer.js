@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { translateDom } from './i18n.js';
 
 const container = document.getElementById('footerContainer');
 
@@ -46,15 +47,15 @@ function renderFooter() {
       <nav class="flex justify-around py-2">
         <a href="${base}index.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img src="${iconBase}iconInicio.png" class="w-8 h-8 mb-1" alt="Inicio">
-          Inicio
+          <span data-i18n="footer.inicio">Inicio</span>
         </a>
         <a href="${base}cercaDeMi.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img src="${iconBase}nearby.svg" class="w-8 h-8 mb-1" alt="Cerca de Mi">
-          Cerca de Mi
+          <span data-i18n="footer.cerca">Cerca de Mi</span>
         </a>
         <a href="${base}listadoEventos.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img src="${iconBase}deadline.svg" class="w-8 h-8 mb-1" alt="Eventos">
-          Eventos
+          <span data-i18n="footer.eventos">Eventos</span>
         </a>
         <a id="enlaceMiCuenta" href="${loginPath}" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img 
@@ -62,7 +63,7 @@ function renderFooter() {
             src="${defaultCuentaImg}"
             class="w-8 h-8 mb-1 rounded-full object-cover"
             alt="Cuenta">
-          <span id="footerTexto">${defaultCuentaTexto}</span>
+          <span id="footerTexto" data-i18n="footer.cuenta">${defaultCuentaTexto}</span>
         </a>
       </nav>
     </footer>
@@ -70,6 +71,9 @@ function renderFooter() {
 }
 
 renderFooter();
+translateDom(container);
+
+window.addEventListener('lang:changed', () => translateDom(container));
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Lazy-load para medios pesados (si no se especificó)

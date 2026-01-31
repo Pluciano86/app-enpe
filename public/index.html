@@ -7,6 +7,7 @@
 <title>Inicio - EnPe Erre</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
+  <script type="module" src="./js/i18n.js"></script>
   
   <style>
   video::-webkit-media-controls {
@@ -39,10 +40,10 @@ video::-webkit-media-controls-overlay-play-button {
 
 
 <section id="categoriasSection" class="text-center">
-  <h2 class="text-2xl font-medium mb-4">Categorías más Buscadas</h2>
+  <h2 class="text-2xl font-medium mb-4" data-i18n="home.categoriasTitulo">Categorías más Buscadas</h2>
   <div id="categoriasContainer" class="grid grid-cols-3 gap-4 px-4"></div>
   <p id="toggleCategorias" class="mt-4 text-sm text-gray-500 cursor-pointer hover:text-gray-700">
-  Ver todas las Categorías...
+  <span data-i18n="home.verTodasCategorias">Ver todas las Categorías...</span>
 </p>
 </section>
 
@@ -73,17 +74,17 @@ video::-webkit-media-controls-overlay-play-button {
 </script>
 
 <section class="text-center my-6 px-4">
-  <h2 class="text-2xl font-medium mb-4">¡Aquí <strong>EnPeErre</strong> se come Ca..Brutal!</h2>
+  <h2 class="text-2xl font-medium mb-4" data-i18n="home.comidaTitulo">¡Aquí <strong>EnPeErre</strong> se come Ca..Brutal!</h2>
   <div id="comidaCarousel"></div>
 </section>
 
 <section class="text-center my-6 px-4">
-  <h2 class="text-2xl font-medium mb-4">¿Nos Fuimos pal Jangueo?</h2>
+  <h2 class="text-2xl font-medium mb-4" data-i18n="home.jangueoTitulo">¿Nos Fuimos pal Jangueo?</h2>
   <div id="jangueoCarousel"></div>
 </section>
 
 <section class="text-center my-6 px-4">
-  <h2 class="text-2xl font-medium mb-4">Chequea los prósimos Eventos</h2>
+  <h2 class="text-2xl font-medium mb-4" data-i18n="home.eventosTitulo">Chequea los próximos Eventos</h2>
   <div id="eventosCarousel"></div>
 </section>
 
@@ -119,7 +120,7 @@ video::-webkit-media-controls-overlay-play-button {
   <div class="absolute inset-0 bg-gradient-to-r from-blue-500 to-red-400 opacity-40 z-10"></div>
 
   <div class="relative z-20 flex items-center justify-center h-full">
-    <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center">Vamos Pa' la Playa</a>
+    <a href="listadoPlayas.html" class="text-white text-3xl font-medium text-center" data-i18n="home.vamosPlaya">Vamos Pa' la Playa</a>
   </div>
 </section>
 
@@ -139,7 +140,7 @@ video::-webkit-media-controls-overlay-play-button {
 </script>
 
  <a href="listadoLugares.html" class="text-center my-6 px-4">
- <h2 class="text-2xl font-medium mb-4">Descubre lo que hay en tu Área</h2> </a>
+ <h2 class="text-2xl font-medium mb-4" data-i18n="home.descubreArea">Descubre lo que hay en tu Área</h2> </a>
 
   <div class="grid grid-cols-2 gap-4 pr-4 pb-4 pl-4">
         <a href="listadoArea.html?idArea=1">
@@ -217,6 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener("DOMContentLoaded", () => {
     renderEventosCarousel("eventosCarousel");
   });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.initI18n) window.initI18n();
+  });
 </script>
 
 <script type="module">
@@ -259,6 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script type="module" src="js/popups.js"></script>
   <script src="js/bloquearPantalla.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
+    });
+  </script>
 </div>
 </div>
 </body>

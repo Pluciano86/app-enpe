@@ -41,6 +41,7 @@
     }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script type="module" src="./js/i18n.js"></script>
 </head>
 <body class="min-h-screen bg-[#f4f4f5] text-gray-800 flex items-center justify-center px-4 py-10 font-sans">
   <div id="globalLoader" class="fixed inset-0 bg-black/70 z-[9998] hidden items-center justify-center flex-col gap-4 transition-opacity duration-500 opacity-0">
@@ -240,5 +241,8 @@
       </div>
     </div>
   </div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => { if (window.initI18n) window.initI18n(); });
+</script>
 </body>
 </html>

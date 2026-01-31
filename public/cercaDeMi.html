@@ -17,6 +17,7 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
+  <script type="module" src="./js/i18n.js"></script>
   <script type="module" src="./js/cercaDeMi.js"></script>
 </head>
 
@@ -32,7 +33,7 @@
   style="position: sticky; top: 0; z-index: 1000;"
 >
 
-  <h2 class="text-2xl font-medium mb-4">COMERCIOS CERCA DE MI</h2>
+  <h2 class="text-2xl font-medium mb-4" data-i18n="cerca.title">COMERCIOS CERCA DE MI</h2>
 
 <div class="mb-3">
   <label class="flex items-center gap-2 border border-gray-200 rounded-xl shadow-sm px-3 py-2 bg-white focus-within:ring-2 focus-within:ring-blue-500 w-full">
@@ -41,6 +42,7 @@
       id="searchNombre"
       type="text"
       placeholder="Buscar comercios o descripciones"
+      data-i18n-placeholder="cerca.placeholder"
       class="flex-1 text-sm outline-none bg-transparent"
     />
   </label>
@@ -53,7 +55,7 @@
     class="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white shadow-sm 
            focus:ring-2 focus:ring-[#23b4e9] focus:outline-none"
   >
-    <option value="">Todas las categorías</option>
+    <option value="" data-i18n="cerca.categoriasTodas">Todas las categorías</option>
   </select>
 
   <button
@@ -64,7 +66,7 @@
            border-gray-200 shadow-sm transition whitespace-nowrap"
   >
     <i class="fas fa-sliders-h"></i>
-    Filtros
+    <span data-i18n="cerca.filtros">Filtros</span>
   </button>
 </div>
 
@@ -76,7 +78,7 @@
           <span class="w-11 h-6 bg-gray-300 rounded-full transition-colors peer-checked:bg-green-500"></span>
           <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
         </span>
-        <span class="font-medium text-gray-800">Abierto ahora</span>
+        <span class="font-medium text-gray-800" data-i18n="cerca.abierto">Abierto ahora</span>
       </label>
 
       <label class="flex items-center gap-2 cursor-pointer select-none">
@@ -85,16 +87,16 @@
           <span class="w-11 h-6 bg-gray-300 rounded-full transition-colors peer-checked:bg-purple-600"></span>
           <span class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></span>
         </span>
-        <span class="font-medium text-gray-800">Mis Favoritos</span>
+        <span class="font-medium text-gray-800" data-i18n="cerca.favoritos">Mis Favoritos</span>
       </label>
     </div>
 
     <div class="flex flex-col items-center justify-center space-y-2">
-      <p class="text-xs text-gray-500 text-center">
+      <p class="text-xs text-gray-500 text-center" data-i18n="cerca.ajusteRadio">
         Ajusta el radio para ampliar o reducir el perímetro de búsqueda.
       </p>
       <div class="flex items-center justify-center gap-3">
-        <label for="radioKm" class="text-sm font-medium">Radio (mi):</label>
+        <label for="radioKm" class="text-sm font-medium" data-i18n="cerca.radio">Radio (mi):</label>
         <input
           id="radioKm"
           type="range"
@@ -115,7 +117,7 @@
   </main>
 
   <div id="loader" class="fixed inset-0 bg-black/30 hidden items-center justify-center z-40">
-    <div class="bg-white rounded px-4 py-3 shadow text-sm font-medium">Cargando comercios…</div>
+    <div class="bg-white rounded px-4 py-3 shadow text-sm font-medium" data-i18n="common.cargando">Cargando...</div>
   </div>
 
   <div id="footerContainer" class="h-16 shrink-0"></div>
@@ -131,6 +133,11 @@
     const radioValue = document.getElementById("radioKmLabel");
     slider.addEventListener("input", () => {
       radioValue.textContent = `${slider.value} mi`;
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.initI18n) window.initI18n();
     });
   </script>
 

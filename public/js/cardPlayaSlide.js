@@ -1,4 +1,6 @@
 // public/js/cardPlayaSlide.js
+import { t } from "./i18n.js";
+
 const PLACEHOLDER_PLAYA =
   "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
 
@@ -41,7 +43,7 @@ export function cardPlayaSlide(playa) {
 
     <div class="pt-2 px-2 pb-2 text-center">
       <h3 class="text-sm font-semibold leading-tight h-10 overflow-hidden text-ellipsis line-clamp-2">
-        ${nombre || "Playa sin nombre"}
+        ${nombre || t('area.playaSinNombre')}
       </h3>
 
       <div class="flex justify-center items-center gap-1 text-sm text-gray-600 mt-1">
@@ -60,7 +62,7 @@ export function cardPlayaSlide(playa) {
 
       <div class="flex items-start justify-center gap-1 text-[11px] text-gray-600 mt-1">
         <i class="fas fa-car text-red-500 mt-[2px]"></i>
-        <span>${tiempoTexto || "N/A"}</span>
+        <span>${tiempoTexto || t('area.noDisponible')}</span>
       </div>
     </div>
   `;
