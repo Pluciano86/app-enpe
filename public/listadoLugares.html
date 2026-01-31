@@ -13,7 +13,10 @@
     body { font-family: 'Kanit', sans-serif; }
   </style>
 </head>
-<body class="bg-white text-gray-800">
+<body class="bg-[#121212] text-gray-800">
+
+<div class="min-h-screen flex justify-center bg-[#121212]">
+  <div class="w-full max-w-md bg-white">
 
   <!-- Header -->
 <div id="headerContainer"></div>
@@ -92,7 +95,7 @@
 
   <!-- Resultados -->
   <section class="px-4 mt-4 mb-24">
-    <div id="lugaresContainer" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+    <div id="lugaresContainer" class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
       <!-- Tarjetas de lugares se insertarán aquí -->
     </div>
   </section>
@@ -105,5 +108,7 @@
   <script type="module" src="./js/lugares.js"></script>
 
   <script src="js/bloquearPantalla.js"></script>
+</div>
+</div>
 </body>
 </html>

@@ -149,8 +149,8 @@ export async function mostrarCercanosComida(comercioOrigen) {
 
     if (cercanos.length > 0 && container && slider) {
       // Estructura del carrusel Swiper
-      slider.innerHTML = `
-        <div class="swiper cercanosSwiper">
+     slider.innerHTML = `
+        <div class="swiper cercanosSwiper w-full overflow-hidden px-1">
           <div class="swiper-wrapper"></div>
         </div>
       `;
@@ -170,14 +170,11 @@ export async function mostrarCercanosComida(comercioOrigen) {
       const swiperEl = slider.querySelector(".cercanosSwiper");
 
       new Swiper(swiperEl, {
-        slidesPerView: 2.7,
-        spaceBetween: 12,
+        slidesPerView: 2.3,
+        spaceBetween: 1, // reducir espacio entre tarjetas
         loop: true,
         autoplay: { delay: 3000, disableOnInteraction: false },
-        breakpoints: {
-          640: { slidesPerView: 3, spaceBetween: 18 },
-          1024: { slidesPerView: 4, spaceBetween: 20 },
-        },
+        speed: 900,
       });
     } else {
       console.info('ℹ️ No hay comercios cercanos para mostrar.');
@@ -189,9 +186,3 @@ export async function mostrarCercanosComida(comercioOrigen) {
 }
 
 // 🔹 Asegurar que el carrusel no corte sombras ni slides
-const style = document.createElement('style');
-style.textContent = `
-  .cercanosSwiper { overflow: visible !important; }
-  .swiper-slide { width: auto !important; overflow: visible !important; }
-`;
-document.head.appendChild(style);

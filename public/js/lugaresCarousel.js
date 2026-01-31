@@ -116,7 +116,7 @@ export async function renderLugaresCarousel(containerId) {
 
     // 🔹 Crear carrusel
     container.innerHTML += `
-      <div class="swiper lugaresSwiper">
+      <div class="swiper lugaresSwiper w-full overflow-hidden px-1">
         <div class="swiper-wrapper">
           ${lugares
             .map(
@@ -137,11 +137,8 @@ export async function renderLugaresCarousel(containerId) {
       autoplay: { delay: 3000, disableOnInteraction: false, reverseDirection: true },
       speed: 900,
       slidesPerView: 1.2,
-      spaceBetween: 12,
-      breakpoints: {
-        640: { slidesPerView: 2.2, spaceBetween: 20 },
-        1024: { slidesPerView: 3.2, spaceBetween: 24 },
-      },
+      spaceBetween: 8,
+      centeredSlides: false,
     });
 
     // 🔹 Botón “Ver más Lugares”

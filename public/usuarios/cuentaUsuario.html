@@ -22,13 +22,16 @@
   </style>
 
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-[#121212]">
+
+<div class="min-h-screen flex justify-center bg-[#121212]">
+  <div class="w-full max-w-md bg-white text-gray-800">
 
     <!-- Header -->
 <div id="headerContainer"></div>
 <script type="module" src="../js/header.js"></script>
 
-  <main class="min-h-screen overflow-y-auto pb-20 max-w-md mx-auto px-4 py-6 text-center">
+  <main class="min-h-screen overflow-y-auto pb-20 px-4 py-6 text-center">
     <div id="perfilUsuario" class="flex flex-col items-center gap-2 relative">
       <button id="btnMensajes" class="absolute top-0 right-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-cyan-50 text-cyan-700 hover:bg-cyan-100 border border-cyan-100 shadow-sm">
         <i class="fa-solid fa-message"></i>
@@ -408,5 +411,7 @@
 <script type="module" src="../js/footer.js"></script>
 
   <script src="../js/bloquearPantalla.js"></script>
+</div>
+</div>
 </body>
 </html>

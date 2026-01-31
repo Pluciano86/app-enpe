@@ -176,17 +176,9 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
       loop: true,
       autoplay: { delay: 2500, disableOnInteraction: false },
       speed: 900,
-      slidesPerView: esListadoArea ? 1.1 : 2,
-      spaceBetween: esListadoArea ? 18 : 14,
-      breakpoints: esListadoArea
-        ? {
-            640: { slidesPerView: 2, spaceBetween: 22 },
-            1024: { slidesPerView: 2.2, spaceBetween: 24 },
-          }
-        : {
-            640: { slidesPerView: 3, spaceBetween: 16 },
-            1024: { slidesPerView: 3.3, spaceBetween: 20 },
-          },
+      slidesPerView: esListadoArea ? 1.2 : 1.2,
+      spaceBetween: esListadoArea ? 8 : 8, // pequeño espacio entre tarjetas
+      centeredSlides: false,
     });
 
     // 🔹 Click → abrir modal

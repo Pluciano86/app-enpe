@@ -118,7 +118,7 @@ export async function mostrarLugaresCercanos(comercioOrigen) {
     if (cercanos.length > 0) {
       // 🧱 Estructura Swiper
       slider.innerHTML = `
-        <div class="swiper lugaresSwiper">
+        <div class="swiper lugaresSwiper w-full overflow-hidden px-1">
           <div class="swiper-wrapper"></div>
         </div>
       `;
@@ -141,21 +141,15 @@ const numSlides = swiperEl.querySelectorAll('.swiper-slide').length;
 if (swiperEl.__swiper) swiperEl.__swiper.destroy(true, true);
 
 const swiper = new Swiper(swiperEl, {
-  centeredSlides: true,              // 👈 centra la tarjeta actual
-  slidesPerView: 'auto',             // 👈 calcula ancho automático
-  spaceBetween: 20,
+  centeredSlides: false,
+  slidesPerView: 1.25,
+  spaceBetween: 1,
   loop: true,
   speed: 900,
-  grabCursor: true,                  // 👈 mejora el control táctil
+  grabCursor: true,
   autoplay: {
     delay: 3200,
     disableOnInteraction: false,  
-  },
-  slidesOffsetBefore: 16,            // 👈 pequeño margen lateral
-  slidesOffsetAfter: 16,
-  breakpoints: {
-    640: { spaceBetween: 24 },
-    1024: { spaceBetween: 28 },
   },
 });
       swiperEl.__swiper = swiper;

@@ -22,10 +22,13 @@ video::-webkit-media-controls-overlay-play-button {
 }</style>
 
 </head>
-<body class="bg-white text-gray-800 pb-24">
+<body class="bg-[#121212]">
         <style>
           body {font-family: 'Kanit', sans-serif;}
         </style>
+
+<div class="min-h-screen flex justify-center bg-[#121212]">
+  <div class="w-full max-w-md bg-white text-gray-800 pb-24">
 
 <div id="headerContainer"></div>
 <script type="module" src="js/header.js"></script>
@@ -88,15 +91,6 @@ video::-webkit-media-controls-overlay-play-button {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-
-<script type="module">
-  import { renderEventosCarousel } from "./js/eventosCarousel.js";
-  
-  document.addEventListener("DOMContentLoaded", () => {
-    renderEventosCarousel("eventosCarousel");
-  });
-</script>
-
 
 <script type="module">
   import { renderComidaCarousel } from "./js/comidaCarousel.js";
@@ -265,5 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script type="module" src="js/popups.js"></script>
   <script src="js/bloquearPantalla.js"></script>
+</div>
+</div>
 </body>
 </html>

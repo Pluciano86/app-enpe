@@ -110,20 +110,12 @@ export async function renderJangueoCarousel(containerId) {
     // 🔸 Inicializar Swiper
     new Swiper(container.querySelector(".jangueo-swiper"), {
       loop: true,
-      autoplay: { delay: 3000, disableOnInteraction: false },
+      autoplay: { delay: 3000, disableOnInteraction: false, reverseDirection: true },
       speed: 900,
-      slidesPerView: 1.5,
-      spaceBetween: 16,
+      slidesPerView: 1.4,
+      spaceBetween: 8, // pequeño espacio entre tarjetas
       direction: "horizontal",
-      autoplay: {
-  delay: 3000,
-  disableOnInteraction: false,
-  reverseDirection: true,  // 👈 hace que el carrusel vaya al revés
-},
-      breakpoints: {
-        640: { slidesPerView: 4, spaceBetween: 20 },
-        1024: { slidesPerView: 5, spaceBetween: 24 },
-      },
+      centeredSlides: false,
     });
   } catch (err) {
     console.error("❌ Error cargando carrusel de Jangueo:", err);

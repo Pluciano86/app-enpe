@@ -32,8 +32,17 @@ const defaultCuentaTexto = 'Mi Cuenta';
 function renderFooter() {
   if (!container) return;
 
+  const maxWidth = '28rem'; // igual que max-w-md para alinear con el header/columna
   container.innerHTML = `
-    <footer class="fixed bottom-0 left-0 right-0 z-50 bg-[#231F20] text-white border-t border-gray-700" style="padding-bottom: env(safe-area-inset-bottom);">
+    <footer
+      class="fixed bottom-0 z-50 text-white bg-[#231F20] border-t border-gray-700 shadow-lg"
+      style="
+        padding-bottom: env(safe-area-inset-bottom);
+        width: 100%;
+        max-width: ${maxWidth};
+        left: 50%;
+        transform: translateX(-50%);
+      ">
       <nav class="flex justify-around py-2">
         <a href="${base}index.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
           <img src="${iconBase}iconInicio.png" class="w-8 h-8 mb-1" alt="Inicio">
@@ -63,6 +72,13 @@ function renderFooter() {
 renderFooter();
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Lazy-load para medios pesados (si no se especificó)
+  document.querySelectorAll('img').forEach((img) => {
+    if (!img.hasAttribute('loading')) {
+      img.setAttribute('loading', 'lazy');
+    }
+  });
+
   const enlaceMiCuenta = document.getElementById('enlaceMiCuenta');
   const cuentaImagen = document.getElementById('footerImagen');
   const cuentaTexto = document.getElementById('footerTexto');

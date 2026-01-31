@@ -92,7 +92,7 @@ export async function mostrarPlayasCercanas(comercio) {
 
   // 🔹 Estructura Swiper
   contenedor.innerHTML = `
-    <div class="swiper playasSwiper overflow-visible">
+    <div class="swiper playasSwiper w-full overflow-hidden px-1">
       <div class="swiper-wrapper"></div>
     </div>
   `;
@@ -125,27 +125,14 @@ export async function mostrarPlayasCercanas(comercio) {
     wrapper.appendChild(slide);
   }
 
- // 🔹 Inicializar Swiper igual que Comercios (ajustado para mostrar varias tarjetas)
+// 🔹 Inicializar Swiper ajustado al ancho móvil
 const swiperEl = contenedor.querySelector('.playasSwiper');
-const numSlides = swiperEl.querySelectorAll('.swiper-slide').length;
 
 new Swiper(swiperEl, {
-  slidesPerView: 2.7,
-        spaceBetween: 12,
-        loop: true,
-        autoplay: { delay: 3000, disableOnInteraction: false },
-        reverseDirection: true,
-        breakpoints: {
-          640: { slidesPerView: 3, spaceBetween: 18 },
-          1024: { slidesPerView: 4, spaceBetween: 20 },
-  },
+  slidesPerView: 2.3,
+  spaceBetween: 1,
+  loop: true,
+  autoplay: { delay: 3000, disableOnInteraction: false },
+  speed: 900,
 });
-
-// 🔹 Asegurar que el carrusel no corte sombras ni slides
-const style = document.createElement('style');
-style.textContent = `
-  .playasSwiper { overflow: visible !important; }
-  .swiper-slide { width: auto !important; overflow: visible !important; }
-`;
-document.head.appendChild(style);
 }
