@@ -85,9 +85,14 @@ const DICTS = {
 
     'home.categoriasTitulo': 'Categorías más Buscadas',
     'home.verTodasCategorias': 'Ver todas las Categorías...',
+    'home.verMenosCategorias': 'Ver menos...',
     'home.eventosTitulo': 'Chequea los próximos Eventos',
     'home.descubreArea': 'Descubre lo que hay en tu Área',
     'home.vamosPlaya': "Vamos Pa' la Playa",
+    'home.area.metroSubtitle': 'Área Metropolitana',
+    'home.especialesLunch': 'Especiales de Almuerzo',
+    'home.especialesHH': 'Happy Hour',
+    'home.especialesCta': 'Dale aquí y chequea los especiales',
     'home.comidaTitulo': "¡Aquí EnPeErre se come Ca..Brutal!",
     'home.jangueoTitulo': '¿Nos Fuimos pal Jangueo?',
 
@@ -229,9 +234,14 @@ const DICTS = {
 
     'home.categoriasTitulo': 'Top Categories',
     'home.verTodasCategorias': 'See all Categories...',
+    'home.verMenosCategorias': 'Show fewer categories...',
     'home.eventosTitulo': 'Check upcoming Events',
     'home.descubreArea': 'Discover what’s in your Area',
     'home.vamosPlaya': "Let’s hit the Beach",
+    'home.area.metroSubtitle': 'Metropolitan Area',
+    'home.especialesLunch': 'Lunch Specials',
+    'home.especialesHH': 'Happy Hour Specials',
+    'home.especialesCta': "Tap here to see today's specials",
     'home.comidaTitulo': "Here we eat amazing!",
     'home.jangueoTitulo': 'Ready to Party?',
 
@@ -370,9 +380,14 @@ const DICTS = {
 
     'home.categoriasTitulo': '最热门的分类',
     'home.verTodasCategorias': '查看所有分类...',
+    'home.verMenosCategorias': '收起分类...',
     'home.eventosTitulo': '查看即将举行的活动',
     'home.descubreArea': '探索你所在的区域',
     'home.vamosPlaya': '去海滩吧',
+    'home.area.metroSubtitle': '大都会区',
+    'home.especialesLunch': '午餐特惠',
+    'home.especialesHH': '欢乐时光特惠',
+    'home.especialesCta': '点这里查看今日优惠',
     'home.comidaTitulo': '这里的美食超棒！',
     'home.jangueoTitulo': '准备去嗨吗？',
 
@@ -536,9 +551,14 @@ const DICTS = {
 
     'home.categoriasTitulo': 'Catégories les plus recherchées',
     'home.verTodasCategorias': 'Voir toutes les catégories...',
+    'home.verMenosCategorias': 'Voir moins de catégories...',
     'home.eventosTitulo': 'Consultez les prochains événements',
     'home.descubreArea': 'Découvrez ce qu’il y a dans votre zone',
     'home.vamosPlaya': 'Allons à la plage',
+    'home.area.metroSubtitle': 'Zone métropolitaine',
+    'home.especialesLunch': 'Formules Déjeuner',
+    'home.especialesHH': 'Offres Happy Hour',
+    'home.especialesCta': 'Appuie ici pour voir les offres',
     'home.comidaTitulo': 'Ici on mange super bien !',
     'home.jangueoTitulo': 'On sort faire la fête ?',
 
@@ -677,9 +697,14 @@ const DICTS = {
 
     'home.categoriasTitulo': 'Categorias mais buscadas',
     'home.verTodasCategorias': 'Ver todas as categorias...',
+    'home.verMenosCategorias': 'Ver menos categorias...',
     'home.eventosTitulo': 'Confira os próximos eventos',
     'home.descubreArea': 'Descubra o que há na sua área',
     'home.vamosPlaya': 'Vamos à praia',
+    'home.area.metroSubtitle': 'Região Metropolitana',
+    'home.especialesLunch': 'Especiais de Almoço',
+    'home.especialesHH': 'Ofertas de Happy Hour',
+    'home.especialesCta': 'Toque aqui para ver as ofertas de hoje',
     'home.comidaTitulo': 'Aqui a comida é top!',
     'home.jangueoTitulo': 'Bora curtir?',
 
@@ -818,9 +843,14 @@ const DICTS = {
 
     'home.categoriasTitulo': 'Beliebteste Kategorien',
     'home.verTodasCategorias': 'Alle Kategorien anzeigen...',
+    'home.verMenosCategorias': 'Weniger Kategorien anzeigen...',
     'home.eventosTitulo': 'Bevorstehende Events ansehen',
     'home.descubreArea': 'Entdecke, was es in deiner Gegend gibt',
     'home.vamosPlaya': 'Ab zum Strand',
+    'home.area.metroSubtitle': 'Metropolregion',
+    'home.especialesLunch': 'Mittagsangebote',
+    'home.especialesHH': 'Happy-Hour-Angebote',
+    'home.especialesCta': 'Tippe hier, um die heutigen Angebote zu sehen',
     'home.comidaTitulo': 'Hier isst man richtig gut!',
     'home.jangueoTitulo': 'Lust zu feiern?',
 
@@ -959,9 +989,14 @@ const DICTS = {
 
     'home.categoriasTitulo': 'Categorie più cercate',
     'home.verTodasCategorias': 'Vedi tutte le categorie...',
+    'home.verMenosCategorias': 'Vedi meno categorie...',
     'home.eventosTitulo': 'Guarda i prossimi eventi',
     'home.descubreArea': 'Scopri cosa c’è nella tua zona',
     'home.vamosPlaya': 'Andiamo in spiaggia',
+    'home.area.metroSubtitle': 'Area metropolitana',
+    'home.especialesLunch': 'Speciali Pranzo',
+    'home.especialesHH': 'Offerte Happy Hour',
+    'home.especialesCta': 'Tocca qui per vedere le offerte di oggi',
     'home.comidaTitulo': 'Qui si mangia benissimo!',
     'home.jangueoTitulo': 'Andiamo a divertirci?',
 
@@ -1100,9 +1135,14 @@ const DICTS = {
 
     'home.categoriasTitulo': '인기 카테고리',
     'home.verTodasCategorias': '모든 카테고리 보기...',
+    'home.verMenosCategorias': '카테고리 접기...',
     'home.eventosTitulo': '다가오는 이벤트 확인',
     'home.descubreArea': '내 주변을 둘러보기',
     'home.vamosPlaya': '해변으로 가요',
+    'home.area.metroSubtitle': '대도시권',
+    'home.especialesLunch': '점심 스페셜',
+    'home.especialesHH': '해피아워 스페셜',
+    'home.especialesCta': '오늘의 스페셜을 보려면 여기를 터치',
     'home.comidaTitulo': '여기 음식 최고!',
     'home.jangueoTitulo': '파티하러 갈까요?',
 
@@ -1241,9 +1281,14 @@ const DICTS = {
 
     'home.categoriasTitulo': '人気カテゴリー',
     'home.verTodasCategorias': 'すべてのカテゴリーを見る...',
+    'home.verMenosCategorias': 'カテゴリーを減らして表示...',
     'home.eventosTitulo': '今後のイベントをチェック',
     'home.descubreArea': '近くを探索',
     'home.vamosPlaya': 'ビーチへ行こう',
+    'home.area.metroSubtitle': '大都市圏',
+    'home.especialesLunch': 'ランチスペシャル',
+    'home.especialesHH': 'ハッピーアワー特典',
+    'home.especialesCta': '今日の特典を見るにはタップ',
     'home.comidaTitulo': 'ここはご飯が最高！',
     'home.jangueoTitulo': '遊びに行こう？',
 

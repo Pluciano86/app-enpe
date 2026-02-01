@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { t } from './i18n.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const contenedor = document.getElementById('categoriasContainer');
@@ -74,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // 🔸 Cambiar texto y color del botón
-    toggleBtn.textContent = mostrandoTodas ? 'Ver menos...' : 'Ver todas las Categorías...';
+    toggleBtn.textContent = mostrandoTodas ? t('home.verMenosCategorias') : t('home.verTodasCategorias');
     toggleBtn.className = 'text-gray-500 text-sm font-medium hover:text-gray-700 mt-2';
   }
 

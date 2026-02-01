@@ -143,6 +143,8 @@ const estado = {
   categoria: '',
   categoriaObj: null,
   categoriaSlug: '',
+  subcategorias: [],
+  subcategoriaSeleccionadaId: '',
   filtros: {
     textoBusqueda: '',
     municipio: '',
@@ -181,6 +183,7 @@ if (typeof window !== 'undefined') {
 window.addEventListener('lang:changed', () => {
   estado.categoria = getCategoriaLabelPorIdioma();
   actualizarEtiquetaSubcategoria(estado.categoria);
+  renderSubcategoriasDropdown();
   const base = estado.comerciosFiltrados.length ? estado.comerciosFiltrados : estado.lista;
   renderListado(base, { omitRefinamiento: true, skipFilter: true });
 });
@@ -386,22 +389,51 @@ async function cargarMunicipios() {
 async function cargarSubcategorias(idCategoria) {
   const select = getElement('filtro-subcategoria');
   if (!select || !idCategoria) return;
-  select.innerHTML = '<option value=\"\">Todas</option>';
   try {
     const { data, error } = await supabase
       .from('subCategoria')
-      .select('id, nombre')
+      .select(`
+        id,
+        nombre,
+        nombre_es,
+        nombre_en,
+        nombre_fr,
+        nombre_pt,
+        nombre_de,
+        nombre_it,
+        nombre_zh,
+        nombre_ko,
+        nombre_ja
+      `)
       .eq('idCategoria', idCategoria);
     if (error) throw error;
-    data?.forEach((sub) => {
-      const option = document.createElement('option');
-      option.value = sub.id;
-      option.textContent = sub.nombre;
-      select.appendChild(option);
-    });
+    estado.subcategorias = Array.isArray(data) ? data : [];
+    renderSubcategoriasDropdown();
   } catch (err) {
     console.error('Error cargando subcategorías:', err);
   }
+}
+
+function renderSubcategoriasDropdown(subs = estado.subcategorias) {
+  const select = getElement('filtro-subcategoria');
+  if (!select) return;
+  const current = select.value || estado.filtros.subcategoria || '';
+  select.innerHTML = `<option value="">${t('listado.todas')}</option>`;
+
+  const lang = (localStorage.getItem('lang') || document.documentElement.lang || 'es').toLowerCase();
+  const col = `nombre_${lang}`;
+
+  subs.forEach((sub) => {
+    const option = document.createElement('option');
+    option.value = sub.id;
+    const label = sub?.[col] || sub?.nombre_es || sub?.nombre || '';
+    option.textContent = label;
+    select.appendChild(option);
+  });
+
+  select.value = current;
+  estado.filtros.subcategoria = select.value;
+  estado.subcategoriaSeleccionadaId = select.value;
 }
 
 function normalizarComercio(record, referencia = obtenerReferenciaUsuarioParaCalculos()) {
@@ -1349,7 +1381,10 @@ function registrarEventos() {
       estado.filtros.municipio = valor;
       estado.municipioSeleccionadoManualmente = Boolean(valor);
     }],
-    ['filtro-subcategoria', 'change', (valor) => (estado.filtros.subcategoria = valor)],
+    ['filtro-subcategoria', 'change', (valor) => {
+      estado.filtros.subcategoria = valor;
+      estado.subcategoriaSeleccionadaId = valor;
+    }],
     ['filtro-orden', 'change', (valor) => (estado.filtros.orden = valor)],
     ['filtro-abierto', 'change', (_, checked) => (estado.filtros.abiertoAhora = checked)],
     [
