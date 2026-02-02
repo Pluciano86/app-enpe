@@ -44,6 +44,9 @@ const DICTS = {
     'area.municipio': 'Municipio',
     'area.costo': 'Costo:',
     'area.comprarBoletos': 'Comprar boletos',
+    'evento.comprarBoletos': 'Comprar Boletos',
+    'evento.sinDescripcion': 'Sin descripción disponible',
+    'evento.verFechas': 'Ver las {count} fechas disponibles',
 
     // comunes
     'common.cerrar': 'Cerrar',
@@ -197,6 +200,9 @@ const DICTS = {
     'area.municipio': 'Town',
     'area.costo': 'Cost:',
     'area.comprarBoletos': 'Buy tickets',
+    'evento.comprarBoletos': 'Buy Tickets',
+    'evento.sinDescripcion': 'No description available',
+    'evento.verFechas': 'View {count} available dates',
 
     'common.cerrar': 'Close',
     'common.cancelar': 'Cancel',
@@ -343,6 +349,9 @@ const DICTS = {
     'area.municipio': '市镇',
     'area.costo': '费用：',
     'area.comprarBoletos': '购买门票',
+    'evento.comprarBoletos': '购买门票',
+    'evento.sinDescripcion': '暂无描述',
+    'evento.verFechas': '查看 {count} 个可用日期',
 
     'common.cerrar': '关闭',
     'common.cancelar': '取消',
@@ -489,6 +498,9 @@ const DICTS = {
     'area.municipio': 'Municipalité',
     'area.costo': 'Coût :',
     'area.comprarBoletos': 'Acheter des billets',
+    'evento.comprarBoletos': 'Acheter des billets',
+    'evento.sinDescripcion': 'Aucune description disponible',
+    'evento.verFechas': 'Voir {count} dates disponibles',
 
     'common.cerrar': 'Fermer',
     'common.cancelar': 'Annuler',
@@ -635,6 +647,9 @@ const DICTS = {
     'area.municipio': 'Município',
     'area.costo': 'Custo:',
     'area.comprarBoletos': 'Comprar ingressos',
+    'evento.comprarBoletos': 'Comprar ingressos',
+    'evento.sinDescripcion': 'Descrição não disponível',
+    'evento.verFechas': 'Ver {count} datas disponíveis',
 
     'common.cerrar': 'Fechar',
     'common.cancelar': 'Cancelar',
@@ -781,6 +796,9 @@ const DICTS = {
     'area.municipio': 'Gemeinde',
     'area.costo': 'Kosten:',
     'area.comprarBoletos': 'Tickets kaufen',
+    'evento.comprarBoletos': 'Tickets kaufen',
+    'evento.sinDescripcion': 'Keine Beschreibung verfügbar',
+    'evento.verFechas': '{count} verfügbare Termine ansehen',
 
     'common.cerrar': 'Schließen',
     'common.cancelar': 'Abbrechen',
@@ -927,6 +945,9 @@ const DICTS = {
     'area.municipio': 'Comune',
     'area.costo': 'Costo:',
     'area.comprarBoletos': 'Acquista biglietti',
+    'evento.comprarBoletos': 'Acquista biglietti',
+    'evento.sinDescripcion': 'Descrizione non disponibile',
+    'evento.verFechas': 'Vedi le {count} date disponibili',
 
     'common.cerrar': 'Chiudi',
     'common.cancelar': 'Annulla',
@@ -1073,6 +1094,9 @@ const DICTS = {
     'area.municipio': '시·군',
     'area.costo': '비용:',
     'area.comprarBoletos': '티켓 구매',
+    'evento.comprarBoletos': '티켓 구매',
+    'evento.sinDescripcion': '설명이 없습니다',
+    'evento.verFechas': '{count}개의 이용 가능한 날짜 보기',
 
     'common.cerrar': '닫기',
     'common.cancelar': '취소',
@@ -1219,6 +1243,9 @@ const DICTS = {
     'area.municipio': '市町村',
     'area.costo': '費用：',
     'area.comprarBoletos': 'チケットを購入',
+    'evento.comprarBoletos': 'チケットを購入',
+    'evento.sinDescripcion': '説明がありません',
+    'evento.verFechas': '{count} 件の利用可能な日付を見る',
 
     'common.cerrar': '閉じる',
     'common.cancelar': 'キャンセル',
@@ -1327,8 +1354,9 @@ const DICTS = {
 
 let currentLang = localStorage.getItem('lang') || 'es';
 
-export function t(key) {
-  return DICTS[currentLang]?.[key] ?? DICTS.es?.[key] ?? key;
+export function t(key, vars) {
+  const base = DICTS[currentLang]?.[key] ?? DICTS.es?.[key] ?? key;
+  return vars ? interpolate(base, vars) : base;
 }
 
 export function getLang() {

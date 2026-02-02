@@ -90,7 +90,11 @@ export function cardEventoSlide(evento) {
   const horaBase = horainicio || hora || "";
   const horaFormateada = formatearHora(horaBase);
   const urlImagen = imagen || "https://placehold.co/200x120?text=Evento";
-  const costoTexto = gratis ? t("area.gratis") : costo || t("area.noDisponible");
+  const costoTexto = gratis
+    ? t("area.gratis")
+    : costo
+    ? (/^[\d,.]+$/.test(costo) && !String(costo).startsWith("$") ? `$${costo}` : costo)
+    : t("area.noDisponible");
   const iconoHTML = categoriaIcono ? `<i class="fas ${categoriaIcono}"></i>` : "";
 
   const card = document.createElement("div");

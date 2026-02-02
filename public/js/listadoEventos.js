@@ -230,10 +230,13 @@ async function renderizarEventos() {
     const horaTexto = proxima?.horainicio ? formatearHora(proxima.horainicio) : '';
     const iconoCategoria = evento.categoriaIcono ? `<i class="fas ${evento.categoriaIcono}"></i>` : '';
     const costoRaw = evento.costo != null ? String(evento.costo).trim() : '';
+    const costoConSimbolo = /^[\d,.]+$/.test(costoRaw) && !costoRaw.startsWith('$')
+      ? `$${costoRaw}`
+      : costoRaw;
     const costoTexto = evento.gratis
       ? 'Gratis'
-      : costoRaw
-        ? (costoRaw.toLowerCase().startsWith('costo') ? costoRaw : `Costo: ${costoRaw}`)
+      : costoConSimbolo
+        ? (costoConSimbolo.toLowerCase().startsWith('costo') ? costoConSimbolo : `Costo: ${costoConSimbolo}`)
         : 'Costo no disponible';
     const div = document.createElement('div');
     div.className = 'bg-white rounded shadow hover:shadow-lg transition overflow-hidden cursor-pointer flex flex-col';
