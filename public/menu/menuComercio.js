@@ -1,5 +1,8 @@
 // menu/menuComercio.js
 import { supabase } from '../shared/supabaseClient.js';
+import { getMenuI18n } from '../shared/menuI18n.js';
+import { mountLangSelector } from '../shared/langSelector.js';
+import { getLang } from '../js/i18n.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 const seccionesEl = document.getElementById('seccionesMenu');
@@ -10,6 +13,7 @@ const heroOverlay = document.getElementById('heroOverlay');
 const heroImg = document.getElementById('heroImg');
 const heroNombre = document.getElementById('heroNombre');
 const heroMenuWord = document.getElementById('heroMenuWord');
+let seccionActivaWrapper = null;
 const footerLogoComercio = document.getElementById('footerLogoComercio');
 const footerNombreComercio = document.getElementById('footerNombreComercio');
 const footerTelefono = document.getElementById('footerTelefono');
@@ -27,6 +31,10 @@ const DEFAULT_TEMA = {
   fonttitle_size: 18,
   nombre_font_size: 28,
   menu_font_size: 20,
+  seccion_desc_font_family: null,
+  seccion_desc_font_url: null,
+  seccion_desc_font_size: 14,
+  seccion_desc_color: null,
   colorComercio: '#111827',
   colorMenu: '#111827',
   overlayoscuro: 40,
@@ -68,6 +76,37 @@ let linkFuente = null;
 let coverUrl = '';
 let backgroundUrl = '';
 const fontLinks = new Set();
+let menusBase = [];
+let productosBase = [];
+let productosView = [];
+let renderToken = 0;
+let seccionActivaId = null;
+const menuButtons = new Map(); // idMenu -> { btn, titleEl, descEl }
+
+const getCurrentLang = () => {
+  const stored = (typeof localStorage !== 'undefined' && localStorage.getItem('lang')) || '';
+  const docLang = (typeof document !== 'undefined' && document.documentElement?.lang) || '';
+  const fallback = getLang ? getLang() : 'es';
+  return (stored || docLang || fallback || 'es').toLowerCase().split('-')[0];
+};
+
+const showGlobalLoader = () => {
+  const loader = document.getElementById('globalLoader');
+  if (!loader) return;
+  loader.classList.remove('hidden', 'opacity-0');
+  loader.classList.add('flex', 'opacity-100');
+};
+
+const hideGlobalLoader = () => {
+  const loader = document.getElementById('globalLoader');
+  if (!loader) return;
+  loader.classList.remove('opacity-100');
+  loader.classList.add('opacity-0');
+  setTimeout(() => {
+    loader.classList.remove('flex');
+    loader.classList.add('hidden');
+  }, 200);
+};
 
 function cacheBust(url) {
   if (!url) return '';
@@ -143,9 +182,9 @@ function setCssVars() {
 
 async function cargarTema() {
   try {
-    const { data, error } = await supabase
-      .from('menu_tema')
-      .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",ocultar_nombre,ocultar_menu,overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+  const { data, error } = await supabase
+    .from('menu_tema')
+    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",ocultar_nombre,ocultar_menu,overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay,seccion_desc_font_family,seccion_desc_font_url,seccion_desc_font_size,seccion_desc_color')
       .eq('idcomercio', idComercio)
       .maybeSingle();
 
@@ -194,6 +233,9 @@ async function cargarTema() {
   }
   if (temaActual.fontmenuwordfamily && temaActual.fontmenuwordurl) {
     ensureFontLink(temaActual.fontmenuwordurl);
+  }
+  if (temaActual.seccion_desc_font_url) {
+    ensureFontLink(temaActual.seccion_desc_font_url);
   }
 
   if (btnMenuPdf) {
@@ -280,12 +322,14 @@ async function cargarDatos() {
 
   const { data: menus, error: errorMenus } = await supabase
     .from('menus')
-    .select('id, titulo, subtitulo, orden')
+    .select('id, titulo, descripcion, subtitulo, orden, no_traducir')
     .eq('idComercio', idComercio)
     .eq('activo', true)
     .order('orden', { ascending: true });
 
   if (errorMenus) return alert('Error cargando menú');
+  menusBase = menus || [];
+  menuButtons.clear();
 
   if (!seccionesEl) {
     console.warn('[menu] Contenedor de secciones no encontrado');
@@ -294,124 +338,198 @@ async function cargarDatos() {
   // Asegura color de texto base para legibilidad sobre fondos
   seccionesEl.style.color = temaActual.colortexto || '#1f2937';
 
+  // 1) cargar todos los productos una sola vez
+  const menuIds = (menus || []).map((m) => m.id).filter(Boolean);
+
+  if (menuIds.length) {
+    const { data: productosAll, error: errorProductosAll } = await supabase
+      .from('productos')
+      .select('*')
+      .in('idMenu', menuIds)
+      .eq('activo', true)
+      .order('orden', { ascending: true });
+
+    if (errorProductosAll) {
+      console.warn('Error cargando productos base:', errorProductosAll);
+      productosBase = [];
+    } else {
+      productosBase = productosAll || [];
+    }
+  } else {
+    productosBase = [];
+  }
+
   seccionesEl.innerHTML = '';
   let seccionActiva = null;
+  seccionActivaWrapper = null;
 
   for (const menu of menus) {
     const wrapper = document.createElement('div');
     wrapper.className = 'w-[90%] mx-auto';
 
     const btn = document.createElement('button');
-    btn.className = 'w-full text-xl px-4 py-2 rounded mb-2 shadow font-medium hover:opacity-90 transition text-center space-y-1';
+    btn.className = 'menuHeaderBtn w-full text-xl rounded mb-2 shadow font-medium hover:opacity-90 transition text-center space-y-1';
+    btn.dataset.menuId = menu.id;
 
-    const textWrap = document.createElement('div');
-    textWrap.className = 'space-y-0.5';
-
-    const titulo = document.createElement('span');
-    titulo.className = 'block leading-tight';
-    titulo.textContent = menu.titulo;
-    textWrap.appendChild(titulo);
-
-    const subtituloTexto = (menu.subtitulo || '').trim();
-    const sizeTitulo = Number(temaActual.fonttitle_size) || 18;
-    const sizeSub = Math.max(12, Math.round(sizeTitulo * 0.8));
-    if (subtituloTexto) {
-      const sub = document.createElement('span');
-      sub.className = 'block leading-tight opacity-90';
-      sub.textContent = subtituloTexto;
-      sub.style.fontSize = `${sizeSub}px`;
-      textWrap.appendChild(sub);
-    }
-
-    btn.appendChild(textWrap);
+    const tituloTxt = (menu.titulo ?? 'Sin título').trim();
+    btn.innerHTML = `
+      <div class="w-full text-center">
+        <div class="menuHeaderTitle font-bold">${tituloTxt}</div>
+        <div class="menuHeaderDesc"></div>
+      </div>
+    `;
     btn.style.backgroundColor = temaActual.colorboton || '#2563eb';
     btn.style.color = temaActual.colorbotontexto || '#ffffff';
-    if (temaActual.fonttitle_size) btn.style.fontSize = `${temaActual.fonttitle_size}px`;
-    if (temaActual.fonttitlefamily) btn.style.fontFamily = `'${temaActual.fonttitlefamily}', 'Kanit', sans-serif`;
     const strokeBtn = Number(temaActual.boton_stroke_width) || 0;
     btn.style.webkitTextStroke = strokeBtn > 0 ? `${strokeBtn}px ${temaActual.boton_stroke_color || '#000'}` : '';
     btn.style.textShadow = temaActual.boton_shadow || '';
+    const titleEl = btn.querySelector('.menuHeaderTitle');
+    const descElHeader = btn.querySelector('.menuHeaderDesc');
+    const titleSize =
+      temaActual.seccion_font_size ??
+      temaActual.boton_seccion_font_size ??
+      temaActual.fonttitle_size ??
+      18;
+    const descSize = temaActual.seccion_desc_font_size ?? Math.round(titleSize * 0.8);
+    if (titleEl) titleEl.style.fontSize = `${titleSize}px`;
+    if (descElHeader) {
+      descElHeader.style.fontSize = `${descSize}px`;
+      const descColor = temaActual.seccion_desc_color || temaActual.colorbotontexto || '#ffffff';
+      descElHeader.style.color = descColor;
+      const descFont = temaActual.seccion_desc_font_family || temaActual.fonttitlefamily;
+      if (descFont) descElHeader.style.fontFamily = `'${descFont}', 'Kanit', sans-serif`;
+    }
+    if (temaActual.fonttitlefamily && titleEl) {
+      titleEl.style.fontFamily = `'${temaActual.fonttitlefamily}', 'Kanit', sans-serif`;
+    }
 
     const productosContenedor = document.createElement('div');
     productosContenedor.className = 'hidden mt-2 space-y-2';
+    const listaDiv = document.createElement('div');
+    listaDiv.className = 'space-y-2';
+    productosContenedor.appendChild(listaDiv);
+    menuButtons.set(menu.id, {
+      btn,
+      titleEl: btn.querySelector('.menuHeaderTitle'),
+      descEl: btn.querySelector('.menuHeaderDesc'),
+      listaDiv,
+      productosContenedor,
+      wrapper,
+    });
 
     btn.onclick = async () => {
       if (seccionActiva === productosContenedor) {
         productosContenedor.classList.add('hidden');
         seccionActiva = null;
+        seccionActivaId = null;
+        if (seccionActivaWrapper) seccionActivaWrapper.classList.remove('menu-open');
+        const descElLocal = btn.querySelector('.menuHeaderDesc');
+        if (descElLocal) descElLocal.textContent = '';
         return;
       }
-      if (seccionActiva) seccionActiva.classList.add('hidden');
+      if (seccionActiva) {
+        seccionActiva.classList.add('hidden');
+        if (seccionActivaWrapper) seccionActivaWrapper.classList.remove('menu-open');
+        if (seccionActivaWrapper) {
+          const prevDesc = seccionActivaWrapper.querySelector('.menuHeaderDesc');
+          if (prevDesc) prevDesc.textContent = '';
+        }
+      }
       seccionActiva = productosContenedor;
-      productosContenedor.innerHTML = '<p class="text-sm text-gray-500">Cargando...</p>';
+      seccionActivaWrapper = wrapper;
+      seccionActivaId = menu.id;
       productosContenedor.classList.remove('hidden');
+      wrapper.classList.add('menu-open');
 
-      const { data: productos, error } = await supabase
-        .from('productos')
-        .select('*')
-        .eq('idMenu', menu.id)
-        .eq('activo', true)
-        .order('orden', { ascending: true });
+      const lang = getLang();
+      const descElLocal = btn.querySelector('.menuHeaderDesc');
+      const titleEl = btn.querySelector('.menuHeaderTitle');
 
-      if (error) {
-        productosContenedor.innerHTML = '<p class="text-red-500">Error cargando productos</p>';
-        return;
-      }
+      try {
+        const myToken = ++renderToken;
+        listaDiv.innerHTML = '<p class="text-sm text-gray-500">Cargando...</p>';
+        const menuTrad = await getMenuI18n(menu.id, lang, { includeProductos: true });
+        if (titleEl && menuTrad?.menu?.titulo) titleEl.textContent = menuTrad.menu.titulo;
+        const descTxt = (menuTrad?.menu?.descripcion || menu.descripcion || '').trim();
+        if (descElLocal) descElLocal.textContent = descTxt;
 
-    const fontBody = temaActual.fontbodyfamily ? `'${temaActual.fontbodyfamily}', 'Kanit', sans-serif` : '';
-    // Se elimina el título dentro del panel para evitar duplicado
-    productosContenedor.innerHTML = '';
+        const productosTrad = (menuTrad?.productos || []).map((p) => ({ ...p }));
+        const baseProductos = (productosBase || [])
+          .filter((p) => p.idMenu === menu.id)
+          .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
 
-    const alphaItem = 1 - Math.min(Math.max(Number(temaActual.item_overlay) || 0, 0), 80) / 100;
-    const itemBgColor = temaActual.item_bg_color || '#ffffff';
-    const toRgba = (color, a) => {
-      const alpha = Math.min(Math.max(a, 0), 1);
-      if (!color) return `rgba(0,0,0,${alpha})`;
-      if (color.startsWith('rgb')) {
-        const parts = color.replace(/rgba?\(|\)/g, '').split(',').map((v) => v.trim());
-        const [r = 0, g = 0, b = 0] = parts;
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-      }
-      const hex = color.replace('#', '');
-      const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
-      const num = parseInt(full, 16);
-      const r = (num >> 16) & 255;
-      const g = (num >> 8) & 255;
-      const b = num & 255;
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    };
-    const itemBg = toRgba(itemBgColor, alphaItem);
-    const alignVal = (temaActual.productoAlign || 'left').toLowerCase();
-    const alignItems = alignVal === 'center' ? 'center' : 'flex-start';
-    const textAlign = alignVal === 'center' ? 'center' : 'left';
+        const tradById = new Map(productosTrad.map((t) => [Number(t.id ?? t.idproducto), t]));
+        const productos = baseProductos.map((p) => {
+          const t = tradById.get(Number(p.id));
+          if (!t) return p;
+          return {
+            ...p, // conserva precio/imagen/etc.
+            nombre: t.nombre ?? p.nombre,
+            descripcion: t.descripcion ?? p.descripcion,
+          };
+        });
 
-    for (const p of productos) {
-      const div = document.createElement('div');
-      div.className = 'rounded-lg shadow p-4 mb-2 flex gap-4';
-      div.style.backgroundColor = itemBg;
+        if (myToken !== renderToken) return;
+        listaDiv.innerHTML = '';
 
-      const imagenHTML = p.imagen
-        ? `
-          <div class="w-24 h-24 flex-shrink-0">
-             <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${p.imagen}" 
-                   alt="${p.nombre}" class="w-full h-full object-cover rounded cursor-pointer"
-                   onclick="ampliarImagen('${p.imagen}')">
+        const fontBody = temaActual.fontbodyfamily ? `'${temaActual.fontbodyfamily}', 'Kanit', sans-serif` : '';
+        const alphaItem = 1 - Math.min(Math.max(Number(temaActual.item_overlay) || 0, 0), 80) / 100;
+        const itemBgColor = temaActual.item_bg_color || '#ffffff';
+        const toRgba = (color, a) => {
+          const alpha = Math.min(Math.max(a, 0), 1);
+          if (!color) return `rgba(0,0,0,${alpha})`;
+          if (color.startsWith('rgb')) {
+            const parts = color.replace(/rgba?\(|\)/g, '').split(',').map((v) => v.trim());
+            const [r = 0, g = 0, b = 0] = parts;
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          }
+          const hex = color.replace('#', '');
+          const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+          const num = parseInt(full, 16);
+          const r = (num >> 16) & 255;
+          const g = (num >> 8) & 255;
+          const b = num & 255;
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        };
+        const itemBg = toRgba(itemBgColor, alphaItem);
+        const alignVal = (temaActual.productoAlign || 'left').toLowerCase();
+        const alignItems = alignVal === 'center' ? 'center' : 'flex-start';
+        const textAlign = alignVal === 'center' ? 'center' : 'left';
+
+        for (const p of productos) {
+          const priceTxt = Number.isFinite(Number(p.precio)) ? Number(p.precio).toFixed(2) : (p.precio ?? '');
+          const div = document.createElement('div');
+          div.className = 'rounded-lg shadow p-4 mb-2 flex gap-4';
+          div.style.backgroundColor = itemBg;
+
+          const imagenHTML = p.imagen
+            ? `
+              <div class="w-24 h-24 flex-shrink-0">
+                 <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${p.imagen}" 
+                       alt="${p.nombre}" class="w-full h-full object-cover rounded cursor-pointer"
+                       onclick="ampliarImagen('${p.imagen}')">
+                </div>
+              `
+            : '';
+
+          div.innerHTML = `
+            ${imagenHTML}
+            <div class="flex flex-col justify-between" style="text-align:${textAlign};align-items:${alignItems};width:100%;flex:1;">
+              <div class="w-full">
+                <h3 class="text-xl font-semibold" style="color:${temaActual.colortitulo};${fontBody ? `font-family:${fontBody};` : ''}">${p.nombre}</h3>
+                <p class="text-base leading-5 font-light" style="color:${temaActual.colortexto};${fontBody ? `font-family:${fontBody};` : ''}">${p.descripcion || ''}</p>
+              </div>
+              <div class="font-bold text-xl mt-2 w-full" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">$${priceTxt}</div>
             </div>
-          `
-          : '';
+          `;
 
-        div.innerHTML = `
-          ${imagenHTML}
-          <div class="flex flex-col justify-between" style="text-align:${textAlign};align-items:${alignItems};width:100%;flex:1;">
-            <div class="w-full">
-              <h3 class="text-xl font-semibold" style="color:${temaActual.colortitulo};${fontBody ? `font-family:${fontBody};` : ''}">${p.nombre}</h3>
-              <p class="text-base leading-5 font-light" style="color:${temaActual.colortexto};${fontBody ? `font-family:${fontBody};` : ''}">${p.descripcion || ''}</p>
-            </div>
-            <div class="font-bold text-xl mt-2 w-full" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">$${p.precio.toFixed(2)}</div>
-          </div>
-        `;
-
-        productosContenedor.appendChild(div);
+          listaDiv.appendChild(div);
+        }
+      } catch (e) {
+        console.warn('Error traduciendo menú/productos:', e);
+        const descTxt = (menu.descripcion || '').trim();
+        if (descElLocal) descElLocal.textContent = descTxt;
+        listaDiv.innerHTML = '';
       }
     };
 
@@ -419,6 +537,9 @@ async function cargarDatos() {
     wrapper.appendChild(productosContenedor);
     seccionesEl.appendChild(wrapper);
   }
+
+  // Traduce solo títulos/descripciones de secciones según idioma actual
+  await actualizarTitulosSecciones();
 
   const linkPerfil = document.getElementById('linkPerfilComercio');
   if (linkPerfil) {
@@ -470,11 +591,46 @@ async function cargarDatos() {
 window.ampliarImagen = function (nombreImagen) {
   const modal = document.getElementById('modalImagen');
   const img = document.getElementById('imgAmpliada');
+  if (!modal || !img) return;
   img.src = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${nombreImagen}`;
   modal.classList.remove('hidden');
-  modal.onclick = () => modal.classList.add('hidden');
+  if (modal) {
+    modal.onclick = () => modal.classList.add('hidden');
+  }
 };
 
-btnVolver.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+if (btnVolver) {
+  btnVolver.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-document.addEventListener('DOMContentLoaded', cargarDatos);
+document.addEventListener('DOMContentLoaded', () => {
+  mountLangSelector('#langSwitcherMenu');
+  cargarDatos();
+});
+
+window.addEventListener('lang:changed', async () => {
+  await actualizarTitulosSecciones();
+});
+
+async function actualizarTitulosSecciones() {
+  if (!menusBase.length) return;
+  showGlobalLoader();
+  const lang = getCurrentLang();
+  try {
+    for (const menu of menusBase) {
+      const refs = menuButtons.get(menu.id);
+      if (!refs) continue;
+      const { titleEl, descEl } = refs;
+      const trad = await getMenuI18n(menu.id, lang, { includeProductos: false });
+      if (titleEl && trad?.menu?.titulo) titleEl.textContent = trad.menu.titulo;
+      if (descEl) {
+        const descTxt = (trad?.menu?.descripcion || menu.descripcion || '').trim();
+        descEl.textContent = descTxt;
+      }
+    }
+  } catch (err) {
+    console.warn('No se pudieron traducir encabezados de menú:', err);
+  } finally {
+    hideGlobalLoader();
+  }
+}

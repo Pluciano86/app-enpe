@@ -12,7 +12,9 @@ const seccionesEl = document.getElementById('seccionesMenu');
 const btnAgregarSeccion = document.getElementById('btnAgregarSeccion');
 const modal = document.getElementById('modalSeccion');
 const inputTitulo = document.getElementById('inputTitulo');
+const menuNoTraducirTitulo = document.getElementById('menuNoTraducirTitulo');
 const inputSubtitulo = document.getElementById('inputSubtitulo');
+const menuDescripcion = document.getElementById('menuDescripcion');
 const inputOrden = document.getElementById('inputOrden');
 const inputActivo = document.getElementById('inputActivo');
 const btnCancelarSeccion = document.getElementById('btnCancelarSeccion');
@@ -24,10 +26,13 @@ const fontBodySelect = document.getElementById('fontBodySelect');
 const fontTitleSelect = document.getElementById('fontTitleSelect');
 const fontNombreSelect = document.getElementById('fontNombreSelect');
 const fontMenuWordSelect = document.getElementById('fontMenuWordSelect');
+const fontSeccionDescSelect = document.getElementById('fontSeccionDescSelect');
 const fontBodySize = document.getElementById('fontBodySize');
 const fontTitleSize = document.getElementById('fontTitleSize');
 const nombreFontSize = document.getElementById('nombreFontSize');
 const menuFontSize = document.getElementById('menuFontSize');
+const fontSeccionDescSize = document.getElementById('fontSeccionDescSize');
+const colorSeccionDesc = document.getElementById('colorSeccionDesc');
 const previewFontBody = document.getElementById('previewFontBody');
 const previewFontTitle = document.getElementById('previewFontTitle');
 const previewFontNombre = document.getElementById('previewFontNombre');
@@ -107,6 +112,7 @@ const fuentesSeleccionadas = {
   title: null,
   nombre: null,
   menu: null,
+  secciondesc: null,
 };
 const DEFAULT_TEMA = {
   colortexto: '#1f2937',
@@ -137,6 +143,10 @@ const DEFAULT_TEMA = {
   fonttitle_size: 18,
   nombre_font_size: 28,
   menu_font_size: 20,
+  seccion_desc_font_family: null,
+  seccion_desc_font_url: null,
+  seccion_desc_font_size: 14,
+  seccion_desc_color: '#ffffff',
   item_bg_color: '#ffffff',
   item_overlay: 0,
   productoAlign: 'left',
@@ -278,6 +288,7 @@ function renderFontOptions() {
     { el: fontTitleSelect, rol: 'title', preview: previewFontTitle },
     { el: fontNombreSelect, rol: 'nombre', preview: previewFontNombre },
     { el: fontMenuWordSelect, rol: 'menu', preview: previewFontMenuWord },
+    { el: fontSeccionDescSelect, rol: 'secciondesc', preview: null },
   ];
 
   selects.forEach(({ el, rol, preview }) => {
@@ -314,11 +325,11 @@ function renderFontOptions() {
 
 async function cargarFuenteGuardada() {
   if (!idComercio) return;
-  const { data, error } = await supabase
-    .from('menu_tema')
-    .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,ocultar_nombre,ocultar_menu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
-    .eq('idcomercio', idComercio)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .from('menu_tema')
+      .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,ocultar_nombre,ocultar_menu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay,seccion_desc_font_family,seccion_desc_font_url,seccion_desc_font_size,seccion_desc_color')
+      .eq('idcomercio', idComercio)
+      .maybeSingle();
 
   if (error) {
     console.warn('No se pudo cargar la fuente guardada:', error);
@@ -538,16 +549,22 @@ function rellenarInputsTema(tema) {
     (t.fontnombrefamily && { name: t.fontnombrefamily, url: t.fontnombreurl }) || fuentesSeleccionadas.nombre;
   fuentesSeleccionadas.menu =
     (t.fontmenuwordfamily && { name: t.fontmenuwordfamily, url: t.fontmenuwordurl }) || fuentesSeleccionadas.menu;
+  fuentesSeleccionadas.secciondesc =
+    (t.seccion_desc_font_family && { name: t.seccion_desc_font_family, url: t.seccion_desc_font_url }) ||
+    fuentesSeleccionadas.secciondesc;
   renderFontOptions();
   aplicarFuentePorRol('body', fuentesSeleccionadas.body);
   aplicarFuentePorRol('title', fuentesSeleccionadas.title);
   aplicarFuentePorRol('nombre', fuentesSeleccionadas.nombre);
   aplicarFuentePorRol('menu', fuentesSeleccionadas.menu);
+  aplicarFuentePorRol('secciondesc', fuentesSeleccionadas.secciondesc);
 
   if (fontBodySize) fontBodySize.value = t.fontbody_size ?? DEFAULT_TEMA.fontbody_size;
   if (fontTitleSize) fontTitleSize.value = t.fonttitle_size ?? DEFAULT_TEMA.fonttitle_size;
   if (nombreFontSize) nombreFontSize.value = t.nombre_font_size ?? DEFAULT_TEMA.nombre_font_size;
   if (menuFontSize) menuFontSize.value = t.menu_font_size ?? DEFAULT_TEMA.menu_font_size;
+  if (fontSeccionDescSize) fontSeccionDescSize.value = t.seccion_desc_font_size ?? DEFAULT_TEMA.seccion_desc_font_size;
+  if (colorSeccionDesc) colorSeccionDesc.value = t.seccion_desc_color ?? DEFAULT_TEMA.seccion_desc_color;
 
   if (nombreStrokeWidth) nombreStrokeWidth.value = t.nombre_stroke_width ?? 0;
   if (nombreStrokeColor) nombreStrokeColor.value = t.nombre_stroke_color ?? '#000000';
@@ -612,6 +629,10 @@ function leerTemaDesdeInputs() {
     item_bg_color: itemBgColor?.value || DEFAULT_TEMA.item_bg_color,
     item_overlay: Number(itemOverlay?.value || DEFAULT_TEMA.item_overlay),
     productoAlign: itemAlignCenter?.checked ? 'center' : 'left',
+    seccion_desc_font_family: fuentesSeleccionadas.secciondesc?.name || temaActual.seccion_desc_font_family || null,
+    seccion_desc_font_url: fuentesSeleccionadas.secciondesc?.url || temaActual.seccion_desc_font_url || null,
+    seccion_desc_font_size: Number(fontSeccionDescSize?.value) || DEFAULT_TEMA.seccion_desc_font_size,
+    seccion_desc_color: colorSeccionDesc?.value || DEFAULT_TEMA.seccion_desc_color,
   };
 }
 
@@ -620,7 +641,7 @@ async function cargarTema() {
   try {
     const { data, error } = await supabase
       .from('menu_tema')
-      .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,ocultar_nombre,ocultar_menu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay')
+      .select('colortexto,colortitulo,colorprecio,colorboton,colorbotontexto,"colorComercio","colorMenu","productoAlign",overlayoscuro,pdfurl,"colorBotonPDF",portadaimagen,backgroundimagen,backgroundcolor,textomenu,ocultar_nombre,ocultar_menu,fontbodyfamily,fontbodyurl,fontbody_size,fonttitlefamily,fonttitleurl,fonttitle_size,fontnombrefamily,fontnombreurl,nombre_font_size,fontmenuwordfamily,fontmenuwordurl,menu_font_size,nombre_shadow,nombre_stroke_width,nombre_stroke_color,menu_shadow,menu_stroke_width,menu_stroke_color,titulos_shadow,titulos_stroke_width,titulos_stroke_color,boton_shadow,boton_stroke_width,boton_stroke_color,item_bg_color,item_overlay,seccion_desc_font_family,seccion_desc_font_url,seccion_desc_font_size,seccion_desc_color')
       .eq('idcomercio', idComercio)
       .maybeSingle();
 
@@ -1036,7 +1057,15 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
   btnEditarSeccion.textContent = 'Editar sección';
   btnEditarSeccion.addEventListener('click', (e) => {
     e.stopPropagation();
-    window.editarSeccion(seccion.id, seccion.titulo, seccion.orden, seccion.activo, seccion.subtitulo || '');
+    window.editarSeccion(
+      seccion.id,
+      seccion.titulo,
+      seccion.orden,
+      seccion.activo,
+      seccion.subtitulo || '',
+      seccion.descripcion || '',
+      seccion.no_traducir || false
+    );
   });
 
   const btnAgregarProducto = document.createElement('button');
@@ -1110,7 +1139,7 @@ function crearSeccionAccordion(seccion, productos = [], expandir = false) {
 async function cargarSecciones() {
   const { data, error } = await supabase
     .from('menus')
-    .select('*')
+    .select('id, titulo, descripcion, subtitulo, orden, activo, idComercio, no_traducir')
     .eq('idComercio', idComercio)
     .order('orden', { ascending: true });
 
@@ -1141,7 +1170,7 @@ async function cargarSecciones() {
   for (const seccion of data) {
     const { data: productos } = await supabase
       .from('productos')
-      .select('*')
+      .select('id, nombre, descripcion, precio, imagen, orden, activo, no_traducir_nombre, idMenu')
       .eq('idMenu', seccion.id)
       .order('orden', { ascending: true });
 
@@ -1151,10 +1180,12 @@ async function cargarSecciones() {
   }
 }
 
-window.editarSeccion = (id, titulo, orden, activo, subtitulo = '') => {
+window.editarSeccion = (id, titulo, orden, activo, subtitulo = '', descripcion = '', noTraducirTitulo = false) => {
   editandoId = id;
   inputTitulo.value = titulo;
   if (inputSubtitulo) inputSubtitulo.value = subtitulo || '';
+  if (menuDescripcion) menuDescripcion.value = descripcion || '';
+  if (menuNoTraducirTitulo) menuNoTraducirTitulo.checked = !!noTraducirTitulo;
   inputOrden.value = orden;
   inputActivo.checked = activo;
   modal.classList.remove('hidden');
@@ -1164,6 +1195,8 @@ btnAgregarSeccion.onclick = () => {
   editandoId = null;
   inputTitulo.value = '';
   if (inputSubtitulo) inputSubtitulo.value = '';
+  if (menuDescripcion) menuDescripcion.value = '';
+  if (menuNoTraducirTitulo) menuNoTraducirTitulo.checked = false;
   inputOrden.value = 1;
   inputActivo.checked = true;
   modal.classList.remove('hidden');
@@ -1177,6 +1210,8 @@ btnGuardarSeccion.onclick = async () => {
   const nueva = {
     titulo: inputTitulo.value.trim(),
     subtitulo: inputSubtitulo?.value.trim() || '',
+    descripcion: menuDescripcion?.value.trim() || '',
+    no_traducir: menuNoTraducirTitulo?.checked || false,
     orden: parseInt(inputOrden.value),
     activo: inputActivo.checked,
     idComercio: parseInt(idComercio),
@@ -1209,6 +1244,7 @@ const inputPrecioProducto = document.getElementById('inputPrecioProducto');
 const inputOrdenProducto = document.getElementById('inputOrdenProducto');
 const inputImagenProducto = document.getElementById('inputImagenProducto');
 const previewImagenProducto = document.getElementById('previewImagenProducto');
+const productoNoTraducirNombre = document.getElementById('productoNoTraducirNombre');
 const btnCancelarProducto = document.getElementById('btnCancelarProducto');
 const btnGuardarProducto = document.getElementById('btnGuardarProducto');
 let productoImagenActual = '';
@@ -1220,6 +1256,7 @@ window.abrirEditarProducto = (idMenu, producto = null) => {
   inputDescripcionProducto.value = producto?.descripcion || '';
   inputPrecioProducto.value = producto?.precio || '';
   inputOrdenProducto.value = producto?.orden || 1;
+  if (productoNoTraducirNombre) productoNoTraducirNombre.checked = !!producto?.no_traducir_nombre;
   inputImagenProducto.value = ''; // nunca prellena file input
   productoImagenActual = producto?.imagen || '';
   if (producto?.imagen) {
@@ -1239,6 +1276,7 @@ window.abrirNuevoProducto = (idMenu) => {
   inputDescripcionProducto.value = '';
   inputPrecioProducto.value = '';
   inputOrdenProducto.value = 1;
+  if (productoNoTraducirNombre) productoNoTraducirNombre.checked = false;
   previewImagenProducto.src = '';
   previewImagenProducto.classList.add('hidden');
   inputImagenProducto.value = '';
@@ -1293,7 +1331,8 @@ btnGuardarProducto.onclick = async () => {
     precio: parseFloat(inputPrecioProducto.value),
     orden: parseInt(inputOrdenProducto.value) || 1,
     activo: true,
-    idMenu: parseInt(idMenuActivo, 10)
+    idMenu: parseInt(idMenuActivo, 10),
+    no_traducir_nombre: productoNoTraducirNombre?.checked || false
   };
 
   if (!nuevo.nombre || isNaN(nuevo.precio)) {

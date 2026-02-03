@@ -8,6 +8,25 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? "";
 
 const SUPPORTED_LANGS = ["es", "en", "fr", "de", "pt", "it", "zh", "ko", "ja"];
+const TERMINOS_GASTRONOMICOS_NO_TRADUCIR = [
+  "mofongo",
+  "empanadillas",
+  "empanadilla",
+  "empanadas",
+  "pastelillos",
+  "pastelillo",
+  "arepas",
+  "arepa",
+  "alcapurrias",
+  "alcapurria",
+  "chimichurri",
+  "tostones",
+  "toston",
+  "asopao",
+  "mamposteao",
+  "sorullitos",
+  "picoletos",
+];
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -25,6 +44,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistS
 
 type EventoBase = {
   id: number;
+  idComercio?: number | null;
   nombre: string | null;
   descripcion: string | null;
   lugar: string | null;
@@ -47,7 +67,7 @@ const normalizeLang = (lang: string | null | undefined) => (lang || "es").toLowe
 async function obtenerEvento(idevento: number): Promise<EventoBase | null> {
   const { data, error } = await supabase
     .from("eventos")
-    .select("id, nombre, descripcion, lugar, direccion, costo")
+    .select("id, idComercio, nombre, descripcion, lugar, direccion, costo")
     .eq("id", idevento)
     .maybeSingle();
 
@@ -75,7 +95,37 @@ async function guardarCache(traduccion: Traduccion) {
   if (error) throw error;
 }
 
-async function traducirConOpenAI(campos: Partial<EventoBase>, lang: string): Promise<Traduccion> {
+async function obtenerGlosario(idComercio?: number | null): Promise<string[]> {
+  if (!Number.isFinite(idComercio)) return [];
+
+  const { data, error } = await supabase
+    .from("comercio_i18n_glosario")
+    .select("termino")
+    .eq("idComercio", idComercio)
+    .order("termino", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((row: { termino: string }) => row.termino);
+}
+
+function buildProtectedTerms(glosario: string[]): string[] {
+  const merged = [...TERMINOS_GASTRONOMICOS_NO_TRADUCIR, ...glosario];
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const term of merged) {
+    const normalized = String(term || "").trim();
+    const key = normalized.toLowerCase();
+    if (!normalized) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+async function traducirConOpenAI(campos: Partial<EventoBase>, lang: string, protectedTerms: string[]): Promise<Traduccion> {
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY no configurada");
   }
@@ -88,12 +138,25 @@ async function traducirConOpenAI(campos: Partial<EventoBase>, lang: string): Pro
     }
   });
 
+  const protectedList = protectedTerms.length > 0 ? protectedTerms.join(", ") : TERMINOS_GASTRONOMICOS_NO_TRADUCIR.join(", ");
+  const reglasNoTraducir = `
+Do NOT translate cultural food names such as:
+${protectedList}.
+
+Keep these terms EXACTLY as written.
+Do not translate, paraphrase, pluralize, or localize them.
+`.trim();
   const messages = [
     {
       role: "system",
-      content:
-        `Translate from Spanish to ${lang}. Keep proper nouns (Santurce, Misión 939) unchanged. ` +
-        "Keep promotional tone. Do not add new information. Return JSON with keys: nombre, descripcion, lugar, direccion, costo.",
+      content: `
+You are a professional food menu and event description translator.
+Target language: ${lang}.
+${reglasNoTraducir}
+Translate the text naturally while strictly respecting these rules.
+Keep proper nouns unchanged. Keep promotional tone. Do not add new information.
+Return JSON with keys: nombre, descripcion, lugar, direccion, costo.
+      `.trim(),
     },
     { role: "user", content: JSON.stringify(payload) },
   ];
@@ -184,10 +247,13 @@ Deno.serve(async (req) => {
       return responder({ ok: true, source: "original", data: eventoBase });
     }
 
+    const glosario = await obtenerGlosario(eventoBase.idComercio);
+    const protectedTerms = buildProtectedTerms(glosario);
+
     const cache = await buscarCache(idevento, lang);
     if (cache) return responder({ ok: true, source: "cache", data: cache });
 
-    const traduccion = await traducirConOpenAI(eventoBase, lang);
+    const traduccion = await traducirConOpenAI(eventoBase, lang, protectedTerms);
     traduccion.idevento = idevento;
     await guardarCache(traduccion);
 
