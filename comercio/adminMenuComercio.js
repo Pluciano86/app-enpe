@@ -1,4 +1,4 @@
-import { supabase } from '../shared/supabaseClient.js';
+import { supabase, SUPABASE_URL } from '../shared/supabaseClient.js';
 import { FONTS_MENU } from './js/fontsMenu.js';
 
 function getPublicBase() {
@@ -90,6 +90,8 @@ const titulosShadow = document.getElementById('titulosShadow');
 const botonStrokeWidth = document.getElementById('botonStrokeWidth');
 const botonStrokeColor = document.getElementById('botonStrokeColor');
 const botonShadow = document.getElementById('botonShadow');
+const btnConectarClover = document.getElementById('btnConectarClover');
+const btnImportarClover = document.getElementById('btnImportarClover');
 
 let editandoId = null;
 let linkFuente = null;
@@ -105,6 +107,7 @@ let tema;
 const COVER_BUCKET = 'galeriacomercios';
 const COVER_PREFIX = 'menus/portada';
 const BACKGROUND_PREFIX = 'menus/background';
+const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
 const toastEl = document.getElementById('toast');
 const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const fuentesSeleccionadas = {
@@ -1236,6 +1239,33 @@ btnGuardarSeccion.onclick = async () => {
   await cargarSecciones();
 };
 
+// --------- Clover Integration (MVP-B) ----------
+
+async function lanzarImportacionClover() {
+  if (!idComercio) return alert('ID de comercio no encontrado en la URL');
+  try {
+    const url = `${FUNCTIONS_BASE}/clover-import-menu?idComercio=${idComercio}`;
+    const resp = await fetch(url, { method: 'POST' });
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok || json?.error) {
+      console.error('[Clover] import error', json);
+      alert(json?.error || 'No se pudo importar desde Clover');
+      return;
+    }
+    alert(`Importación completada.\nSecciones: ${json.menus ?? 0}\nProductos: ${json.productos ?? 0}\nOpciones: ${json.opciones ?? 0}`);
+    await cargarSecciones();
+  } catch (err) {
+    console.error('[Clover] import catch', err);
+    alert('Error inesperado importando desde Clover');
+  }
+}
+
+function iniciarOauthClover() {
+  if (!idComercio) return alert('ID de comercio no encontrado');
+  const url = `${FUNCTIONS_BASE}/clover-oauth-start?idComercio=${idComercio}`;
+  window.location.href = url;
+}
+
 // Producto
 const modalProducto = document.getElementById('modalProducto');
 const inputNombreProducto = document.getElementById('inputNombreProducto');
@@ -1402,6 +1432,10 @@ btnGuardarProducto.onclick = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', cargarDatos);
+
+// Botones Clover
+btnConectarClover?.addEventListener('click', iniciarOauthClover);
+btnImportarClover?.addEventListener('click', lanzarImportacionClover);
 
 // Mostrar preview al seleccionar nueva imagen
 inputImagenProducto.addEventListener('change', () => {
