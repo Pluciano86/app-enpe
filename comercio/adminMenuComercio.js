@@ -1,4 +1,4 @@
-import { supabase, SUPABASE_URL } from '../shared/supabaseClient.js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseClient.js';
 import { FONTS_MENU } from './js/fontsMenu.js';
 
 function getPublicBase() {
@@ -1245,18 +1245,36 @@ async function lanzarImportacionClover() {
   if (!idComercio) return alert('ID de comercio no encontrado en la URL');
   try {
     const url = `${FUNCTIONS_BASE}/clover-import-menu?idComercio=${idComercio}`;
-    const resp = await fetch(url, { method: 'POST' });
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
     const json = await resp.json().catch(() => ({}));
-    if (!resp.ok || json?.error) {
-      console.error('[Clover] import error', json);
-      alert(json?.error || 'No se pudo importar desde Clover');
+
+    if (!resp.ok) {
+      const message = json?.error || `No se pudo importar desde Clover (status ${resp.status})`;
+      console.error('[Clover] import error', { status: resp.status, body: json });
+      throw new Error(message);
+    }
+
+    if ((json?.menus ?? 0) === 0) {
+      alert('Este comercio no tiene menús en Clover todavía.');
       return;
     }
+
     alert(`Importación completada.\nSecciones: ${json.menus ?? 0}\nProductos: ${json.productos ?? 0}\nOpciones: ${json.opciones ?? 0}`);
     await cargarSecciones();
   } catch (err) {
+    const message = err?.message || JSON.stringify(err);
     console.error('[Clover] import catch', err);
-    alert('Error inesperado importando desde Clover');
+    alert(message);
   }
 }
 

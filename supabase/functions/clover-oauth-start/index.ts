@@ -9,6 +9,13 @@ const CLOVER_CLIENT_ID = Deno.env.get("CLOVER_CLIENT_ID") ?? "";
 const CLOVER_REDIRECT_URI = Deno.env.get("CLOVER_REDIRECT_URI") ?? "";
 const CLOVER_BASE_URL = Deno.env.get("CLOVER_BASE_URL") ?? "https://sandbox.dev.clover.com";
 
+const ALLOWED_RETURN_HOSTS = new Set([
+  "comercio.enpe-erre.com",
+  "admin.enpe-erre.com",
+  "test.enpe-erre.com",
+  "comercio.test.enpe-erre.com",
+]);
+
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
@@ -23,6 +30,20 @@ function toBase64Url(input: Uint8Array) {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
+}
+
+function isReturnToAllowed(urlStr: string | null): string | null {
+  if (!urlStr) return null;
+  try {
+    const parsed = new URL(urlStr);
+    const host = parsed.hostname.toLowerCase();
+    if (ALLOWED_RETURN_HOSTS.has(host)) return parsed.toString();
+    // Permitir deploys en Netlify relacionados (p.e. previews) pero solo bajo dominio netlify.app
+    if (host.endsWith(".netlify.app")) return parsed.toString();
+    return null;
+  } catch (_e) {
+    return null;
+  }
 }
 
 async function signState(payload: Record<string, unknown>) {
@@ -51,9 +72,14 @@ async function handler(req: Request): Promise<Response> {
   }
 
   const url = new URL(req.url);
-  const idComercio = Number(url.searchParams.get("idComercio") || url.searchParams.get("id"));
+  const merchantId = url.searchParams.get("merchant_id");
+  const idComercioRaw = url.searchParams.get("idComercio") || url.searchParams.get("id");
+  const returnToRaw = url.searchParams.get("return_to");
+  const returnTo = isReturnToAllowed(returnToRaw);
+
+  const idComercio = Number(idComercioRaw);
   if (!Number.isFinite(idComercio) || idComercio <= 0) {
-    return new Response(JSON.stringify({ error: "idComercio requerido" }), { status: 400, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "idComercio inválido" }), { status: 400, headers: corsHeaders });
   }
 
   // Valida que exista el comercio
@@ -69,18 +95,21 @@ async function handler(req: Request): Promise<Response> {
   }
 
   const nonce = crypto.randomUUID();
-  const statePayload = { idComercio, nonce, ts: Date.now() };
+  const statePayload: Record<string, unknown> = { idComercio, nonce, ts: Date.now() };
+  if (returnTo) statePayload.return_to = returnTo;
+  if (merchantId) statePayload.merchant_id = merchantId;
   const state = await signState(statePayload);
 
-  // Sandbox authorize endpoint
-  const authorizeUrl = new URL("/oauth/authorize", CLOVER_BASE_URL);
+  // Sandbox authorize endpoint (v2) + login handoff
+  const base = CLOVER_BASE_URL;
+  const authorizeUrl = new URL("/oauth/v2/authorize", base);
   authorizeUrl.searchParams.set("client_id", CLOVER_CLIENT_ID);
-  authorizeUrl.searchParams.set("redirect_uri", CLOVER_REDIRECT_URI);
   authorizeUrl.searchParams.set("response_type", "code");
+  authorizeUrl.searchParams.set("redirect_uri", CLOVER_REDIRECT_URI);
   authorizeUrl.searchParams.set("state", state);
 
-  // Sandbox login with redirect to authorize
-  const loginUrl = new URL("/login", CLOVER_BASE_URL);
+  const loginUrl = new URL("/login", base);
+  loginUrl.searchParams.set("hardRedirect", "true");
   loginUrl.searchParams.set("webRedirectUrl", authorizeUrl.toString());
 
   return Response.redirect(loginUrl.toString(), 302);

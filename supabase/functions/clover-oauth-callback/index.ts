@@ -9,11 +9,31 @@ const CLOVER_CLIENT_ID = Deno.env.get("CLOVER_CLIENT_ID") ?? "";
 const CLOVER_CLIENT_SECRET = Deno.env.get("CLOVER_CLIENT_SECRET") ?? "";
 const CLOVER_REDIRECT_URI = Deno.env.get("CLOVER_REDIRECT_URI") ?? "";
 const CLOVER_BASE_URL = Deno.env.get("CLOVER_BASE_URL") ?? "https://www.clover.com";
-const CLOVER_API_BASE = Deno.env.get("CLOVER_API_BASE") ?? "https://api.clover.com";
+const CLOVER_API_BASE = Deno.env.get("CLOVER_API_BASE") ?? "https://apisandbox.dev.clover.com";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
+
+async function getTableColumns(table: string, schema = "public"): Promise<Set<string> | null> {
+  try {
+    const { data, error } = await supabase
+      .from("information_schema.columns")
+      .select("column_name")
+      .eq("table_schema", schema)
+      .eq("table_name", table);
+    if (error) {
+      console.warn("[clover-callback] No se pudo obtener columnas de", table, error.message);
+      return null;
+    }
+    const cols = new Set<string>();
+    (data || []).forEach((r: any) => r?.column_name && cols.add(r.column_name));
+    return cols;
+  } catch (err) {
+    console.warn("[clover-callback] Error inesperado obteniendo columnas", err);
+    return null;
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,6 +51,17 @@ function fromBase64Url(str: string) {
 
 function toBase64Url(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function errToJson(err: unknown) {
+  if (err instanceof Error) {
+    return { message: err.message, stack: err.stack };
+  }
+  try {
+    return { message: "Unknown error", details: JSON.stringify(err) };
+  } catch {
+    return { message: "Unknown error", details: String(err) };
+  }
 }
 
 async function verifyState(state: string) {
@@ -61,26 +92,28 @@ async function verifyState(state: string) {
 }
 
 async function exchangeToken(code: string) {
-  const tokenUrl = new URL("/oauth/v2/token", CLOVER_BASE_URL);
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    code,
-    client_id: CLOVER_CLIENT_ID,
-    client_secret: CLOVER_CLIENT_SECRET,
-    redirect_uri: CLOVER_REDIRECT_URI,
-  });
+  const tokenUrl = new URL("/oauth/v2/token", CLOVER_API_BASE);
 
   const resp = await fetch(tokenUrl.toString(), {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: CLOVER_CLIENT_ID,
+      client_secret: CLOVER_CLIENT_SECRET,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: CLOVER_REDIRECT_URI,
+    }),
   });
 
-  if (!resp.ok) {
-    const raw = await resp.text();
-    throw new Error(`Clover token error ${resp.status}: ${raw}`);
+  const raw = await resp.text();
+  if (!resp.ok) throw new Error(`Clover token error ${resp.status}: ${raw}`);
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(`Clover token non-JSON ${resp.status}: ${raw.slice(0, 200)}`);
   }
-  return await resp.json();
 }
 
 async function handler(req: Request): Promise<Response> {
@@ -89,16 +122,22 @@ async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   let code = url.searchParams.get("code");
   let stateRaw = url.searchParams.get("state");
-  let merchantId = url.searchParams.get("merchant_id");
+  let merchantId =
+    url.searchParams.get("merchant_id") ??
+    url.searchParams.get("merchantId") ??
+    url.searchParams.get("merchant");
   let employeeId = url.searchParams.get("employee_id");
 
   // Si falta en query, intentar leer del cuerpo
-  if (code === null || stateRaw === null) {
-    const body = await req.json().catch(() => null);
-    code = code ?? body?.code ?? null;
-    stateRaw = stateRaw ?? body?.state ?? null;
-    merchantId = merchantId ?? body?.merchant_id ?? null;
-    employeeId = employeeId ?? body?.employee_id ?? null;
+  if ((code === null || stateRaw === null) && req.method !== "GET") {
+    const ct = req.headers.get("content-type") ?? "";
+    if (ct.includes("application/json")) {
+      const body = await req.json().catch(() => null);
+      code = code ?? body?.code ?? null;
+      stateRaw = stateRaw ?? body?.state ?? null;
+      merchantId = merchantId ?? body?.merchant_id ?? null;
+      employeeId = employeeId ?? body?.employee_id ?? null;
+    }
   }
 
   console.log("method", req.method);
@@ -111,13 +150,20 @@ async function handler(req: Request): Promise<Response> {
   if (!stateRaw) {
     return new Response("Invalid state (missing)", { status: 400 });
   }
+  if (!merchantId) {
+    return new Response(JSON.stringify({ error: "merchant_id requerido en callback" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return new Response("Supabase env missing", { status: 500 });
   if (!CLOVER_CLIENT_ID || !CLOVER_CLIENT_SECRET || !CLOVER_REDIRECT_URI) {
     return new Response("Clover env missing", { status: 500 });
   }
 
   let idComercio: number | null = null;
-  const isNumericState = stateRaw && /^\\d+$/.test(stateRaw);
+  const isNumericState = /^\d+$/.test(stateRaw);
+  let returnTo: string | null = null;
 
   console.log("clover-oauth-callback stateRaw:", stateRaw, "isNumeric:", isNumericState);
 
@@ -129,6 +175,9 @@ async function handler(req: Request): Promise<Response> {
     const parsedState = await verifyState(stateRaw);
     if (!parsedState) return new Response("Invalid state", { status: 400 });
     idComercio = Number(parsedState.idComercio);
+    if (typeof parsedState.return_to === "string") {
+      returnTo = parsedState.return_to;
+    }
   }
 
   console.log("clover-oauth-callback resolved idComercio:", idComercio);
@@ -150,7 +199,7 @@ async function handler(req: Request): Promise<Response> {
 
     const upsertPayload = {
       idComercio,
-      clover_merchant_id: merchant_id ?? null,
+      clover_merchant_id: merchant_id ?? merchantId,
       access_token,
       refresh_token: refresh_token ?? null,
       token_type: token_type ?? null,
@@ -158,17 +207,45 @@ async function handler(req: Request): Promise<Response> {
       expires_at,
     };
 
+    let payloadToSave = upsertPayload;
+    const cols = await getTableColumns("clover_conexiones");
+    if (cols) {
+      payloadToSave = Object.fromEntries(
+        Object.entries(upsertPayload).filter(([k]) => cols.has(k))
+      ) as typeof upsertPayload;
+      const skipped = Object.keys(upsertPayload).filter((k) => !cols.has(k));
+      if (skipped.length) {
+        console.warn("[clover-callback] Columnas no presentes en clover_conexiones, omitidas:", skipped);
+      }
+    }
+
     const { error: upsertError } = await supabase
       .from("clover_conexiones")
-      .upsert(upsertPayload, { onConflict: "idComercio" });
+      .upsert(payloadToSave, { onConflict: "idComercio" });
 
-    if (upsertError) throw upsertError;
+    if (upsertError) {
+      console.error("[clover-callback] Error upsert clover_conexiones:", upsertError?.message || upsertError);
+      throw upsertError;
+    }
 
-    const redirectUrl = `https://enpe-erre.netlify.app/comercio/adminMenuComercio.html?id=${idComercio}&clover=ok`;
-    return Response.redirect(redirectUrl, 302);
+    const fallback = "https://comercio.enpe-erre.com/adminMenuComercio.html";
+    let redirectBase = fallback;
+    try {
+      if (returnTo) redirectBase = new URL(returnTo).toString();
+    } catch (_e) {
+      redirectBase = fallback;
+    }
+    const redirectUrl = new URL(redirectBase);
+    redirectUrl.searchParams.set("id", String(idComercio));
+    redirectUrl.searchParams.set("clover", "ok");
+    return Response.redirect(redirectUrl.toString(), 302);
   } catch (err) {
     console.error("clover-oauth-callback error", err);
-    return new Response(`Error: ${err instanceof Error ? err.message : String(err)}` , { status: 500 });
+    const e = errToJson(err);
+    return new Response(JSON.stringify({ error: e.message, details: e.details }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
 

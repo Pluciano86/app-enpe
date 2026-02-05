@@ -1,10 +1,10 @@
 # =======================
-# 🔹 Configuración base neutral (sin forzar carpeta)
+# 🔹 Configuración base (publish en raíz para servir /public y /comercio)
 # =======================
 
 [build]
   command = ""
-  publish = ""
+  publish = "."
 
 # Puerto local opcional
 [dev]
