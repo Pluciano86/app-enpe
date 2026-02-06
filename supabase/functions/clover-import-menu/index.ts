@@ -47,7 +47,7 @@ class CloverApiError extends Error {
 }
 
 async function refreshToken(refresh_token: string) {
-  const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
+  const tokenUrl = new URL("/oauth/v2/token", CLOVER_API_BASE);
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token,
@@ -107,10 +107,11 @@ async function handler(req: Request): Promise<Response> {
   if (!merchantId) return jsonResponse({ error: "clover_merchant_id no guardado; vuelve a conectar Clover" }, 400);
   console.log("[clover-import] oauthBaseUsed=", CLOVER_OAUTH_BASE, "apiBaseUsed=", CLOVER_API_BASE, "merchantId=", merchantId);
 
-  // Refresh token si expira en <=60s
-  if (refreshTokenVal && expiresAt) {
-    const expMs = Date.parse(expiresAt);
-    if (!Number.isNaN(expMs) && expMs - Date.now() < 60_000) {
+  // Refresh token si expiró, está por expirar (<2 min) o no hay expires_at
+  if (refreshTokenVal) {
+    const expMs = expiresAt ? Date.parse(expiresAt) : NaN;
+    const shouldRefresh = !expiresAt || Number.isNaN(expMs) || expMs - Date.now() < 120_000;
+    if (shouldRefresh) {
       try {
         const tokenData = await refreshToken(refreshTokenVal);
         accessToken = tokenData.access_token ?? accessToken;
@@ -150,7 +151,14 @@ async function handler(req: Request): Promise<Response> {
           console.warn("[clover-import] refresh after 401 failed", refreshErr);
           throw err;
         }
-        return await fetchClover(path, accessToken);
+        try {
+          return await fetchClover(path, accessToken);
+        } catch (retryErr) {
+          if (retryErr instanceof CloverApiError && retryErr.status === 401) {
+            throw retryErr;
+          }
+          throw retryErr;
+        }
       }
       throw err;
     }
@@ -356,6 +364,15 @@ async function handler(req: Request): Promise<Response> {
   } catch (err) {
     console.error("[clover-import] error", err);
     if (err instanceof CloverApiError) {
+      if (err.status === 401) {
+        return jsonResponse({
+          needs_reconnect: true,
+          baseUrlUsed: CLOVER_API_BASE,
+          merchantId,
+          status: err.status,
+          raw: err.raw,
+        }, 401);
+      }
       return jsonResponse({
         baseUrlUsed: CLOVER_API_BASE,
         merchantId,

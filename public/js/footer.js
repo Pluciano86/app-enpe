@@ -36,7 +36,7 @@ function renderFooter() {
   const maxWidth = '28rem'; // igual que max-w-md para alinear con el header/columna
   container.innerHTML = `
     <footer
-      class="fixed bottom-0 z-50 text-white bg-[#231F20] border-t border-gray-700 shadow-lg"
+      class="fixed bottom-0 z-50 text-white bg-[#242020] border-t border-gray-700 shadow-lg"
       style="
         padding-bottom: env(safe-area-inset-bottom);
         width: 100%;
@@ -46,7 +46,7 @@ function renderFooter() {
       ">
       <nav class="flex justify-around py-2">
         <a href="${base}index.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
-          <img src="${iconBase}iconInicio.png" class="w-8 h-8 mb-1" alt="Inicio">
+          <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/botonInicio.png" class="w-8 h-8 mb-1" alt="Inicio">
           <span data-i18n="footer.inicio">Inicio</span>
         </a>
         <a href="${base}cercaDeMi.html" class="flex flex-col items-center text-sm font-extralight w-1/4">

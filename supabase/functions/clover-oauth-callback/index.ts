@@ -53,6 +53,18 @@ function toBase64Url(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+function decodeJwtPayload(token: string) {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payloadBytes = fromBase64Url(parts[1]);
+    const json = new TextDecoder().decode(payloadBytes);
+    return JSON.parse(json);
+  } catch (_e) {
+    return null;
+  }
+}
+
 function errToJson(err: unknown) {
   if (err instanceof Error) {
     return { message: err.message, stack: err.stack };
@@ -189,14 +201,21 @@ async function handler(req: Request): Promise<Response> {
     const tokenData = await exchangeToken(code);
     const access_token = tokenData.access_token as string | undefined;
     const refresh_token = tokenData.refresh_token as string | undefined;
-    const expires_in = Number(tokenData.expires_in ?? tokenData.expires) || null;
-    const token_type = tokenData.token_type as string | undefined;
+    const token_type = (tokenData.token_type as string | undefined) ?? "Bearer";
     const scope = tokenData.scope as string | undefined;
     const merchant_id = (tokenData.merchant_id ?? tokenData.merchantId) as string | undefined;
 
     if (!access_token) throw new Error("No access_token en respuesta de Clover");
 
-    const expires_at = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : null;
+    const jwtPayload = decodeJwtPayload(access_token);
+    const expSec = Number(jwtPayload?.exp);
+    let expires_at: string | null = null;
+    if (Number.isFinite(expSec) && expSec > 0) {
+      expires_at = new Date(expSec * 1000).toISOString();
+    } else {
+      const expires_in = Number(tokenData.expires_in ?? tokenData.expires) || null;
+      expires_at = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : null;
+    }
 
     const upsertPayload = {
       idComercio,

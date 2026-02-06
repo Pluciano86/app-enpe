@@ -51,21 +51,21 @@ const findLang = (code) => LANGS.find(l => l.code === code) || LANGS[0];
 })();
 
 container.innerHTML = `
-  <header class="bg-[#231F20] text-white flex items-center justify-between p-4 shadow-md gap-2 relative">
+  <header class="bg-[#EC7F25] text-white flex items-center justify-between p-4 shadow-md gap-2 relative">
     <button id="btnBack" class="text-xl invisible w-6">&#8592;</button>
-    <a href="${base}index.html" class="flex-1 text-center">
+    <a href="${base}index.html" class="absolute left-1/2 -translate-x-1/2 text-center">
       <img
-        src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo_fondo%20oscuro.png"
+        src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoBlanco.png"
         alt="Logo"
         class="h-8 inline-block"
       >
     </a>
     <div class="relative">
-      <button id="langToggle" aria-label="Cambiar idioma" class="flex items-center gap-1 text-sm bg-[#231F20] border border-white/30 rounded px-2 py-1.5">
+      <button id="langToggle" aria-label="Cambiar idioma" class="flex items-center gap-1 text-sm bg-white/60 text-[#231F20] border border-black/10 rounded px-2 py-1.5">
         <span class="text-lg" aria-hidden="true">🌐</span>
         <span id="langCurrent" class="text-xl leading-none">🇵🇷</span>
       </button>
-      <div id="langMenu" class="absolute right-0 mt-1 bg-[#231F20] border border-white/30 rounded shadow-lg hidden z-50 min-w-[120px]"></div>
+      <div id="langMenu" class="absolute right-0 mt-1 bg-white text-[#231F20] border border-black/10 rounded shadow-lg hidden z-50 min-w-[120px]"></div>
     </div>
   </header>
 `;
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Construir menú
   if (langMenu) {
     langMenu.innerHTML = LANGS.map(l => `
-      <button data-lang="${l.code}" class="flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-white/10 w-full">
+      <button data-lang="${l.code}" class="flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-black/10 w-full">
         <span>${l.flag}</span><span>${l.native}</span>
       </button>
     `).join('');
