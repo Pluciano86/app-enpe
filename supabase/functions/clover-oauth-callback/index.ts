@@ -8,7 +8,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CLOVER_CLIENT_ID = Deno.env.get("CLOVER_CLIENT_ID") ?? "";
 const CLOVER_CLIENT_SECRET = Deno.env.get("CLOVER_CLIENT_SECRET") ?? "";
 const CLOVER_REDIRECT_URI = Deno.env.get("CLOVER_REDIRECT_URI") ?? "";
-const CLOVER_BASE_URL = Deno.env.get("CLOVER_BASE_URL") ?? "https://www.clover.com";
+const CLOVER_OAUTH_BASE = Deno.env.get("CLOVER_OAUTH_BASE") ?? "https://sandbox.dev.clover.com";
 const CLOVER_API_BASE = Deno.env.get("CLOVER_API_BASE") ?? "https://apisandbox.dev.clover.com";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -92,7 +92,7 @@ async function verifyState(state: string) {
 }
 
 async function exchangeToken(code: string) {
-  const tokenUrl = new URL("/oauth/v2/token", CLOVER_API_BASE);
+  const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
 
   const resp = await fetch(tokenUrl.toString(), {
     method: "POST",
@@ -107,6 +107,7 @@ async function exchangeToken(code: string) {
   });
 
   const raw = await resp.text();
+  console.log("[clover-callback] token response", { status: resp.status, raw });
   if (!resp.ok) throw new Error(`Clover token error ${resp.status}: ${raw}`);
 
   try {

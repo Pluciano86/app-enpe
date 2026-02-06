@@ -8,8 +8,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CLOVER_CLIENT_ID = Deno.env.get("CLOVER_CLIENT_ID") ?? "";
 const CLOVER_CLIENT_SECRET = Deno.env.get("CLOVER_CLIENT_SECRET") ?? "";
 const CLOVER_REDIRECT_URI = Deno.env.get("CLOVER_REDIRECT_URI") ?? "";
-const CLOVER_BASE_URL = Deno.env.get("CLOVER_BASE_URL") ?? "https://www.clover.com";
-const CLOVER_API_BASE = Deno.env.get("CLOVER_API_BASE") ?? "https://api.clover.com";
+const CLOVER_OAUTH_BASE = Deno.env.get("CLOVER_OAUTH_BASE") ?? "https://sandbox.dev.clover.com";
+const CLOVER_API_BASE = Deno.env.get("CLOVER_API_BASE") ?? "https://apisandbox.dev.clover.com";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -27,8 +27,27 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function toArray(x: any) {
+  if (Array.isArray(x)) return x;
+  if (x && Array.isArray(x.elements)) return x.elements;
+  return [];
+}
+
+class CloverApiError extends Error {
+  status: number;
+  raw: string;
+  url: string;
+
+  constructor(status: number, url: string, raw: string) {
+    super(`Clover API ${url} -> ${status}: ${raw}`);
+    this.status = status;
+    this.raw = raw;
+    this.url = url;
+  }
+}
+
 async function refreshToken(refresh_token: string) {
-  const tokenUrl = new URL("/oauth/v2/token", CLOVER_BASE_URL);
+  const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token,
@@ -46,13 +65,17 @@ async function refreshToken(refresh_token: string) {
 }
 
 async function fetchClover(path: string, token: string) {
-  const url = path.startsWith("http") ? new URL(path) : new URL(path, CLOVER_API_BASE);
+  const base =
+    path.startsWith("/oauth/v2/token") ? CLOVER_OAUTH_BASE
+      : path.startsWith("/v3/") ? CLOVER_API_BASE
+      : CLOVER_API_BASE;
+  const url = path.startsWith("http") ? new URL(path) : new URL(path, base);
   const resp = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!resp.ok) {
     const raw = await resp.text();
-    throw new Error(`Clover API ${url.pathname} -> ${resp.status}: ${raw}`);
+    throw new CloverApiError(resp.status, url.pathname, raw);
   }
   return await resp.json();
 }
@@ -65,6 +88,7 @@ async function handler(req: Request): Promise<Response> {
   if (!Number.isFinite(idComercio) || idComercio <= 0) return jsonResponse({ error: "idComercio requerido" }, 400);
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return jsonResponse({ error: "Supabase env missing" }, 500);
   if (!CLOVER_CLIENT_ID || !CLOVER_CLIENT_SECRET) return jsonResponse({ error: "Clover env missing" }, 500);
+  console.log("[clover-import] CLOVER_API_BASE =", CLOVER_API_BASE);
 
   // Obtener conexión Clover
   const { data: conn, error: connErr } = await supabase
@@ -78,8 +102,10 @@ async function handler(req: Request): Promise<Response> {
   let refreshTokenVal: string | null = conn.refresh_token ?? null;
   let expiresAt: string | null = conn.expires_at ?? null;
   const merchantId: string | null = conn.clover_merchant_id ?? null;
+  let refreshedAfter401 = false;
 
   if (!merchantId) return jsonResponse({ error: "clover_merchant_id no guardado; vuelve a conectar Clover" }, 400);
+  console.log("[clover-import] oauthBaseUsed=", CLOVER_OAUTH_BASE, "apiBaseUsed=", CLOVER_API_BASE, "merchantId=", merchantId);
 
   // Refresh token si expira en <=60s
   if (refreshTokenVal && expiresAt) {
@@ -102,16 +128,46 @@ async function handler(req: Request): Promise<Response> {
     }
   }
 
+  const fetchCloverWithAutoRefresh = async (path: string) => {
+    try {
+      return await fetchClover(path, accessToken);
+    } catch (err) {
+      if (err instanceof CloverApiError && err.status === 401 && refreshTokenVal && !refreshedAfter401) {
+        refreshedAfter401 = true;
+        console.warn("[clover-import] 401 from Clover, refreshing token");
+        try {
+          const tokenData = await refreshToken(refreshTokenVal);
+          accessToken = tokenData.access_token ?? accessToken;
+          refreshTokenVal = tokenData.refresh_token ?? refreshTokenVal;
+          const expires_in = Number(tokenData.expires_in ?? tokenData.expires) || null;
+          expiresAt = expires_in ? new Date(Date.now() + expires_in * 1000).toISOString() : expiresAt;
+          await supabase.from("clover_conexiones").update({
+            access_token: accessToken,
+            refresh_token: refreshTokenVal,
+            expires_at: expiresAt,
+          }).eq("idComercio", idComercio);
+        } catch (refreshErr) {
+          console.warn("[clover-import] refresh after 401 failed", refreshErr);
+          throw err;
+        }
+        return await fetchClover(path, accessToken);
+      }
+      throw err;
+    }
+  };
+
   try {
     console.log("[clover-import] Fetching categories & items", { merchantId, idComercio });
-    const catsJson = await fetchClover(`/v3/merchants/${merchantId}/categories`, accessToken);
-    const categories: any[] = catsJson?.elements ?? catsJson?.categories ?? [];
+    const catsJson = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/categories`);
+    const categories: any[] = toArray(catsJson?.elements ?? catsJson?.categories ?? catsJson);
 
-    const itemsJson = await fetchClover(`/v3/merchants/${merchantId}/items?limit=1000&expand=modifierGroups,categories`, accessToken);
-    const items: any[] = itemsJson?.elements ?? itemsJson?.items ?? [];
+    const itemsJson = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/items?limit=1000&expand=modifierGroups,categories`);
+    console.log("[clover-import] items keys:", Object.keys(itemsJson));
+    console.log("[clover-import] items count:", (itemsJson?.elements?.length ?? itemsJson?.items?.length ?? 0));
+    const itemsForModifiers: any[] = toArray(itemsJson?.elements ?? itemsJson?.items ?? itemsJson);
 
-    const modGroupsJson = await fetchClover(`/v3/merchants/${merchantId}/modifier_groups?limit=500`, accessToken);
-    const modifierGroups: any[] = modGroupsJson?.elements ?? modGroupsJson?.modifierGroups ?? [];
+    const modGroupsJson = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/modifier_groups?limit=500`);
+    const modifierGroups: any[] = toArray(modGroupsJson?.elements ?? modGroupsJson?.modifierGroups ?? modGroupsJson);
 
     // 1) Upsert categorías -> menus
     const menuPayload = categories.map((c) => ({
@@ -143,8 +199,21 @@ async function handler(req: Request): Promise<Response> {
       if (row.clover_category_id) menuMap.set(row.clover_category_id, row.id);
     });
 
-    // 2) Productos
-    const itemIds = items.map((i) => i.id).filter(Boolean);
+    // 2) Productos (por categoría)
+    const itemsById = new Map<string, any>();
+    const itemsByCategory = new Map<string, any[]>();
+    for (const cat of categories) {
+      const categoryId = cat?.id;
+      if (!categoryId) continue;
+      const catItemsJson = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/categories/${categoryId}/items`);
+      const catItems: any[] = toArray(catItemsJson?.elements ?? catItemsJson?.items ?? catItemsJson);
+      itemsByCategory.set(categoryId, catItems);
+      for (const item of catItems) {
+        if (item?.id) itemsById.set(item.id, item);
+      }
+    }
+
+    const itemIds = Array.from(itemsById.keys());
     const { data: existingProducts } = await supabase
       .from("productos")
       .select("id, clover_item_id, imagen, orden")
@@ -154,26 +223,40 @@ async function handler(req: Request): Promise<Response> {
     (existingProducts || []).forEach((p: any) => existingMap.set(p.clover_item_id, { id: p.id, imagen: p.imagen, orden: p.orden }));
 
     const productoPayload = [] as any[];
-    for (const item of items) {
-      const firstCatId = item?.categories?.[0]?.id ?? item?.category?.id ?? null;
-      const idMenu = firstCatId ? menuMap.get(firstCatId) : undefined;
-      if (!idMenu) continue; // sin categoría -> no se importa
-      const prev = existingMap.get(item.id) || null;
-      const precioCents = Number(item?.price ?? item?.priceWithVat ?? 0);
-      const disponible = item?.isDeleted === true ? false : true;
+    let sampleLogged = false;
+    for (const [categoryId, catItems] of itemsByCategory) {
+      const idMenu = menuMap.get(categoryId);
+      for (const item of catItems) {
+        if (!sampleLogged) {
+          console.log("[clover-import] sample item:", JSON.stringify(item).slice(0, 800));
+          sampleLogged = true;
+        }
+        console.log("[clover-import] resolved idMenu:", idMenu, "itemId:", item?.id);
+        if (!idMenu) continue; // sin categoría -> no se importa
+        const itemId = item?.id;
+        if (!itemId) continue;
+        const prev = existingMap.get(itemId) || null;
+        const rawPrice = item?.price ?? item?.priceWithVat;
+        let itemResolved: any = item;
+        if (rawPrice == null) {
+          itemResolved = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/items/${itemId}`);
+        }
+        const precioCents = Number(itemResolved?.price ?? itemResolved?.priceWithVat ?? 0);
+        const disponible = itemResolved?.isDeleted === true ? false : true;
 
-      productoPayload.push({
-        idMenu,
-        clover_item_id: item.id,
-        clover_merchant_id: merchantId,
-        nombre: item.name ?? "Sin nombre",
-        descripcion: item.description ?? null,
-        precio: precioCents ? precioCents / 100 : 0,
-        orden: Number(item?.sortOrder ?? item?.sequence ?? prev?.orden ?? 0) || 0,
-        activo: true,
-        disponible_clover: disponible,
-        imagen: prev?.imagen ?? null,
-      });
+        productoPayload.push({
+          idMenu,
+          clover_item_id: itemId,
+          clover_merchant_id: merchantId,
+          nombre: itemResolved?.name ?? "Sin nombre",
+          descripcion: itemResolved?.description ?? null,
+          precio: precioCents ? precioCents / 100 : 0,
+          orden: Number(itemResolved?.sortOrder ?? itemResolved?.sequence ?? prev?.orden ?? 0) || 0,
+          activo: true,
+          disponible_clover: disponible,
+          imagen: prev?.imagen ?? null,
+        });
+      }
     }
 
     if (productoPayload.length) {
@@ -199,11 +282,12 @@ async function handler(req: Request): Promise<Response> {
     const grupoPayload: any[] = [];
     const gruposPorItem: Map<string, string[]> = new Map();
 
-    for (const item of items) {
+    for (const item of itemsForModifiers) {
       const productoId = prodMap.get(item.id);
       if (!productoId) continue;
       const groups = item?.modifierGroups ?? item?.modifier_groups ?? [];
-      const groupIds = groups.map((g: any) => g?.id).filter(Boolean);
+      console.log("[clover-import] groups keys:", groups && Object.keys(groups || {}));
+      const groupIds = toArray(groups).map((g: any) => g?.id).filter(Boolean);
       gruposPorItem.set(item.id, groupIds);
       for (const gid of groupIds) {
         const g = modifierMap.get(gid) ?? { id: gid };
@@ -237,9 +321,9 @@ async function handler(req: Request): Promise<Response> {
     const modifierPayload: any[] = [];
     for (const g of modifierGroups) {
       if (!g?.id) continue;
-      const modsJson = await fetchClover(`/v3/merchants/${merchantId}/modifier_groups/${g.id}/modifiers?limit=500`, accessToken);
-      const mods: any[] = modsJson?.elements ?? modsJson?.modifiers ?? [];
-      for (const item of items) {
+      const modsJson = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/modifier_groups/${g.id}/modifiers?limit=500`);
+      const mods: any[] = toArray(modsJson?.elements ?? modsJson?.modifiers ?? modsJson);
+      for (const item of itemsForModifiers) {
         const productoId = prodMap.get(item.id);
         if (!productoId) continue;
         const groupIds = gruposPorItem.get(item.id) || [];
@@ -271,6 +355,14 @@ async function handler(req: Request): Promise<Response> {
     return jsonResponse({ ok: true, menus: menuPayload.length, productos: productoPayload.length, opciones: modifierPayload.length });
   } catch (err) {
     console.error("[clover-import] error", err);
+    if (err instanceof CloverApiError) {
+      return jsonResponse({
+        baseUrlUsed: CLOVER_API_BASE,
+        merchantId,
+        status: err.status,
+        raw: err.raw,
+      }, err.status || 500);
+    }
     return jsonResponse({ error: err instanceof Error ? err.message : String(err) }, 500);
   }
 }

@@ -90,8 +90,7 @@ const titulosShadow = document.getElementById('titulosShadow');
 const botonStrokeWidth = document.getElementById('botonStrokeWidth');
 const botonStrokeColor = document.getElementById('botonStrokeColor');
 const botonShadow = document.getElementById('botonShadow');
-const btnConectarClover = document.getElementById('btnConectarClover');
-const btnImportarClover = document.getElementById('btnImportarClover');
+const cloverBar = document.getElementById('cloverBar');
 
 let editandoId = null;
 let linkFuente = null;
@@ -108,6 +107,7 @@ const COVER_BUCKET = 'galeriacomercios';
 const COVER_PREFIX = 'menus/portada';
 const BACKGROUND_PREFIX = 'menus/background';
 const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
+const CLOVER_LOGO_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/CloverLogo.png';
 const toastEl = document.getElementById('toast');
 const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const fuentesSeleccionadas = {
@@ -786,6 +786,7 @@ async function cargarDatos() {
   await cargarFuenteGuardada();
   await cargarTema();
   renderFontOptions();
+  await refreshCloverBar();
 }
 
 async function cargarSucursalesRelacionadas() {
@@ -1241,8 +1242,135 @@ btnGuardarSeccion.onclick = async () => {
 
 // --------- Clover Integration (MVP-B) ----------
 
+async function obtenerConexionClover() {
+  const { data, error } = await supabase
+    .from('clover_conexiones')
+    .select('idComercio, clover_merchant_id, access_token')
+    .eq('idComercio', idComercio)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function contarProductosImportados() {
+  const { count, error } = await supabase
+    .from('productos')
+    .select('id', { count: 'exact', head: true })
+    .eq('idComercio', idComercio);
+
+  if (!error) return count ?? 0;
+
+  const msg = (error?.message || '').toLowerCase();
+  const missingIdComercio = msg.includes('idcomercio') && msg.includes('does not exist');
+  if (!missingIdComercio) throw error;
+
+  const { data: menus, error: menusErr } = await supabase
+    .from('menus')
+    .select('id')
+    .eq('idComercio', idComercio);
+  if (menusErr) throw menusErr;
+
+  const menuIds = (menus || []).map((m) => m.id).filter(Boolean);
+  if (!menuIds.length) return 0;
+
+  const { count: prodCount, error: prodErr } = await supabase
+    .from('productos')
+    .select('id', { count: 'exact', head: true })
+    .in('idMenu', menuIds);
+  if (prodErr) throw prodErr;
+  return prodCount ?? 0;
+}
+
+function renderCloverBar(state) {
+  if (!cloverBar) return;
+  const connected = state?.connected === true;
+
+  cloverBar.innerHTML = `
+    <div class="w-[90%] max-w-3xl min-w-[260px] mx-auto bg-white border rounded-2xl shadow-sm px-3 py-2 overflow-hidden">
+      <div class="flex items-center justify-between gap-2 flex-nowrap whitespace-nowrap">
+        <div class="flex items-center gap-2 flex-nowrap min-w-0">
+          <img src="${CLOVER_LOGO_URL}" alt="Clover" class="h-8 max-h-[32px] w-auto object-contain max-w-[108px] shrink-0" />
+        </div>
+        <div class="flex items-center gap-2 flex-nowrap min-w-0">
+          ${connected
+            ? `
+              <button type="button" class="bg-[#218800] text-white px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap cursor-not-allowed" disabled>
+                <i class="fas fa-check-square mr-2"></i><span class="truncate max-w-[110px] sm:max-w-none inline-block align-bottom">Conectado</span>
+              </button>
+              <button data-clover-action="sync" type="button" class="bg-[#b6fa70] text-[#218800] px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">
+                <i class="fas fa-sync mr-2"></i><span class="truncate max-w-[110px] sm:max-w-none inline-block align-bottom">Sincronizar</span>
+              </button>
+            `
+            : `<button data-clover-action="connect" type="button" class="bg-[#808c7c] text-white px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">
+                <span class="truncate max-w-[150px] sm:max-w-none inline-block align-bottom">Conectar con Clover</span>
+              </button>`
+          }
+        </div>
+      </div>
+    </div>
+  `;
+
+  const connectBtn = cloverBar.querySelector('[data-clover-action="connect"]');
+  if (connectBtn) {
+    connectBtn.addEventListener('click', iniciarOauthClover);
+  }
+
+  const syncBtn = cloverBar.querySelector('[data-clover-action="sync"]');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', async () => {
+      const originalHtml = syncBtn.innerHTML;
+      syncBtn.disabled = true;
+      syncBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      syncBtn.innerHTML = "<i class=\"fas fa-spinner fa-spin mr-2\"></i>Sincronizando...";
+      try {
+        const ok = await lanzarImportacionClover();
+        if (ok) {
+          await refreshCloverBar();
+          return;
+        }
+      } catch (err) {
+        const message = err?.message || JSON.stringify(err);
+        alert(message);
+      }
+      syncBtn.disabled = false;
+      syncBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+      syncBtn.innerHTML = originalHtml;
+    });
+  }
+}
+
+async function refreshCloverBar() {
+  if (!cloverBar) return;
+  try {
+    const conn = await obtenerConexionClover();
+    const accessToken = (conn?.access_token || "").trim();
+    const merchantId = (conn?.clover_merchant_id || "").trim();
+    const isConnected = accessToken.length > 0 && merchantId.length > 0;
+    if (!isConnected) {
+      renderCloverBar({ connected: false });
+      return;
+    }
+    renderCloverBar({ connected: true });
+  } catch (err) {
+    console.error('[Clover] estado error', err);
+    const rawMessage = err?.message ?? '';
+    const fallback = rawMessage ? '' : (err && typeof err === 'object' ? JSON.stringify(err) : '');
+    const candidate = (rawMessage || fallback || '').trim();
+    const isEmptyBody = candidate === '{"message":""}';
+    if (!candidate || isEmptyBody) {
+      console.warn('[Clover] estado error vacío', err);
+    } else {
+      alert(candidate);
+    }
+    renderCloverBar({ connected: false });
+  }
+}
+
 async function lanzarImportacionClover() {
-  if (!idComercio) return alert('ID de comercio no encontrado en la URL');
+  if (!idComercio) {
+    alert('ID de comercio no encontrado en la URL');
+    return false;
+  }
   try {
     const url = `${FUNCTIONS_BASE}/clover-import-menu?idComercio=${idComercio}`;
     const { data: { session } } = await supabase.auth.getSession();
@@ -1266,15 +1394,17 @@ async function lanzarImportacionClover() {
 
     if ((json?.menus ?? 0) === 0) {
       alert('Este comercio no tiene menús en Clover todavía.');
-      return;
+      return false;
     }
 
     alert(`Importación completada.\nSecciones: ${json.menus ?? 0}\nProductos: ${json.productos ?? 0}\nOpciones: ${json.opciones ?? 0}`);
     await cargarSecciones();
+    return true;
   } catch (err) {
     const message = err?.message || JSON.stringify(err);
     console.error('[Clover] import catch', err);
     alert(message);
+    return false;
   }
 }
 
@@ -1450,10 +1580,6 @@ btnGuardarProducto.onclick = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', cargarDatos);
-
-// Botones Clover
-btnConectarClover?.addEventListener('click', iniciarOauthClover);
-btnImportarClover?.addEventListener('click', lanzarImportacionClover);
 
 // Mostrar preview al seleccionar nueva imagen
 inputImagenProducto.addEventListener('change', () => {

@@ -3,9 +3,6 @@
 # =======================
 
 [build]
-  command = ""
+  base = "public"
   publish = "."
-
-# Puerto local opcional
-[dev]
-  port = 8888
+  command = ""
