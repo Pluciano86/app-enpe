@@ -24,30 +24,15 @@
       <section class="space-y-3">
         <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p class="block font-medium">Fechas del Evento</p>
-            <p class="text-sm text-gray-500">Selecciona una o varias fechas y asigna una hora de inicio para cada una.</p>
+            <p class="block font-medium">Municipios y fechas</p>
+            <p class="text-sm text-gray-500">Cada municipio tiene su lugar, dirección y fechas.</p>
           </div>
-          <label class="inline-flex items-center gap-2 text-sm text-gray-600">
-            <input type="checkbox" id="mismaHora" class="form-checkbox h-4 w-4 text-blue-600">
-            Usar la misma hora en todas las fechas
-          </label>
+          <button type="button" id="btnAgregarSede" class="bg-slate-900 text-white px-4 py-2 rounded hover:bg-slate-800">
+            Agregar municipio
+          </button>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-          <div>
-            <label for="nuevaFecha" class="block text-sm font-semibold text-gray-700">Fecha</label>
-            <input type="date" id="nuevaFecha" class="w-full border rounded px-3 py-2" />
-          </div>
-          <div>
-            <label for="nuevaHora" class="block text-sm font-semibold text-gray-700">Hora de inicio</label>
-            <input type="time" id="nuevaHora" class="w-full border rounded px-3 py-2" />
-          </div>
-          <button type="button" id="btnAgregarFecha" class="bg-slate-900 text-white px-4 py-2 rounded hover:bg-slate-800">
-            Agregar fecha
-          </button>
-        </div>
-
-        <div id="listaFechas" class="bg-gray-50 border border-gray-200 rounded-lg divide-y divide-gray-200 hidden"></div>
+        <div id="sedesContainer" class="space-y-4"></div>
       </section>
 
       <div class="flex items-center gap-2">
@@ -58,23 +43,6 @@
       <div>
         <label class="block font-medium">Costo</label>
         <input required type="text" name="costo" id="costo" class="w-full border rounded px-3 py-2"/>
-      </div>
-
-      <div>
-        <label class="block font-medium">Lugar</label>
-        <input required type="text" name="lugar" class="w-full border rounded px-3 py-2"/>
-      </div>
-
-      <div>
-        <label class="block font-medium">Dirección</label>
-        <input required type="text" name="direccion" class="w-full border rounded px-3 py-2"/>
-      </div>
-
-      <div>
-        <label class="block font-medium">Municipio</label>
-        <select required name="municipio" id="municipio" class="w-full border rounded px-3 py-2">
-          <option value="">Selecciona un municipio</option>
-        </select>
       </div>
 
       <div>

@@ -2,6 +2,8 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
+import { t } from './i18n.js';
+import { abrirModal } from './modalEventos.js';
 
 const lista = document.getElementById('listaEventos');
 const filtroMunicipio = document.getElementById('filtroMunicipio');
@@ -13,21 +15,6 @@ const btnHoy = document.getElementById('btnHoy');
 const btnSemana = document.getElementById('btnSemana');
 const btnGratis = document.getElementById('btnGratis');
 
-// Modal
-const modal = document.getElementById('modalEvento');
-const cerrarModal = document.getElementById('cerrarModal');
-const modalImagen = document.getElementById('modalImagen');
-const modalTitulo = document.getElementById('modalTitulo');
-const modalDescripcion = document.getElementById('modalDescripcion');
-const modalFechaPrincipal = document.getElementById('modalFechaPrincipal');
-const modalHoraPrincipal = document.getElementById('modalHoraPrincipal');
-const modalVerFechas = document.getElementById('modalVerFechas');
-const modalFechasListado = document.getElementById('modalFechasListado');
-const modalLugar = document.getElementById('modalLugar');
-const modalDireccion = document.getElementById('modalDireccion');
-const modalBoletos = document.getElementById('modalBoletos');
-const modalCosto = document.getElementById('modalCosto');
-
 // Estado
 let eventos = [];
 let municipios = {};
@@ -36,14 +23,6 @@ let filtroHoy = false;
 let filtroSemana = false;
 let filtroGratis = false;
 let renderVersion = 0;
-let modalFechasExpandido = false;
-
-modalVerFechas.addEventListener('click', () => {
-  modalFechasExpandido = !modalFechasExpandido;
-  modalFechasListado.classList.toggle('hidden', !modalFechasExpandido);
-  modalVerFechas.textContent = modalFechasExpandido ? 'Ocultar fechas' : 'Ver todas las fechas';
-  modalVerFechas.setAttribute('aria-expanded', String(modalFechasExpandido));
-});
 
 const cleanupCarousels = (container) => {
   if (!container) return;
@@ -123,7 +102,24 @@ async function cargarEventos() {
 
   const { data, error } = await supabase
     .from('eventos')
-    .select('id, nombre, descripcion, costo, gratis, lugar, direccion, municipio_id, categoria, enlaceboletos, imagen, activo, eventoFechas(id, fecha, horainicio, mismahora)')
+    .select(`
+      id,
+      nombre,
+      descripcion,
+      costo,
+      gratis,
+      categoria,
+      enlaceboletos,
+      imagen,
+      activo,
+      eventos_municipios (
+        id,
+        municipio_id,
+        lugar,
+        direccion,
+        eventoFechas (id, fecha, horainicio, mismahora)
+      )
+    `)
     .eq('activo', true);
 
   if (error) {
@@ -136,18 +132,48 @@ async function cargarEventos() {
 
   eventos = (data ?? [])
     .map((evento) => {
-      const { eventoFechas, ...resto } = evento;
-      const fechasOrdenadas = ordenarFechas(eventoFechas || []);
+      const sedes = (evento.eventos_municipios || []).map((sede) => {
+        const municipioNombre = municipios[sede.municipio_id] || '';
+        const fechas = (sede.eventoFechas || []).map((item) => ({
+          id: item.id,
+          fecha: item.fecha,
+          horainicio: item.horainicio,
+          mismahora: item.mismahora ?? false,
+          municipio_id: sede.municipio_id,
+          municipioNombre,
+          lugar: sede.lugar || '',
+          direccion: sede.direccion || ''
+        }));
+        return {
+          id: sede.id,
+          municipio_id: sede.municipio_id,
+          municipioNombre,
+          lugar: sede.lugar || '',
+          direccion: sede.direccion || '',
+          fechas
+        };
+      });
+
+      const municipioIds = Array.from(new Set(sedes.map((sede) => sede.municipio_id).filter(Boolean)));
+      const municipioNombre =
+        municipioIds.length > 1
+          ? t('evento.variosMunicipios')
+          : (municipios[municipioIds[0]] || '');
+
+      const fechasOrdenadas = ordenarFechas(sedes.flatMap((sede) => sede.fechas || []));
       const ultimaFecha = fechasOrdenadas.length
         ? fechasOrdenadas[fechasOrdenadas.length - 1].fecha
         : null;
-      const categoriaInfo = categorias[resto.categoria] || {};
+      const categoriaInfo = categorias[evento.categoria] || {};
       const eventoNormalizado = {
-        ...resto,
-        municipioNombre: municipios[resto.municipio_id] || '',
+        ...evento,
+        sedes,
+        municipioIds,
+        municipioNombre,
         categoriaNombre: categoriaInfo.nombre || '',
         categoriaIcono: categoriaInfo.icono || '',
         fechas: fechasOrdenadas,
+        eventoFechas: fechasOrdenadas,
         ultimaFecha
       };
       return eventoNormalizado;
@@ -177,7 +203,7 @@ async function renderizarEventos() {
 
   let filtrados = eventos.filter((evento) => {
     const matchTexto = !texto || normalizarTexto(evento.nombre).includes(texto);
-    const matchMuni = !muni || evento.municipio_id == muni;
+    const matchMuni = !muni || (evento.municipioIds || []).includes(Number(muni));
     const matchCat = !cat || evento.categoria == cat;
 
     let matchFiltro = true;
@@ -299,110 +325,6 @@ async function renderizarEventos() {
 
   lista.appendChild(fragment);
 }
-
-function abrirModal(evento) {
-  const fechas = Array.isArray(evento.fechas) ? ordenarFechas(evento.fechas) : [];
-  const primeraFecha = fechas[0] || null;
-
-  modalImagen.src = evento.imagen || 'https://placehold.co/400x500?text=Evento';
-  modalImagen.alt = `Imagen de ${evento.nombre || 'Evento'}`;
-  modalTitulo.textContent = evento.nombre || '';
-
-  if (evento.descripcion) {
-    modalDescripcion.textContent = evento.descripcion;
-    modalDescripcion.classList.remove('hidden');
-  } else {
-    modalDescripcion.textContent = '';
-    modalDescripcion.classList.add('hidden');
-  }
-
-  modalFechaPrincipal.innerHTML = '';
-  modalFechaPrincipal.classList.toggle('hidden', false);
-  if (primeraFecha) {
-    const partes = obtenerPartesFecha(primeraFecha.fecha);
-    if (partes) {
-      modalFechaPrincipal.innerHTML = `<div>${partes.weekday}</div><div>${partes.resto}</div>`;
-    } else {
-      modalFechaPrincipal.textContent = formatearFecha(primeraFecha.fecha);
-    }
-  } else {
-    modalFechaPrincipal.textContent = 'Sin fecha';
-  }
-
-  const horaPrincipal = primeraFecha?.horainicio ? formatearHora(primeraFecha.horainicio) : '';
-  modalHoraPrincipal.textContent = horaPrincipal;
-  modalHoraPrincipal.classList.toggle('hidden', !horaPrincipal);
-
-  modalFechasListado.innerHTML = '';
-  let mostrarToggle = false;
-  if (fechas.length > 1) {
-    mostrarToggle = true;
-    modalFechasListado.innerHTML = fechas
-      .map((item) => {
-        const partes = obtenerPartesFecha(item.fecha);
-        const fechaTexto = partes ? `${partes.weekday} · ${partes.resto}` : formatearFecha(item.fecha);
-        const horaTexto = item.horainicio ? formatearHora(item.horainicio) : '';
-        return `<div>${fechaTexto}${horaTexto ? ` • ${horaTexto}` : ''}</div>`;
-      })
-      .join('');
-  }
-
-  modalFechasExpandido = false;
-  modalFechasListado.classList.toggle('hidden', true);
-  modalVerFechas.classList.toggle('hidden', !mostrarToggle);
-  modalVerFechas.textContent = 'Ver todas las fechas';
-  modalVerFechas.setAttribute('aria-expanded', 'false');
-
-  if (evento.lugar) {
-    modalLugar.textContent = evento.lugar;
-    modalLugar.classList.remove('hidden');
-  } else {
-    modalLugar.textContent = '';
-    modalLugar.classList.add('hidden');
-  }
-
-  if (evento.direccion) {
-    modalDireccion.textContent = evento.direccion;
-    modalDireccion.classList.remove('hidden');
-  } else {
-    modalDireccion.textContent = '';
-    modalDireccion.classList.add('hidden');
-  }
-
-  console.log('Modal evento', evento);
-  const costoNumerico = Number.isFinite(Number(evento.costo)) ? Number(evento.costo) : NaN;
-  if (evento.costo === null || (Number.isFinite(costoNumerico) && costoNumerico === 0)) {
-    modalCosto.textContent = 'Gratis';
-    modalBoletos.href = '#';
-    modalBoletos.classList.add('hidden');
-  } else if (Number.isFinite(costoNumerico) && costoNumerico > 0) {
-    modalCosto.textContent = `Costo: $${costoNumerico.toFixed(2)}`;
-    const urlBoletos = evento.urlBoletos || evento.enlaceboletos || '#';
-    modalBoletos.href = urlBoletos || '#';
-    modalBoletos.textContent = 'Comprar boletos';
-    modalBoletos.classList.remove('hidden');
-  } else {
-    const costoBase = evento.costo != null ? String(evento.costo).trim() : '';
-    modalCosto.textContent = costoBase ? costoBase : 'Costo no disponible';
-    const urlBoletos = evento.urlBoletos || evento.enlaceboletos || '#';
-    modalBoletos.href = urlBoletos || '#';
-    modalBoletos.textContent = 'Comprar boletos';
-    if (urlBoletos && urlBoletos !== '#') {
-      modalBoletos.classList.remove('hidden');
-    } else {
-      modalBoletos.classList.add('hidden');
-    }
-  }
-
-  modalCosto.classList.toggle('hidden', !modalCosto.textContent);
-
-  modal.classList.remove('hidden');
-}
-
-cerrarModal.addEventListener('click', () => modal.classList.add('hidden'));
-modal.addEventListener('click', (e) => {
-  if (e.target === modal) modal.classList.add('hidden');
-});
 
 function capitalizarPalabra(texto = '') {
   if (!texto) return '';

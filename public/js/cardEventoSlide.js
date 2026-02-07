@@ -1,4 +1,5 @@
 import { t } from "./i18n.js";
+import { abrirModal } from "./modalEventos.js";
 
 const localeMap = {
   es: "es-ES",
@@ -90,6 +91,10 @@ export function cardEventoSlide(evento) {
   const horaBase = horainicio || hora || "";
   const horaFormateada = formatearHora(horaBase);
   const urlImagen = imagen || "https://placehold.co/200x120?text=Evento";
+  const municipioLabel =
+    municipioNombre ||
+    (Array.isArray(evento.municipioIds) && evento.municipioIds.length > 1 ? t("evento.variosMunicipios") : "") ||
+    t("area.municipio");
   const costoTexto = gratis
     ? t("area.gratis")
     : costo
@@ -125,14 +130,31 @@ export function cardEventoSlide(evento) {
       ${horaFormateada ? `<div class="flex items-center justify-center gap-1 text-[12px] text-red-600">${horaFormateada}</div>` : ""}
       <div class="flex items-center justify-center gap-1 text-[12px] font-medium" style="color:#23B4E9;">
         <i class="fas fa-map-pin"></i>
-        <span>${municipioNombre || t("area.municipio")}</span>
+        <span>${municipioLabel}</span>
       </div>
       <div class="flex items-center justify-center text-[12px] font-semibold text-green-600 mt-1">${t("area.costo")} ${costoTexto}</div>
     </div>
   `;
 
   card.addEventListener("click", () => {
-    window.location.href = `perfilEvento.html?id=${id}`;
+    if (document.getElementById("modalEvento")) {
+      const eventoPayload = evento.eventoFechas
+        ? evento
+        : {
+            ...evento,
+            eventoFechas: evento.fecha
+              ? [{
+                  fecha: evento.fecha,
+                  horainicio: evento.horainicio || evento.hora || "",
+                  lugar: evento.lugar || "",
+                  municipioNombre: municipioNombre || "",
+                }]
+              : []
+          };
+      abrirModal(eventoPayload);
+    } else {
+      window.location.href = `perfilEvento.html?id=${id}`;
+    }
   });
 
   return card;

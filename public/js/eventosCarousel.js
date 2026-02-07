@@ -2,6 +2,51 @@ import { supabase } from "../shared/supabaseClient.js";
 import { abrirModal } from "./modalEventos.js";
 import { t } from "./i18n.js";
 
+const normalizarEventos = (lista = [], municipioNombreById = new Map()) => {
+  const hoyISO = new Date().toISOString().slice(0, 10);
+  return (lista || [])
+    .map((evento) => {
+      const sedes = (evento.eventos_municipios || []).map((sede) => {
+        const municipioNombre = municipioNombreById.get(sede.municipio_id) || "";
+        const fechas = (sede.eventoFechas || []).map((item) => ({
+          fecha: item.fecha,
+          horainicio: item.horainicio,
+          mismahora: item.mismahora ?? false,
+          municipio_id: sede.municipio_id,
+          municipioNombre,
+          lugar: sede.lugar || "",
+          direccion: sede.direccion || ""
+        }));
+        return {
+          municipio_id: sede.municipio_id,
+          municipioNombre,
+          lugar: sede.lugar || "",
+          direccion: sede.direccion || "",
+          fechas
+        };
+      });
+
+      const municipioIds = Array.from(new Set(sedes.map((s) => s.municipio_id).filter(Boolean)));
+      const municipioNombre =
+        municipioIds.length > 1
+          ? t("evento.variosMunicipios")
+          : (municipioNombreById.get(municipioIds[0]) || "");
+
+      const eventoFechas = sedes.flatMap((sede) => sede.fechas || []).sort((a, b) => a.fecha.localeCompare(b.fecha));
+      const ultimaFecha = eventoFechas.length ? eventoFechas[eventoFechas.length - 1].fecha : null;
+
+      return {
+        ...evento,
+        sedes,
+        municipioIds,
+        municipioNombre,
+        eventoFechas,
+        ultimaFecha
+      };
+    })
+    .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO);
+};
+
 /**
  * 🔹 Cargar eventos filtrados por área o municipio
  * Incluye fallback automático por área con mensaje visual.
@@ -14,6 +59,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
   let municipiosIds = [];
   let nombreMunicipio = "";
   let nombreArea = "";
+  const municipioNombreById = new Map();
 
   try {
     container.innerHTML = `<p class="text-gray-500 text-center">${t('area.cargandoEventos')}</p>`;
@@ -22,10 +68,11 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
     if (idMunicipio) {
       const { data: muni } = await supabase
         .from("Municipios")
-        .select("nombre, idArea")
+        .select("id, nombre, idArea")
         .eq("id", idMunicipio)
         .maybeSingle();
       nombreMunicipio = muni?.nombre || "";
+      if (muni?.id) municipioNombreById.set(muni.id, muni.nombre || "");
       if (!idArea && muni?.idArea) {
         filtros.idArea = muni.idArea; // fallback al área si no se pasó
       }
@@ -40,15 +87,26 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
       nombreArea = area?.nombre || "";
     }
 
+    if (!idArea && !idMunicipio) {
+      const { data: municipiosTodos } = await supabase
+        .from("Municipios")
+        .select("id, nombre");
+      (municipiosTodos || []).forEach((m) => municipioNombreById.set(m.id, m.nombre || ""));
+    }
+
     // 🔸 Obtener siempre los municipios del área (aunque haya municipio activo)
     if (idArea) {
       const { data: municipios, error: muniError } = await supabase
         .from("Municipios")
-        .select("id")
+        .select("id, nombre")
         .eq("idArea", idArea);
       if (muniError) throw muniError;
       municipiosIds = municipios?.map((m) => m.id) || [];
+      (municipios || []).forEach((m) => municipioNombreById.set(m.id, m.nombre || ""));
     }
+
+    const usarJoinInner = Boolean(idMunicipio || (idArea && municipiosIds.length > 0));
+    const joinSedes = usarJoinInner ? "eventos_municipios!inner" : "eventos_municipios";
 
     // 🔸 Query base
     let query = supabase
@@ -59,12 +117,15 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
         descripcion,
         costo,
         gratis,
-        lugar,
-        direccion,
         imagen,
         enlaceboletos,
-        municipio_id,
-        eventoFechas (fecha, horainicio)
+        ${joinSedes} (
+          id,
+          municipio_id,
+          lugar,
+          direccion,
+          eventoFechas (fecha, horainicio, mismahora)
+        )
       `)
       .eq("activo", true)
       .order("creado", { ascending: false })
@@ -72,28 +133,16 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
 
     // 🔸 Filtro principal
     if (idMunicipio) {
-      query = query.eq("municipio_id", idMunicipio);
+      query = query.eq("eventos_municipios.municipio_id", idMunicipio);
     } else if (idArea && municipiosIds.length > 0) {
-      query = query.in("municipio_id", municipiosIds);
+      query = query.in("eventos_municipios.municipio_id", municipiosIds);
     }
 
     let { data: eventos, error } = await query;
     if (error) throw error;
 
     console.log("🎟️ Eventos obtenidos (municipio/área):", eventos);
-
-    const hoyISO = new Date().toISOString().slice(0, 10);
-    const filtrarExpirados = (lista = []) =>
-      (lista || []).map((evento) => ({
-        ...evento,
-        eventoFechas: (evento.eventoFechas || []).sort((a, b) => a.fecha.localeCompare(b.fecha)),
-        ultimaFecha: evento.eventoFechas?.length
-          ? evento.eventoFechas[evento.eventoFechas.length - 1].fecha
-          : null,
-      }))
-      .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO);
-
-    eventos = filtrarExpirados(eventos);
+    eventos = normalizarEventos(eventos, municipioNombreById);
 
     let mensajeFallback = "";
 
@@ -109,20 +158,23 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
           descripcion,
           costo,
           gratis,
-          lugar,
-          direccion,
           imagen,
           enlaceboletos,
-          municipio_id,
-          eventoFechas (fecha, horainicio)
+          eventos_municipios!inner (
+            id,
+            municipio_id,
+            lugar,
+            direccion,
+            eventoFechas (fecha, horainicio, mismahora)
+          )
         `)
         .eq("activo", true)
-        .in("municipio_id", municipiosIds)
+        .in("eventos_municipios.municipio_id", municipiosIds)
         .order("creado", { ascending: false })
         .limit(20);
 
       if (areaError) throw areaError;
-      eventos = filtrarExpirados(eventosArea || []);
+      eventos = normalizarEventos(eventosArea || [], municipioNombreById);
 
       // Mostrar mensaje visual
       if (nombreMunicipio && nombreArea) {

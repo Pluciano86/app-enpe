@@ -33,11 +33,36 @@ async function renderModal(evento) {
     ? ev.descripcion
     : fallback("evento.sinDescripcion", "Sin descripción disponible");
 
-  // 🟢 Lugar y dirección
+  // 🟢 Lugar y dirección (manejo multi-municipio)
   const lugar = document.getElementById("modalLugar");
   const direccion = document.getElementById("modalDireccion");
-  lugar.textContent = ev.lugar || fallback("modal.lugarNoEspecificado", "Lugar no especificado");
-  direccion.textContent = ev.direccion || "";
+  const fechasDisponibles = Array.isArray(ev.eventoFechas)
+    ? ev.eventoFechas
+    : (Array.isArray(ev.fechas) ? ev.fechas : []);
+  const municipiosUnicos = Array.from(
+    new Set(
+      fechasDisponibles
+        .map((item) => item.municipioNombre || item.municipio_id || "")
+        .filter(Boolean)
+    )
+  );
+  const lugaresUnicos = Array.from(
+    new Set(
+      fechasDisponibles
+        .map((item) => item.lugar || "")
+        .filter(Boolean)
+    )
+  );
+  const hayVariasLocalidades = municipiosUnicos.length > 1 || lugaresUnicos.length > 1;
+
+  if (hayVariasLocalidades) {
+    lugar.textContent = t("evento.variosMunicipios");
+    direccion.textContent = "";
+  } else {
+    const sedeBase = fechasDisponibles.find((item) => item.lugar || item.direccion) || {};
+    lugar.textContent = sedeBase.lugar || ev.lugar || fallback("modal.lugarNoEspecificado", "Lugar no especificado");
+    direccion.textContent = sedeBase.direccion || ev.direccion || "";
+  }
 
   // 🟢 Costo o Entrada Gratis
   const costo = document.getElementById("modalCosto");
@@ -45,11 +70,10 @@ async function renderModal(evento) {
     costo.textContent = t("area.gratis");
   } else if (ev.costo || ev.precio) {
     const costoValor = (ev.costo ?? ev.precio ?? "").toString().trim();
-    const necesitaSimbolo = /[0-9]/.test(costoValor) && !costoValor.startsWith("$");
-    const costoMostrar = necesitaSimbolo ? `$${costoValor}` : costoValor;
-    costo.textContent = costoValor.toLowerCase().startsWith("costo")
-      ? costoValor
-      : `${t("area.costo")} ${costoMostrar}`;
+    const costoSinSimbolo = costoValor.replace(/^\s*\$\s*/, "");
+    costo.textContent = costoSinSimbolo.toLowerCase().startsWith("costo")
+      ? costoSinSimbolo
+      : `${t("area.costo")} ${costoSinSimbolo}`;
   } else {
     costo.textContent = "";
   }
@@ -70,9 +94,9 @@ const horaElem = document.getElementById("modalHoraPrincipal");
 const verFechasBtn = document.getElementById("modalVerFechas");
 const fechasListado = document.getElementById("modalFechasListado");
 
-if (ev.eventoFechas && ev.eventoFechas.length > 0) {
+if (fechasDisponibles.length > 0) {
   // Ordenar por fecha
-  const fechasOrdenadas = [...ev.eventoFechas].sort(
+  const fechasOrdenadas = [...fechasDisponibles].sort(
     (a, b) => new Date(a.fecha) - new Date(b.fecha)
   );
 
@@ -101,23 +125,55 @@ if (ev.eventoFechas && ev.eventoFechas.length > 0) {
     verFechasBtn.classList.remove("hidden");
     verFechasBtn.textContent = t("evento.verFechas", { count: fechasOrdenadas.length });
 
-    // Generar listado de fechas
-  fechasListado.innerHTML = fechasOrdenadas
-    .map((f) => {
-      const fecha = new Date(f.fecha).toLocaleDateString(locale, {
-        weekday: "long",
-        day: "numeric",
-          month: "long",
-          year: "numeric",
-        });
-        const hora = f.horainicio
-          ? new Date(`1970-01-01T${f.horainicio}`).toLocaleTimeString(locale, {
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            })
-          : "";
-        return `<p>${fecha}${hora ? ` — ${hora}` : ""}</p>`;
+    // Generar listado de fechas organizado por municipio y lugar
+    const grupos = new Map();
+    fechasOrdenadas.forEach((f) => {
+      const muni = f.municipioNombre || "";
+      const lugar = f.lugar || "";
+      const key = `${muni}||${lugar}`;
+      const lista = grupos.get(key) || { municipio: muni, lugar, fechas: [] };
+      lista.fechas.push(f);
+      grupos.set(key, lista);
+    });
+
+    fechasListado.classList.add("text-left");
+    fechasListado.classList.remove("space-y-1");
+    fechasListado.classList.add("space-y-4");
+
+    fechasListado.innerHTML = Array.from(grupos.values())
+      .map((grupo) => {
+        const tituloMunicipio = grupo.municipio || t("area.municipio");
+        const fechasHtml = grupo.fechas
+          .map((f) => {
+            const fechaTexto = new Date(f.fecha).toLocaleDateString(locale, {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            });
+            const horaTexto = f.horainicio
+              ? new Date(`1970-01-01T${f.horainicio}`).toLocaleTimeString(locale, {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                })
+              : "";
+            return `
+              <div class="space-y-0">
+                <div>${fechaTexto}</div>
+                ${horaTexto ? `<div>${horaTexto}</div>` : ""}
+              </div>
+            `;
+          })
+          .join("");
+
+        return `
+          <div class="border-b border-gray-200 pb-3 last:border-b-0">
+            <div class="font-semibold text-gray-800">${tituloMunicipio}</div>
+            ${grupo.lugar ? `<div class="text-sm text-gray-600">${grupo.lugar}</div>` : ""}
+            <div class="mt-2 space-y-1 text-sm text-gray-600">${fechasHtml}</div>
+          </div>
+        `;
       })
       .join("");
 

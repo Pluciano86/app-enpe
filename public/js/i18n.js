@@ -47,6 +47,7 @@ const DICTS = {
     'evento.comprarBoletos': 'Comprar Boletos',
     'evento.sinDescripcion': 'Sin descripción disponible',
     'evento.verFechas': 'Ver las {count} fechas disponibles',
+    'evento.variosMunicipios': 'Varias Localidades',
 
     // comunes
     'common.cerrar': 'Cerrar',
@@ -203,6 +204,7 @@ const DICTS = {
     'evento.comprarBoletos': 'Buy Tickets',
     'evento.sinDescripcion': 'No description available',
     'evento.verFechas': 'View {count} available dates',
+    'evento.variosMunicipios': 'Multiple Venues',
 
     'common.cerrar': 'Close',
     'common.cancelar': 'Cancel',
@@ -352,6 +354,7 @@ const DICTS = {
     'evento.comprarBoletos': '购买门票',
     'evento.sinDescripcion': '暂无描述',
     'evento.verFechas': '查看 {count} 个可用日期',
+    'evento.variosMunicipios': '多个场地',
 
     'common.cerrar': '关闭',
     'common.cancelar': '取消',
@@ -501,6 +504,7 @@ const DICTS = {
     'evento.comprarBoletos': 'Acheter des billets',
     'evento.sinDescripcion': 'Aucune description disponible',
     'evento.verFechas': 'Voir {count} dates disponibles',
+    'evento.variosMunicipios': 'Plusieurs lieux',
 
     'common.cerrar': 'Fermer',
     'common.cancelar': 'Annuler',
@@ -650,6 +654,7 @@ const DICTS = {
     'evento.comprarBoletos': 'Comprar ingressos',
     'evento.sinDescripcion': 'Descrição não disponível',
     'evento.verFechas': 'Ver {count} datas disponíveis',
+    'evento.variosMunicipios': 'Várias localidades',
 
     'common.cerrar': 'Fechar',
     'common.cancelar': 'Cancelar',
@@ -799,6 +804,7 @@ const DICTS = {
     'evento.comprarBoletos': 'Tickets kaufen',
     'evento.sinDescripcion': 'Keine Beschreibung verfügbar',
     'evento.verFechas': '{count} verfügbare Termine ansehen',
+    'evento.variosMunicipios': 'Mehrere Orte',
 
     'common.cerrar': 'Schließen',
     'common.cancelar': 'Abbrechen',
@@ -948,6 +954,7 @@ const DICTS = {
     'evento.comprarBoletos': 'Acquista biglietti',
     'evento.sinDescripcion': 'Descrizione non disponibile',
     'evento.verFechas': 'Vedi le {count} date disponibili',
+    'evento.variosMunicipios': 'Più sedi',
 
     'common.cerrar': 'Chiudi',
     'common.cancelar': 'Annulla',
@@ -1097,6 +1104,7 @@ const DICTS = {
     'evento.comprarBoletos': '티켓 구매',
     'evento.sinDescripcion': '설명이 없습니다',
     'evento.verFechas': '{count}개의 이용 가능한 날짜 보기',
+    'evento.variosMunicipios': '여러 장소',
 
     'common.cerrar': '닫기',
     'common.cancelar': '취소',
@@ -1246,6 +1254,7 @@ const DICTS = {
     'evento.comprarBoletos': 'チケットを購入',
     'evento.sinDescripcion': '説明がありません',
     'evento.verFechas': '{count} 件の利用可能な日付を見る',
+    'evento.variosMunicipios': '複数の会場',
 
     'common.cerrar': '閉じる',
     'common.cancelar': 'キャンセル',
