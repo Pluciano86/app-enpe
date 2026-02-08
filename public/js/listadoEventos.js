@@ -205,6 +205,7 @@ async function renderizarEventos() {
   const muni = filtroMunicipio.value;
   const cat = filtroCategoria.value;
   const orden = filtroOrden.value;
+  const muniId = muni ? Number(muni) : null;
 
   let filtrados = eventos.filter((evento) => {
     const matchTexto = !texto || normalizarTexto(evento.nombre).includes(texto);
@@ -256,7 +257,14 @@ async function renderizarEventos() {
 
   for (let i = 0; i < filtrados.length; i++) {
     const evento = filtrados[i];
-    const proxima = obtenerProximaFecha(evento);
+    const fechasBase = Array.isArray(evento.fechas) ? evento.fechas : [];
+    const fechasFiltradas = muniId
+      ? fechasBase.filter((item) => Number(item.municipio_id) === muniId)
+      : fechasBase;
+    const mostrarVariasFechas = fechasFiltradas.length > 1;
+    const proxima = !mostrarVariasFechas
+      ? (fechasFiltradas[0] || obtenerProximaFecha(evento))
+      : null;
     const fechaDetalle = proxima ? obtenerPartesFecha(proxima.fecha) : null;
     const horaTexto = proxima?.horainicio ? formatearHora(proxima.horainicio) : '';
     const iconoCategoria = evento.categoriaIcono ? `<i class="fas ${evento.categoriaIcono}"></i>` : '';
@@ -283,15 +291,19 @@ async function renderizarEventos() {
             ${iconoCategoria}
             <span>${evento.categoriaNombre || ''}</span>
           </div>
-          ${fechaDetalle ? `
+          ${mostrarVariasFechas ? `
+            <div class="flex items-center justify-center gap-1 text-base text-red-600 font-medium leading-tight text-center">
+              Varias Fechas Disponibles
+            </div>
+          ` : (fechaDetalle ? `
             <div class="flex flex-col items-center justify-center gap-0 text-base text-red-600 font-medium leading-tight">
               <span>${fechaDetalle.weekday}</span>
               <span>${fechaDetalle.resto}</span>
             </div>
           ` : `
             <div class="flex items-center justify-center gap-1 text-sm text-red-600 font-medium leading-tight">Sin fecha</div>
-          `}
-          ${horaTexto ? `<div class="flex items-center justify-center gap-1 text-sm text-gray-500 leading-tight">${horaTexto}</div>` : ''}
+          `)}
+          ${!mostrarVariasFechas && horaTexto ? `<div class="flex items-center justify-center gap-1 text-sm text-gray-500 leading-tight">${horaTexto}</div>` : ''}
           <div class="flex items-center justify-center gap-1 text-sm font-medium" style="color:#23B4E9;">
             <i class="fa-solid fa-map-pin"></i>
             <span>${evento.municipioNombre}</span>
