@@ -218,7 +218,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
             .map(
               (evento) => `
             <div class="swiper-slide cursor-pointer" data-id="${evento.id}">
-              <div class="w-full aspect-[4/5] overflow-hidden rounded-lg bg-gray-100 shadow">
+              <div class="w-full aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 shadow">
                 <img src="${evento.imagen || "https://placehold.co/400x500?text=Sin+Imagen"}"
                      alt="${evento.nombre || "Evento"}"
                      class="w-full h-full object-cover" />
@@ -231,13 +231,15 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
     `;
 
     // 🔹 Inicializar Swiper
-    const esListadoArea = window.location.pathname.includes("listadoArea.html");
+    const pathname = window.location.pathname || "";
+    const esListadoArea = pathname.includes("listadoArea.html");
+    const esIndex = pathname.endsWith("/") || pathname.includes("index.html");
     new Swiper(container.querySelector(".eventosSwiper"), {
       loop: true,
       autoplay: { delay: 2500, disableOnInteraction: false },
       speed: 900,
-      slidesPerView: esListadoArea ? 1.2 : 1.2,
-      spaceBetween: esListadoArea ? 8 : 8, // pequeño espacio entre tarjetas
+      slidesPerView: esIndex ? 2 : (esListadoArea ? 1.2 : 1.2),
+      spaceBetween: esIndex ? 10 : 8, // pequeño espacio entre tarjetas
       centeredSlides: false,
     });
 
