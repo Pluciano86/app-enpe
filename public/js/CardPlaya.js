@@ -65,15 +65,15 @@ export function buildPlayaCard(playa) {
       <div class="text-center flex justify-center gap-4 text-blue-600">
         <div class="icon-nadar ${playa?.nadar ? '' : 'hidden'} flex flex-col items-center text-4xl">
           <span>🏊‍♂️</span>
-          <span class="text-xs text-[#23b4e9]">Nadar</span>
+          <span class="text-xs text-[#3ea6c4]">Nadar</span>
         </div>
         <div class="icon-surfear ${playa?.surfear ? '' : 'hidden'} flex flex-col items-center text-4xl">
           <span>🏄‍♂️</span>
-          <span class="text-xs text-[#23b4e9]">Surfear</span>
+          <span class="text-xs text-[#3ea6c4]">Surfear</span>
         </div>
         <div class="icon-snorkel ${playa?.snorkel || playa?.snorkeling ? '' : 'hidden'} flex flex-col items-center text-4xl">
           <span>🤿</span>
-          <span class="text-xs text-[#23b4e9]">Snorkel</span>
+          <span class="text-xs text-[#3ea6c4]">Snorkel</span>
         </div>
       </div>
       <div class="flex justify-center items-center gap-1 text-sm text-gray-600 mt-2">
@@ -86,8 +86,8 @@ export function buildPlayaCard(playa) {
         <span class="viento">Viento: -- km/h</span>
       </div>
       <div class="flex justify-center items-center gap-2 text-sm text-gray-600 mt-1">
-        <span><i class="fas fa-map-pin text-[#23b4e9]"></i></span>
-        <span class="municipio text-[#23b4e9]">${playa?.municipio || ''}</span>
+        <span><i class="fas fa-map-pin text-[#3ea6c4]"></i></span>
+        <span class="municipio text-[#3ea6c4]">${playa?.municipio || ''}</span>
       </div>
       <div class="icon-transporte mt-2 text-sm text-[#9c9c9c]"></div>
     </div>

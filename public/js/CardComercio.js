@@ -115,8 +115,8 @@ export function cardComercio(comercio) {
       `;
     })()}
 
-    <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#23b4e9]">
-      <i class="fas fa-map-pin text-[#23b4e9]"></i> ${comercio.pueblo}
+    <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#3ea6c4]">
+      <i class="fas fa-map-pin text-[#3ea6c4]"></i> ${comercio.pueblo}
     </div>
 
     ${

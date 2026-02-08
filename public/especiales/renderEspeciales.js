@@ -55,7 +55,7 @@ async function renderizarEspeciales(lista) {
       }
     }
     const partesUbicacion = [];
-    if (municipio) partesUbicacion.push(`<i class="fa-solid fa-location-dot text-[#23b4e9]"></i> en ${municipio}`);
+    if (municipio) partesUbicacion.push(`<i class="fa-solid fa-location-dot text-[#3ea6c4]"></i> en ${municipio}`);
     if (tiempoTexto) partesUbicacion.push(`<i class="fa-solid fa-car-side text-gray-500"></i> ${tiempoTexto}`);
     const subtitulo = partesUbicacion.join(' · ');
 

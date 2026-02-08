@@ -4,7 +4,7 @@ const getLoginUrl = () => {
   const basePath = window.location.href.includes('127.0.0.1') ? '/public/logearse.html' : '/logearse.html';
   return `${window.location.origin}${basePath}`;
 };
-const LOGO_ENPR_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/LOGO.png';
+const LOGO_ENPR_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoFindixi.png';
 const LOGO_UP_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP.png';
 
 export const ACTION_MESSAGES = {

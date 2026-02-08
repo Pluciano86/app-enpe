@@ -299,7 +299,7 @@ async function cargarDatos() {
         : '';
     }
   }
-  document.body.style.setProperty('--colorPrimario', comercio.colorPrimario || '#23b4e9');
+  document.body.style.setProperty('--colorPrimario', comercio.colorPrimario || '#3ea6c4');
   document.body.style.setProperty('--colorSecundario', comercio.colorSecundario || '#f5f5f5');
 
   if (heroPortada) {

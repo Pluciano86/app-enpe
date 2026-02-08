@@ -59,7 +59,7 @@ async function cargarDropdownMunicipios(idArea, idMunicipioSeleccionado) {
 
   const volverContainer = document.getElementById('volverAreaContainer');
   if (idMunicipioSeleccionado) {
-    volverContainer.innerHTML = `<button id="btnVolverArea" class="text-[#23b4e9] font-medium underline text-lg hover:text-blue-700">${t('area.volverArea')} ${nombreAreaActual}</button>`;
+    volverContainer.innerHTML = `<button id="btnVolverArea" class="text-[#3ea6c4] font-medium underline text-lg hover:text-blue-700">${t('area.volverArea')} ${nombreAreaActual}</button>`;
     document.getElementById('btnVolverArea').onclick = () => window.location.href = `listadoArea.html?idArea=${idArea}`;
     dropdown.parentElement.classList.add('hidden');
   } else {

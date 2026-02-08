@@ -148,7 +148,7 @@ function crearCardLugar(lugar) {
       <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-orange-600">
         <i class="fa-solid fa-tag"></i> ${lugar.precioEntrada || 'Gratis'}
       </div>
-      <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#23b4e9]">
+      <div class="flex justify-center items-center gap-1 font-medium mb-1 text-sm text-[#3ea6c4]">
         <i class="fas fa-map-pin"></i> ${lugar.municipio}
       </div>
       <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 mb-2 leading-tight">
@@ -408,7 +408,7 @@ async function renderizarLugares() {
         bloqueCercanos.className = "text-center mt-8 mb-4";
         bloqueCercanos.innerHTML = `
           <h3 class="text-lg font-semibold text-gray-800 mb-1">
-            Lugares de interés cerca de <span class="text-[#23b4e9]">${municipioActivo}</span>:
+            Lugares de interés cerca de <span class="text-[#3ea6c4]">${municipioActivo}</span>:
           </h3>
           <p class="text-sm text-gray-600 italic mb-4">Mostrando resultados cercanos...</p>
         `;

@@ -1138,7 +1138,7 @@ async function mostrarSugerenciasCercanas({
         ? `<h3 class="text-lg font-semibold text-gray-800 mb-1">${encabezado}</h3>`
         : `
         <h3 class="text-lg font-semibold text-gray-800 mb-1">
-          ${categoria} cerca de <span class="text-[#23b4e9]">${etiquetaMunicipio}</span>:
+          ${categoria} cerca de <span class="text-[#3ea6c4]">${etiquetaMunicipio}</span>:
         </h3>`;
       const helper = subtexto
         ? `<p class="text-sm text-gray-600 italic mb-4">${subtexto}</p>`
@@ -1191,7 +1191,7 @@ function renderVerMasButton(debeMostrar) {
   verMasContainer.classList.remove('hidden');
   const boton = document.createElement('button');
   boton.className =
-    'px-4 py-2 rounded-full bg-gray-900 text-white text-sm font-semibold shadow hover:bg-gray-800 transition';
+    'px-4 py-2 rounded-full bg-[#023047] text-white text-sm font-semibold shadow hover:bg-[#023047] transition';
   boton.textContent = '🔽 Ver siguientes';
   boton.addEventListener('click', async () => {
     boton.disabled = true;

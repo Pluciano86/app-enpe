@@ -674,7 +674,7 @@ if (total === 0) {
         bloqueCercanos.className = "text-center mt-8 mb-4";
         bloqueCercanos.innerHTML = `
           <h3 class="text-lg font-semibold text-gray-800 mb-1">
-            ${categoria} cerca de <span class="text-[#23b4e9]">${municipioActivo}</span>:
+            ${categoria} cerca de <span class="text-[#3ea6c4]">${municipioActivo}</span>:
           </h3>
           <p class="text-sm text-gray-600 italic mb-4">Mostrando resultados cercanos...</p>
         `;

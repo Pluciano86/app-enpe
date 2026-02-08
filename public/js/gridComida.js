@@ -91,7 +91,7 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
       if (nombreMunicipio && nombreArea) {
         mensajeFallback = `
           <div class="text-center text-gray-600 my-4 leading-snug col-span-full">
-            <span class="inline-block text-[#23b4e9] text-xl mr-1">🍽️</span>
+            <span class="inline-block text-[#3ea6c4] text-xl mr-1">🍽️</span>
             ${t('area.noLugaresMunicipio')} <b>${nombreMunicipio}</b>.<br>
             ${t('area.mostrarArea')} <b>${nombreArea}</b>.
           </div>
@@ -189,7 +189,7 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
 
       const btnVerMas = document.createElement("button");
       btnVerMas.textContent = t('area.verMas');
-      btnVerMas.className = "bg-[#0B132B] hover:bg-[#1C2541] text-white font-light py-2 px-8 rounded-lg shadow transition";
+      btnVerMas.className = "bg-[#023047] hover:bg-[#023047] text-white font-light py-2 px-8 rounded-lg shadow transition";
 
       btnVerMas.addEventListener("click", () => {
         mostrarModalImagenes(restantes, comerciosFiltrados, baseURL);

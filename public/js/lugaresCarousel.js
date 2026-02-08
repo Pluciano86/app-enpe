@@ -150,7 +150,7 @@ export async function renderLugaresCarousel(containerId) {
     btnVerMas.href = "listadoLugares.html";
     btnVerMas.textContent = t('area.verMasLugares');
     btnVerMas.className =
-      "bg-[#0B132B] hover:bg-[#1C2541] text-white font-light py-2 px-8 rounded-lg shadow transition";
+      "bg-[#023047] hover:bg-[#023047] text-white font-light py-2 px-8 rounded-lg shadow transition";
 
     btnContainer.appendChild(btnVerMas);
     container.appendChild(btnContainer);

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Favicon.png">
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Iniciar Sesión</title>
@@ -11,8 +11,8 @@
       theme: {
         extend: {
           colors: {
-            oscuro: '#231F20',
-            celeste: '#23b4e9'
+            oscuro: '#0e3652',
+            celeste: '#3ea6c4'
           },
           fontFamily: {
             sans: ['Kanit', 'sans-serif']
@@ -84,7 +84,7 @@
   </div>
 
   <!-- Logo -->
-  <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo_fondo%20oscuro.png" alt="Logo" class="w-48 mt-12 mb-8">
+  <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoFindixi.png" alt="Logo" class="w-48 mt-12 mb-8">
 
   <!-- Botón para mostrar login -->
   <button id="btnMostrarLogin" class="bg-celeste text-white font-medium py-3 px-6 rounded-lg text-lg w-full max-w-xs">Entrar a mi Cuenta</button>
@@ -146,7 +146,7 @@
 
     <div id="membresiaUpInfo" class="hidden flex-col items-center text-center gap-4 bg-white/5 border border-celeste/40 rounded-2xl p-5 mb-6 shadow-[0_15px_40px_rgba(35,180,233,0.25)] transition-all duration-300">
       <div class="flex items-center justify-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/Logo%20UP_FondoOscuro.png" alt="Logo Membresía Up" class="max-w-[100px] w-full h-auto object-contain select-none pointer-events-none" />
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/UpFondoOscuro.png" alt="Logo Membresía Up" class="max-w-[100px] w-full h-auto object-contain select-none pointer-events-none" />
       </div>
       <div class="space-y-2">
         <p class="text-lg font-normal text-white">💎 Membresía Up — Gratis hasta el 31 de diciembre de 2025</p>
@@ -365,5 +365,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', () => { if (window.initI18n) window.initI18n(); });
 </script>
+  <script type="module" src="js/introSplash.js"></script>
 </body>
 </html>

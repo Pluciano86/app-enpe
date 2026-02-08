@@ -262,7 +262,7 @@ function renderCategoryButtons() {
 
     btn.innerHTML = `
       <div class="relative w-12 h-12 rounded-full overflow-visible shadow border-2 ${
-        isActive ? 'border-[#23b4e9]' : 'border-gray-300'
+        isActive ? 'border-[#3ea6c4]' : 'border-gray-300'
       } flex items-center justify-center">
         <img
           src="${cat.image}"
@@ -278,7 +278,7 @@ function renderCategoryButtons() {
         </div>
       </div>
       <span class="mt-1 text-[11px] ${
-        isActive ? 'text-[#23b4e9]' : 'text-gray-500'
+        isActive ? 'text-[#3ea6c4]' : 'text-gray-500'
       } block text-center">
         ${cat.label}
       </span>
@@ -770,14 +770,14 @@ async function renderMarkers(comercios = []) {
       pueblo: comercio.municipio || comercio.pueblo || '',
     });
 
-    cardNode.querySelector('div[class*="text-[#23b4e9]"]')?.remove();
+    cardNode.querySelector('div[class*="text-[#3ea6c4]"]')?.remove();
     cardNode.querySelector('.municipio-info')?.remove();
 
     const municipioTexto = typeof comercio.municipio === 'string' ? comercio.municipio.trim() : '';
     if (municipioTexto) {
       const municipioEl = document.createElement('div');
       municipioEl.className =
-        'flex items-center gap-1 justify-center text-[#23b4e9] text-sm font-medium municipio-info';
+        'flex items-center gap-1 justify-center text-[#3ea6c4] text-sm font-medium municipio-info';
       municipioEl.innerHTML = `<i class="fas fa-map-pin"></i> ${municipioTexto}`;
 
       const anchorNombre = cardNode.querySelector('a[href*="perfilComercio.html"]');

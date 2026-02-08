@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const div = document.createElement('div');
   div.innerHTML = `
     <div class="flex flex-col items-center gap-2 text-medium">
-      <i class="${amenidad.icono} text-xl md:text-xl" style="color: #23b4e9;"></i>
+      <i class="${amenidad.icono} text-xl md:text-xl" style="color: #3ea6c4;"></i>
       <span>${amenidad.nombre}</span>
     </div>
   `;

@@ -43,8 +43,8 @@ export function showPopup(html) {
   container.innerHTML = `
     <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl animate-fadeIn flex flex-col items-center">
       
-      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/LOGO.png"
-           alt="EnPeErre"
+      <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoFindixi.png"
+           alt="Findixi"
            class="w-24 mx-auto mb-3 select-none"/>
 
       ${html}
@@ -243,7 +243,7 @@ export function mostrarPopupUbicacionDenegada(forceShow = false) {
       </p>
       <p data-popup-geo-msg class="text-sm text-red-500 min-h-[1.5rem]"></p>
       <div class="flex flex-col gap-2">
-        <button data-action="activar" class="bg-[#23b4e9] text-white py-2 rounded-xl font-semibold hover:bg-[#199ac8] transition">
+        <button data-action="activar" class="bg-[#3ea6c4] text-white py-2 rounded-xl font-semibold hover:bg-[#199ac8] transition">
           Activar ubicación
         </button>
         <button data-action="mas-tarde" class="bg-gray-200 text-gray-800 py-2 rounded-xl hover:bg-gray-300 transition">
@@ -316,7 +316,7 @@ y enterarte cuando abren cosas Brutales cerca de ti. 🔥
     </p>
 
     <a id="btnCrearCuenta"
-      class="inline-block w-full bg-[#23b4e9] text-white py-2 rounded-xl font-semibold hover:bg-[#199ac8] transition">
+      class="inline-block w-full bg-[#3ea6c4] text-white py-2 rounded-xl font-semibold hover:bg-[#199ac8] transition">
       Crear Cuenta Gratis
     </a>
   `);

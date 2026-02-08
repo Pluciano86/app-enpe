@@ -50,7 +50,7 @@ function renderVerMasButton(debeMostrar) {
   verMasContainer.classList.remove('hidden');
   const boton = document.createElement('button');
   boton.className =
-    'px-4 py-2 rounded-full bg-gray-900 text-white text-sm font-semibold shadow hover:bg-gray-800 transition';
+    'px-4 py-2 rounded-full bg-[#023047] text-white text-sm font-semibold shadow hover:bg-[#023047] transition';
   boton.textContent = '🔽 Ver siguientes';
   boton.addEventListener('click', () => {
     visibleCount += PAGE_SIZE;
