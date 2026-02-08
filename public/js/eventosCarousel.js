@@ -238,8 +238,8 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
       loop: true,
       autoplay: { delay: 2500, disableOnInteraction: false },
       speed: 900,
-      slidesPerView: esIndex ? 2 : (esListadoArea ? 1.2 : 1.2),
-      spaceBetween: esIndex ? 10 : 8, // pequeño espacio entre tarjetas
+      slidesPerView: (esIndex || esListadoArea) ? 2 : 1.2,
+      spaceBetween: (esIndex || esListadoArea) ? 10 : 8, // pequeño espacio entre tarjetas
       centeredSlides: false,
     });
 
