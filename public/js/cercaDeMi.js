@@ -6,12 +6,45 @@ import { fetchCercanosParaCoordenadas } from './buscarComerciosListado.js';
 import { mostrarPopupUbicacionDenegada, showPopupFavoritosVacios } from './popups.js';
 import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
 
-// 🧩 Muestra el marcador del usuario con su foto de perfil
-async function crearIconoUsuario(idUsuario) {
-  const crearIcono = (src) =>
-    L.divIcon({
-      className: 'user-marker',
-      html: `
+const FALLBACK_USER_IMG = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+
+function crearIconoUsuario(src, headingDeg = null) {
+  const safeSrc = typeof src === 'string' && src.trim() ? src.trim() : FALLBACK_USER_IMG;
+  const hasHeading = Number.isFinite(headingDeg);
+  const pointer = hasHeading
+    ? `
+      <div style="
+        position:absolute;
+        inset:0;
+        transform: rotate(${headingDeg}deg);
+        transform-origin: 50% 50%;
+        pointer-events:none;
+      ">
+        <div style="
+          position:absolute;
+          left:50%;
+          top:-6px;
+          transform: translateX(-50%);
+          width:0;height:0;
+          border-left:6px solid transparent;
+          border-right:6px solid transparent;
+          border-bottom:12px solid #2563eb;
+          filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));
+        "></div>
+      </div>
+    `
+    : '';
+
+  return L.divIcon({
+    className: 'user-marker',
+    html: `
+      <div style="
+        position: relative;
+        width: 48px;
+        height: 48px;
+        overflow: visible;
+      ">
+        ${pointer}
         <div style="
           width: 48px;
           height: 48px;
@@ -19,32 +52,46 @@ async function crearIconoUsuario(idUsuario) {
           overflow: hidden;
           border: 3px solid white;
           box-shadow: 0 0 10px rgba(0,0,0,0.3);
+          background: white;
         ">
-          <img src="${src}"
-               style="width:100%;height:100%;object-fit:cover;" />
+          <img src="${safeSrc}"
+               style="width:100%;height:100%;object-fit:cover;"
+               onerror="this.onerror=null;this.src='${FALLBACK_USER_IMG}'" />
         </div>
-      `,
-      iconSize: [48, 48],
-      iconAnchor: [24, 48],
-      popupAnchor: [0, -40],
-    });
+      </div>
+    `,
+    iconSize: [48, 48],
+    iconAnchor: [24, 48],
+    popupAnchor: [0, -40],
+  });
+}
 
-  const FALLBACK_IMG = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-  if (!idUsuario) return crearIcono(FALLBACK_IMG);
-
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('imagen')
-    .eq('id', idUsuario)
-    .single();
-
-  const imagenPerfil = typeof data?.imagen === 'string' ? data.imagen.trim() : '';
-
-  if (error || !imagenPerfil) {
-    return crearIcono(FALLBACK_IMG);
+async function obtenerImagenUsuario(idUsuario) {
+  if (userIconSrc) return userIconSrc;
+  if (!idUsuario) {
+    userIconSrc = FALLBACK_USER_IMG;
+    return userIconSrc;
   }
 
-  return crearIcono(imagenPerfil);
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('imagen')
+      .eq('id', idUsuario)
+      .single();
+
+    const imagenPerfil = typeof data?.imagen === 'string' ? data.imagen.trim() : '';
+    if (error || !imagenPerfil) {
+      userIconSrc = FALLBACK_USER_IMG;
+      return userIconSrc;
+    }
+
+    userIconSrc = imagenPerfil;
+    return userIconSrc;
+  } catch (err) {
+    userIconSrc = FALLBACK_USER_IMG;
+    return userIconSrc;
+  }
 }
 const PLACEHOLDER_LOGO =
   'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgLogoNoDisponible.jpg';
@@ -68,6 +115,9 @@ let mapInteractionsBound = false;
 let followControlAdded = false;
 let siguiendoUsuario = true;
 let ultimaPosicion = null;
+let userIconSrc = null;
+let userHeadingDeg = null;
+let lastHeadingApplied = null;
 
 
 
@@ -819,7 +869,8 @@ async function locateUser() {
   toggleLoader(true);
 
   const idUsuario = await obtenerIdUsuarioActual();
-  const iconoUsuario = await crearIconoUsuario(idUsuario);
+  const iconoUsuarioSrc = await obtenerImagenUsuario(idUsuario);
+  const iconoUsuario = crearIconoUsuario(iconoUsuarioSrc, userHeadingDeg);
 
   siguiendoUsuario = true;
   ultimaPosicion = null;
@@ -829,9 +880,12 @@ async function locateUser() {
 
   // si el usuario mueve o hace zoom, pausamos seguimiento automático
   if (!mapInteractionsBound) {
-    map.on('dragstart zoomstart', () => {
-      map._userMovedManually = true;
-      siguiendoUsuario = false;
+    map.on('dragstart zoomstart', (e) => {
+      // Solo desactivar seguimiento si fue una interacción del usuario
+      if (e && e.originalEvent) {
+        map._userMovedManually = true;
+        siguiendoUsuario = false;
+      }
     });
     mapInteractionsBound = true;
   }
@@ -861,11 +915,26 @@ async function locateUser() {
       const dist = ultimaPosicion ? getDistanceMeters(ultimaPosicion, ahora) : Infinity;
       ultimaPosicion = ahora;
 
+      // heading (grados) si está disponible
+      const headingRaw = pos.coords.heading;
+      if (Number.isFinite(headingRaw)) {
+        userHeadingDeg = headingRaw;
+      }
+
       // crea/mueve el pin del usuario
       if (userMarker) {
         userMarker.setLatLng([userLat, userLon]);
+        if (Number.isFinite(userHeadingDeg)) {
+          if (lastHeadingApplied === null || Math.abs(userHeadingDeg - lastHeadingApplied) >= 5) {
+            userMarker.setIcon(crearIconoUsuario(userIconSrc, userHeadingDeg));
+            lastHeadingApplied = userHeadingDeg;
+          }
+        }
       } else {
-        userMarker = L.marker([userLat, userLon], { icon: iconoUsuario }).addTo(map);
+        userMarker = L.marker([userLat, userLon], { icon: crearIconoUsuario(userIconSrc, userHeadingDeg) }).addTo(map);
+        if (Number.isFinite(userHeadingDeg)) {
+          lastHeadingApplied = userHeadingDeg;
+        }
       }
 
       // 1) primera fijación: mostrar vista amplia (13) para ver varias cuadras/comercios
