@@ -13,12 +13,9 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/gh/jieter/Leaflet.Rotate/src/leaflet-rotate.js"></script>
-
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
   <script type="module" src="./js/i18n.js"></script>
-  <script type="module" src="./js/cercaDeMi.js"></script>
 </head>
 
 <body class="bg-[#121212]" style="font-family: 'Kanit', sans-serif;">
@@ -116,8 +113,12 @@
     <div id="map" class="absolute inset-0 w-full h-full pb-1 z-0"></div>
   </main>
 
-  <div id="loader" class="fixed inset-0 bg-black/30 hidden items-center justify-center z-40">
-    <div class="bg-white rounded px-4 py-3 shadow text-sm font-medium" data-i18n="common.cargando">Cargando...</div>
+  <div id="loader" class="fixed inset-0 hidden items-center justify-center z-40">
+    <img
+      src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png"
+      alt="Cargando"
+      class="w-16 h-16 animate-spin"
+    />
   </div>
 
   <div id="footerContainer" class="h-16 shrink-0"></div>
@@ -127,14 +128,6 @@
   <script type="module" src="./js/footer.js"></script>
   <script type="module" src="./js/cercaDeMi.js"></script>
 
-  <script>
-    // Actualizar valor del radio dinámicamente
-    const slider = document.getElementById("radioKm");
-    const radioValue = document.getElementById("radioKmLabel");
-    slider.addEventListener("input", () => {
-      radioValue.textContent = `${slider.value} mi`;
-    });
-  </script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       if (window.initI18n) window.initI18n();

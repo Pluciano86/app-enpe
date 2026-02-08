@@ -63,6 +63,11 @@ let map, markersLayer, userMarker;
 let userLat = null;
 let userLon = null;
 let userAccuracyCircle = null;
+let geoWatchId = null;
+let mapInteractionsBound = false;
+let followControlAdded = false;
+let siguiendoUsuario = true;
+let ultimaPosicion = null;
 
 
 
@@ -802,23 +807,34 @@ async function loadNearby() {
 }
 
 async function locateUser() {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation || !map) return;
+  if (geoWatchId !== null) {
+    map._userMovedManually = false;
+    siguiendoUsuario = true;
+    if (typeof userLat === 'number' && typeof userLon === 'number') {
+      map.setView([userLat, userLon], Math.max(15, map.getZoom() || 13), { animate: true });
+    }
+    return;
+  }
   toggleLoader(true);
 
   const idUsuario = await obtenerIdUsuarioActual();
   const iconoUsuario = await crearIconoUsuario(idUsuario);
 
-  let siguiendoUsuario = true;
-  let ultimaPosicion = null;
+  siguiendoUsuario = true;
+  ultimaPosicion = null;
 
   // marca si el usuario tocó el mapa (para no re-centrar a la fuerza)
   map._userMovedManually = false;
 
   // si el usuario mueve o hace zoom, pausamos seguimiento automático
-  map.on('dragstart zoomstart', () => {
-    map._userMovedManually = true;
-    siguiendoUsuario = false;
-  });
+  if (!mapInteractionsBound) {
+    map.on('dragstart zoomstart', () => {
+      map._userMovedManually = true;
+      siguiendoUsuario = false;
+    });
+    mapInteractionsBound = true;
+  }
 
   // util distancia (metros)
   const getDistanceMeters = (p1, p2) => {
@@ -908,38 +924,41 @@ async function locateUser() {
   };
 
   // seguimiento continuo
-  navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
+  geoWatchId = navigator.geolocation.watchPosition(actualizarUbicacion, handleError, {
     enableHighAccuracy: true,
     maximumAge: 0,
     timeout: 10000,
   });
 
   // botón para re-centrar (reactiva seguimiento y respeta zoom por velocidad)
-  const btnSeguir = L.control({ position: 'bottomright' });
-  btnSeguir.onAdd = () => {
-    const btn = L.DomUtil.create('button', 'seguir-usuario-btn');
-    btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
-    btn.title = 'Volver a centrar en tu ubicación';
-    btn.style.cssText = `
-      background: white;
-      border: none;
-      border-radius: 50%;
-      width: 44px;
-      height: 44px;
-      font-size: 18px;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-    `;
-    btn.onclick = () => {
-      map._userMovedManually = false;
-      siguiendoUsuario = true;
-      if (typeof userLat === 'number' && typeof userLon === 'number') {
-        map.setView([userLat, userLon], Math.max(15, map.getZoom() || 13), { animate: true });
-      }
+  if (!followControlAdded) {
+    const btnSeguir = L.control({ position: 'bottomright' });
+    btnSeguir.onAdd = () => {
+      const btn = L.DomUtil.create('button', 'seguir-usuario-btn');
+      btn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+      btn.title = 'Volver a centrar en tu ubicación';
+      btn.style.cssText = `
+        background: white;
+        border: none;
+        border-radius: 50%;
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      `;
+      btn.onclick = () => {
+        map._userMovedManually = false;
+        siguiendoUsuario = true;
+        if (typeof userLat === 'number' && typeof userLon === 'number') {
+          map.setView([userLat, userLon], Math.max(15, map.getZoom() || 13), { animate: true });
+        }
+      };
+      return btn;
     };
-    return btn;
-  };
-  btnSeguir.addTo(map);
+    btnSeguir.addTo(map);
+    followControlAdded = true;
+  }
 }
 
 /* ------------------------------ INIT ------------------------------ */

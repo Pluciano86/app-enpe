@@ -20,11 +20,13 @@ export function mostrarError(contenedor, mensaje = 'Ocurrió un error inesperado
   `;
 }
 
-export function mostrarCargando(contenedor, mensaje = 'Cargando datos...', icono = '⏳') {
+const LOADER_IMAGE_URL = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png';
+
+export function mostrarCargando(contenedor, mensaje = 'Cargando datos...') {
   contenedor.className = 'w-full min-h-[300px] bg-white flex items-center justify-center';
   contenedor.innerHTML = `
-    <div class="w-full max-w-xs text-center text-gray-400 p-6 animate-pulse">
-      <div class="text-5xl mb-2">${icono}</div>
+    <div class="w-full max-w-xs text-center text-gray-500 p-6">
+      <img src="${LOADER_IMAGE_URL}" alt="Cargando" class="w-16 h-16 mx-auto mb-3 animate-spin">
       <p class="text-lg font-medium">${mensaje}</p>
     </div>
   `;

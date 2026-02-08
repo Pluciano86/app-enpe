@@ -19,12 +19,44 @@ let todasLasPlayas = [];
 let usuarioLat = null;
 let usuarioLon = null;
 let renderID = 0;
+const PAGE_SIZE = 20;
+let visibleCount = PAGE_SIZE;
+let verMasContainer = null;
 
 const claseBaseContenedor = contenedor?.className || '';
 function restaurarContenedor() {
   if (contenedor) {
     contenedor.className = claseBaseContenedor;
   }
+}
+
+function resetVisibleCount() {
+  visibleCount = PAGE_SIZE;
+}
+
+function renderVerMasButton(debeMostrar) {
+  if (!contenedor) return;
+  if (!verMasContainer) {
+    verMasContainer = document.createElement('div');
+    verMasContainer.id = 'verMasResultados';
+    verMasContainer.className = 'w-full flex justify-center my-6';
+    contenedor.parentNode?.appendChild(verMasContainer);
+  }
+  verMasContainer.innerHTML = '';
+  if (!debeMostrar) {
+    verMasContainer.classList.add('hidden');
+    return;
+  }
+  verMasContainer.classList.remove('hidden');
+  const boton = document.createElement('button');
+  boton.className =
+    'px-4 py-2 rounded-full bg-gray-900 text-white text-sm font-semibold shadow hover:bg-gray-800 transition';
+  boton.textContent = '🔽 Ver siguientes';
+  boton.addEventListener('click', () => {
+    visibleCount += PAGE_SIZE;
+    renderizarPlayas();
+  });
+  verMasContainer.appendChild(boton);
 }
 
 const cleanupCarousels = (container) => {
@@ -78,11 +110,6 @@ async function inicializarPlayas({ lat, lon } = {}) {
     }
 
     await cargarPlayas();
-
-    if (typeof usuarioLat === 'number' && typeof usuarioLon === 'number') {
-      await calcularTiempos();
-    }
-
     await renderizarPlayas();
   } catch (error) {
     console.error("❌ Error cargando playas:", error);
@@ -157,22 +184,69 @@ async function cargarPlayas() {
   cargarFiltros();
 }
 
-async function calcularTiempos() {
-  if (typeof usuarioLat !== 'number' || typeof usuarioLon !== 'number') return;
-  todasLasPlayas = await calcularTiemposParaLugares(todasLasPlayas, {
+async function calcularTiemposParaListado(playas) {
+  if (!Array.isArray(playas) || playas.length === 0) return playas;
+  if (typeof usuarioLat !== 'number' || typeof usuarioLon !== 'number') return playas;
+
+  const conCoords = playas.filter((p) =>
+    !p?.bote &&
+    Number.isFinite(Number(p.latitud)) &&
+    Number.isFinite(Number(p.longitud))
+  );
+
+  if (conCoords.length === 0) return playas;
+
+  await calcularTiemposParaLugares(conCoords, {
     lat: usuarioLat,
     lon: usuarioLon
   });
+
+  return playas;
 }
 
-inputBuscar.addEventListener("input", renderizarPlayas);
+function renderizarTiempoEnTarjeta(playa) {
+  if (!playa?.id) return;
+  const card = contenedor?.querySelector(`[data-playa-id="${playa.id}"]`);
+  if (!card) return;
+
+  const iconTransporte = card.querySelector(".icon-transporte");
+  if (!iconTransporte) return;
+
+  if (playa.bote) {
+    iconTransporte.innerHTML = `
+      <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
+        <span><i class="fas fa-ship text-[#9c9c9c]"></i></span>
+        <span class="text-center leading-snug">Acceso en bote</span>
+      </div>`;
+    return;
+  }
+
+  const tiempoTexto = playa.tiempoVehiculo || 'N/D';
+  iconTransporte.innerHTML = `
+    <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
+      <span><i class="fas fa-car text-[#9c9c9c]"></i></span>
+      <span class="text-center leading-snug">${tiempoTexto}</span>
+    </div>`;
+}
+
+inputBuscar.addEventListener("input", () => {
+  resetVisibleCount();
+  renderizarPlayas();
+});
 selectCosta.addEventListener("change", () => {
+  resetVisibleCount();
   renderizarPlayas();
   cargarMunicipios();
 });
-selectMunicipio.addEventListener("change", renderizarPlayas);
+selectMunicipio.addEventListener("change", () => {
+  resetVisibleCount();
+  renderizarPlayas();
+});
 [checkNadar, checkSurfear, checkSnorkel].forEach(el =>
-  el.addEventListener("change", renderizarPlayas)
+  el.addEventListener("change", () => {
+    resetVisibleCount();
+    renderizarPlayas();
+  })
 );
 
 
@@ -196,13 +270,17 @@ async function renderizarPlayas() {
 
     let filtradas = todasLasPlayas.filter((p) => {
       const coincideNombre = p.nombre.toLowerCase().includes(texto);
-      const coincideCosta =
-  !costa ||
-  (p.costa && p.costa.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase() ===
-    costa.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase()) ||
-  (p.costa && p.costa.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().includes(
-    costa.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase()
-  ));
+      const costaNormalizada = (costa || '')
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+      const playaCostaNormalizada = (p.costa || '')
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+      const coincideCosta = !costaNormalizada || playaCostaNormalizada === costaNormalizada;
       const coincideMunicipio = municipio ? p.municipio === municipio : true;
       const pasaFiltroNadar = !filtrarNadar || Boolean(p.nadar);
       const pasaFiltroSurfear = !filtrarSurfear || Boolean(p.surfear);
@@ -217,7 +295,8 @@ async function renderizarPlayas() {
       );
     });
 
-    if (filtradas.length === 0) {
+    const totalFiltradas = filtradas.length;
+    if (totalFiltradas === 0) {
       const filtrosActivos = [];
       if (texto) filtrosActivos.push(`nombre "${texto}"`);
       if (costa) filtrosActivos.push(`costa "${costa}"`);
@@ -232,12 +311,13 @@ async function renderizarPlayas() {
           : "No se encontraron playas para mostrar.";
 
       mostrarMensajeVacio(contenedor, mensaje, '🏖️');
+      renderVerMasButton(false);
       return;
     }
 
     if (typeof usuarioLat === "number" && typeof usuarioLon === "number") {
-      filtradas = filtradas
-        .filter((p) => p.latitud && p.longitud)
+      const conCoords = filtradas
+        .filter((p) => Number.isFinite(Number(p.latitud)) && Number.isFinite(Number(p.longitud)))
         .map((p) => {
           const distanciaCampo = Number(p.distanciaLugar);
           const d = Number.isFinite(distanciaCampo)
@@ -246,6 +326,17 @@ async function renderizarPlayas() {
           return { ...p, _distancia: d };
         })
         .sort((a, b) => a._distancia - b._distancia);
+
+      const sinCoords = filtradas.filter(
+        (p) => !Number.isFinite(Number(p.latitud)) || !Number.isFinite(Number(p.longitud))
+      );
+
+      filtradas = conCoords.slice(0, visibleCount);
+      if (filtradas.length < visibleCount) {
+        filtradas = filtradas.concat(sinCoords.slice(0, visibleCount - filtradas.length));
+      }
+    } else {
+      filtradas = filtradas.slice(0, visibleCount);
     }
 
     const cards = [];
@@ -293,6 +384,7 @@ if (imagenEl) {
       const root = clone.firstElementChild; // es el <div class="text-center bg-white ...">
       if (root) {
         root.classList.add("cursor-pointer", "hover:scale-[1.02]", "transition");
+        root.dataset.playaId = String(playa.id);
         root.addEventListener("click", () => {
           window.location.href = `perfilPlaya.html?id=${playa.id}`;
         });
@@ -324,10 +416,15 @@ if (imagenEl) {
               <span class="text-center leading-snug">Acceso en bote</span>
             </div>`;
         } else {
+          const puedeCalcular = typeof usuarioLat === "number"
+            && typeof usuarioLon === "number"
+            && Number.isFinite(Number(playa.latitud))
+            && Number.isFinite(Number(playa.longitud));
+          const textoTiempo = playa.tiempoVehiculo || (puedeCalcular ? "Calculando..." : "");
           iconTransporte.innerHTML = `
             <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
               <span><i class="fas fa-car text-[#9c9c9c]"></i></span>
-              <span class="text-center leading-snug">${playa.tiempoVehiculo || ""}</span>
+              <span class="text-center leading-snug">${textoTiempo}</span>
             </div>`;
         }
       }
@@ -390,6 +487,16 @@ if (imagenEl) {
     }
 
     contenedor.appendChild(fragment);
+
+    renderVerMasButton(totalFiltradas > visibleCount);
+
+    if (typeof usuarioLat === "number" && typeof usuarioLon === "number") {
+      const currentRenderId = renderID;
+      calcularTiemposParaListado(filtradas).then((actualizadas) => {
+        if (renderID !== currentRenderId) return;
+        (actualizadas || []).forEach(renderizarTiempoEnTarjeta);
+      });
+    }
   } catch (error) {
     console.error("Error al renderizar playas:", error);
     mostrarError(contenedor, 'No pudimos mostrar las playas.', '⚠️');
