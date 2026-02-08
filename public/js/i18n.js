@@ -243,6 +243,8 @@ const DICTS = {
     'perfilPlaya.humedad': 'Humedad',
     'playa.noImageTitle': 'Lo sentimos',
     'playa.noImageSubtitle': 'Imagen no disponible',
+    'playa.descripcionNoDisponible': 'Descripción no disponible.',
+    'playa.accesoNoDisponible': 'Información de acceso no disponible.',
 
     // perfil comercio
     'perfilComercio.title': 'Perfil Comercio',
@@ -666,6 +668,8 @@ const DICTS = {
     'perfilPlaya.humedad': 'Humidity',
     'playa.noImageTitle': "We're sorry",
     'playa.noImageSubtitle': 'Image not available',
+    'playa.descripcionNoDisponible': 'Description not available.',
+    'playa.accesoNoDisponible': 'Access information not available.',
 
     // perfil comercio
     'perfilComercio.title': 'Business Profile',
@@ -1084,6 +1088,8 @@ const DICTS = {
     'perfilPlaya.humedad': '湿度',
     'playa.noImageTitle': '很抱歉',
     'playa.noImageSubtitle': '暂无图片',
+    'playa.descripcionNoDisponible': '暂无描述。',
+    'playa.accesoNoDisponible': '暂无访问说明。',
 
     // perfil comercio
     'perfilComercio.title': '商家资料',
@@ -1502,6 +1508,8 @@ const DICTS = {
     'perfilPlaya.humedad': 'Humidité',
     'playa.noImageTitle': 'Nous sommes désolés',
     'playa.noImageSubtitle': 'Image non disponible',
+    'playa.descripcionNoDisponible': 'Description non disponible.',
+    'playa.accesoNoDisponible': "Informations d'accès non disponibles.",
 
     // perfil comercio
     'perfilComercio.title': 'Profil du commerce',
@@ -1920,6 +1928,8 @@ const DICTS = {
     'perfilPlaya.humedad': 'Umidade',
     'playa.noImageTitle': 'Desculpe',
     'playa.noImageSubtitle': 'Imagem não disponível',
+    'playa.descripcionNoDisponible': 'Descrição não disponível.',
+    'playa.accesoNoDisponible': 'Informações de acesso não disponíveis.',
 
     // perfil comercio
     'perfilComercio.title': 'Perfil do comércio',
@@ -2340,6 +2350,8 @@ const DICTS = {
     'perfilPlaya.humedad': 'Luftfeuchtigkeit',
     'playa.noImageTitle': 'Es tut uns leid',
     'playa.noImageSubtitle': 'Bild nicht verfügbar',
+    'playa.descripcionNoDisponible': 'Beschreibung nicht verfügbar.',
+    'playa.accesoNoDisponible': 'Zugangsinformationen nicht verfügbar.',
 
     // perfil comercio
     'perfilComercio.title': 'Geschäftsprofil',
@@ -2756,6 +2768,8 @@ const DICTS = {
     'perfilPlaya.humedad': 'Umidità',
     'playa.noImageTitle': 'Ci dispiace',
     'playa.noImageSubtitle': 'Immagine non disponibile',
+    'playa.descripcionNoDisponible': 'Descrizione non disponibile.',
+    'playa.accesoNoDisponible': 'Informazioni di accesso non disponibili.',
 
     // perfil comercio
     'perfilComercio.title': 'Profilo del locale',
@@ -3174,6 +3188,8 @@ const DICTS = {
     'perfilPlaya.humedad': '습도',
     'playa.noImageTitle': '죄송합니다',
     'playa.noImageSubtitle': '이미지가 없습니다',
+    'playa.descripcionNoDisponible': '설명 없음.',
+    'playa.accesoNoDisponible': '접근 정보 없음.',
 
     // perfil comercio
     'perfilComercio.title': '매장 프로필',
@@ -3592,6 +3608,8 @@ const DICTS = {
     'perfilPlaya.humedad': '湿度',
     'playa.noImageTitle': '申し訳ありません',
     'playa.noImageSubtitle': '画像はありません',
+    'playa.descripcionNoDisponible': '説明はありません。',
+    'playa.accesoNoDisponible': 'アクセス情報はありません。',
 
     // perfil comercio
     'perfilComercio.title': '店舗プロフィール',

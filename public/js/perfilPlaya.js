@@ -4,7 +4,8 @@ import { requireAuth } from "./authGuard.js";
 import { obtenerClima } from "./obtenerClima.js";
 import { calcularTiemposParaLista } from "./calcularTiemposParaLista.js";
 import { formatTiempo } from "../shared/osrmClient.js";
-import { t } from "./i18n.js";
+import { getLang, t } from "./i18n.js";
+import { getPlayaI18n } from "../shared/playaI18n.js";
 
 let usuarioId = null;
 let playaFavorita = false;
@@ -65,6 +66,26 @@ function traducirCosta(costa) {
     'islas': t('playas.costaIslas')
   };
   return map[normalized] || costa;
+}
+
+async function renderDescripcionAcceso() {
+  if (!playaActual) return;
+  const lang = getLang();
+  const descripcionEl = document.getElementById("descripcionPlaya");
+  const accesoEl = document.getElementById("infoAcceso");
+  if (!descripcionEl || !accesoEl) return;
+
+  let descripcionTexto = playaActual.descripcion?.trim() || "";
+  let accesoTexto = playaActual.acceso?.trim() || "";
+
+  if (lang && lang !== "es") {
+    const traducido = await getPlayaI18n(playaActual.id, lang);
+    if (traducido?.descripcion) descripcionTexto = traducido.descripcion;
+    if (traducido?.acceso) accesoTexto = traducido.acceso;
+  }
+
+  descripcionEl.textContent = descripcionTexto || t("playa.descripcionNoDisponible");
+  accesoEl.textContent = accesoTexto || t("playa.accesoNoDisponible");
 }
 
 function ensureNoImageText(container, mostrar) {
@@ -253,19 +274,7 @@ if (direccionSpan) {
       });
     }
 
-    // === Descripción ===
-const descripcionEl = document.getElementById("descripcionPlaya");
-if (descripcionEl) {
-  descripcionEl.textContent =
-    data.descripcion?.trim() || "Descripción no disponible.";
-}
-
-// === Acceso ===
-const accesoEl = document.getElementById("infoAcceso");
-if (accesoEl) {
-  accesoEl.textContent =
-    data.acceso?.trim() || "Información de acceso no disponible.";
-}
+    await renderDescripcionAcceso();
 
     // === Clima ===
     const clima = await obtenerClima(data.latitud, data.longitud);
@@ -405,4 +414,6 @@ window.addEventListener("lang:changed", () => {
       `;
     }
   }
+
+  renderDescripcionAcceso();
 });
