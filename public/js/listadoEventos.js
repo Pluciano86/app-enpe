@@ -2,7 +2,7 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
-import { t } from './i18n.js';
+import { t, getLang } from './i18n.js';
 import { abrirModal } from './modalEventos.js';
 
 const lista = document.getElementById('listaEventos');
@@ -126,7 +126,7 @@ async function cargarEventos() {
 
   if (error) {
     console.error('Error cargando eventos:', error);
-    mostrarError(lista, 'No pudimos cargar los eventos.', '🎭');
+    mostrarError(lista, t('eventos.errorCargar'), '🎭');
     return;
   }
 
@@ -244,7 +244,7 @@ async function renderizarEventos() {
 
   // Sin resultados
   if (filtrados.length === 0) {
-    mostrarMensajeVacio(lista, 'No se encontraron eventos para los filtros seleccionados.', '🗓️');
+    mostrarMensajeVacio(lista, t('evento.sinResultados'), '🗓️');
     const bannerFinal = await crearBannerElemento('banner-bottom');
     if (currentRender !== renderVersion) return;
     if (bannerFinal) lista.appendChild(bannerFinal);
@@ -272,11 +272,22 @@ async function renderizarEventos() {
     const costoConSimbolo = /^[\d,.]+$/.test(costoRaw) && !costoRaw.startsWith('$')
       ? `$${costoRaw}`
       : costoRaw;
+    const normalizarMonto = (texto) => {
+      const val = String(texto || '').trim();
+      const sinSimbolo = val.replace(/^\s*\$\s*/, '');
+      const esNumero = /^[\d,.]+$/.test(sinSimbolo);
+      if (!val.startsWith('$') && esNumero) return `$${sinSimbolo}`;
+      return val;
+    };
     const costoTexto = evento.gratis
-      ? 'Gratis'
+      ? t('eventos.gratis')
       : costoConSimbolo
-        ? (costoConSimbolo.toLowerCase().startsWith('costo') ? costoConSimbolo : `Costo: ${costoConSimbolo}`)
-        : 'Costo no disponible';
+        ? (costoConSimbolo.toLowerCase().startsWith('desde')
+          ? `${t('evento.desde')} ${normalizarMonto(costoConSimbolo.replace(/^desde\s*:?/i, '').trim())}`
+          : (costoConSimbolo.toLowerCase().startsWith('costo')
+            ? costoConSimbolo
+            : t('evento.costoLabel', { costo: normalizarMonto(costoConSimbolo) })))
+        : t('evento.costoNoDisponible');
     const div = document.createElement('div');
     div.className = 'bg-white rounded shadow hover:shadow-lg transition overflow-hidden cursor-pointer flex flex-col';
     div.innerHTML = `
@@ -293,7 +304,7 @@ async function renderizarEventos() {
           </div>
           ${mostrarVariasFechas ? `
             <div class="flex items-center justify-center gap-1 text-base text-red-600 font-medium leading-tight text-center">
-              Varias Fechas Disponibles
+              ${t('evento.variasFechas')}
             </div>
           ` : (fechaDetalle ? `
             <div class="flex flex-col items-center justify-center gap-0 text-base text-red-600 font-medium leading-tight">
@@ -301,7 +312,7 @@ async function renderizarEventos() {
               <span>${fechaDetalle.resto}</span>
             </div>
           ` : `
-            <div class="flex items-center justify-center gap-1 text-sm text-red-600 font-medium leading-tight">Sin fecha</div>
+            <div class="flex items-center justify-center gap-1 text-sm text-red-600 font-medium leading-tight">${t('evento.sinFecha')}</div>
           `)}
           ${!mostrarVariasFechas && horaTexto ? `<div class="flex items-center justify-center gap-1 text-sm text-gray-500 leading-tight">${horaTexto}</div>` : ''}
           <div class="flex items-center justify-center gap-1 text-sm font-medium" style="color:#23B4E9;">
@@ -362,12 +373,28 @@ function estilizarFechaExtendida(fechaLocale = '') {
   return restoTexto ? `${primera}, ${restoTexto}` : primera;
 }
 
+function resolveLocale(langValue) {
+  const lang = (langValue || 'es').toLowerCase().split('-')[0];
+  const map = {
+    es: 'es-PR',
+    en: 'en-US',
+    fr: 'fr-FR',
+    pt: 'pt-PT',
+    de: 'de-DE',
+    it: 'it-IT',
+    zh: 'zh-CN',
+    ko: 'ko-KR',
+    ja: 'ja-JP'
+  };
+  return map[lang] || 'es-PR';
+}
+
 function formatearFecha(fechaStr) {
-  if (!fechaStr) return 'Sin fecha';
+  if (!fechaStr) return t('evento.sinFecha');
   const [year, month, day] = fechaStr.split('-').map(Number);
-  if ([year, month, day].some((value) => Number.isNaN(value))) return 'Sin fecha';
+  if ([year, month, day].some((value) => Number.isNaN(value))) return t('evento.sinFecha');
   const fecha = new Date(Date.UTC(year, month - 1, day));
-  const base = fecha.toLocaleDateString('es-ES', {
+  const base = fecha.toLocaleDateString(resolveLocale(getLang()), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -384,7 +411,7 @@ function formatearHora(horaStr) {
   const minute = Number(minutePart);
   if (Number.isNaN(hour) || Number.isNaN(minute)) return '';
   const fecha = new Date(Date.UTC(1970, 0, 1, hour, minute));
-  const base = fecha.toLocaleTimeString('es-ES', {
+  const base = fecha.toLocaleTimeString(resolveLocale(getLang()), {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
@@ -395,7 +422,7 @@ function formatearHora(horaStr) {
 
 function obtenerPartesFecha(fechaStr) {
   const completa = formatearFecha(fechaStr);
-  if (!completa || completa === 'Sin fecha') return null;
+  if (!completa || completa === t('evento.sinFecha')) return null;
   const [weekday, resto] = completa.split(', ');
   return {
     weekday: weekday || completa,
@@ -411,11 +438,24 @@ async function cargarFiltros() {
     filtroMunicipio.innerHTML += `<option value="${m.id}">${m.nombre}</option>`;
   });
 
-  const { data: cat } = await supabase.from('categoriaEventos').select('id, nombre, icono').order('nombre');
+  await cargarCategorias();
+}
+
+async function cargarCategorias() {
+  const lang = (getLang() || 'es').toLowerCase().split('-')[0];
+  const nombreColumna = `nombre_${lang}`;
+  const { data: cat } = await supabase
+    .from('categoriaEventos')
+    .select(`id, nombre, ${nombreColumna}, icono`)
+    .order('nombre');
+
   categorias = {};
-  cat?.forEach(c => {
-    categorias[c.id] = { nombre: c.nombre, icono: c.icono || '' };
-    filtroCategoria.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+  const label = t('eventos.todasCategorias');
+  filtroCategoria.innerHTML = `<option value="">${label}</option>`;
+  cat?.forEach((c) => {
+    const nombreTraducido = c[nombreColumna] || c.nombre;
+    categorias[c.id] = { nombre: nombreTraducido || '', icono: c.icono || '' };
+    filtroCategoria.innerHTML += `<option value="${c.id}">${nombreTraducido}</option>`;
   });
 }
 
@@ -444,6 +484,11 @@ btnSemana.addEventListener('change', (e) => {
 
 btnGratis.addEventListener('change', (e) => {
   filtroGratis = e.target.checked;
+  renderizarEventos();
+});
+
+window.addEventListener('lang:changed', () => {
+  cargarCategorias();
   renderizarEventos();
 });
 

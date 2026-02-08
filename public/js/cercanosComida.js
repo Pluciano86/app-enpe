@@ -5,6 +5,49 @@ import { getPublicBase, calcularTiempoEnVehiculo } from '../shared/utils.js';
 import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 import { calcularDistancia } from './distanciaLugar.js';
 
+let ultimoCercanos = null;
+
+function renderizarCercanos(cercanos) {
+  const container = document.getElementById('cercanosComidaContainer');
+  const slider = document.getElementById('sliderCercanosComida');
+  if (!container || !slider) return;
+
+  const traducidos = cercanos.map((c) => ({
+    ...c,
+    tiempoTexto: c.minutosCrudos != null ? formatTiempo(c.minutosCrudos * 60) : c.tiempoTexto,
+    tiempoVehiculo: c.minutosCrudos != null ? formatTiempo(c.minutosCrudos * 60) : c.tiempoVehiculo,
+  }));
+
+  if (traducidos.length > 0) {
+    slider.innerHTML = `
+      <div class="swiper cercanosSwiper w-full overflow-hidden px-1">
+        <div class="swiper-wrapper"></div>
+      </div>
+    `;
+
+    const wrapper = slider.querySelector(".swiper-wrapper");
+    for (const c of traducidos) {
+      const slide = document.createElement("div");
+      slide.className = "swiper-slide";
+      slide.appendChild(cardComercioSlide(c));
+      wrapper.appendChild(slide);
+    }
+
+    container.classList.remove("hidden");
+    const swiperEl = slider.querySelector(".cercanosSwiper");
+    new Swiper(swiperEl, {
+      slidesPerView: 2.3,
+      spaceBetween: 1,
+      loop: true,
+      autoplay: { delay: 3000, disableOnInteraction: false },
+      speed: 900,
+    });
+  } else {
+    console.info('ℹ️ No hay comercios cercanos para mostrar.');
+    container.classList.add('hidden');
+  }
+}
+
 export async function mostrarCercanosComida(comercioOrigen) {
   const origenCoords = { lat: comercioOrigen.latitud, lon: comercioOrigen.longitud };
 
@@ -143,46 +186,14 @@ export async function mostrarCercanosComida(comercioOrigen) {
 
     console.log(`✅ ${cercanos.length} comercios cercanos encontrados.`);
 
-    // 🔹 Mostrar carrusel si hay resultados
-    const container = document.getElementById('cercanosComidaContainer');
-    const slider = document.getElementById('sliderCercanosComida');
-
-    if (cercanos.length > 0 && container && slider) {
-      // Estructura del carrusel Swiper
-     slider.innerHTML = `
-        <div class="swiper cercanosSwiper w-full overflow-hidden px-1">
-          <div class="swiper-wrapper"></div>
-        </div>
-      `;
-
-      const wrapper = slider.querySelector(".swiper-wrapper");
-
-      for (const c of cercanos) {
-        const slide = document.createElement("div");
-        slide.className = "swiper-slide";
-        slide.appendChild(cardComercioSlide(c));
-        wrapper.appendChild(slide);
-      }
-
-      container.classList.remove("hidden");
-
-      // ✅ Inicializar Swiper sobre el elemento correcto
-      const swiperEl = slider.querySelector(".cercanosSwiper");
-
-      new Swiper(swiperEl, {
-        slidesPerView: 2.3,
-        spaceBetween: 1, // reducir espacio entre tarjetas
-        loop: true,
-        autoplay: { delay: 3000, disableOnInteraction: false },
-        speed: 900,
-      });
-    } else {
-      console.info('ℹ️ No hay comercios cercanos para mostrar.');
-      if (container) container.classList.add('hidden');
-    }
+    ultimoCercanos = cercanos;
+    renderizarCercanos(cercanos);
   } catch (err) {
     console.error('❌ Error cargando comercios cercanos:', err);
   }
 }
 
 // 🔹 Asegurar que el carrusel no corte sombras ni slides
+window.addEventListener('lang:changed', () => {
+  if (ultimoCercanos) renderizarCercanos(ultimoCercanos);
+});

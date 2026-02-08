@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { t } from './i18n.js';
 import { requireAuth } from './authGuard.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -92,12 +93,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (esFavorito) {
       icono.className = 'fas fa-heart text-5xl mb-1 text-red-600 animate-bounce';
-      texto.textContent = '¡Mi Favorito!';
+      texto.textContent = t('perfilComercio.miFavorito');
       texto.classList.add('text-red-600');
     } else {
       icono.className = 'far fa-heart text-5xl mb-1 text-gray-600';
-      texto.innerHTML = 'Añadir<br>Favoritos';
+      texto.innerHTML = `${t('perfilComercio.addFavoritoLine1')}<br>${t('perfilComercio.addFavoritoLine2')}`;
       texto.classList.remove('text-red-600');
     }
   }
+
+  window.addEventListener('lang:changed', actualizarUI);
 });

@@ -1,7 +1,16 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { t } from './i18n.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
-const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const getDiasSemana = () => ([
+  t('days.sunday'),
+  t('days.monday'),
+  t('days.tuesday'),
+  t('days.wednesday'),
+  t('days.thursday'),
+  t('days.friday'),
+  t('days.saturday'),
+]);
 
 const iconoEl = document.querySelector('#estadoHorarioContainer i');
 const textoEl = document.querySelector('#estadoHorarioContainer p');
@@ -28,6 +37,7 @@ function obtenerProximoDiaAbierto(horarios, diaActual) {
     const diaSiguiente = (diaActual + i) % 7;
     const horario = horarios.find(h => h.diaSemana === diaSiguiente);
     if (horario && !horario.cerrado) {
+      const diasSemana = getDiasSemana();
       return {
         dia: diasSemana[diaSiguiente],
         apertura: formato12Horas(horario.apertura?.slice(0, 5)),
@@ -59,7 +69,7 @@ async function verificarHorario() {
   );
 
   if (!Array.isArray(horariosValidos) || !horariosValidos.length || horaMinutos === null) {
-    textoEl.textContent = 'Horario no disponible';
+    textoEl.textContent = t('perfilComercio.horarioNoDisponible');
     subtituloEl.textContent = '';
     iconoEl.className = 'fa-regular fa-clock text-gray-400 text-4xl';
     return;
@@ -99,7 +109,7 @@ async function verificarHorario() {
   if (abierto) {
     iconoEl.className = 'fa-regular fa-clock text-green-500 text-4xl slow-spin';
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
-    textoEl.textContent = 'Abierto Ahora';
+    textoEl.textContent = t('perfilComercio.abiertoAhora');
     textoEl.className = 'text-sm text-green-600 font-light';
 
     const minutosCierre = minutosDesdeMedianoche(cierre);
@@ -108,30 +118,33 @@ async function verificarHorario() {
       : 1440 - horaMinutos + minutosCierre; // por si cruza medianoche
 
     if (diferencia <= 120) {
-      subtituloEl.innerHTML = `Cierra a las<br><span class="text-sm">${formato12Horas(cierre)}</span>`;
+      subtituloEl.innerHTML = `${t('perfilComercio.cierraALasLabel')}<br><span class="text-sm">${formato12Horas(cierre)}</span>`;
     } else {
       subtituloEl.textContent = '';
     }
   } else {
     iconoEl.className = 'fa-regular fa-clock text-red-500 text-4xl';
     iconoEl.style.webkitTextStroke = '1.2px currentColor';
-    textoEl.textContent = 'Cerrado Ahora';
+    textoEl.textContent = t('perfilComercio.cerradoAhora');
     textoEl.className = 'text-sm text-red-600 font-medium';
 
     // ¿Abre más tarde hoy?
     if (hoyHorario && !hoyHorario.cerrado && hoyHorario.apertura && horaMinutos < minutosDesdeMedianoche(hoyHorario.apertura.slice(0, 5))) {
-      subtituloEl.innerHTML = `Abre hoy<br><span class="text-sm ">${formato12Horas(hoyHorario.apertura.slice(0, 5))}</span>`;
+      subtituloEl.innerHTML = `${t('perfilComercio.abreHoyLabel')}<br><span class="text-sm ">${formato12Horas(hoyHorario.apertura.slice(0, 5))}</span>`;
     } else {
       const proximo = obtenerProximoDiaAbierto(horarios, diaSemana);
       if (proximo) {
-        const cuando = proximo.esManana ? 'mañana' : proximo.dia;
-        subtituloEl.innerHTML = `Abre ${cuando}<br><span class="text-sm">${proximo.apertura}</span>`;
+        const cuando = proximo.esManana ? t('perfilComercio.manana') : proximo.dia;
+        subtituloEl.innerHTML = `${t('perfilComercio.abreDiaLabel', { dia: cuando })}<br><span class="text-sm">${proximo.apertura}</span>`;
       } else {
         subtituloEl.textContent = '';
       }
     }
   }
 }
+
+window.refreshLogoHorario = verificarHorario;
+window.addEventListener('lang:changed', verificarHorario);
 
 verificarHorario();
 setInterval(verificarHorario, 30000);

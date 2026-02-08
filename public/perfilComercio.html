@@ -4,7 +4,7 @@
   <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Perfil Comercio</title>
+<title data-i18n="perfilComercio.title">Perfil Comercio</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -56,7 +56,7 @@
   
   <button id="btnFavorito" class="absolute left-4 top-1 flex flex-col items-center text-gray-600 text-sm">
     <i class="far fa-heart text-5xl mb-1"></i>
-    <span class="text-sm font-medium">Favorito</span>
+    <span class="text-sm font-medium" data-i18n="perfilComercio.favorito">Favorito</span>
   </button>
 
   <div class="w-[180px] h-[180px] shadow-[0px_-21px_23px_-7px_rgba(0,_0,_0,_0.3)] bg-white rounded-full z-10 overflow-hidden">
@@ -65,7 +65,7 @@
 
   <div id="estadoHorarioContainer" class="absolute right-4 top-3 text-center">
     <i id="iconoHorario" class="fa-regular fa-clock text-red-500 text-3xl" style="-webkit-text-stroke: 1.2px currentColor;"></i>
-    <p id="textoHorario" class="text-sm text-red-600 font-medium">Cerrado Ahora</p>
+    <p id="textoHorario" class="text-sm text-red-600 font-medium" data-i18n="perfilComercio.cerradoAhora">Cerrado Ahora</p>
   </div>
 </section>
   
@@ -88,7 +88,7 @@
 
 
     <p id="tiempoVehiculo" class="text-[#9c9c9c] text-xl font-medium  mb-4">
-  <i class="fas fa-car"></i> Cargando distancia...
+  <i class="fas fa-car"></i> <span data-i18n="perfilComercio.cargandoDistancia">Cargando distancia...</span>
 </p>
 
     <div class="flex justify-center gap-4 mb-6">
@@ -126,37 +126,37 @@
 <section id="seccionCupones" class="px-6 md:px-10 mt-6 hidden">
   <div class="bg-white rounded-lg shadow-sm p-5">
     <div class="flex flex-col items-center gap-1 md:flex-row md:gap-3 md:justify-center text-center mb-3">
-      <h2 class="text-xl font-semibold text-[#424242]">Ofertas y Descuentos</h2>
+      <h2 class="text-xl font-semibold text-[#424242]" data-i18n="perfilComercio.ofertasDescuentos">Ofertas y Descuentos</h2>
       <div id="cuponIndicador" class="text-sm text-gray-500 hidden"></div>
     </div>
     <div id="cuponSliderWrapper" class="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
       <div id="cuponContainer" class="flex gap-4 snap-x snap-mandatory min-h-[280px] pb-2"></div>
     </div>
-    <p id="cuponMensaje" class="text-sm text-gray-500 hidden mt-3">No hay cupones disponibles en este momento.</p>
+    <p id="cuponMensaje" class="text-sm text-gray-500 hidden mt-3" data-i18n="perfilComercio.sinCupones">No hay cupones disponibles en este momento.</p>
   </div>
 </section>
 
 <section id="sucursalesContainer" class="mt-6 px-6 hidden">
   <div class="bg-white rounded-lg shadow-sm p-5">
-    <h2 id="tituloSucursales" class="text-center text-xl font-medium mb-4 text-[#424242]">
+    <h2 id="tituloSucursales" class="text-center text-xl font-medium mb-4 text-[#424242]" data-i18n="perfilComercio.otrasSucursales">
   Otras Sucursales </h2>
     <div id="listaSucursales" class="flex flex-wrap justify-center gap-3">
     </div>
   </div>
 </section>
 
-   <a id="btnVerMenu" class="hidden bg-primary text-xl text-white px-4 py-2 rounded">Ver Nuestro Menú</a>
+   <a id="btnVerMenu" class="hidden bg-primary text-xl text-white px-4 py-2 rounded" data-i18n="perfilComercio.verMenu">Ver Nuestro Menú</a>
 
 <section id="especialesBox" class="w-[80%] mx-auto mt-6 hidden">
-  <h3 class="text-lg font-semibold mb-4" id="tituloEspecialesBox">Especiales para hoy</h3>
+  <h3 class="text-lg font-semibold mb-4" id="tituloEspecialesBox" data-i18n="perfilComercio.especialesHoy">Especiales para hoy</h3>
 
   <div class="flex justify-center gap-4 mb-4">
-    <button id="btnToggleAlmuerzo" class="px-4 py-2 bg-blue-600 text-white rounded hidden">Ver Almuerzo</button>
-    <button id="btnToggleHappy" class="px-4 py-2 bg-pink-600 text-white rounded hidden">Ver Happy Hour</button>
+    <button id="btnToggleAlmuerzo" class="px-4 py-2 bg-blue-600 text-white rounded hidden" data-i18n="perfilComercio.verAlmuerzo">Ver Almuerzo</button>
+    <button id="btnToggleHappy" class="px-4 py-2 bg-pink-600 text-white rounded hidden" data-i18n="perfilComercio.verHappyHour">Ver Happy Hour</button>
   </div>
 
   <div id="almuerzoCard" class="hidden">
-    <h3 class="text-lg font-bold text-blue-500 mb-2 text-left">Especial de Almuerzo</h3>
+    <h3 class="text-lg font-bold text-blue-500 mb-2 text-left" data-i18n="perfilComercio.especialAlmuerzo">Especial de Almuerzo</h3>
     <div class="flex gap-4 items-start bg-white shadow p-4 rounded-lg text-left">
       <img id="imgAlmuerzo" src="" alt="Imagen Almuerzo" class="w-24 h-24 object-cover rounded-md">
       <div>
@@ -168,7 +168,7 @@
   </div>
 
   <div id="happyCard" class="hidden">
-    <h3 class="text-lg font-bold text-pink-500 mb-2 text-left">Happy Hour</h3>
+    <h3 class="text-lg font-bold text-pink-500 mb-2 text-left" data-i18n="perfilComercio.happyHour">Happy Hour</h3>
     <div class="flex gap-4 items-start bg-white shadow p-4 rounded-lg text-left">
       <img id="imgHappy" src="" alt="Imagen Happy Hour" class="w-24 h-24 object-cover rounded-md">
       <div>
@@ -186,7 +186,7 @@
   <div class="bg-white rounded-lg shadow-sm p-5">
     <p id="descripcionTexto" class="text-sm text-justify overflow-hidden line-clamp-5 transition-all duration-500 ease-in-out"></p>
     <div class="text-center mt-3">
-      <button id="toggleDescripcion" class="text-lg text-gray-500 font-medium underline">
+      <button id="toggleDescripcion" class="text-lg text-gray-500 font-medium underline" data-i18n="perfilComercio.verInfo">
         Ver toda la información
       </button>
     </div>
@@ -196,10 +196,10 @@
 
 <section class="px-4 py-6 flex justify-center">
   <div class="bg-white rounded-lg shadow-sm p-6 w-full max-w-md">
-    <h2 id="tituloHorario" class="text-center text-xl font-semibold mb-1 text-[#424242]">
+    <h2 id="tituloHorario" class="text-center text-xl font-semibold mb-1 text-[#424242]" data-i18n="perfilComercio.horarioDeNombre">
       Horario de Nombre
     </h2>
-    <p id="estadoHorario" class="text-center text-xl font-semibold mb-4 text-green-600">
+    <p id="estadoHorario" class="text-center text-xl font-semibold mb-4 text-green-600" data-i18n="perfilComercio.abiertoAhora">
       Abierto Ahora
     </p>
     <div id="tablaHorarios" class="w-full">
@@ -209,7 +209,7 @@
 
 <section class="px-6 md:px-10 mt-6">
   <div class="bg-white rounded-lg shadow-sm p-6">
-    <h2 id="tituloAmenidades" class="text-center text-xl font-semibold mb-4 text-[#424242]">[Nombre] cuenta con:</h2>
+    <h2 id="tituloAmenidades" class="text-center text-xl font-semibold mb-4 text-[#424242]" data-i18n="perfilComercio.amenidades">[Nombre] cuenta con:</h2>
     <div id="contenedorAmenidades" class="grid grid-cols-3 gap-4 md:grid-cols-4 lg:grid-cols-5 text-center">
     </div>
   </div>
@@ -219,7 +219,7 @@
 
 <section id="cercanosComidaContainer" class="hidden mt-8 w-full">
   <h2 class="text-lg font-medium mb-4 px-4">
-    Lugares para Comer a menos de 10 minutos de
+    <span data-i18n="perfilComercio.cercanosComida">Lugares para Comer a menos de 10 minutos de</span>
     <span id="nombreCercanosComida" class="text-primary"></span>
   </h2>
 
@@ -230,7 +230,7 @@
 
 <section id="cercanosLugaresContainer" class="hidden mt-8 w-full">
   <h2 class="text-lg font-medium mb-4 px-4">
-    Lugares de interés cerca de
+    <span data-i18n="perfilComercio.cercanosLugares">Lugares de interés cerca de</span>
     <span id="nombreCercanosLugares" class="text-primary"></span>
   </h2>
 
@@ -241,7 +241,7 @@
 
 <section id="cercanosPlayasContainer" class="hidden mt-8 w-full">
   <h2 class="text-lg font-medium mb-4 px-4">
-    Playas a menos de 45 minutos de
+    <span data-i18n="perfilComercio.playas45">Playas a menos de 45 minutos de</span>
     <span id="nombreCercanosPlayas" class="text-primary"></span>
   </h2>
 

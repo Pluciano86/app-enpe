@@ -4,6 +4,7 @@ import { supabase } from '../shared/supabaseClient.js';
 import { calcularTiemposParaLugares, calcularDistancia } from './distanciaLugar.js';
 import { mostrarMensajeVacio, mostrarError, mostrarCargando } from './mensajesUI.js';
 import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js';
+import { t } from './i18n.js';
 
 const inputBuscar = document.getElementById("inputBuscar");
 const selectCosta = document.getElementById("selectCosta");
@@ -22,6 +23,8 @@ let renderID = 0;
 const PAGE_SIZE = 20;
 let visibleCount = PAGE_SIZE;
 let verMasContainer = null;
+const PLAYA_PLACEHOLDER =
+  'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/imgPlayaNoDisponible.jpg';
 
 const claseBaseContenedor = contenedor?.className || '';
 function restaurarContenedor() {
@@ -51,12 +54,35 @@ function renderVerMasButton(debeMostrar) {
   const boton = document.createElement('button');
   boton.className =
     'px-4 py-2 rounded-full bg-[#023047] text-white text-sm font-semibold shadow hover:bg-[#023047] transition';
-  boton.textContent = '🔽 Ver siguientes';
+  boton.textContent = t('playas.verSiguientes');
   boton.addEventListener('click', () => {
     visibleCount += PAGE_SIZE;
     renderizarPlayas();
   });
   verMasContainer.appendChild(boton);
+}
+
+function ensureNoImageOverlay(wrapper, mostrar) {
+  if (!wrapper) return;
+  let overlay = wrapper.querySelector('.playa-no-image-overlay');
+  if (!mostrar) {
+    overlay?.remove();
+    return;
+  }
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className =
+      'playa-no-image-overlay absolute inset-0 flex flex-col items-center justify-center text-center text-white font-semibold text-sm leading-tight';
+    overlay.innerHTML = `
+      <span style="text-shadow: 0 2px 4px rgba(0,0,0,0.85);">${t('playa.noImageTitle')}</span>
+      <span style="text-shadow: 0 2px 4px rgba(0,0,0,0.85);">${t('playa.noImageSubtitle')}</span>
+    `;
+    wrapper.appendChild(overlay);
+  } else {
+    const spans = overlay.querySelectorAll('span');
+    if (spans[0]) spans[0].textContent = t('playa.noImageTitle');
+    if (spans[1]) spans[1].textContent = t('playa.noImageSubtitle');
+  }
 }
 
 const cleanupCarousels = (container) => {
@@ -216,7 +242,7 @@ function renderizarTiempoEnTarjeta(playa) {
     iconTransporte.innerHTML = `
       <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
         <span><i class="fas fa-ship text-[#9c9c9c]"></i></span>
-        <span class="text-center leading-snug">Acceso en bote</span>
+              <span class="text-center leading-snug">${t('playas.accesoBote')}</span>
       </div>`;
     return;
   }
@@ -298,17 +324,17 @@ async function renderizarPlayas() {
     const totalFiltradas = filtradas.length;
     if (totalFiltradas === 0) {
       const filtrosActivos = [];
-      if (texto) filtrosActivos.push(`nombre "${texto}"`);
-      if (costa) filtrosActivos.push(`costa "${costa}"`);
-      if (municipio) filtrosActivos.push(`municipio "${municipio}"`);
-      if (filtrarNadar) filtrosActivos.push("aptas para nadar");
-      if (filtrarSurfear) filtrosActivos.push("aptas para surfear");
-      if (filtrarSnorkel) filtrosActivos.push("aptas para snorkel");
+      if (texto) filtrosActivos.push(t('playas.filtroNombre', { valor: texto }));
+      if (costa) filtrosActivos.push(t('playas.filtroCosta', { valor: traducirCosta(costa) }));
+      if (municipio) filtrosActivos.push(t('playas.filtroMunicipio', { valor: municipio }));
+      if (filtrarNadar) filtrosActivos.push(t('playas.filtroNadar'));
+      if (filtrarSurfear) filtrosActivos.push(t('playas.filtroSurfear'));
+      if (filtrarSnorkel) filtrosActivos.push(t('playas.filtroSnorkel'));
 
       const mensaje =
         filtrosActivos.length > 0
-          ? `No se encontraron playas que coincidan con ${filtrosActivos.join(", ")}.`
-          : "No se encontraron playas para mostrar.";
+          ? t('playas.sinResultadosConFiltros', { filtros: filtrosActivos.join(", ") })
+          : t('playas.sinResultados');
 
       mostrarMensajeVacio(contenedor, mensaje, '🏖️');
       renderVerMasButton(false);
@@ -349,34 +375,36 @@ async function renderizarPlayas() {
      // === Imagen de la playa (desde la columna 'imagen') ===
 const imagenEl = clone.querySelector(".imagen");
 if (imagenEl) {
-  const wrapper = imagenEl.parentElement;
-  if (wrapper) {
-    wrapper.classList.add('relative', 'overflow-hidden');
-    if (playa.favorito) {
-      const favWrapper = document.createElement('div');
-      favWrapper.className = 'absolute top-2 right-2 z-50';
-      favWrapper.innerHTML = `
-        <div class="w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center">
-          <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
-            <i class="fas fa-heart text-red-600 text-xs"></i>
-          </div>
-        </div>
-      `;
-      wrapper.appendChild(favWrapper);
-    }
+  const originalParent = imagenEl.parentElement;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'relative w-full h-40 overflow-hidden';
+  if (originalParent) {
+    originalParent.replaceChild(wrapper, imagenEl);
+    wrapper.appendChild(imagenEl);
   }
-  imagenEl.src =
-    playa.imagen && playa.imagen.trim() !== ""
-      ? playa.imagen.trim()
-      : "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
+  if (playa.favorito) {
+    const favWrapper = document.createElement('div');
+    favWrapper.className = 'absolute top-2 right-2 z-50';
+    favWrapper.innerHTML = `
+      <div class="w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center">
+        <div class="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
+          <i class="fas fa-heart text-red-600 text-xs"></i>
+        </div>
+      </div>
+    `;
+    wrapper.appendChild(favWrapper);
+  }
+  const tieneImagen = Boolean(playa.imagen && playa.imagen.trim() !== "");
+  imagenEl.src = tieneImagen ? playa.imagen.trim() : PLAYA_PLACEHOLDER;
 
   imagenEl.alt = `Imagen de ${playa.nombre}`;
   imagenEl.loading = "lazy";
+  ensureNoImageOverlay(wrapper, !tieneImagen);
 
   // Si la imagen falla al cargar → usar placeholder
   imagenEl.onerror = () => {
-    imagenEl.src =
-      "https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg";
+    imagenEl.src = PLAYA_PLACEHOLDER;
+    ensureNoImageOverlay(wrapper, true);
   };
 }
 
@@ -397,6 +425,15 @@ if (imagenEl) {
       const municipioEl = clone.querySelector(".municipio");
       if (municipioEl) municipioEl.textContent = playa.municipio || "";
 
+      const aptaParaEl = clone.querySelector('[data-i18n="playas.aptaPara"]');
+      if (aptaParaEl) aptaParaEl.textContent = t('playas.aptaPara');
+      const labelNadar = clone.querySelector('[data-i18n="playas.nadar"]');
+      if (labelNadar) labelNadar.textContent = t('playas.nadar');
+      const labelSurf = clone.querySelector('[data-i18n="playas.surfear"]');
+      if (labelSurf) labelSurf.textContent = t('playas.surfear');
+      const labelSnork = clone.querySelector('[data-i18n="playas.snorkel"]');
+      if (labelSnork) labelSnork.textContent = t('playas.snorkel');
+
       // Aptitudes
       const snorkelFlagCard = (playa.snorkeling ?? playa.snorkel) === true;
       const iconNadar = clone.querySelector(".icon-nadar");
@@ -413,14 +450,14 @@ if (imagenEl) {
           iconTransporte.innerHTML = `
             <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
               <span><i class="fas fa-ship text-[#9c9c9c]"></i></span>
-              <span class="text-center leading-snug">Acceso en bote</span>
+              <span class="text-center leading-snug">${t('playas.accesoBote')}</span>
             </div>`;
         } else {
           const puedeCalcular = typeof usuarioLat === "number"
             && typeof usuarioLon === "number"
             && Number.isFinite(Number(playa.latitud))
             && Number.isFinite(Number(playa.longitud));
-          const textoTiempo = playa.tiempoVehiculo || (puedeCalcular ? "Calculando..." : "");
+          const textoTiempo = playa.tiempoVehiculo || (puedeCalcular ? t('playas.calculando') : "");
           iconTransporte.innerHTML = `
             <div class="flex justify-center items-center gap-1 text-sm text-[#9c9c9c] mt-1 leading-tight">
               <span><i class="fas fa-car text-[#9c9c9c]"></i></span>
@@ -448,7 +485,7 @@ if (imagenEl) {
           iconClima.appendChild(img);
         }
         if (viento)
-          viento.innerHTML = `<i class="fas fa-wind text-gray-400"></i> Viento de: ${clima.viento}`;
+          viento.innerHTML = `<i class="fas fa-wind text-gray-400"></i> ${t('playas.vientoDe', { valor: clima.viento })}`;
       });
 
       cards.push(clone);
@@ -499,21 +536,35 @@ if (imagenEl) {
     }
   } catch (error) {
     console.error("Error al renderizar playas:", error);
-    mostrarError(contenedor, 'No pudimos mostrar las playas.', '⚠️');
+    mostrarError(contenedor, t('playas.errorCargar'), '⚠️');
   }
 }
 
 async function cargarFiltros() {
   const costasUnicas = [...new Set(todasLasPlayas.map(p => p.costa).filter(Boolean))].sort();
-  selectCosta.innerHTML = `<option value="">Todas las Costas</option>`;
+  selectCosta.innerHTML = `<option value="">${t('playas.todasCostas')}</option>`;
   costasUnicas.forEach(c => {
     const option = document.createElement("option");
     option.value = c;
-    option.textContent = c;
+    option.textContent = traducirCosta(c);
     selectCosta.appendChild(option);
   });
 
   cargarMunicipios();
+}
+
+function traducirCosta(costa) {
+  const normalized = String(costa || '').trim().toLowerCase();
+  const map = {
+    'sur': t('playas.costaSur'),
+    'este': t('playas.costaEste'),
+    'metro': t('playas.costaMetro'),
+    'norte': t('playas.costaNorte'),
+    'oeste': t('playas.costaOeste'),
+    'islas municipio': t('playas.costaIslas'),
+    'islas': t('playas.costaIslas')
+  };
+  return map[normalized] || costa;
 }
 
 function cargarMunicipios() {
@@ -524,7 +575,7 @@ function cargarMunicipios() {
       .map(p => p.municipio)
   )].sort();
 
-  selectMunicipio.innerHTML = `<option value="">Todos</option>`;
+  selectMunicipio.innerHTML = `<option value="">${t('playas.todosMunicipios')}</option>`;
   municipiosUnicos.forEach(m => {
     const option = document.createElement("option");
     option.value = m;
@@ -532,3 +583,20 @@ function cargarMunicipios() {
     selectMunicipio.appendChild(option);
   });
 }
+
+window.addEventListener('lang:changed', () => {
+  selectCosta.querySelectorAll('option').forEach((opt) => {
+    if (opt.value) opt.textContent = traducirCosta(opt.value);
+  });
+  const todosCostas = selectCosta.querySelector('option[value=""]');
+  if (todosCostas) todosCostas.textContent = t('playas.todasCostas');
+  const todosMunicipios = selectMunicipio.querySelector('option[value=""]');
+  if (todosMunicipios) todosMunicipios.textContent = t('playas.todosMunicipios');
+  const verMasBtn = document.querySelector('#verMasResultados button');
+  if (verMasBtn) verMasBtn.textContent = t('playas.verSiguientes');
+  document.querySelectorAll('.playa-no-image-overlay').forEach((overlay) => {
+    const spans = overlay.querySelectorAll('span');
+    if (spans[0]) spans[0].textContent = t('playa.noImageTitle');
+    if (spans[1]) spans[1].textContent = t('playa.noImageSubtitle');
+  });
+});

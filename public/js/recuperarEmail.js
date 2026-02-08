@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { t } from './i18n.js';
 
 const formRecuperarEmail = document.getElementById('formRecuperarEmail');
 const emailActualInput = document.getElementById('emailActual');
@@ -21,7 +22,7 @@ formRecuperarEmail?.addEventListener('submit', async (event) => {
   const nuevoEmail = nuevoEmailInput?.value.trim();
 
   if (!emailActual || !nuevoEmail) {
-    mostrarMensaje('Completa ambos campos antes de continuar.', 'error');
+    mostrarMensaje(t('recoverEmail.errorBothRequired'), 'error');
     return;
   }
 
@@ -37,7 +38,7 @@ formRecuperarEmail?.addEventListener('submit', async (event) => {
       button.disabled = false;
       button.classList.remove('opacity-70');
     }
-    mostrarMensaje('Debes iniciar sesión para actualizar tu correo.', 'error');
+    mostrarMensaje(t('recoverEmail.errorNotLoggedIn'), 'error');
     console.error('Error getUser:', errorUsuario?.message);
     return;
   }
@@ -48,7 +49,7 @@ formRecuperarEmail?.addEventListener('submit', async (event) => {
       button.disabled = false;
       button.classList.remove('opacity-70');
     }
-    mostrarMensaje('El email actual no coincide con tu cuenta.', 'error');
+    mostrarMensaje(t('recoverEmail.errorEmailMismatch'), 'error');
     return;
   }
 
@@ -60,12 +61,12 @@ formRecuperarEmail?.addEventListener('submit', async (event) => {
   }
 
   if (error) {
-    mostrarMensaje('No pudimos actualizar tu correo. Intenta nuevamente.', 'error');
+    mostrarMensaje(t('recoverEmail.errorUpdate'), 'error');
     console.error('Error updateUser email:', error.message);
     return;
   }
 
-  mostrarMensaje('Email actualizado correctamente. Revisa tu bandeja para confirmar.', 'success');
+  mostrarMensaje(t('recoverEmail.successUpdated'), 'success');
 
   setTimeout(() => {
     window.location.href = `${basePath}/logearse.html`;

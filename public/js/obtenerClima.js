@@ -1,4 +1,5 @@
 // public/js/obtenerClima.js
+import { getLang } from "./i18n.js";
 const API_KEY = "2c1d54239e886b97ed52ac446c3ae948"; // Clave de OpenWeatherMap
 
 /**
@@ -13,7 +14,8 @@ export async function obtenerClima(lat, lon) {
     return null;
   }
 
-  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=imperial&lang=es&appid=${API_KEY}`;
+  const lang = resolveWeatherLang(getLang());
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=imperial&lang=${lang}&appid=${API_KEY}`;
 
   try {
     const response = await fetch(url);
@@ -27,7 +29,7 @@ export async function obtenerClima(lat, lon) {
     const max = `${Math.round(data.main.temp_max)}°F`;
     const viento = `${Math.round(data.wind.speed)} mph`;
     const humedad = `${data.main.humidity}%`;
-    const estado = (data.weather?.[0]?.description || "Sin datos").toUpperCase();
+    const estado = data.weather?.[0]?.description || "Sin datos";
     const icono = data.weather?.[0]?.icon || "01d";
 
     // === Asignar icono desde tu bucket de Supabase ===
@@ -38,6 +40,22 @@ export async function obtenerClima(lat, lon) {
     console.error("❌ Error al obtener clima:", err.message);
     return null;
   }
+}
+
+function resolveWeatherLang(lang) {
+  const base = String(lang || "es").toLowerCase().split("-")[0];
+  const map = {
+    es: "es",
+    en: "en",
+    fr: "fr",
+    de: "de",
+    pt: "pt",
+    it: "it",
+    zh: "zh_cn",
+    ko: "kr",
+    ja: "ja",
+  };
+  return map[base] || "es";
 }
 
 /**

@@ -1,5 +1,24 @@
 // public/js/cardComercioSlide.js
 import { supabase } from "../shared/supabaseClient.js";
+import { t } from "./i18n.js";
+
+const CATEGORIA_KEY_BY_ES = {
+  "Restaurantes": "categoria.restaurantes",
+  "Coffee Shops": "categoria.coffeeShops",
+  "Panaderías": "categoria.panaderias",
+  "Panaderias": "categoria.panaderias",
+  "Pubs": "categoria.pubs",
+  "Food Trucks": "categoria.foodTrucks",
+  "Postres": "categoria.postres",
+  "Playgrounds": "categoria.playgrounds",
+  "Discotecas": "categoria.discotecas",
+  "Barras": "categoria.barras",
+};
+
+function traducirCategoria(nombre) {
+  const key = CATEGORIA_KEY_BY_ES[nombre];
+  return key ? t(key) : nombre;
+}
 
 /**
  * 🔹 Tarjeta compacta para mostrar comercios en sliders tipo “Cercanos para Comer”
@@ -17,7 +36,9 @@ export function cardComercioSlide(comercio) {
   } = comercio;
 
   const categoriaTexto =
-    categorias?.length > 0 ? categorias.join(", ") : "Sin categoría";
+    categorias?.length > 0
+      ? categorias.map(traducirCategoria).join(", ")
+      : t("categoria.sin");
 
   // 🔹 Crear tarjeta
   const card = document.createElement("a");

@@ -1,17 +1,24 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { getLang, t } from './i18n.js';
+import { getComercioDescripcionI18n } from '../shared/comercioI18n.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
-async function cargarDescripcion() {
-  const { data, error } = await supabase
-    .from('Comercios')
-    .select('nombre, descripcion')
-    .eq('id', idComercio)
-    .single();
+let comercioBase = null;
 
-  if (error || !data) {
-    console.error('Error cargando descripción:', error);
-    return;
+async function cargarDescripcion() {
+  if (!comercioBase) {
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select('nombre, descripcion')
+      .eq('id', idComercio)
+      .single();
+
+    if (error || !data) {
+      console.error('Error cargando descripción:', error);
+      return;
+    }
+    comercioBase = data;
   }
 
   const descripcionEl = document.getElementById('descripcionTexto');
@@ -19,14 +26,19 @@ async function cargarDescripcion() {
 
   if (!descripcionEl || !toggleBtn) return;
 
-  const descripcion = (data.descripcion || '').replace(/\n/g, '<br>');
-descripcionEl.innerHTML = `<span class="font-semibold">${data.nombre}</span> ${descripcion}`;
+  const lang = getLang();
+  let descripcionTexto = comercioBase.descripcion || '';
+  if (lang && lang !== 'es') {
+    const traducida = await getComercioDescripcionI18n(idComercio, lang);
+    if (traducida) descripcionTexto = traducida;
+  }
 
-  // Mostrar todo como un solo párrafo con el nombre en bold
+  const descripcion = String(descripcionTexto || '').replace(/\n/g, '<br>');
+
+  // Mostrar todo como un solo párrafo
   descripcionEl.innerHTML = `
   <span class="text-base leading-relaxed">
-    <span class="font-semibold">${data.nombre}</span>
-    <span class="font-light"> ${descripcion}</span>
+    <span class="font-light">${descripcion}</span>
   </span>
 `;
 
@@ -36,9 +48,10 @@ descripcionEl.innerHTML = `<span class="font-semibold">${data.nombre}</span> ${d
     expandido = !expandido;
     descripcionEl.classList.toggle('line-clamp-5', !expandido);
     toggleBtn.textContent = expandido
-      ? 'Ocultar información'
-      : 'Ver toda la información';
+      ? t('perfilComercio.ocultarInfo')
+      : t('perfilComercio.verInfo');
   });
 }
 
 document.addEventListener('DOMContentLoaded', cargarDescripcion);
+window.addEventListener('lang:changed', cargarDescripcion);

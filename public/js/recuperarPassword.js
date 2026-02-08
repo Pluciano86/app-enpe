@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { t } from './i18n.js';
 
 const formRecuperarPassword = document.getElementById('formRecuperarPassword');
 const emailInput = document.getElementById('emailRecuperar');
@@ -19,7 +20,7 @@ formRecuperarPassword?.addEventListener('submit', async (event) => {
 
   const email = emailInput?.value.trim();
   if (!email) {
-    mostrarMensaje('Por favor ingresa tu correo electrónico.', 'error');
+    mostrarMensaje(t('recoverPassword.errorEmailRequired'), 'error');
     return;
   }
 
@@ -39,10 +40,10 @@ formRecuperarPassword?.addEventListener('submit', async (event) => {
   }
 
   if (error) {
-    mostrarMensaje('No pudimos enviar el correo. Inténtalo nuevamente.', 'error');
+    mostrarMensaje(t('recoverPassword.errorSend'), 'error');
     console.error('Error resetPasswordForEmail:', error.message);
     return;
   }
 
-  mostrarMensaje('📧 Verifica tu e-mail, te enviamos el enlace', 'success');
+  mostrarMensaje(t('recoverPassword.successSent'), 'success');
 });

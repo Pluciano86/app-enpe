@@ -1,3 +1,5 @@
+import { t } from '../js/i18n.js';
+
 const LOCAL_OSRM_BASE = 'http://127.0.0.1:5000';
 const REMOTE_OSRM_BASE = 'https://osrm.enpe-erre.com';
 
@@ -38,14 +40,14 @@ export function formatTiempo(seconds) {
   if (!Number.isFinite(seconds) || seconds <= 0) return 'N/D';
   const totalMin = Math.round(seconds / 60);
   if (totalMin < 60) {
-    return `a ${totalMin} minuto${totalMin === 1 ? '' : 's'}`;
+    return t(totalMin === 1 ? 'time.inMinute' : 'time.inMinutes', { n: totalMin });
   }
 
   const horas = Math.floor(totalMin / 60);
   const minutos = totalMin % 60;
-  const horasTexto = `a ${horas} hora${horas === 1 ? '' : 's'}`;
+  const horasTexto = t(horas === 1 ? 'time.inHour' : 'time.inHours', { n: horas });
 
   if (minutos === 0) return horasTexto;
 
-  return `${horasTexto} ${minutos} minuto${minutos === 1 ? '' : 's'}`;
+  return t('time.inHoursMinutes', { h: horas, m: minutos });
 }

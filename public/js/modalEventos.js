@@ -76,10 +76,22 @@ async function renderModal(evento) {
     costo.textContent = t("area.gratis");
   } else if (ev.costo || ev.precio) {
     const costoValor = (ev.costo ?? ev.precio ?? "").toString().trim();
-    const costoSinSimbolo = costoValor.replace(/^\s*\$\s*/, "");
-    costo.textContent = costoSinSimbolo.toLowerCase().startsWith("costo")
-      ? costoSinSimbolo
-      : `${t("area.costo")} ${costoSinSimbolo}`;
+    const lower = costoValor.toLowerCase();
+    const normalizarMonto = (texto) => {
+      const val = texto.trim();
+      const sinSimbolo = val.replace(/^\s*\$\s*/, "");
+      const esNumero = /^[\d,.]+$/.test(sinSimbolo);
+      if (!val.startsWith("$") && esNumero) return `$${sinSimbolo}`;
+      return val;
+    };
+    if (lower.startsWith("desde")) {
+      const valor = costoValor.replace(/^desde\s*:?/i, "").trim();
+      costo.textContent = `${t("evento.desde")} ${normalizarMonto(valor)}`;
+    } else if (lower.startsWith("costo")) {
+      costo.textContent = costoValor;
+    } else {
+      costo.textContent = `${t("area.costo")} ${normalizarMonto(costoValor)}`;
+    }
   } else {
     costo.textContent = "";
   }

@@ -1,8 +1,17 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { formatearHorario } from '../shared/utils.js';
+import { t } from './i18n.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
-const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const getDiasSemana = () => ([
+  t('days.sunday'),
+  t('days.monday'),
+  t('days.tuesday'),
+  t('days.wednesday'),
+  t('days.thursday'),
+  t('days.friday'),
+  t('days.saturday'),
+]);
 const hoy = new Date();
 const diaActual = hoy.getDay();
 const horaActual = hoy.toTimeString().slice(0, 5);
@@ -24,6 +33,7 @@ function obtenerProximoDiaAbierto(horarios, diaActual) {
     const diaSiguiente = (diaActual + i) % 7;
     const diaHorario = horarios.find(h => h.diaSemana === diaSiguiente);
     if (diaHorario && !diaHorario.cerrado && diaHorario.apertura && diaHorario.cierre) {
+      const diasSemana = getDiasSemana();
       return {
         nombre: diasSemana[diaSiguiente],
         apertura: formato12Horas(diaHorario.apertura?.slice(0, 5)),
@@ -82,7 +92,7 @@ async function cargarHorarios() {
     return;
   }
 
-  tituloHorario.textContent = `Horario de ${comercio?.nombre || ''}`;
+  tituloHorario.textContent = t('perfilComercio.horarioDe', { nombre: comercio?.nombre || '' });
 
   const horariosValidos = horarios.filter(
     (h) =>
@@ -94,9 +104,9 @@ async function cargarHorarios() {
   );
 
   if (!horariosValidos.length) {
-    tituloHorario.textContent = `Horario de ${comercio?.nombre || ''}`;
+    tituloHorario.textContent = t('perfilComercio.horarioDe', { nombre: comercio?.nombre || '' });
     estadoHorario.innerHTML = `
-      <p class="font-semibold text-2xl text-gray-500">Horario no disponible</p>
+      <p class="font-semibold text-2xl text-gray-500">${t('perfilComercio.horarioNoDisponible')}</p>
       <p class="text-sm font-normal text-gray-600"></p>
     `;
     tablaHorarios.innerHTML = '';
@@ -110,12 +120,12 @@ async function cargarHorarios() {
   let mensajeEstado = '';
   const hoyHorario = horariosValidos.find(h => h.diaSemana === diaActual);
   if (!abierto && hoyHorario && !hoyHorario.cerrado && hoyHorario.apertura && horaActual < hoyHorario.apertura.slice(0, 5)) {
-    mensajeEstado = `Abre hoy a las ${formato12Horas(hoyHorario.apertura.slice(0, 5))}`;
+    mensajeEstado = t('perfilComercio.abreHoy', { hora: formato12Horas(hoyHorario.apertura.slice(0, 5)) });
   } else if (!abierto) {
     const proximo = obtenerProximoDiaAbierto(horariosValidos, diaActual);
     if (proximo) {
-      const cuando = proximo.esManana ? 'mañana' : proximo.nombre;
-      mensajeEstado = `Abre ${cuando} a las ${proximo.apertura}`;
+      const cuando = proximo.esManana ? t('perfilComercio.manana') : proximo.nombre;
+      mensajeEstado = t('perfilComercio.abreDia', { dia: cuando, hora: proximo.apertura });
     }
   }
 
@@ -127,12 +137,12 @@ async function cargarHorarios() {
     (minutosDesdeMedianoche(cierreHoy) - minutosDesdeMedianoche(horaActual) <= 120);
 
   if (cierreEnMenosDe2Horas) {
-    mensajeEstado += (mensajeEstado ? ' • ' : '') + `Cierra a las ${formato12Horas(cierreHoy)}`;
+    mensajeEstado += (mensajeEstado ? ' • ' : '') + t('perfilComercio.cierraALas', { hora: formato12Horas(cierreHoy) });
   }
 
   estadoHorario.innerHTML = `
     <p class="font-semibold text-2xl ${abierto ? 'text-green-600' : 'text-red-600'}">
-      ${abierto ? 'Abierto Ahora' : 'Cerrado Ahora'}
+      ${abierto ? t('perfilComercio.abiertoAhora') : t('perfilComercio.cerradoAhora')}
     </p>
     <p class="text-sm font-normal text-gray-600">
       ${mensajeEstado}
@@ -142,12 +152,12 @@ async function cargarHorarios() {
   tablaHorarios.innerHTML = horariosValidos
     .map(h => {
       const esHoy = h.diaSemana === diaActual;
-      const dia = diasSemana[h.diaSemana];
+      const dia = getDiasSemana()[h.diaSemana];
       const cerrado = h.cerrado;
       const horarioTexto =
         h.apertura && h.cierre
           ? formatearHorario(h.apertura, h.cierre, h.cerrado)
-          : 'No disponible';
+          : t('perfilComercio.noDisponible');
 
       const color = esHoy ? (cerrado ? 'text-white bg-red-500' : (abierto ? 'text-white bg-green-500' : 'text-white bg-red-500')) : 'text-gray-700';
       const peso = esHoy ? 'font-[500]' : 'font-[400]';
@@ -156,7 +166,7 @@ async function cargarHorarios() {
         <div class="grid grid-cols-4 items-center text-[18px] ${color} ${peso} mb-2 rounded px-2 py-1">
           <div class="text-left">${dia}:</div>
           ${cerrado
-            ? `<div class="col-span-3 text-center">Cerrado</div>`
+            ? `<div class="col-span-3 text-center">${t('perfilComercio.cerrado')}</div>`
             : `
               <div class="col-span-3 text-center sm:text-left">${horarioTexto}</div>
             `
@@ -166,6 +176,9 @@ async function cargarHorarios() {
     })
     .join('');
 }
+
+window.refreshHorarios = cargarHorarios;
+window.addEventListener('lang:changed', cargarHorarios);
 
 cargarHorarios();
 setInterval(cargarHorarios, 30000); // Actualiza cada 30 segundos

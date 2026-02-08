@@ -1,5 +1,6 @@
 import { obtenerClima } from './obtenerClima.js';
 import { calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { t } from './i18n.js';
 
 const PLACEHOLDER_IMG =
   'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/enpr/imgPlayaNoDisponible.jpg';
@@ -106,7 +107,7 @@ export function buildPlayaCard(playa) {
       transporteNode.innerHTML = `
         <div class="flex justify-center items-center gap-1">
           <i class="fas fa-ship"></i>
-          <span>Acceso en bote</span>
+          <span>${t('playas.accesoBote')}</span>
         </div>
       `;
     } else if (tiempoTexto) {

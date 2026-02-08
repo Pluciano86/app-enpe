@@ -1,5 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { translateDom } from './i18n.js';
+import { translateDom, t } from './i18n.js';
 
 const container = document.getElementById('footerContainer');
 
@@ -28,7 +28,7 @@ const texto = esAlmuerzo ? 'Almuerzos' : 'Happy Hours';
 const iconBase = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/imagenesapp/appicon/';
 
 const defaultCuentaImg = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/iconoPerfil.png';
-const defaultCuentaTexto = 'Mi Cuenta';
+const defaultCuentaTexto = t('footer.cuenta');
 
 function renderFooter() {
   if (!container) return;
@@ -73,7 +73,13 @@ function renderFooter() {
 renderFooter();
 translateDom(container);
 
-window.addEventListener('lang:changed', () => translateDom(container));
+window.addEventListener('lang:changed', () => {
+  translateDom(container);
+  const cuentaTexto = document.getElementById('footerTexto');
+  if (cuentaTexto && cuentaTexto.getAttribute('data-i18n') === 'footer.cuenta') {
+    cuentaTexto.textContent = t('footer.cuenta');
+  }
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Lazy-load para medios pesados (si no se especificó)

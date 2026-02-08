@@ -1,5 +1,6 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { togglePassword } from './togglePassword.js';
+import { t } from './i18n.js';
 
 const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
 const basePath = isLocal ? '/public' : '';
@@ -251,14 +252,14 @@ async function init() {
     if (tipoCuentaMensaje) {
       tipoCuentaMensaje.textContent =
         tipoNormalizado === 'up'
-          ? 'Registrándote con una Membresía Up'
-          : 'Registrándote con una Cuenta Regular';
+          ? t('login.registeringUp')
+          : t('login.registeringRegular');
     }
 
     if (telefonoInput) {
       telefonoInput.required = esMembresiaUp;
       if (telefonoLabel) {
-        telefonoLabel.textContent = esMembresiaUp ? 'Teléfono' : 'Teléfono (opcional)';
+        telefonoLabel.textContent = esMembresiaUp ? t('login.phoneLabel') : t('login.phoneOptionalLabel');
       }
       if (!esMembresiaUp) {
         setTelefonoErrorState(false);
@@ -336,14 +337,14 @@ async function init() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        errorMensaje.textContent = "Email o contraseña incorrectos.";
+        errorMensaje.textContent = t('login.loginErrorInvalid');
         errorMensaje.classList.remove('hidden');
       } else {
         window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
       }
     } catch (err) {
       console.error("Error al iniciar sesión:", err);
-      errorMensaje.textContent = "Error al intentar iniciar sesión.";
+      errorMensaje.textContent = t('login.loginErrorGeneric');
       errorMensaje.classList.remove('hidden');
     }
   });
@@ -403,19 +404,19 @@ async function init() {
       passwordRegistroMensaje?.classList.remove('hidden');
       passwordRegistroInput?.classList.add('border-red-500');
       passwordRegistroInput?.classList.remove('border-transparent');
-      errorRegistro.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+      errorRegistro.textContent = t('login.passwordMin');
       errorRegistro.classList.remove('hidden');
       return;
     }
 
     if (password !== confirmar) {
-      errorRegistro.textContent = 'Las contraseñas no coinciden.';
+      errorRegistro.textContent = t('login.registerErrorPasswordMismatch');
       errorRegistro.classList.remove('hidden');
       return;
     }
 
     if (esMembresiaUp && !telefonoDigits) {
-      errorRegistro.textContent = 'El número de teléfono es obligatorio para activar tu Membresía Up.';
+      errorRegistro.textContent = t('login.phoneRequiredError');
       errorRegistro.classList.remove('hidden');
       setTelefonoErrorState(true);
       telefonoInput?.focus();
@@ -425,7 +426,7 @@ async function init() {
     }
 
     if (telefonoDigits && telefonoDigits.length !== 10) {
-      errorRegistro.textContent = 'Por favor, introduce un número válido de 10 dígitos.';
+      errorRegistro.textContent = t('login.registerErrorPhoneInvalid');
       errorRegistro.classList.remove('hidden');
       setTelefonoErrorState(true);
       return;
@@ -433,7 +434,7 @@ async function init() {
     setTelefonoErrorState(false);
 
     if (esMembresiaUp && !terminosCheckbox?.checked) {
-      errorRegistro.textContent = 'Debes aceptar los Términos y Condiciones de la Membresía UP.';
+      errorRegistro.textContent = t('login.termsError');
       errorRegistro.classList.remove('hidden');
       setTerminosErrorState(true);
       terminosWrapper?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -443,7 +444,7 @@ async function init() {
     }
 
     if (esMembresiaUp && !foto) {
-      errorRegistro.textContent = 'Para completar tu Membresía Up, sube una foto de perfil.';
+      errorRegistro.textContent = t('login.registerErrorPhotoRequired');
       errorRegistro.classList.remove('hidden');
       avatarSection?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -458,7 +459,7 @@ async function init() {
       });
 
       if (errorSignup || !signup?.user?.id) {
-        const mensaje = errorSignup?.message || 'Error creando la cuenta.';
+        const mensaje = errorSignup?.message || t('login.registerErrorCreateAccount');
         errorRegistro.textContent = mensaje;
         errorRegistro.classList.remove('hidden');
         return;
@@ -500,7 +501,7 @@ async function init() {
       const actualizado = await actualizarPerfilUsuario(userId, payload);
 
       if (!actualizado) {
-        errorRegistro.textContent = 'Error guardando datos.';
+        errorRegistro.textContent = t('login.registerErrorSave');
         errorRegistro.classList.remove('hidden');
         return;
       }
@@ -514,13 +515,13 @@ async function init() {
       } else {
         ocultarLoader();
         deshabilitarFormulario(false);
-        const mensaje = loginError?.message || 'Cuenta creada, pero necesitas iniciar sesión.';
+        const mensaje = loginError?.message || t('login.registerErrorCreatedButLogin');
         alert(mensaje);
         window.location.reload();
       }
     } catch (err) {
       console.error("Error en registro:", err);
-      finalizarConError(err?.message || "Error al crear la cuenta.");
+      finalizarConError(err?.message || t('login.registerErrorGeneric'));
     }
   });
 }

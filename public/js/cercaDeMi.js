@@ -1,5 +1,6 @@
 // public/js/cercaDeMi.js
 import { supabase } from '../shared/supabaseClient.js';
+import { t, getLang } from './i18n.js';
 import { cardComercio } from './CardComercio.js';
 import { cardComercioNoActivo } from './CardComercioNoActivo.js';
 import { fetchCercanosParaCoordenadas } from './buscarComerciosListado.js';
@@ -357,15 +358,22 @@ function togglePanelFiltros() {
 
 async function cargarCategoriasDropdown() {
   if (!$filtroCategoria) return;
-  $filtroCategoria.innerHTML = '<option value=\"\">Todas las categorías</option>';
+  $filtroCategoria.innerHTML = `<option value="">${t('cerca.categoriasTodas')}</option>`;
   try {
-    const { data, error } = await supabase.from('Categorias').select('id, nombre').order('nombre');
+    const { data, error } = await supabase
+      .from('Categorias')
+      .select('id, nombre, nombre_es, nombre_en, nombre_zh, nombre_fr, nombre_pt, nombre_de, nombre_it, nombre_ko, nombre_ja')
+      .order('nombre');
     if (error) throw error;
+    const lang = (getLang() || 'es').toLowerCase().split('-')[0];
+    const nombreKey = `nombre_${lang}`;
     data?.forEach((categoria) => {
       if (categoria?.id == null) return;
+      const traducido = categoria?.[nombreKey];
+      const nombreFinal = traducido || categoria.nombre || `${t('cerca.categoriasTodas')} ${categoria.id}`;
       const option = document.createElement('option');
       option.value = categoria.id;
-      option.textContent = categoria.nombre || `Categoría ${categoria.id}`;
+      option.textContent = nombreFinal;
       $filtroCategoria.appendChild(option);
     });
   } catch (err) {
@@ -1043,6 +1051,7 @@ async function locateUser() {
   $btnRecargar?.addEventListener('click', () => loadNearby());
   $btnToggleFiltros?.addEventListener('click', togglePanelFiltros);
   $filtroCategoria?.addEventListener('change', () => loadNearby());
+  window.addEventListener('lang:changed', () => cargarCategoriasDropdown());
 
   if ($search) {
     $search.addEventListener('input', () => {

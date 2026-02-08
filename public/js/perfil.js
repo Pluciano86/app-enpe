@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { formatTiempo } from '../shared/osrmClient.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';
@@ -8,6 +9,7 @@ import { mostrarLugaresCercanos } from './lugaresCercanos.js';
 const idComercio = new URLSearchParams(window.location.search).get('id');
 let latUsuario = null;
 let lonUsuario = null;
+let comercioActual = null;
 const QR_REDIMIR_URL = 'https://test.enpe-erre.com/redimir-cupon.html';
 const CUPON_PLACEHOLDER = 'https://placehold.co/600x400?text=Cup%C3%B3n';
 const isLocalEnv = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
@@ -532,6 +534,7 @@ export async function obtenerComercioPorID(idComercio) {
 
   await cargarCuponesComercio(idComercio);
 
+  comercioActual = data;
   return data;
 }
 
@@ -556,3 +559,9 @@ navigator.geolocation.getCurrentPosition(
     }
   }
 );
+
+window.addEventListener('lang:changed', () => {
+  if (!comercioActual || comercioActual.minutosCrudos == null) return;
+  const tiempo = formatTiempo(comercioActual.minutosCrudos * 60);
+  document.getElementById('tiempoVehiculo').innerHTML = `<i class="fas fa-car"></i> ${tiempo}`;
+});

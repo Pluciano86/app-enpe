@@ -307,17 +307,15 @@ async function popupCrearCuenta() {
   localStorage.setItem("popupCrearCuentaShown", today);
 
   showPopup(`
-    <h2 class="text-xl font-semibold mb-2">😎 Tu Experiencia puede ser mil veces mejor que esto</h2>
+    <h2 class="text-xl font-semibold mb-2">${t("popup.crearCuenta.title")}</h2>
 
     <p class="text-gray-600 text-sm leading-relaxed mb-3">
-      Crea tu cuenta pa’ guardar tus sitios Favoritos, recibir los Almuerzos y Happy Hours del día
-y enterarte cuando abren cosas Brutales cerca de ti. 🔥
-<br> Sin cuenta… te pierdes de medio jangueo.🥴
+      ${t("popup.crearCuenta.body")}
     </p>
 
     <a id="btnCrearCuenta"
       class="inline-block w-full bg-[#3ea6c4] text-white py-2 rounded-xl font-semibold hover:bg-[#199ac8] transition">
-      Crear Cuenta Gratis
+      ${t("popup.crearCuenta.cta")}
     </a>
   `);
 
