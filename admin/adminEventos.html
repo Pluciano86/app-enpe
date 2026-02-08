@@ -111,8 +111,12 @@
         </div>
 
         <div class="space-y-2">
-          <label class="block text-sm font-medium text-gray-700">Enlace a boletos (opcional)</label>
-          <input id="eventoBoletos" type="url" class="w-full border rounded px-3 py-2" />
+          <label class="block text-sm font-medium text-gray-700">Boletos</label>
+          <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" id="boletosGlobal" class="form-checkbox h-4 w-4 text-blue-600" checked />
+            Usar un solo link para todas las localidades
+          </label>
+          <input id="eventoBoletos" type="url" class="w-full border rounded px-3 py-2" placeholder="Link global de boletos (opcional)" />
         </div>
 
         <div class="flex items-center gap-2">

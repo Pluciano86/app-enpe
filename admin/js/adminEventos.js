@@ -22,6 +22,7 @@ const selectCategoria = document.getElementById('eventoCategoria');
 const inputCosto = document.getElementById('eventoCosto');
 const checkGratis = document.getElementById('eventoGratis');
 const inputBoletos = document.getElementById('eventoBoletos');
+const checkBoletosGlobal = document.getElementById('boletosGlobal');
 const inputImagen = document.getElementById('eventoImagen');
 const checkActivo = document.getElementById('eventoActivo');
 const imagenActual = document.getElementById('imagenActual');
@@ -127,7 +128,7 @@ function construirOpcionesMunicipios() {
   });
 }
 
-function crearSedeItem({ municipio_id = '', lugar = '', direccion = '', fechas = [] } = {}) {
+function crearSedeItem({ municipio_id = '', lugar = '', direccion = '', enlaceboletos = '', fechas = [] } = {}) {
   const sede = document.createElement('div');
   sede.className = 'border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3';
 
@@ -151,6 +152,10 @@ function crearSedeItem({ municipio_id = '', lugar = '', direccion = '', fechas =
         <label class="block text-xs font-medium text-gray-600">Dirección *</label>
         <input type="text" class="sede-direccion mt-1 w-full border px-3 py-2 rounded" />
       </div>
+    </div>
+    <div class="sede-boletos-wrapper">
+      <label class="block text-xs font-medium text-gray-600">Link boletos (opcional)</label>
+      <input type="url" class="sede-boletos mt-1 w-full border px-3 py-2 rounded" />
     </div>
     <div class="flex flex-col md:flex-row gap-4 md:items-end md:justify-between border border-gray-200 rounded-lg p-3 bg-white">
       <div class="space-y-2 md:w-2/3">
@@ -179,6 +184,7 @@ function crearSedeItem({ municipio_id = '', lugar = '', direccion = '', fechas =
   const selectMunicipio = sede.querySelector('.sede-municipio');
   const inputLugar = sede.querySelector('.sede-lugar');
   const inputDireccion = sede.querySelector('.sede-direccion');
+  const inputBoletosSede = sede.querySelector('.sede-boletos');
   const inputFecha = sede.querySelector('.sede-fecha');
   const inputHora = sede.querySelector('.sede-hora');
   const btnAgregarFecha = sede.querySelector('.sede-agregar-fecha');
@@ -188,6 +194,7 @@ function crearSedeItem({ municipio_id = '', lugar = '', direccion = '', fechas =
   selectMunicipio.value = municipio_id ? String(municipio_id) : '';
   inputLugar.value = lugar || '';
   inputDireccion.value = direccion || '';
+  inputBoletosSede.value = enlaceboletos || '';
 
   const fechasLocal = (fechas || []).map((item) => ({
     fecha: item.fecha,
@@ -315,6 +322,7 @@ function crearSedeItem({ municipio_id = '', lugar = '', direccion = '', fechas =
         municipio_id: selectMunicipio.value ? Number(selectMunicipio.value) : null,
         lugar: inputLugar.value.trim(),
         direccion: inputDireccion.value.trim(),
+        enlaceboletos: inputBoletosSede.value.trim(),
         fechas: fechasLocal.map((item) => ({
           fecha: item.fecha,
           horainicio: item.horainicio,
@@ -335,6 +343,7 @@ function agregarSedeUI(data = {}) {
   sedesUI.push(sedeUI);
   sedesContainer.appendChild(sedeUI.element);
   actualizarBotonesSede();
+  actualizarModoBoletos();
 }
 
 function actualizarBotonesSede() {
@@ -360,8 +369,20 @@ function cargarSedesDesdeEvento(sedes = []) {
       municipio_id: sede.municipio_id,
       lugar: sede.lugar,
       direccion: sede.direccion,
+      enlaceboletos: sede.enlaceboletos || '',
       fechas: sede.fechas || []
     });
+  });
+}
+
+function actualizarModoBoletos() {
+  const usarGlobal = Boolean(checkBoletosGlobal?.checked);
+  if (inputBoletos) inputBoletos.disabled = !usarGlobal;
+  sedesContainer.querySelectorAll('.sede-boletos-wrapper').forEach((wrapper) => {
+    wrapper.classList.toggle('hidden', usarGlobal);
+  });
+  sedesContainer.querySelectorAll('.sede-boletos').forEach((input) => {
+    input.disabled = usarGlobal;
   });
 }
 
@@ -464,6 +485,7 @@ function normalizarEvento(evento) {
       municipioNombre,
       lugar: sede.lugar || '',
       direccion: sede.direccion || '',
+      enlaceboletos: sede.enlaceboletos || '',
       evento_municipio_id: sede.id
     }));
     return {
@@ -472,6 +494,7 @@ function normalizarEvento(evento) {
       municipioNombre,
       lugar: sede.lugar || '',
       direccion: sede.direccion || '',
+      enlaceboletos: sede.enlaceboletos || '',
       fechas
     };
   });
@@ -490,7 +513,8 @@ function normalizarEvento(evento) {
     municipioNombre,
     categoriaNombre: categoriaInfo.nombre,
     categoriaIcono: categoriaInfo.icono,
-    fechas
+    fechas,
+    boletos_por_localidad: Boolean(evento.boletos_por_localidad)
   };
 }
 
@@ -603,6 +627,7 @@ async function cargarEventos() {
         descripcion,
         costo,
         gratis,
+        boletos_por_localidad,
         categoria,
         enlaceboletos,
         imagen,
@@ -613,6 +638,7 @@ async function cargarEventos() {
           municipio_id,
           lugar,
           direccion,
+          enlaceboletos,
           eventoFechas (
             id,
             fecha,
@@ -645,6 +671,8 @@ function resetModal() {
   checkActivo.checked = true;
   checkGratis.checked = false;
   inputCosto.removeAttribute('readonly');
+  if (checkBoletosGlobal) checkBoletosGlobal.checked = true;
+  if (inputBoletos) inputBoletos.value = '';
   limpiarSedesUI();
   agregarSedeUI();
 }
@@ -666,6 +694,10 @@ function abrirModal(evento = null) {
     inputCosto.value = evento.gratis ? 'Libre de Costo' : (evento.costo || '');
     if (evento.gratis) inputCosto.setAttribute('readonly', true);
     checkActivo.checked = Boolean(evento.activo);
+    if (checkBoletosGlobal) {
+      checkBoletosGlobal.checked = !evento.boletos_por_localidad;
+    }
+    actualizarModoBoletos();
 
     if (evento.imagen) {
       imagenActual.classList.remove('hidden');
@@ -699,6 +731,9 @@ checkGratis.addEventListener('change', () => {
     inputCosto.removeAttribute('readonly');
   }
 });
+if (checkBoletosGlobal) {
+  checkBoletosGlobal.addEventListener('change', actualizarModoBoletos);
+}
 
 [filtroBusqueda, filtroMunicipio, filtroCategoria, filtroActivo].forEach((control) => {
   const evento = control === filtroBusqueda ? 'input' : 'change';
@@ -824,7 +859,18 @@ async function manejarSubmit(event) {
     return;
   }
 
+  const boletosPorLocalidad = !checkBoletosGlobal?.checked;
+  if (boletosPorLocalidad) {
+    const sedeSinLink = sedesPayload.find((sede) => !sede.enlaceboletos);
+    if (sedeSinLink) {
+      errorEvento.textContent = 'Agrega el link de boletos en cada localidad.';
+      errorEvento.classList.remove('hidden');
+      return;
+    }
+  }
+
   const sedePrincipal = sedesPayload[0];
+  const enlaceGlobal = checkBoletosGlobal?.checked ? inputBoletos.value.trim() : '';
   const payloadBase = {
     nombre: inputNombre.value.trim(),
     descripcion: inputDescripcion.value.trim(),
@@ -834,7 +880,8 @@ async function manejarSubmit(event) {
     direccion: sedePrincipal.direccion,
     municipio_id: sedePrincipal.municipio_id,
     categoria: Number(selectCategoria.value),
-    enlaceboletos: inputBoletos.value.trim() || null,
+    enlaceboletos: enlaceGlobal || null,
+    boletos_por_localidad: boletosPorLocalidad,
     activo: checkActivo.checked
   };
 
@@ -876,7 +923,8 @@ async function manejarSubmit(event) {
             event_id: eventoEnEdicion.id,
             municipio_id: sede.municipio_id,
             lugar: sede.lugar,
-            direccion: sede.direccion
+            direccion: sede.direccion,
+            enlaceboletos: boletosPorLocalidad ? (sede.enlaceboletos || null) : null
           })
           .select('id')
           .single();
@@ -906,16 +954,17 @@ async function manejarSubmit(event) {
 
       try {
         for (const sede of sedesPayload) {
-          const { data: sedeCreada, error: errorSede } = await supabase
-            .from('eventos_municipios')
-            .insert({
-              event_id: eventoCreado.id,
-              municipio_id: sede.municipio_id,
-              lugar: sede.lugar,
-              direccion: sede.direccion
-            })
-            .select('id')
-            .single();
+        const { data: sedeCreada, error: errorSede } = await supabase
+          .from('eventos_municipios')
+          .insert({
+            event_id: eventoCreado.id,
+            municipio_id: sede.municipio_id,
+            lugar: sede.lugar,
+            direccion: sede.direccion,
+            enlaceboletos: boletosPorLocalidad ? (sede.enlaceboletos || null) : null
+          })
+          .select('id')
+          .single();
 
           if (errorSede || !sedeCreada?.id) throw errorSede || new Error('No se pudo crear el municipio del evento');
 

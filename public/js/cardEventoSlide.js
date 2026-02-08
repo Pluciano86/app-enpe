@@ -142,6 +142,8 @@ export function cardEventoSlide(evento) {
         ? evento
         : {
             ...evento,
+            enlaceboletos: evento.enlaceboletos || "",
+            boletos_por_localidad: Boolean(evento.boletos_por_localidad),
             eventoFechas: evento.fecha
               ? [{
                   fecha: evento.fecha,

@@ -108,6 +108,7 @@ async function cargarEventos() {
       descripcion,
       costo,
       gratis,
+      boletos_por_localidad,
       categoria,
       enlaceboletos,
       imagen,
@@ -117,6 +118,7 @@ async function cargarEventos() {
         municipio_id,
         lugar,
         direccion,
+        enlaceboletos,
         eventoFechas (id, fecha, horainicio, mismahora)
       )
     `)
@@ -142,7 +144,8 @@ async function cargarEventos() {
           municipio_id: sede.municipio_id,
           municipioNombre,
           lugar: sede.lugar || '',
-          direccion: sede.direccion || ''
+          direccion: sede.direccion || '',
+          enlaceboletos: sede.enlaceboletos || ''
         }));
         return {
           id: sede.id,
@@ -150,6 +153,7 @@ async function cargarEventos() {
           municipioNombre,
           lugar: sede.lugar || '',
           direccion: sede.direccion || '',
+          enlaceboletos: sede.enlaceboletos || '',
           fechas
         };
       });
@@ -174,7 +178,8 @@ async function cargarEventos() {
         categoriaIcono: categoriaInfo.icono || '',
         fechas: fechasOrdenadas,
         eventoFechas: fechasOrdenadas,
-        ultimaFecha
+        ultimaFecha,
+        boletos_por_localidad: Boolean(evento.boletos_por_localidad)
       };
       return eventoNormalizado;
     })

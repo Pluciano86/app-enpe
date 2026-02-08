@@ -4,27 +4,29 @@ import { t } from "./i18n.js";
 
 const normalizarEventos = (lista = [], municipioNombreById = new Map()) => {
   const hoyISO = new Date().toISOString().slice(0, 10);
-  return (lista || [])
-    .map((evento) => {
-      const sedes = (evento.eventos_municipios || []).map((sede) => {
-        const municipioNombre = municipioNombreById.get(sede.municipio_id) || "";
-        const fechas = (sede.eventoFechas || []).map((item) => ({
-          fecha: item.fecha,
-          horainicio: item.horainicio,
-          mismahora: item.mismahora ?? false,
-          municipio_id: sede.municipio_id,
-          municipioNombre,
-          lugar: sede.lugar || "",
-          direccion: sede.direccion || ""
-        }));
-        return {
-          municipio_id: sede.municipio_id,
-          municipioNombre,
-          lugar: sede.lugar || "",
-          direccion: sede.direccion || "",
-          fechas
-        };
-      });
+    return (lista || [])
+      .map((evento) => {
+        const sedes = (evento.eventos_municipios || []).map((sede) => {
+          const municipioNombre = municipioNombreById.get(sede.municipio_id) || "";
+          const fechas = (sede.eventoFechas || []).map((item) => ({
+            fecha: item.fecha,
+            horainicio: item.horainicio,
+            mismahora: item.mismahora ?? false,
+            municipio_id: sede.municipio_id,
+            municipioNombre,
+            lugar: sede.lugar || "",
+            direccion: sede.direccion || "",
+            enlaceboletos: sede.enlaceboletos || ""
+          }));
+          return {
+            municipio_id: sede.municipio_id,
+            municipioNombre,
+            lugar: sede.lugar || "",
+            direccion: sede.direccion || "",
+            enlaceboletos: sede.enlaceboletos || "",
+            fechas
+          };
+        });
 
       const municipioIds = Array.from(new Set(sedes.map((s) => s.municipio_id).filter(Boolean)));
       const municipioNombre =
@@ -41,7 +43,8 @@ const normalizarEventos = (lista = [], municipioNombreById = new Map()) => {
         municipioIds,
         municipioNombre,
         eventoFechas,
-        ultimaFecha
+        ultimaFecha,
+        boletos_por_localidad: Boolean(evento.boletos_por_localidad)
       };
     })
     .filter((evento) => !evento.ultimaFecha || evento.ultimaFecha >= hoyISO);
@@ -117,6 +120,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
         descripcion,
         costo,
         gratis,
+        boletos_por_localidad,
         imagen,
         enlaceboletos,
         ${joinSedes} (
@@ -124,6 +128,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
           municipio_id,
           lugar,
           direccion,
+          enlaceboletos,
           eventoFechas (fecha, horainicio, mismahora)
         )
       `)
@@ -158,6 +163,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
           descripcion,
           costo,
           gratis,
+          boletos_por_localidad,
           imagen,
           enlaceboletos,
           eventos_municipios!inner (
@@ -165,6 +171,7 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
             municipio_id,
             lugar,
             direccion,
+            enlaceboletos,
             eventoFechas (fecha, horainicio, mismahora)
           )
         `)
