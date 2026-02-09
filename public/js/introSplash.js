@@ -1,19 +1,19 @@
 const INTRO_KEY = 'findixi_intro_last_shown';
 const INTRO_BG = '#fb8500';
 const INTRO_LOGO = 'https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/logoFindixiBlanco.png';
-const INTRO_DURATION_MS = 3600;
-const ROTATE_EVERY_MS = 700;
+const ROTATE_EVERY_MS = 1600;
+const FADE_MS = 280;
 
-const SLOGANS = [
-  '¡Explora lo local!',
-  'Explore local',
-  '探索本地',
-  'Explorez local',
-  'Explore o local',
-  'Entdecke Lokales',
-  'Esplora il locale',
-  '로컬을 탐험하세요',
-  'ローカルを探索',
+const LANG_CHOICES = [
+  { code: 'es', slogan: '¡Explora lo local!', choose: 'Escoge tu idioma' },
+  { code: 'en', slogan: 'Explore local', choose: 'Choose your language' },
+  { code: 'zh', slogan: '探索本地', choose: '选择你的语言' },
+  { code: 'fr', slogan: 'Explorez local', choose: 'Choisissez votre langue' },
+  { code: 'pt', slogan: 'Explore o local', choose: 'Escolha seu idioma' },
+  { code: 'de', slogan: 'Entdecke Lokales', choose: 'Wähle deine Sprache' },
+  { code: 'it', slogan: 'Esplora il locale', choose: 'Scegli la tua lingua' },
+  { code: 'ko', slogan: '로컬을 탐험하세요', choose: '언어를 선택하세요' },
+  { code: 'ja', slogan: 'ローカルを探索', choose: '言語を選んでください' },
 ];
 
 function shouldSkipIntro() {
@@ -79,8 +79,51 @@ function injectStyles() {
     #intro-splash .intro-text.fade {
       opacity: 0;
     }
+    #intro-splash .intro-lang-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+      width: min(320px, 80vw);
+    }
+    #intro-splash .intro-lang-btn {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 999px;
+      letter-spacing: 0.2px;
+      transition: background 200ms ease, transform 200ms ease;
+    }
+    #intro-splash .intro-lang-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+      transform: translateY(-1px);
+    }
   `;
   document.head.appendChild(style);
+}
+
+function getIndexUrl() {
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+  return isLocal ? '/public/index.html' : '/index.html';
+}
+
+function applyLangSelection(code) {
+  const lang = code || 'es';
+  try {
+    localStorage.setItem('lang', lang);
+  } catch (_) {
+    // noop
+  }
+  if (typeof window.setLang === 'function') {
+    window.setLang(lang);
+  } else {
+    document.documentElement.lang = lang;
+    document.documentElement.setAttribute('data-lang', lang);
+  }
 }
 
 function showIntro() {
@@ -101,34 +144,65 @@ function showIntro() {
   document.body.appendChild(overlay);
 
   const textEl = document.getElementById('intro-splash-text');
+  const contentEl = overlay.querySelector('.intro-content');
   let index = 0;
+  let shownCount = 1;
+  let optionsShown = false;
   if (textEl) {
-    textEl.textContent = SLOGANS[index];
+    textEl.textContent = LANG_CHOICES[index].slogan;
   }
+
+  const showLanguageOptions = () => {
+    if (optionsShown || !contentEl) return;
+    optionsShown = true;
+
+    const list = document.createElement('div');
+    list.className = 'intro-lang-list';
+    LANG_CHOICES.forEach((lang) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'intro-lang-btn';
+      btn.textContent = lang.choose;
+      btn.addEventListener('click', () => {
+        applyLangSelection(lang.code);
+        window.location.href = getIndexUrl();
+      });
+      list.appendChild(btn);
+    });
+    if (textEl) {
+      textEl.classList.add('fade');
+      setTimeout(() => {
+        textEl.style.display = 'none';
+        contentEl.appendChild(list);
+      }, FADE_MS);
+    } else {
+      contentEl.appendChild(list);
+    }
+  };
 
   const rotate = () => {
     if (!textEl) return;
     textEl.classList.add('fade');
     setTimeout(() => {
-      index = (index + 1) % SLOGANS.length;
-      textEl.textContent = SLOGANS[index];
+      index = (index + 1) % LANG_CHOICES.length;
+      textEl.textContent = LANG_CHOICES[index].slogan;
       textEl.classList.remove('fade');
-    }, 220);
+      shownCount += 1;
+      if (shownCount >= LANG_CHOICES.length) {
+        clearInterval(intervalId);
+        setTimeout(showLanguageOptions, ROTATE_EVERY_MS);
+      }
+    }, FADE_MS);
   };
 
   const intervalId = setInterval(rotate, ROTATE_EVERY_MS);
 
-  const dismiss = () => {
-    clearInterval(intervalId);
-    overlay.classList.add('fade-out');
-    setTimeout(() => {
-      overlay.remove();
-      document.body.style.overflow = previousOverflow;
-    }, 320);
-  };
-
-  overlay.addEventListener('click', dismiss);
-  setTimeout(dismiss, INTRO_DURATION_MS);
+  overlay.addEventListener('click', () => {
+    if (!optionsShown) {
+      clearInterval(intervalId);
+      showLanguageOptions();
+    }
+  });
 }
 
 if (!shouldSkipIntro()) {

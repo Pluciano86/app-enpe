@@ -1,4 +1,12 @@
 const container = document.getElementById('headerContainer');
+const headerScrollConfig = {
+  threshold: 8,
+  hideOffset: '-100%',
+  transition: 'transform 180ms ease',
+};
+const headerLayoutConfig = {
+  maxWidth: '28rem',
+};
 
 // Detectar si estamos en Live Server y ajustar ruta base
 const isLiveServer = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
@@ -65,10 +73,65 @@ container.innerHTML = `
         <span class="text-lg" aria-hidden="true">🌐</span>
         <span id="langCurrent" class="text-xl leading-none">🇵🇷</span>
       </button>
-      <div id="langMenu" class="absolute right-0 mt-1 bg-white text-[#231F20] border border-black/10 rounded shadow-lg hidden z-50 min-w-[120px]"></div>
+      <div id="langMenu" class="bg-white text-[#231F20] border border-black/10 rounded shadow-lg hidden min-w-[120px]" style="z-index: 1300;"></div>
     </div>
   </header>
 `;
+
+const headerEl = container?.querySelector('header');
+if (headerEl) {
+  headerEl.style.position = 'fixed';
+  headerEl.style.top = '0';
+  headerEl.style.left = '50%';
+  headerEl.style.width = '100%';
+  headerEl.style.maxWidth = headerLayoutConfig.maxWidth;
+  headerEl.style.zIndex = '1200';
+  headerEl.style.transform = 'translate3d(-50%, 0, 0)';
+  headerEl.style.transition = headerScrollConfig.transition;
+  headerEl.style.willChange = 'transform';
+
+  const syncContainerHeight = () => {
+    const height = headerEl.getBoundingClientRect().height;
+    if (height > 0) {
+      container.style.height = `${height}px`;
+    }
+  };
+
+  syncContainerHeight();
+  window.addEventListener('resize', syncContainerHeight);
+  window.addEventListener('load', syncContainerHeight);
+
+  let lastScrollY = window.scrollY;
+  let ticking = false;
+
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(() => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY;
+      const movedEnough = Math.abs(delta) >= headerScrollConfig.threshold;
+
+      if (currentY <= 0) {
+        headerEl.style.transform = 'translate3d(-50%, 0, 0)';
+        lastScrollY = currentY;
+        ticking = false;
+        return;
+      }
+
+      if (movedEnough) {
+        if (delta > 0) {
+          headerEl.style.transform = `translate3d(-50%, ${headerScrollConfig.hideOffset}, 0)`;
+        } else {
+          headerEl.style.transform = 'translate3d(-50%, 0, 0)';
+        }
+        lastScrollY = currentY;
+      }
+
+      ticking = false;
+    });
+  }, { passive: true });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   const btnBack = document.getElementById('btnBack');
@@ -101,7 +164,26 @@ document.addEventListener('DOMContentLoaded', () => {
   setCurrent(stored);
 
   if (langToggle && langMenu) {
+    const portalLangMenu = () => {
+      if (langMenu.dataset.portal === '1') return;
+      document.body.appendChild(langMenu);
+      langMenu.dataset.portal = '1';
+      langMenu.style.position = 'fixed';
+      langMenu.style.zIndex = '2000';
+      langMenu.style.marginTop = '0';
+    };
+
+    const positionLangMenu = () => {
+      const rect = langToggle.getBoundingClientRect();
+      const top = Math.round(rect.bottom + 6);
+      const right = Math.round(window.innerWidth - rect.right);
+      langMenu.style.top = `${top}px`;
+      langMenu.style.right = `${right}px`;
+    };
+
     langToggle.addEventListener('click', () => {
+      portalLangMenu();
+      positionLangMenu();
       langMenu.classList.toggle('hidden');
     });
 
@@ -124,5 +206,16 @@ document.addEventListener('DOMContentLoaded', () => {
         langMenu.classList.add('hidden');
       }
     });
+
+    window.addEventListener('resize', () => {
+      if (!langMenu.classList.contains('hidden')) {
+        positionLangMenu();
+      }
+    });
+    window.addEventListener('scroll', () => {
+      if (!langMenu.classList.contains('hidden')) {
+        positionLangMenu();
+      }
+    }, { passive: true });
   }
 });
