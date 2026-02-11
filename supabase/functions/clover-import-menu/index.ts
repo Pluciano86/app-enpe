@@ -33,6 +33,24 @@ function toArray(x: any) {
   return [];
 }
 
+const columnExistsCache = new Map<string, Map<string, boolean>>();
+async function hasColumn(table: string, column: string) {
+  const cache = columnExistsCache.get(table) ?? new Map<string, boolean>();
+  if (!columnExistsCache.has(table)) columnExistsCache.set(table, cache);
+  if (cache.has(column)) return cache.get(column)!;
+  const { error } = await supabase.from(table).select(column).limit(1);
+  if (!error) {
+    cache.set(column, true);
+    return true;
+  }
+  const msg = (error?.message || "").toLowerCase();
+  if (msg.includes("column") && msg.includes("does not exist")) {
+    cache.set(column, false);
+    return false;
+  }
+  throw error;
+}
+
 class CloverApiError extends Error {
   status: number;
   raw: string;
@@ -288,6 +306,18 @@ async function handler(req: Request): Promise<Response> {
     modifierGroups.forEach((g) => modifierMap.set(g.id, g));
 
     const grupoPayload: any[] = [];
+    const grupoHasIdProductoLower = await hasColumn("producto_opcion_grupos", "idproducto");
+    const grupoHasIdProductoCamel = grupoHasIdProductoLower ? false : await hasColumn("producto_opcion_grupos", "idProducto");
+    if (!grupoHasIdProductoLower && !grupoHasIdProductoCamel) {
+      throw new Error("producto_opcion_grupos: falta columna idproducto/idProducto");
+    }
+    const grupoHasIdComercioLower = await hasColumn("producto_opcion_grupos", "idcomercio");
+    const grupoHasIdComercioCamel = grupoHasIdComercioLower ? false : await hasColumn("producto_opcion_grupos", "idComercio");
+    const grupoIdProductoCol = grupoHasIdProductoLower ? "idproducto" : "idProducto";
+    const grupoIdComercioCol = grupoHasIdComercioLower ? "idcomercio" : "idComercio";
+    const grupoHasMinSel = await hasColumn("producto_opcion_grupos", "min_sel");
+    const grupoHasMaxSel = await hasColumn("producto_opcion_grupos", "max_sel");
+    const grupoHasActivo = await hasColumn("producto_opcion_grupos", "activo");
     const gruposPorItem: Map<string, string[]> = new Map();
 
     for (const item of itemsForModifiers) {
@@ -299,34 +329,55 @@ async function handler(req: Request): Promise<Response> {
       gruposPorItem.set(item.id, groupIds);
       for (const gid of groupIds) {
         const g = modifierMap.get(gid) ?? { id: gid };
-        grupoPayload.push({
-          idProducto: productoId,
+        const minSel = Number(g?.minRequired ?? 0) || 0;
+        const maxSel = Number(g?.maxAllowed ?? 0) || 0;
+        const row: any = {
           clover_modifier_group_id: gid,
           clover_merchant_id: merchantId,
           nombre: g?.name ?? g?.label ?? "Opciones",
           orden: Number(g?.sortOrder ?? g?.sequence ?? 0) || 0,
-          requerido: g?.minRequired ? g.minRequired > 0 : false,
-        });
+          requerido: minSel > 0,
+        };
+        row[grupoIdProductoCol] = productoId;
+        if (grupoHasIdComercioLower || grupoHasIdComercioCamel) row[grupoIdComercioCol] = idComercio;
+        if (grupoHasMinSel) row.min_sel = minSel;
+        if (grupoHasMaxSel) row.max_sel = maxSel;
+        if (grupoHasActivo) row.activo = true;
+        grupoPayload.push(row);
       }
     }
 
     if (grupoPayload.length) {
       const { error: grpErr } = await supabase
         .from("producto_opcion_grupos")
-        .upsert(grupoPayload, { onConflict: "idProducto,clover_modifier_group_id" });
+        .upsert(grupoPayload, { onConflict: `${grupoIdProductoCol},clover_modifier_group_id` });
       if (grpErr) throw grpErr;
     }
 
     // Map grupo Clover -> id grupo local por producto
     const { data: grpRows } = await supabase
       .from("producto_opcion_grupos")
-      .select("id, idProducto, clover_modifier_group_id")
+      .select(`id, ${grupoIdProductoCol}, clover_modifier_group_id`)
       .eq("clover_merchant_id", merchantId);
     const grpMap = new Map<string, number>(); // key `${productoId}:${cloverGid}`
-    (grpRows || []).forEach((g: any) => grpMap.set(`${g.idProducto}:${g.clover_modifier_group_id}`, g.id));
+    (grpRows || []).forEach((g: any) => grpMap.set(`${g[grupoIdProductoCol]}:${g.clover_modifier_group_id}`, g.id));
 
     // 4) Modifiers
     const modifierPayload: any[] = [];
+    const itemHasIdGrupoLower = await hasColumn("producto_opcion_items", "idgrupo");
+    const itemHasIdGrupoCamel = itemHasIdGrupoLower ? false : await hasColumn("producto_opcion_items", "idGrupo");
+    if (!itemHasIdGrupoLower && !itemHasIdGrupoCamel) {
+      throw new Error("producto_opcion_items: falta columna idgrupo/idGrupo");
+    }
+    const itemHasIdProductoLower = await hasColumn("producto_opcion_items", "idproducto");
+    const itemHasIdProductoCamel = itemHasIdProductoLower ? false : await hasColumn("producto_opcion_items", "idProducto");
+    const itemHasIdComercioLower = await hasColumn("producto_opcion_items", "idcomercio");
+    const itemHasIdComercioCamel = itemHasIdComercioLower ? false : await hasColumn("producto_opcion_items", "idComercio");
+    const itemIdGrupoCol = itemHasIdGrupoLower ? "idgrupo" : "idGrupo";
+    const itemIdProductoCol = itemHasIdProductoLower ? "idproducto" : "idProducto";
+    const itemIdComercioCol = itemHasIdComercioLower ? "idcomercio" : "idComercio";
+    const itemHasActivo = await hasColumn("producto_opcion_items", "activo");
+    const itemHasMerchant = await hasColumn("producto_opcion_items", "clover_merchant_id");
     for (const g of modifierGroups) {
       if (!g?.id) continue;
       const modsJson = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/modifier_groups/${g.id}/modifiers?limit=500`);
@@ -339,14 +390,18 @@ async function handler(req: Request): Promise<Response> {
         const idGrupo = grpMap.get(`${productoId}:${g.id}`);
         if (!idGrupo) continue;
         mods.forEach((m) => {
-          modifierPayload.push({
-            idGrupo,
+          const row: any = {
             clover_modifier_id: m.id,
             nombre: m.name ?? "Opción",
             precio_extra: Number(m.price ?? m.priceWithVat ?? 0) / 100,
-            activo: m.isDeleted === true ? false : true,
             orden: Number(m.sortOrder ?? m.sequence ?? 0) || 0,
-          });
+          };
+          row[itemIdGrupoCol] = idGrupo;
+          if (itemHasIdProductoLower || itemHasIdProductoCamel) row[itemIdProductoCol] = productoId;
+          if (itemHasIdComercioLower || itemHasIdComercioCamel) row[itemIdComercioCol] = idComercio;
+          if (itemHasActivo) row.activo = m.isDeleted === true ? false : true;
+          if (itemHasMerchant) row.clover_merchant_id = merchantId;
+          modifierPayload.push(row);
         });
       }
     }
@@ -354,7 +409,7 @@ async function handler(req: Request): Promise<Response> {
     if (modifierPayload.length) {
       const { error: modErr } = await supabase
         .from("producto_opcion_items")
-        .upsert(modifierPayload, { onConflict: "idGrupo,clover_modifier_id" });
+        .upsert(modifierPayload, { onConflict: `${itemIdGrupoCol},clover_modifier_id` });
       if (modErr) throw modErr;
     }
 
@@ -380,7 +435,17 @@ async function handler(req: Request): Promise<Response> {
         raw: err.raw,
       }, err.status || 500);
     }
-    return jsonResponse({ error: err instanceof Error ? err.message : String(err) }, 500);
+    const details = err && typeof err === "object"
+      ? {
+        name: (err as any).name,
+        message: (err as any).message,
+        stack: (err as any).stack,
+        code: (err as any).code,
+        hint: (err as any).hint,
+        details: (err as any).details,
+      }
+      : { message: String(err) };
+    return jsonResponse({ error: "import_failed", details }, 500);
   }
 }
 

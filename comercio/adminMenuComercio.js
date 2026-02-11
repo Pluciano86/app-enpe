@@ -1374,7 +1374,12 @@ async function lanzarImportacionClover() {
   try {
     const url = `${FUNCTIONS_BASE}/clover-import-menu?idComercio=${idComercio}`;
     const { data: { session } } = await supabase.auth.getSession();
-    const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      alert('Debes iniciar sesión para importar desde Clover.');
+      window.location.href = "/comercio/login.html";
+      return false;
+    }
 
     const resp = await fetch(url, {
       method: 'POST',
@@ -1387,7 +1392,12 @@ async function lanzarImportacionClover() {
     const json = await resp.json().catch(() => ({}));
 
     if (!resp.ok) {
-      const message = json?.error || `No se pudo importar desde Clover (status ${resp.status})`;
+      if (resp.status === 401 && json?.needs_reconnect) {
+        alert('La conexión con Clover expiró. Debes reconectar tu cuenta.');
+        iniciarOauthClover();
+        return false;
+      }
+      const message = json?.details?.message || json?.error || `No se pudo importar desde Clover (status ${resp.status})`;
       console.error('[Clover] import error', { status: resp.status, body: json });
       throw new Error(message);
     }
@@ -1395,6 +1405,23 @@ async function lanzarImportacionClover() {
     if ((json?.menus ?? 0) === 0) {
       alert('Este comercio no tiene menús en Clover todavía.');
       return false;
+    }
+
+    const taxUrl = `${FUNCTIONS_BASE}/clover-sync-tax-rates?idComercio=${idComercio}`;
+    try {
+      const taxResp = await fetch(taxUrl, {
+        method: 'GET',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      if (!taxResp.ok) {
+        const taxJson = await taxResp.json().catch(() => ({}));
+        console.warn('[Clover] tax sync error', { status: taxResp.status, body: taxJson });
+      }
+    } catch (taxErr) {
+      console.warn('[Clover] tax sync catch', taxErr);
     }
 
     alert(`Importación completada.\nSecciones: ${json.menus ?? 0}\nProductos: ${json.productos ?? 0}\nOpciones: ${json.opciones ?? 0}`);
