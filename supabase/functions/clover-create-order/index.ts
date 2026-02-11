@@ -126,6 +126,13 @@ async function handler(req: Request): Promise<Response> {
   const rawItems = Array.isArray(body?.items) ? body.items : [];
   if (!rawItems.length) return jsonResponse({ error: "items requerido" }, 400);
 
+  const modeRaw = String(body?.mode ?? body?.order_type ?? "pickup").toLowerCase();
+  const mode = modeRaw === "mesa" ? "mesa" : modeRaw === "pickup" ? "pickup" : "pickup";
+  const mesaVal = body?.mesa ?? body?.table ?? null;
+  const mesa = typeof mesaVal === "string" || typeof mesaVal === "number" ? String(mesaVal).trim() : null;
+  const sourceRaw = String(body?.source ?? (mode === "mesa" ? "qr" : "app")).toLowerCase();
+  const source = sourceRaw === "qr" || sourceRaw === "app" ? sourceRaw : (mode === "mesa" ? "qr" : "app");
+
   const items = rawItems.map((item: any) => {
     const idProducto = Number(item?.idProducto ?? item?.id);
     const qty = Number(item?.qty ?? 1);
@@ -381,9 +388,12 @@ async function handler(req: Request): Promise<Response> {
 
   let cloverOrderId: string | null = null;
   try {
+    const noteBase = mode === "mesa"
+      ? (mesa ? `Mesa ${mesa} - Findixi` : "Mesa - Findixi")
+      : "Findixi Online Order";
     const orderResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders`, {
       method: "POST",
-      body: { state: "open", note: "Findixi Online Order" },
+      body: { state: "open", note: noteBase },
     });
     cloverOrderId = orderResp?.id ?? null;
   } catch (err) {
@@ -419,28 +429,30 @@ async function handler(req: Request): Promise<Response> {
 
   let checkoutUrl: string | null = null;
   let checkoutSessionId: string | null = null;
-  try {
-    const checkoutPayload: Record<string, unknown> = {
-      customer: body?.customer ?? {},
-      shoppingCart: { lineItems: checkoutLineItems },
-      tips: { enabled: body?.tipsEnabled !== false },
-    };
-    if (body?.redirectUrls && typeof body.redirectUrls === "object") {
-      checkoutPayload.redirectUrls = body.redirectUrls;
+  if (mode === "pickup") {
+    try {
+      const checkoutPayload: Record<string, unknown> = {
+        customer: body?.customer ?? {},
+        shoppingCart: { lineItems: checkoutLineItems },
+        tips: { enabled: body?.tipsEnabled !== false },
+      };
+      if (body?.redirectUrls && typeof body.redirectUrls === "object") {
+        checkoutPayload.redirectUrls = body.redirectUrls;
+      }
+      const checkoutResp = await fetchCloverWithAutoRefresh("/invoicingcheckoutservice/v1/checkouts", {
+        method: "POST",
+        headers: { "X-Clover-Merchant-Id": merchantId },
+        body: checkoutPayload,
+      });
+      checkoutUrl = checkoutResp?.href ?? checkoutResp?.url ?? null;
+      checkoutSessionId = checkoutResp?.checkoutSessionId ?? checkoutResp?.id ?? null;
+    } catch (err) {
+      console.error("Error creando Hosted Checkout", err);
+      return jsonResponse({ error: "No se pudo crear checkout en Clover" }, 502);
     }
-    const checkoutResp = await fetchCloverWithAutoRefresh("/invoicingcheckoutservice/v1/checkouts", {
-      method: "POST",
-      headers: { "X-Clover-Merchant-Id": merchantId },
-      body: checkoutPayload,
-    });
-    checkoutUrl = checkoutResp?.href ?? checkoutResp?.url ?? null;
-    checkoutSessionId = checkoutResp?.checkoutSessionId ?? checkoutResp?.id ?? null;
-  } catch (err) {
-    console.error("Error creando Hosted Checkout", err);
-    return jsonResponse({ error: "No se pudo crear checkout en Clover" }, 502);
-  }
 
-  if (!checkoutUrl) return jsonResponse({ error: "checkout_url no recibido" }, 502);
+    if (!checkoutUrl) return jsonResponse({ error: "checkout_url no recibido" }, 502);
+  }
 
   const { data: orderRow, error: orderErr } = await supabase
     .from("ordenes")
@@ -451,8 +463,11 @@ async function handler(req: Request): Promise<Response> {
       checkout_session_id: checkoutSessionId,
       checkout_url: checkoutUrl,
       total,
-      status: "pending",
+      status: mode === "mesa" ? "sent" : "pending",
       idempotency_key: idempotencyKey,
+      order_type: mode,
+      mesa: mesa,
+      source: source,
     })
     .select("id, status, checkout_url, clover_order_id, checkout_session_id, total")
     .single();

@@ -1,10 +1,20 @@
 // menu/menuComercio.js
-import { supabase } from '../shared/supabaseClient.js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseClient.js';
 import { getMenuI18n } from '../shared/menuI18n.js';
 import { mountLangSelector } from '../shared/langSelector.js';
 import { getLang } from '../js/i18n.js';
 
-const idComercio = new URLSearchParams(window.location.search).get('id');
+const params = new URLSearchParams(window.location.search);
+const idComercio = params.get('idComercio') || params.get('id');
+const modeParam = (params.get('modo') || params.get('mode') || 'view').toLowerCase();
+const mesaParam = (params.get('mesa') || params.get('table') || '').trim();
+const sourceParam = (params.get('source') || '').toLowerCase();
+const orderMode = modeParam === 'mesa' ? 'mesa' : modeParam === 'pickup' ? 'pickup' : 'view';
+const allowPickup = orderMode === 'pickup' && sourceParam === 'app';
+const allowMesa = orderMode === 'mesa';
+const allowOrdering = allowPickup || allowMesa;
+const orderSource = allowPickup ? 'app' : allowMesa ? 'qr' : 'qr';
+const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
 const seccionesEl = document.getElementById('seccionesMenu');
 const btnVolver = document.getElementById('btnVolver');
 const btnMenuPdf = document.getElementById('btnMenuPdf');
@@ -79,9 +89,16 @@ const fontLinks = new Set();
 let menusBase = [];
 let productosBase = [];
 let productosView = [];
+const productosById = new Map();
 let renderToken = 0;
 let seccionActivaId = null;
 const menuButtons = new Map(); // idMenu -> { btn, titleEl, descEl }
+
+let cartState = { items: {} };
+let cartFab = null;
+let cartDrawer = null;
+let orderBanner = null;
+let cartKey = null;
 
 const getCurrentLang = () => {
   const stored = (typeof localStorage !== 'undefined' && localStorage.getItem('lang')) || '';
@@ -359,6 +376,12 @@ async function cargarDatos() {
     productosBase = [];
   }
 
+  productosById.clear();
+  productosBase.forEach((p) => {
+    if (p?.id) productosById.set(p.id, p);
+  });
+  if (allowOrdering) updateCartUi();
+
   seccionesEl.innerHTML = '';
   let seccionActiva = null;
   seccionActivaWrapper = null;
@@ -498,6 +521,7 @@ async function cargarDatos() {
 
         for (const p of productos) {
           const priceTxt = Number.isFinite(Number(p.precio)) ? Number(p.precio).toFixed(2) : (p.precio ?? '');
+          productosById.set(p.id, p);
           const div = document.createElement('div');
           div.className = 'rounded-lg shadow p-4 mb-2 flex gap-4';
           div.style.backgroundColor = itemBg;
@@ -519,9 +543,23 @@ async function cargarDatos() {
                 <h3 class="text-xl font-semibold" style="color:${temaActual.colortitulo};${fontBody ? `font-family:${fontBody};` : ''}">${p.nombre}</h3>
                 <p class="text-base leading-5 font-light" style="color:${temaActual.colortexto};${fontBody ? `font-family:${fontBody};` : ''}">${p.descripcion || ''}</p>
               </div>
-              <div class="font-bold text-xl mt-2 w-full" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">$${priceTxt}</div>
+              <div class="mt-2 w-full flex items-center justify-between gap-2 product-actions">
+                <div class="font-bold text-xl" style="color:${temaActual.colorprecio};${fontBody ? `font-family:${fontBody};` : ''}">$${priceTxt}</div>
+              </div>
             </div>
           `;
+
+          if (allowOrdering) {
+            const actions = div.querySelector('.product-actions');
+            if (actions) {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'text-sm font-semibold px-3 py-2 rounded-lg bg-black text-white';
+              btn.textContent = 'Agregar';
+              btn.addEventListener('click', () => updateCartItem(p.id, 1));
+              actions.appendChild(btn);
+            }
+          }
 
           listaDiv.appendChild(div);
         }
@@ -605,6 +643,7 @@ if (btnVolver) {
 
 document.addEventListener('DOMContentLoaded', () => {
   mountLangSelector('#langSwitcherMenu');
+  initOrderUi();
   cargarDatos();
 });
 
@@ -632,5 +671,234 @@ async function actualizarTitulosSecciones() {
     console.warn('No se pudieron traducir encabezados de menú:', err);
   } finally {
     hideGlobalLoader();
+  }
+}
+
+function initOrderUi() {
+  if (!idComercio) return;
+
+  cartKey = `cart_${idComercio}_${orderMode}${mesaParam ? `_mesa_${mesaParam}` : ''}`;
+  cartState = loadCartState();
+
+  orderBanner = document.createElement('div');
+  orderBanner.id = 'orderModeBanner';
+  orderBanner.className = 'w-[90%] max-w-5xl mx-auto mt-2 mb-2 px-4 py-3 rounded-xl border text-sm';
+  orderBanner.classList.add('hidden');
+
+  const mainEl = document.getElementById('seccionesMenu');
+  if (mainEl && mainEl.parentElement) {
+    mainEl.parentElement.insertBefore(orderBanner, mainEl);
+  }
+
+  if (allowMesa) {
+    orderBanner.textContent = mesaParam ? `Orden en mesa ${mesaParam}. Paga en el local.` : 'Orden en mesa. Paga en el local.';
+    orderBanner.classList.remove('hidden');
+    orderBanner.classList.add('bg-green-50', 'border-green-200', 'text-green-800');
+  } else if (orderMode === 'pickup') {
+    if (allowPickup) {
+      orderBanner.textContent = 'Ordena y paga para recoger en el comercio.';
+      orderBanner.classList.remove('hidden');
+      orderBanner.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-800');
+    } else {
+      orderBanner.textContent = 'La orden para recoger solo está disponible desde la app.';
+      orderBanner.classList.remove('hidden');
+      orderBanner.classList.add('bg-yellow-50', 'border-yellow-200', 'text-yellow-800');
+    }
+  }
+
+  if (!allowOrdering) return;
+  buildCartFab();
+  buildCartDrawer();
+  updateCartUi();
+}
+
+function buildCartFab() {
+  cartFab = document.createElement('button');
+  cartFab.id = 'cartFab';
+  cartFab.type = 'button';
+  cartFab.className = 'fixed z-40 right-4 bottom-24 sm:bottom-28 bg-black text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2';
+  cartFab.innerHTML = '<i class="fa-solid fa-basket-shopping"></i><span>Carrito</span><span id="cartCount" class="ml-1 text-xs bg-white/20 px-2 py-0.5 rounded-full">0</span>';
+  cartFab.addEventListener('click', () => {
+    if (!cartDrawer) return;
+    cartDrawer.classList.remove('hidden');
+  });
+  document.body.appendChild(cartFab);
+}
+
+function buildCartDrawer() {
+  cartDrawer = document.createElement('div');
+  cartDrawer.id = 'cartDrawer';
+  cartDrawer.className = 'fixed inset-0 z-50 hidden';
+  cartDrawer.innerHTML = `
+    <div data-cart-close class="absolute inset-0 bg-black/60"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl p-4 max-h-[80vh] overflow-auto">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold">Tu pedido</h3>
+        <button type="button" data-cart-close class="text-gray-500 hover:text-gray-700">Cerrar</button>
+      </div>
+      <div id="cartItems" class="space-y-3"></div>
+      <div class="mt-4 flex items-center justify-between text-base font-semibold">
+        <span>Total</span>
+        <span id="cartTotal">$0.00</span>
+      </div>
+      <button id="cartCheckout" type="button" class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-semibold"></button>
+    </div>
+  `;
+  cartDrawer.addEventListener('click', (e) => {
+    const target = e.target;
+    if (target?.closest('[data-cart-close]')) {
+      cartDrawer.classList.add('hidden');
+    }
+  });
+  cartDrawer.addEventListener('click', (e) => {
+    const btn = e.target?.closest('[data-cart-action]');
+    if (!btn) return;
+    const id = Number(btn.getAttribute('data-id'));
+    if (!Number.isFinite(id)) return;
+    const action = btn.getAttribute('data-cart-action');
+    if (action === 'inc') updateCartItem(id, 1);
+    if (action === 'dec') updateCartItem(id, -1);
+    if (action === 'remove') removeCartItem(id);
+  });
+  const checkoutBtn = cartDrawer.querySelector('#cartCheckout');
+  if (checkoutBtn) {
+    checkoutBtn.textContent = allowMesa ? 'Enviar orden a cocina' : 'Pagar y recoger';
+    checkoutBtn.addEventListener('click', submitOrder);
+  }
+  document.body.appendChild(cartDrawer);
+}
+
+function loadCartState() {
+  if (!cartKey || typeof localStorage === 'undefined') return { items: {} };
+  try {
+    const raw = localStorage.getItem(cartKey);
+    if (!raw) return { items: {} };
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== 'object') return { items: {} };
+    return { items: data.items || {} };
+  } catch {
+    return { items: {} };
+  }
+}
+
+function saveCartState() {
+  if (!cartKey || typeof localStorage === 'undefined') return;
+  localStorage.setItem(cartKey, JSON.stringify(cartState));
+}
+
+function updateCartItem(idProducto, delta) {
+  const key = String(idProducto);
+  const current = cartState.items[key] || { idProducto, qty: 0 };
+  const nextQty = Math.max(0, (current.qty || 0) + delta);
+  if (nextQty === 0) {
+    delete cartState.items[key];
+  } else {
+    cartState.items[key] = { idProducto, qty: nextQty };
+  }
+  saveCartState();
+  updateCartUi();
+}
+
+function removeCartItem(idProducto) {
+  const key = String(idProducto);
+  delete cartState.items[key];
+  saveCartState();
+  updateCartUi();
+}
+
+function getCartItemsArray() {
+  return Object.values(cartState.items || {}).filter((i) => Number.isFinite(Number(i.idProducto)) && Number(i.qty) > 0);
+}
+
+function updateCartUi() {
+  if (!cartFab || !cartDrawer) return;
+  const items = getCartItemsArray();
+  const count = items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
+  const countEl = cartFab.querySelector('#cartCount');
+  if (countEl) countEl.textContent = String(count);
+  cartFab.classList.toggle('hidden', count === 0);
+
+  const cartItemsEl = cartDrawer.querySelector('#cartItems');
+  const cartTotalEl = cartDrawer.querySelector('#cartTotal');
+  if (!cartItemsEl || !cartTotalEl) return;
+  if (count === 0) {
+    cartItemsEl.innerHTML = '<p class="text-sm text-gray-500">Tu carrito está vacío.</p>';
+    cartTotalEl.textContent = '$0.00';
+    return;
+  }
+
+  let total = 0;
+  cartItemsEl.innerHTML = '';
+  items.forEach((item) => {
+    const product = productosById.get(Number(item.idProducto));
+    const price = Number(product?.precio) || 0;
+    total += price * Number(item.qty);
+    const row = document.createElement('div');
+    row.className = 'flex items-center justify-between gap-3';
+    row.innerHTML = `
+      <div class="flex-1">
+        <div class="font-medium text-sm">${product?.nombre || `Producto ${item.idProducto}`}</div>
+        <div class="text-xs text-gray-500">$${price.toFixed(2)}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" data-cart-action="dec" data-id="${item.idProducto}" class="w-7 h-7 rounded-full border text-sm">-</button>
+        <span class="min-w-[20px] text-center text-sm">${item.qty}</span>
+        <button type="button" data-cart-action="inc" data-id="${item.idProducto}" class="w-7 h-7 rounded-full border text-sm">+</button>
+      </div>
+      <button type="button" data-cart-action="remove" data-id="${item.idProducto}" class="text-xs text-gray-400">Quitar</button>
+    `;
+    cartItemsEl.appendChild(row);
+  });
+  cartTotalEl.textContent = `$${total.toFixed(2)}`;
+}
+
+async function submitOrder() {
+  const items = getCartItemsArray();
+  if (!items.length) return;
+  const payload = {
+    idComercio: Number(idComercio),
+    items: items.map((i) => ({ idProducto: Number(i.idProducto), qty: Number(i.qty) })),
+    mode: orderMode,
+    mesa: mesaParam || null,
+    source: orderSource,
+    idempotencyKey: `order_${idComercio}_${orderMode}_${mesaParam || 'na'}_${Date.now()}`,
+  };
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token || SUPABASE_ANON_KEY;
+    const resp = await fetch(`${FUNCTIONS_BASE}/clover-create-order`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const msg = json?.error || json?.details?.message || `Error creando orden (${resp.status})`;
+      alert(msg);
+      return;
+    }
+
+    if (orderMode === 'pickup') {
+      const url = json?.checkout_url || json?.order?.checkout_url;
+      if (url) {
+        window.location.href = url;
+        return;
+      }
+      alert('No se pudo obtener el enlace de pago.');
+      return;
+    }
+
+    alert('Orden enviada. El pago se realiza en el local.');
+    cartState = { items: {} };
+    saveCartState();
+    updateCartUi();
+    if (cartDrawer) cartDrawer.classList.add('hidden');
+  } catch (err) {
+    alert(err?.message || 'Error inesperado al enviar la orden.');
   }
 }
