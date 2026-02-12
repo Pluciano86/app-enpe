@@ -56,7 +56,7 @@ async function mostrarBotonMenu() {
     }
   }
 
-  btnVerMenu.href = `menu/menuComercio.html?id=${idParaMenu}`;
+  btnVerMenu.href = `menu/menuComercio.html?idComercio=${idParaMenu}&modo=pickup&source=app`;
   btnVerMenu.style.display = 'inline-block';
   btnVerMenu.classList.remove('hidden');
   btnVerMenu.classList.add(
