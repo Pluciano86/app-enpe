@@ -94,11 +94,22 @@ let renderToken = 0;
 let seccionActivaId = null;
 const menuButtons = new Map(); // idMenu -> { btn, titleEl, descEl }
 
-let cartState = { items: {} };
-let cartFab = null;
+let cartState = { items: [] };
 let cartDrawer = null;
-let orderBanner = null;
+let cartBar = null;
+let cartBarPlaceholder = null;
+let cartBarInitialTop = 0;
+let cartBarSticky = false;
 let cartKey = null;
+let modifiersDrawer = null;
+let currentModifiersProduct = null;
+const modifierGroupsCache = new Map();
+const modifierItemsCache = new Map();
+const modifierItemGroupMap = new Map();
+const modifierMapBuiltForProduct = new Set();
+let productTaxMap = new Map();
+let defaultTaxRates = [];
+let taxRateDenominator = 10000000;
 
 const getCurrentLang = () => {
   const stored = (typeof localStorage !== 'undefined' && localStorage.getItem('lang')) || '';
@@ -380,6 +391,7 @@ async function cargarDatos() {
   productosBase.forEach((p) => {
     if (p?.id) productosById.set(p.id, p);
   });
+  await cargarTaxRates(menuIds);
   if (allowOrdering) updateCartUi();
 
   seccionesEl.innerHTML = '';
@@ -556,7 +568,19 @@ async function cargarDatos() {
               btn.type = 'button';
               btn.className = 'text-sm font-semibold px-3 py-2 rounded-lg bg-black text-white';
               btn.textContent = 'Agregar';
-              btn.addEventListener('click', () => updateCartItem(p.id, 1));
+              btn.addEventListener('click', async () => {
+                try {
+                  const groups = await fetchModifierGroups(p.id);
+                  if (!groups || groups.length === 0) {
+                    addLineItem(p, []);
+                    return;
+                  }
+                  openModifiersDrawer(p);
+                } catch (err) {
+                  console.warn('Error cargando opciones:', err);
+                  addLineItem(p, []);
+                }
+              });
               actions.appendChild(btn);
             }
           }
@@ -674,55 +698,445 @@ async function actualizarTitulosSecciones() {
   }
 }
 
+async function cargarTaxRates(menuIds) {
+  if (!menuIds?.length) return;
+  try {
+    const { data: productosAll, error: prodErr } = await supabase
+      .from('productos')
+      .select('id, idMenu')
+      .in('idMenu', menuIds);
+    if (prodErr) throw prodErr;
+    const productIds = (productosAll || []).map((p) => p.id).filter(Boolean);
+    if (!productIds.length) return;
+
+    let ptrRows = [];
+    {
+      const { data, error } = await supabase
+        .from('producto_tax_rates')
+        .select('*')
+        .in('idproducto', productIds);
+      if (!error) {
+        ptrRows = data || [];
+      } else {
+        const msg = (error?.message || '').toLowerCase();
+        if (!(msg.includes('column') && msg.includes('idproducto') && msg.includes('does not exist'))) {
+          throw error;
+        }
+        const fallback = await supabase
+          .from('producto_tax_rates')
+          .select('*')
+          .in('idProducto', productIds);
+        if (fallback.error) throw fallback.error;
+        ptrRows = fallback.data || [];
+      }
+    }
+
+    let taxRatesRows = [];
+    {
+      const { data, error } = await supabase
+        .from('clover_tax_rates')
+        .select('*')
+        .eq('idcomercio', Number(idComercio));
+      if (!error) {
+        taxRatesRows = data || [];
+      } else {
+        const msg = (error?.message || '').toLowerCase();
+        if (!(msg.includes('column') && msg.includes('idcomercio') && msg.includes('does not exist'))) {
+          throw error;
+        }
+        const fallback = await supabase
+          .from('clover_tax_rates')
+          .select('*')
+          .eq('idComercio', Number(idComercio));
+        if (fallback.error) throw fallback.error;
+        taxRatesRows = fallback.data || [];
+      }
+    }
+
+    defaultTaxRates = (taxRatesRows || []).filter((r) => r.is_default === true);
+    const taxRateById = new Map();
+    (taxRatesRows || []).forEach((r) => taxRateById.set(r.id, r));
+
+    productTaxMap = new Map();
+    (ptrRows || []).forEach((row) => {
+      const idProducto = Number(row.idproducto ?? row.idProducto);
+      const idTaxRate = Number(row.idtaxrate ?? row.idTaxRate);
+      if (!Number.isFinite(idProducto) || !Number.isFinite(idTaxRate)) return;
+      const rateRow = taxRateById.get(idTaxRate);
+      if (!rateRow) return;
+      const list = productTaxMap.get(idProducto) || [];
+      list.push(rateRow);
+      productTaxMap.set(idProducto, list);
+    });
+  } catch (err) {
+    console.warn('[menu] No se pudieron cargar tax rates:', err);
+    productTaxMap = new Map();
+    defaultTaxRates = [];
+  }
+}
+
+function renderModifiersByGroup(mods) {
+  if (!mods.length) return '';
+  const resolveGroup = (m) => {
+    const raw = m.grupo || m.grupo_nombre || m.group;
+    if (raw && raw !== 'Opciones') return raw;
+    const id = Number(m.idOpcionItem || m.id);
+    const mapped = modifierItemGroupMap.get(id);
+    return mapped || raw || 'Opciones';
+  };
+  const grouped = new Map();
+  mods.forEach((m) => {
+    const group = resolveGroup(m);
+    const list = grouped.get(group) || [];
+    list.push(m);
+    grouped.set(group, list);
+  });
+  let html = '';
+  for (const [group, list] of grouped.entries()) {
+    html += `<div class="font-semibold text-xs text-gray-600 mt-2">${group}:</div>`;
+    list.forEach((m) => {
+      const price = m.precio_extra ? ` + $${Number(m.precio_extra).toFixed(2)}` : '';
+      html += `<div class="text-xs text-gray-500">• ${m.nombre}${price}</div>`;
+    });
+  }
+  return html;
+}
+
+function getTaxRateForProduct(idProducto) {
+  const rates = productTaxMap.get(Number(idProducto)) || [];
+  const useRates = rates.length ? rates : defaultTaxRates;
+  const sum = useRates.reduce((acc, r) => acc + (Number(r.rate) || 0), 0);
+  return sum / taxRateDenominator;
+}
+
 function initOrderUi() {
   if (!idComercio) return;
 
   cartKey = `cart_${idComercio}_${orderMode}${mesaParam ? `_mesa_${mesaParam}` : ''}`;
   cartState = loadCartState();
 
-  orderBanner = document.createElement('div');
-  orderBanner.id = 'orderModeBanner';
-  orderBanner.className = 'w-[90%] max-w-5xl mx-auto mt-2 mb-2 px-4 py-3 rounded-xl border text-sm';
-  orderBanner.classList.add('hidden');
-
   const mainEl = document.getElementById('seccionesMenu');
   if (mainEl && mainEl.parentElement) {
-    mainEl.parentElement.insertBefore(orderBanner, mainEl);
-  }
-
-  if (allowMesa) {
-    orderBanner.textContent = mesaParam ? `Orden en mesa ${mesaParam}. Paga en el local.` : 'Orden en mesa. Paga en el local.';
-    orderBanner.classList.remove('hidden');
-    orderBanner.classList.add('bg-green-50', 'border-green-200', 'text-green-800');
-  } else if (orderMode === 'pickup') {
-    if (allowPickup) {
-      orderBanner.textContent = 'Ordena y paga para recoger en el comercio.';
-      orderBanner.classList.remove('hidden');
-      orderBanner.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-800');
-    } else {
-      orderBanner.textContent = 'La orden para recoger solo está disponible desde la app.';
-      orderBanner.classList.remove('hidden');
-      orderBanner.classList.add('bg-yellow-50', 'border-yellow-200', 'text-yellow-800');
-    }
+    cartBarPlaceholder = document.createElement('div');
+    cartBarPlaceholder.className = 'hidden';
+    mainEl.parentElement.insertBefore(cartBarPlaceholder, mainEl);
   }
 
   if (!allowOrdering) return;
-  buildCartFab();
+  buildCartBar();
   buildCartDrawer();
-  updateCartUi();
+  buildModifiersDrawer();
+  ensureModifierMapForCart().finally(() => updateCartUi());
+  setupCartBarSticky();
 }
 
-function buildCartFab() {
-  cartFab = document.createElement('button');
-  cartFab.id = 'cartFab';
-  cartFab.type = 'button';
-  cartFab.className = 'fixed z-40 right-4 bottom-24 sm:bottom-28 bg-black text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2';
-  cartFab.innerHTML = '<i class="fa-solid fa-basket-shopping"></i><span>Carrito</span><span id="cartCount" class="ml-1 text-xs bg-white/20 px-2 py-0.5 rounded-full">0</span>';
-  cartFab.addEventListener('click', () => {
+function buildCartBar() {
+  if (!cartBarPlaceholder || cartBar) return;
+  cartBar = document.createElement('button');
+  cartBar.id = 'cartBar';
+  cartBar.type = 'button';
+  cartBar.className = 'w-[90%] max-w-5xl mx-auto mt-2 mb-2 px-4 py-3 rounded-xl border bg-white shadow-sm flex items-center justify-between gap-3';
+  cartBar.innerHTML = `
+    <div class="flex items-center gap-3">
+      <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-black text-white">
+        <i class="fa-solid fa-basket-shopping"></i>
+      </span>
+      <span class="font-semibold text-sm sm:text-base">Ver Orden</span>
+    </div>
+    <span id="cartCount" class="text-sm font-semibold bg-black text-white px-3 py-1 rounded-full">0</span>
+  `;
+  cartBar.addEventListener('click', () => {
     if (!cartDrawer) return;
     cartDrawer.classList.remove('hidden');
   });
-  document.body.appendChild(cartFab);
+  cartBarPlaceholder.parentElement.insertBefore(cartBar, cartBarPlaceholder.nextSibling);
+}
+
+function buildModifiersDrawer() {
+  if (modifiersDrawer) return;
+  modifiersDrawer = document.createElement('div');
+  modifiersDrawer.id = 'modifiersDrawer';
+  modifiersDrawer.className = 'fixed inset-0 z-50 hidden';
+  modifiersDrawer.innerHTML = `
+    <div data-mod-close class="absolute inset-0 bg-black/60"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl p-4 max-h-[80vh] overflow-auto">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold">Personaliza tu orden</h3>
+        <button type="button" data-mod-close class="text-gray-500 hover:text-gray-700">Cancelar</button>
+      </div>
+      <div class="flex flex-col items-center text-center gap-2 mb-3">
+        <img id="modProductImage" src="" alt="" class="hidden w-24 h-24 rounded-xl object-cover" />
+        <div id="modProductName" class="text-base sm:text-lg font-semibold"></div>
+      </div>
+      <div id="modGroups" class="space-y-4"></div>
+      <button id="modAddBtn" type="button" class="mt-4 w-full bg-black text-white py-3 rounded-lg font-semibold">Agregar al carrito</button>
+    </div>
+  `;
+  modifiersDrawer.addEventListener('click', (e) => {
+    if (e.target?.closest('[data-mod-close]')) {
+      closeModifiersDrawer();
+    }
+  });
+  const addBtn = modifiersDrawer.querySelector('#modAddBtn');
+  if (addBtn) addBtn.addEventListener('click', handleConfirmModifiers);
+  document.body.appendChild(modifiersDrawer);
+}
+
+function openModifiersDrawer(product) {
+  if (!modifiersDrawer) buildModifiersDrawer();
+  currentModifiersProduct = product;
+  renderModifiersForProduct(product);
+  modifiersDrawer.classList.remove('hidden');
+}
+
+function closeModifiersDrawer() {
+  if (!modifiersDrawer) return;
+  modifiersDrawer.classList.add('hidden');
+}
+
+async function fetchModifierGroups(productId) {
+  if (modifierGroupsCache.has(productId)) return modifierGroupsCache.get(productId);
+  const tryFetch = async (col) => {
+    let resp = await supabase
+      .from('producto_opcion_grupos')
+      .select('*')
+      .eq(col, productId)
+      .eq('activo', true)
+      .order('orden', { ascending: true });
+    if (!resp.error) return resp.data || [];
+    const msg = (resp.error?.message || '').toLowerCase();
+    if (msg.includes('column') && msg.includes('activo') && msg.includes('does not exist')) {
+      resp = await supabase
+        .from('producto_opcion_grupos')
+        .select('*')
+        .eq(col, productId)
+        .order('orden', { ascending: true });
+      if (!resp.error) return resp.data || [];
+    }
+    if (msg.includes('does not exist')) return null;
+    throw resp.error;
+  };
+  let groups = await tryFetch('idproducto');
+  if (groups === null) groups = await tryFetch('idProducto');
+  groups = groups || [];
+  modifierGroupsCache.set(productId, groups);
+  return groups;
+}
+
+async function fetchModifierItems(groupId) {
+  if (modifierItemsCache.has(groupId)) return modifierItemsCache.get(groupId);
+  const tryFetch = async (col) => {
+    let resp = await supabase
+      .from('producto_opcion_items')
+      .select('*')
+      .eq(col, groupId)
+      .eq('activo', true)
+      .order('orden', { ascending: true });
+    if (!resp.error) return resp.data || [];
+    const msg = (resp.error?.message || '').toLowerCase();
+    if (msg.includes('column') && msg.includes('activo') && msg.includes('does not exist')) {
+      resp = await supabase
+        .from('producto_opcion_items')
+        .select('*')
+        .eq(col, groupId)
+        .order('orden', { ascending: true });
+      if (!resp.error) return resp.data || [];
+    }
+    if (msg.includes('does not exist')) return null;
+    throw resp.error;
+  };
+  let items = await tryFetch('idgrupo');
+  if (items === null) items = await tryFetch('idGrupo');
+  items = items || [];
+  modifierItemsCache.set(groupId, items);
+  return items;
+}
+
+async function renderModifiersForProduct(product) {
+  const groupsContainer = modifiersDrawer?.querySelector('#modGroups');
+  const nameEl = modifiersDrawer?.querySelector('#modProductName');
+  const imgEl = modifiersDrawer?.querySelector('#modProductImage');
+  if (!groupsContainer || !nameEl) return;
+  nameEl.textContent = product?.nombre ? product.nombre : '';
+  if (imgEl) {
+    if (product?.imagen) {
+      imgEl.src = `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${product.imagen}`;
+      imgEl.alt = product?.nombre || 'Producto';
+      imgEl.classList.remove('hidden');
+    } else {
+      imgEl.classList.add('hidden');
+    }
+  }
+  groupsContainer.innerHTML = '<p class="text-sm text-gray-500">Cargando opciones...</p>';
+
+  let groups = [];
+  try {
+    groups = await fetchModifierGroups(product.id);
+  } catch (err) {
+    groupsContainer.innerHTML = '<p class="text-sm text-red-500">No se pudieron cargar opciones.</p>';
+    return;
+  }
+
+  if (!groups.length) {
+    groupsContainer.innerHTML = '<p class="text-sm text-gray-500">Este producto no tiene opciones.</p>';
+    return;
+  }
+
+  const selectedByGroup = new Map();
+  groupsContainer.innerHTML = '';
+
+  for (const group of groups) {
+    const groupId = group.id;
+    const nombre = group.nombre || 'Opciones';
+    const minSel = Number(group.min_sel ?? 0) || 0;
+    const maxSelRaw = Number(group.max_sel ?? 0) || 0;
+    const requerido = Boolean(group.requerido) || minSel > 0;
+    const maxSel = maxSelRaw > 0 ? maxSelRaw : 0;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'border rounded-xl p-3';
+    wrapper.innerHTML = `
+      <div class="flex items-center justify-between">
+        <h4 class="font-semibold text-sm">${nombre}</h4>
+        <span class="text-xs text-gray-500">
+          ${requerido ? `Requerido${minSel ? ` (mín ${minSel})` : ''}` : 'Opcional'}
+          ${maxSel ? ` · máx ${maxSel}` : ''}
+        </span>
+      </div>
+      <div class="mt-2 space-y-2" data-group="${groupId}"></div>
+    `;
+    groupsContainer.appendChild(wrapper);
+    selectedByGroup.set(groupId, []);
+
+    let items = [];
+    try {
+      items = await fetchModifierItems(groupId);
+    } catch {
+      items = [];
+    }
+
+    const listEl = wrapper.querySelector(`[data-group="${groupId}"]`);
+    if (!listEl) continue;
+    if (!items.length) {
+      listEl.innerHTML = '<p class="text-xs text-gray-500">Sin opciones disponibles.</p>';
+      continue;
+    }
+
+    for (const item of items) {
+      const extra = Number(item.precio_extra || 0);
+      if (group?.nombre || group?.id) {
+        const groupName = group?.nombre || 'Opciones';
+        modifierItemGroupMap.set(item.id, groupName);
+      }
+      const inputType = maxSel === 1 ? 'radio' : 'checkbox';
+      const row = document.createElement('label');
+      row.className = 'flex items-center justify-between gap-2 text-sm';
+      row.innerHTML = `
+        <span class="flex items-center gap-2">
+          <input type="${inputType}" name="group-${groupId}" data-group-id="${groupId}" data-item-id="${item.id}" />
+          <span>${item.nombre || 'Opción'}</span>
+        </span>
+        <span class="text-xs text-gray-500">${extra ? `+ $${extra.toFixed(2)}` : ''}</span>
+      `;
+      const input = row.querySelector('input');
+      if (input) {
+        input.addEventListener('change', (e) => {
+          const selected = selectedByGroup.get(groupId) || [];
+          if (inputType === 'radio') {
+            selectedByGroup.set(groupId, [item]);
+            return;
+          }
+          if (e.target.checked) {
+            if (maxSel && selected.length >= maxSel) {
+              e.target.checked = false;
+              alert(`Puedes seleccionar máximo ${maxSel} opciones.`);
+              return;
+            }
+            selected.push(item);
+            selectedByGroup.set(groupId, selected);
+          } else {
+            const next = selected.filter((s) => s.id !== item.id);
+            selectedByGroup.set(groupId, next);
+          }
+        });
+      }
+      listEl.appendChild(row);
+    }
+  }
+
+  modifiersDrawer.selectedByGroup = selectedByGroup;
+}
+
+async function ensureModifierMapForCart() {
+  const items = getCartItemsArray();
+  if (!items.length) return;
+  const productIds = Array.from(new Set(items.map((i) => Number(i.idProducto)).filter((id) => Number.isFinite(id))));
+  for (const productId of productIds) {
+    if (modifierMapBuiltForProduct.has(productId)) continue;
+    let groups = [];
+    try {
+      groups = await fetchModifierGroups(productId);
+    } catch {
+      groups = [];
+    }
+    for (const group of groups) {
+      let groupItems = [];
+      try {
+        groupItems = await fetchModifierItems(group.id);
+      } catch {
+        groupItems = [];
+      }
+      for (const item of groupItems) {
+        const groupName = group?.nombre || 'Opciones';
+        modifierItemGroupMap.set(item.id, groupName);
+      }
+    }
+    modifierMapBuiltForProduct.add(productId);
+  }
+
+  let changed = false;
+  for (const item of cartState.items) {
+    const mods = item.modifiers || [];
+    mods.forEach((m) => {
+      if (m.grupo && m.grupo !== 'Opciones') return;
+      const id = Number(m.idOpcionItem || m.id);
+      const mapped = modifierItemGroupMap.get(id);
+      if (mapped && mapped !== m.grupo) {
+        m.grupo = mapped;
+        changed = true;
+      }
+    });
+  }
+  if (changed) saveCartState();
+}
+
+function handleConfirmModifiers() {
+  if (!currentModifiersProduct || !modifiersDrawer) return;
+  const groups = modifierGroupsCache.get(currentModifiersProduct.id) || [];
+  const selectedByGroup = modifiersDrawer.selectedByGroup || new Map();
+  for (const group of groups) {
+    const groupId = group.id;
+    const minSel = Number(group.min_sel ?? 0) || 0;
+    const requerido = Boolean(group.requerido) || minSel > 0;
+    const selected = selectedByGroup.get(groupId) || [];
+    if (requerido && selected.length < Math.max(minSel, 1)) {
+      alert(`Debes elegir al menos ${Math.max(minSel, 1)} opción(es) en "${group.nombre || 'Opciones'}".`);
+      return;
+    }
+  }
+
+  const modifiers = [];
+  for (const group of groups) {
+    const selected = selectedByGroup.get(group.id) || [];
+    selected.forEach((item) => modifiers.push({
+      idOpcionItem: item.id,
+      nombre: item.nombre || 'Opción',
+      precio_extra: Number(item.precio_extra || 0),
+      grupo: group.nombre || 'Opciones',
+    }));
+  }
+  addLineItem(currentModifiersProduct, modifiers);
+  closeModifiersDrawer();
 }
 
 function buildCartDrawer() {
@@ -737,9 +1151,19 @@ function buildCartDrawer() {
         <button type="button" data-cart-close class="text-gray-500 hover:text-gray-700">Cerrar</button>
       </div>
       <div id="cartItems" class="space-y-3"></div>
-      <div class="mt-4 flex items-center justify-between text-base font-semibold">
-        <span>Total</span>
-        <span id="cartTotal">$0.00</span>
+      <div class="mt-4 space-y-1 text-sm">
+        <div class="flex items-center justify-between">
+          <span>Subtotal</span>
+          <span id="cartSubtotal">$0.00</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span>Tax</span>
+          <span id="cartTax">$0.00</span>
+        </div>
+        <div class="flex items-center justify-between text-base font-semibold">
+          <span>Total</span>
+          <span id="cartTotal">$0.00</span>
+        </div>
       </div>
       <button id="cartCheckout" type="button" class="mt-4 w-full bg-green-600 text-white py-3 rounded-lg font-semibold"></button>
     </div>
@@ -753,12 +1177,12 @@ function buildCartDrawer() {
   cartDrawer.addEventListener('click', (e) => {
     const btn = e.target?.closest('[data-cart-action]');
     if (!btn) return;
-    const id = Number(btn.getAttribute('data-id'));
-    if (!Number.isFinite(id)) return;
+    const key = btn.getAttribute('data-key');
+    if (!key) return;
     const action = btn.getAttribute('data-cart-action');
-    if (action === 'inc') updateCartItem(id, 1);
-    if (action === 'dec') updateCartItem(id, -1);
-    if (action === 'remove') removeCartItem(id);
+    if (action === 'inc') updateLineQty(key, 1);
+    if (action === 'dec') updateLineQty(key, -1);
+    if (action === 'remove') removeLineItem(key);
   });
   const checkoutBtn = cartDrawer.querySelector('#cartCheckout');
   if (checkoutBtn) {
@@ -769,15 +1193,26 @@ function buildCartDrawer() {
 }
 
 function loadCartState() {
-  if (!cartKey || typeof localStorage === 'undefined') return { items: {} };
+  if (!cartKey || typeof localStorage === 'undefined') return { items: [] };
   try {
     const raw = localStorage.getItem(cartKey);
-    if (!raw) return { items: {} };
+    if (!raw) return { items: [] };
     const data = JSON.parse(raw);
-    if (!data || typeof data !== 'object') return { items: {} };
-    return { items: data.items || {} };
+    if (!data || typeof data !== 'object') return { items: [] };
+    if (Array.isArray(data.items)) return { items: data.items };
+    // Compatibilidad con versión anterior (objeto por idProducto)
+    if (data.items && typeof data.items === 'object') {
+      const items = Object.values(data.items).map((item) => ({
+        key: String(item.idProducto),
+        idProducto: Number(item.idProducto),
+        qty: Number(item.qty || 0),
+        modifiers: [],
+      })).filter((item) => Number.isFinite(item.idProducto) && item.qty > 0);
+      return { items };
+    }
+    return { items: [] };
   } catch {
-    return { items: {} };
+    return { items: [] };
   }
 }
 
@@ -786,70 +1221,159 @@ function saveCartState() {
   localStorage.setItem(cartKey, JSON.stringify(cartState));
 }
 
-function updateCartItem(idProducto, delta) {
-  const key = String(idProducto);
-  const current = cartState.items[key] || { idProducto, qty: 0 };
-  const nextQty = Math.max(0, (current.qty || 0) + delta);
-  if (nextQty === 0) {
-    delete cartState.items[key];
+function getCartItemsArray() {
+  return (cartState.items || []).filter((i) => Number.isFinite(Number(i.idProducto)) && Number(i.qty) > 0);
+}
+
+function buildLineKey(idProducto, modifiers = []) {
+  const ids = modifiers.map((m) => Number(m.idOpcionItem || m.id)).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  return `${idProducto}:${ids.join(',')}`;
+}
+
+function addLineItem(producto, modifiers = []) {
+  const idProducto = Number(producto?.id ?? producto?.idProducto);
+  if (!Number.isFinite(idProducto)) return;
+  const key = buildLineKey(idProducto, modifiers);
+  const existing = cartState.items.find((i) => i.key === key);
+  if (existing) {
+    existing.qty += 1;
   } else {
-    cartState.items[key] = { idProducto, qty: nextQty };
+    cartState.items.push({
+      key,
+      idProducto,
+      qty: 1,
+      modifiers: modifiers.map((m) => ({
+        idOpcionItem: Number(m.idOpcionItem || m.id),
+        nombre: m.nombre || m.name || 'Opción',
+        grupo: m.grupo || m.grupo_nombre || m.group || 'Opciones',
+        precio_extra: Number(m.precio_extra || 0),
+      })),
+    });
   }
   saveCartState();
   updateCartUi();
 }
 
-function removeCartItem(idProducto) {
-  const key = String(idProducto);
-  delete cartState.items[key];
+function updateLineQty(key, delta) {
+  const idx = cartState.items.findIndex((i) => i.key === key);
+  if (idx === -1) return;
+  const nextQty = Math.max(0, Number(cartState.items[idx].qty || 0) + delta);
+  if (nextQty === 0) {
+    cartState.items.splice(idx, 1);
+  } else {
+    cartState.items[idx].qty = nextQty;
+  }
   saveCartState();
   updateCartUi();
 }
 
-function getCartItemsArray() {
-  return Object.values(cartState.items || {}).filter((i) => Number.isFinite(Number(i.idProducto)) && Number(i.qty) > 0);
+function removeLineItem(key) {
+  const idx = cartState.items.findIndex((i) => i.key === key);
+  if (idx === -1) return;
+  cartState.items.splice(idx, 1);
+  saveCartState();
+  updateCartUi();
 }
 
 function updateCartUi() {
-  if (!cartFab || !cartDrawer) return;
+  if (!cartBar || !cartDrawer) return;
   const items = getCartItemsArray();
   const count = items.reduce((sum, item) => sum + Number(item.qty || 0), 0);
-  const countEl = cartFab.querySelector('#cartCount');
+  const countEl = cartBar.querySelector('#cartCount');
   if (countEl) countEl.textContent = String(count);
-  cartFab.classList.toggle('hidden', count === 0);
+  cartBar.classList.toggle('opacity-70', count === 0);
+  cartBar.classList.toggle('cursor-not-allowed', count === 0);
 
   const cartItemsEl = cartDrawer.querySelector('#cartItems');
+  const cartSubtotalEl = cartDrawer.querySelector('#cartSubtotal');
+  const cartTaxEl = cartDrawer.querySelector('#cartTax');
   const cartTotalEl = cartDrawer.querySelector('#cartTotal');
-  if (!cartItemsEl || !cartTotalEl) return;
+  if (!cartItemsEl || !cartSubtotalEl || !cartTaxEl || !cartTotalEl) return;
   if (count === 0) {
     cartItemsEl.innerHTML = '<p class="text-sm text-gray-500">Tu carrito está vacío.</p>';
+    cartSubtotalEl.textContent = '$0.00';
+    cartTaxEl.textContent = '$0.00';
     cartTotalEl.textContent = '$0.00';
     return;
   }
 
-  let total = 0;
+  let subtotal = 0;
+  let taxTotal = 0;
   cartItemsEl.innerHTML = '';
   items.forEach((item) => {
     const product = productosById.get(Number(item.idProducto));
     const price = Number(product?.precio) || 0;
-    total += price * Number(item.qty);
+    const modsExtra = (item.modifiers || []).reduce((sum, m) => sum + (Number(m.precio_extra) || 0), 0);
+    const unitPrice = price + modsExtra;
+    const lineSubtotal = unitPrice * Number(item.qty);
+    subtotal += lineSubtotal;
+    const taxRate = getTaxRateForProduct(item.idProducto);
+    taxTotal += lineSubtotal * taxRate;
+    const mods = (item.modifiers || []).map((m) => ({
+      nombre: m.nombre || 'Opción',
+      precio_extra: Number(m.precio_extra || 0),
+      grupo: m.grupo || 'Opciones',
+    }));
     const row = document.createElement('div');
-    row.className = 'flex items-center justify-between gap-3';
+    row.className = 'border rounded-xl p-3';
+    const imgSrc = product?.imagen
+      ? `https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios/${product.imagen}`
+      : '';
     row.innerHTML = `
-      <div class="flex-1">
-        <div class="font-medium text-sm">${product?.nombre || `Producto ${item.idProducto}`}</div>
-        <div class="text-xs text-gray-500">$${price.toFixed(2)}</div>
+      <div class="flex items-start gap-3">
+        ${imgSrc ? `<img src="${imgSrc}" alt="${product?.nombre || ''}" class="w-20 h-20 rounded-lg object-cover flex-shrink-0" />` : ''}
+        <div class="flex-1">
+          <div class="font-semibold text-base sm:text-lg">${product?.nombre || `Producto ${item.idProducto}`}</div>
+          <div class="text-xs text-gray-500 space-y-1 mt-1">
+            ${renderModifiersByGroup(mods)}
+          </div>
+          <div class="mt-2 text-sm font-semibold">Total: $${lineSubtotal.toFixed(2)}</div>
+        </div>
+        <div class="flex flex-col items-center gap-2 min-w-[90px]">
+          <div class="flex items-center gap-2">
+            <button type="button" data-cart-action="dec" data-key="${item.key}" class="w-8 h-8 rounded-full border text-sm">-</button>
+            <span class="min-w-[24px] text-center text-sm">${item.qty}</span>
+            <button type="button" data-cart-action="inc" data-key="${item.key}" class="w-8 h-8 rounded-full border text-sm">+</button>
+          </div>
+          <button type="button" data-cart-action="remove" data-key="${item.key}" class="text-xs text-gray-400">Quitar</button>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <button type="button" data-cart-action="dec" data-id="${item.idProducto}" class="w-7 h-7 rounded-full border text-sm">-</button>
-        <span class="min-w-[20px] text-center text-sm">${item.qty}</span>
-        <button type="button" data-cart-action="inc" data-id="${item.idProducto}" class="w-7 h-7 rounded-full border text-sm">+</button>
-      </div>
-      <button type="button" data-cart-action="remove" data-id="${item.idProducto}" class="text-xs text-gray-400">Quitar</button>
     `;
     cartItemsEl.appendChild(row);
   });
-  cartTotalEl.textContent = `$${total.toFixed(2)}`;
+  cartSubtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+  cartTaxEl.textContent = `$${taxTotal.toFixed(2)}`;
+  cartTotalEl.textContent = `$${(subtotal + taxTotal).toFixed(2)}`;
+}
+
+function setupCartBarSticky() {
+  if (!cartBar || !cartBarPlaceholder) return;
+  const update = () => {
+    if (!cartBar) return;
+    if (!cartBarInitialTop) {
+      const rect = cartBar.getBoundingClientRect();
+      cartBarInitialTop = rect.top + window.scrollY;
+    }
+    const shouldStick = window.scrollY > cartBarInitialTop;
+    if (shouldStick && !cartBarSticky) {
+      cartBarSticky = true;
+      const rect = cartBar.getBoundingClientRect();
+      cartBar.classList.add('cart-bar-fixed');
+      cartBarPlaceholder.classList.remove('hidden');
+      cartBarPlaceholder.style.height = `${rect.height}px`;
+    } else if (!shouldStick && cartBarSticky) {
+      cartBarSticky = false;
+      cartBar.classList.remove('cart-bar-fixed');
+      cartBarPlaceholder.classList.add('hidden');
+      cartBarPlaceholder.style.height = '0px';
+    }
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', () => {
+    cartBarInitialTop = 0;
+    update();
+  });
+  requestAnimationFrame(update);
 }
 
 async function submitOrder() {
@@ -857,7 +1381,11 @@ async function submitOrder() {
   if (!items.length) return;
   const payload = {
     idComercio: Number(idComercio),
-    items: items.map((i) => ({ idProducto: Number(i.idProducto), qty: Number(i.qty) })),
+    items: items.map((i) => ({
+      idProducto: Number(i.idProducto),
+      qty: Number(i.qty),
+      modifiers: (i.modifiers || []).map((m) => ({ idOpcionItem: Number(m.idOpcionItem || m.id) })),
+    })),
     mode: orderMode,
     mesa: mesaParam || null,
     source: orderSource,
