@@ -8,6 +8,7 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CLOVER_CLIENT_ID = Deno.env.get("CLOVER_CLIENT_ID") ?? "";
 const CLOVER_CLIENT_SECRET = Deno.env.get("CLOVER_CLIENT_SECRET") ?? "";
 const CLOVER_REDIRECT_URI = Deno.env.get("CLOVER_REDIRECT_URI") ?? "";
+const CLOVER_OAUTH_BASE = Deno.env.get("CLOVER_OAUTH_BASE") ?? "https://sandbox.dev.clover.com";
 const CLOVER_API_BASE = Deno.env.get("CLOVER_API_BASE") ?? "https://apisandbox.dev.clover.com";
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -64,7 +65,7 @@ class CloverApiError extends Error {
 }
 
 async function refreshToken(refresh_token: string) {
-  const tokenUrl = new URL("/oauth/v2/token", CLOVER_API_BASE);
+  const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token,

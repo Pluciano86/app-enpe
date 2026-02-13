@@ -1490,6 +1490,10 @@ async function submitOrder() {
     });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) {
+      if (resp.status === 401 && json?.needs_reconnect) {
+        alert('Este comercio debe reconectar Clover para aceptar pagos.');
+        return;
+      }
       const rawMsg = json?.raw ? ` (${json.raw})` : '';
       const msg = (json?.error ? `${json.error}${rawMsg}` : '') || json?.details?.message || `Error creando orden (${resp.status})`;
       alert(msg);

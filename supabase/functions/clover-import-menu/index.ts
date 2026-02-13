@@ -65,7 +65,7 @@ class CloverApiError extends Error {
 }
 
 async function refreshToken(refresh_token: string) {
-  const tokenUrl = new URL("/oauth/v2/token", CLOVER_API_BASE);
+  const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token,
