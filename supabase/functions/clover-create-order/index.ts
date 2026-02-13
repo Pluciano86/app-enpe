@@ -20,6 +20,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function normalizeOauthBase(raw: string) {
+  const fallback = "https://sandbox.dev.clover.com";
+  if (!raw) return fallback;
+  try {
+    const url = new URL(raw);
+    if (url.pathname.startsWith("/auth-token")) {
+      url.pathname = "/";
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return fallback;
+  }
+}
+
+const OAUTH_BASE = normalizeOauthBase(CLOVER_OAUTH_BASE);
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -65,7 +81,7 @@ class CloverApiError extends Error {
 }
 
 async function refreshToken(refresh_token: string) {
-  const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
+  const tokenUrl = new URL("/oauth/v2/token", OAUTH_BASE);
   const payload = {
     grant_type: "refresh_token",
     refresh_token,
@@ -75,25 +91,29 @@ async function refreshToken(refresh_token: string) {
   };
   const formBody = new URLSearchParams(payload).toString();
   const jsonBody = JSON.stringify(payload);
-  const preferJson = CLOVER_OAUTH_BASE.includes("auth-token");
-  const firstType = preferJson ? "application/json" : "application/x-www-form-urlencoded";
-  const secondType = preferJson ? "application/x-www-form-urlencoded" : "application/json";
-  const doRequest = (contentType: string) =>
-    fetch(tokenUrl.toString(), {
+  const doRequest = async (contentType: string, body: string) => {
+    const resp = await fetch(tokenUrl.toString(), {
       method: "POST",
       headers: { "Content-Type": contentType, "Accept": "application/json" },
-      body: contentType === "application/json" ? jsonBody : formBody,
+      body,
     });
+    const raw = await resp.text();
+    return { resp, raw };
+  };
 
-  let resp = await doRequest(firstType);
-  if (resp.ok) return await resp.json();
+  const first = await doRequest("application/json", jsonBody);
+  if (first.resp.ok) return JSON.parse(first.raw);
 
-  if (resp.status === 415) {
-    resp = await doRequest(secondType);
-    if (resp.ok) return await resp.json();
+  const shouldFallback =
+    first.resp.status === 415 ||
+    first.raw.toLowerCase().includes("code") && first.raw.toLowerCase().includes("must not be null");
+  if (shouldFallback) {
+    const second = await doRequest("application/x-www-form-urlencoded", formBody);
+    if (second.resp.ok) return JSON.parse(second.raw);
+    throw new Error(`Refresh token failed ${second.resp.status}: ${second.raw}`);
   }
 
-  throw new Error(`Refresh token failed ${resp.status}: ${await resp.text()}`);
+  throw new Error(`Refresh token failed ${first.resp.status}: ${first.raw}`);
 }
 
 async function cloverRequest(
