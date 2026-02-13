@@ -466,7 +466,20 @@ async function handler(req: Request): Promise<Response> {
     cloverOrderId = orderResp?.id ?? null;
   } catch (err) {
     console.error("Error creando orden Clover", err);
-    return jsonResponse({ error: "No se pudo crear orden en Clover" }, 502);
+    if (err instanceof CloverApiError) {
+      return jsonResponse({
+        error: "No se pudo crear orden en Clover",
+        status: err.status,
+        raw: err.raw,
+        url: err.url,
+        baseUrl: CLOVER_API_BASE,
+        merchantId,
+      }, 502);
+    }
+    return jsonResponse({
+      error: "No se pudo crear orden en Clover",
+      details: err instanceof Error ? err.message : String(err),
+    }, 502);
   }
 
   if (!cloverOrderId) return jsonResponse({ error: "Clover order id no recibido" }, 502);
@@ -516,7 +529,20 @@ async function handler(req: Request): Promise<Response> {
       checkoutSessionId = checkoutResp?.checkoutSessionId ?? checkoutResp?.id ?? null;
     } catch (err) {
       console.error("Error creando Hosted Checkout", err);
-      return jsonResponse({ error: "No se pudo crear checkout en Clover" }, 502);
+      if (err instanceof CloverApiError) {
+        return jsonResponse({
+          error: "No se pudo crear checkout en Clover",
+          status: err.status,
+          raw: err.raw,
+          url: err.url,
+          baseUrl: CLOVER_API_BASE,
+          merchantId,
+        }, 502);
+      }
+      return jsonResponse({
+        error: "No se pudo crear checkout en Clover",
+        details: err instanceof Error ? err.message : String(err),
+      }, 502);
     }
 
     if (!checkoutUrl) return jsonResponse({ error: "checkout_url no recibido" }, 502);

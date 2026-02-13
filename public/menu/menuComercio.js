@@ -1490,7 +1490,8 @@ async function submitOrder() {
     });
     const json = await resp.json().catch(() => ({}));
     if (!resp.ok) {
-      const msg = json?.error || json?.details?.message || `Error creando orden (${resp.status})`;
+      const rawMsg = json?.raw ? ` (${json.raw})` : '';
+      const msg = (json?.error ? `${json.error}${rawMsg}` : '') || json?.details?.message || `Error creando orden (${resp.status})`;
       alert(msg);
       return;
     }
