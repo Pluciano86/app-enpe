@@ -103,6 +103,7 @@ let cartBarSticky = false;
 let cartKey = null;
 let modifiersDrawer = null;
 let currentModifiersProduct = null;
+let currentEditLine = null;
 const modifierGroupsCache = new Map();
 const modifierItemsCache = new Map();
 const modifierItemGroupMap = new Map();
@@ -869,6 +870,10 @@ function buildModifiersDrawer() {
         <div id="modProductName" class="text-base sm:text-lg font-semibold"></div>
       </div>
       <div id="modGroups" class="space-y-4"></div>
+      <div class="mt-4">
+        <label for="modNote" class="text-sm font-semibold text-gray-700">Notas (opcional)</label>
+        <textarea id="modNote" rows="3" class="mt-2 w-full border rounded-lg p-2 text-sm" placeholder="Ej: sin cebolla, salsa aparte"></textarea>
+      </div>
       <button id="modAddBtn" type="button" class="mt-4 w-full bg-black text-white py-3 rounded-lg font-semibold">Agregar al carrito</button>
     </div>
   `;
@@ -882,16 +887,20 @@ function buildModifiersDrawer() {
   document.body.appendChild(modifiersDrawer);
 }
 
-function openModifiersDrawer(product) {
+function openModifiersDrawer(product, lineItem = null) {
   if (!modifiersDrawer) buildModifiersDrawer();
   currentModifiersProduct = product;
-  renderModifiersForProduct(product);
+  currentEditLine = lineItem ? { key: lineItem.key, qty: lineItem.qty, modifiers: lineItem.modifiers || [] } : null;
+  renderModifiersForProduct(product, lineItem);
+  const addBtn = modifiersDrawer.querySelector('#modAddBtn');
+  if (addBtn) addBtn.textContent = currentEditLine ? 'Guardar cambios' : 'Agregar al carrito';
   modifiersDrawer.classList.remove('hidden');
 }
 
 function closeModifiersDrawer() {
   if (!modifiersDrawer) return;
   modifiersDrawer.classList.add('hidden');
+  currentEditLine = null;
 }
 
 async function fetchModifierGroups(productId) {
@@ -952,10 +961,11 @@ async function fetchModifierItems(groupId) {
   return items;
 }
 
-async function renderModifiersForProduct(product) {
+async function renderModifiersForProduct(product, lineItem = null) {
   const groupsContainer = modifiersDrawer?.querySelector('#modGroups');
   const nameEl = modifiersDrawer?.querySelector('#modProductName');
   const imgEl = modifiersDrawer?.querySelector('#modProductImage');
+  const noteEl = modifiersDrawer?.querySelector('#modNote');
   if (!groupsContainer || !nameEl) return;
   nameEl.textContent = product?.nombre ? product.nombre : '';
   if (imgEl) {
@@ -968,6 +978,7 @@ async function renderModifiersForProduct(product) {
     }
   }
   groupsContainer.innerHTML = '<p class="text-sm text-gray-500">Cargando opciones...</p>';
+  if (noteEl) noteEl.value = lineItem?.nota || '';
 
   let groups = [];
   try {
@@ -983,6 +994,9 @@ async function renderModifiersForProduct(product) {
   }
 
   const selectedByGroup = new Map();
+  const preselected = new Set(
+    (lineItem?.modifiers || []).map((m) => Number(m.idOpcionItem || m.id)).filter((n) => Number.isFinite(n))
+  );
   groupsContainer.innerHTML = '';
 
   for (const group of groups) {
@@ -991,7 +1005,7 @@ async function renderModifiersForProduct(product) {
     const minSel = Number(group.min_sel ?? 0) || 0;
     const maxSelRaw = Number(group.max_sel ?? 0) || 0;
     const requerido = Boolean(group.requerido) || minSel > 0;
-    const maxSel = maxSelRaw > 0 ? maxSelRaw : 0;
+    const maxSel = maxSelRaw > 1 ? maxSelRaw : 1;
 
     const wrapper = document.createElement('div');
     wrapper.className = 'border rounded-xl p-3';
@@ -1000,7 +1014,7 @@ async function renderModifiersForProduct(product) {
         <h4 class="font-semibold text-sm">${nombre}</h4>
         <span class="text-xs text-gray-500">
           ${requerido ? `Requerido${minSel ? ` (mín ${minSel})` : ''}` : 'Opcional'}
-          ${maxSel ? ` · máx ${maxSel}` : ''}
+          ${maxSel > 1 ? ` · máx ${maxSel}` : ''}
         </span>
       </div>
       <div class="mt-2 space-y-2" data-group="${groupId}"></div>
@@ -1028,7 +1042,7 @@ async function renderModifiersForProduct(product) {
         const groupName = group?.nombre || 'Opciones';
         modifierItemGroupMap.set(item.id, groupName);
       }
-      const inputType = maxSel === 1 ? 'radio' : 'checkbox';
+      const inputType = maxSel > 1 ? 'checkbox' : 'radio';
       const row = document.createElement('label');
       row.className = 'flex items-center justify-between gap-2 text-sm';
       row.innerHTML = `
@@ -1040,6 +1054,16 @@ async function renderModifiersForProduct(product) {
       `;
       const input = row.querySelector('input');
       if (input) {
+        if (preselected.has(item.id)) {
+          input.checked = true;
+          if (inputType === 'radio') {
+            selectedByGroup.set(groupId, [item]);
+          } else {
+            const selected = selectedByGroup.get(groupId) || [];
+            selected.push(item);
+            selectedByGroup.set(groupId, selected);
+          }
+        }
         input.addEventListener('change', (e) => {
           const selected = selectedByGroup.get(groupId) || [];
           if (inputType === 'radio') {
@@ -1114,6 +1138,8 @@ function handleConfirmModifiers() {
   if (!currentModifiersProduct || !modifiersDrawer) return;
   const groups = modifierGroupsCache.get(currentModifiersProduct.id) || [];
   const selectedByGroup = modifiersDrawer.selectedByGroup || new Map();
+  const noteEl = modifiersDrawer.querySelector('#modNote');
+  const nota = noteEl ? String(noteEl.value || '').trim() : '';
   for (const group of groups) {
     const groupId = group.id;
     const minSel = Number(group.min_sel ?? 0) || 0;
@@ -1135,7 +1161,11 @@ function handleConfirmModifiers() {
       grupo: group.nombre || 'Opciones',
     }));
   }
-  addLineItem(currentModifiersProduct, modifiers);
+  if (currentEditLine) {
+    replaceLineItem(currentEditLine.key, currentModifiersProduct, modifiers, currentEditLine.qty, nota);
+  } else {
+    addLineItem(currentModifiersProduct, modifiers, nota);
+  }
   closeModifiersDrawer();
 }
 
@@ -1183,10 +1213,11 @@ function buildCartDrawer() {
     if (action === 'inc') updateLineQty(key, 1);
     if (action === 'dec') updateLineQty(key, -1);
     if (action === 'remove') removeLineItem(key);
+    if (action === 'edit') editLineItem(key);
   });
   const checkoutBtn = cartDrawer.querySelector('#cartCheckout');
   if (checkoutBtn) {
-    checkoutBtn.textContent = allowMesa ? 'Enviar orden a cocina' : 'Pagar y recoger';
+    checkoutBtn.textContent = allowMesa ? 'Enviar orden a cocina' : 'Proceder con el pago';
     checkoutBtn.addEventListener('click', submitOrder);
   }
   document.body.appendChild(cartDrawer);
@@ -1207,10 +1238,14 @@ function loadCartState() {
         idProducto: Number(item.idProducto),
         qty: Number(item.qty || 0),
         modifiers: [],
+        nota: '',
       })).filter((item) => Number.isFinite(item.idProducto) && item.qty > 0);
       return { items };
     }
-    return { items: [] };
+    return { items: (data.items || []).map((item) => ({
+      ...item,
+      nota: String(item.nota || '').trim(),
+    })) };
   } catch {
     return { items: [] };
   }
@@ -1225,15 +1260,16 @@ function getCartItemsArray() {
   return (cartState.items || []).filter((i) => Number.isFinite(Number(i.idProducto)) && Number(i.qty) > 0);
 }
 
-function buildLineKey(idProducto, modifiers = []) {
+function buildLineKey(idProducto, modifiers = [], nota = '') {
   const ids = modifiers.map((m) => Number(m.idOpcionItem || m.id)).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
-  return `${idProducto}:${ids.join(',')}`;
+  const noteKey = String(nota || '').trim().toLowerCase();
+  return `${idProducto}:${ids.join(',')}:${noteKey}`;
 }
 
-function addLineItem(producto, modifiers = []) {
+function addLineItem(producto, modifiers = [], nota = '') {
   const idProducto = Number(producto?.id ?? producto?.idProducto);
   if (!Number.isFinite(idProducto)) return;
-  const key = buildLineKey(idProducto, modifiers);
+  const key = buildLineKey(idProducto, modifiers, nota);
   const existing = cartState.items.find((i) => i.key === key);
   if (existing) {
     existing.qty += 1;
@@ -1248,10 +1284,13 @@ function addLineItem(producto, modifiers = []) {
         grupo: m.grupo || m.grupo_nombre || m.group || 'Opciones',
         precio_extra: Number(m.precio_extra || 0),
       })),
+      nota: String(nota || '').trim(),
     });
   }
   saveCartState();
   updateCartUi();
+  const nombre = producto?.nombre || `Producto ${idProducto}`;
+  alert(`${nombre} añadido correctamente`);
 }
 
 function updateLineQty(key, delta) {
@@ -1270,9 +1309,49 @@ function updateLineQty(key, delta) {
 function removeLineItem(key) {
   const idx = cartState.items.findIndex((i) => i.key === key);
   if (idx === -1) return;
+  const line = cartState.items[idx];
+  const product = productosById.get(Number(line.idProducto));
+  const nombre = product?.nombre || `Producto ${line.idProducto}`;
+  if (!confirm(`¿Seguro deseas eliminar ${nombre} del pedido?`)) return;
   cartState.items.splice(idx, 1);
   saveCartState();
   updateCartUi();
+}
+
+function replaceLineItem(oldKey, producto, modifiers, qty, nota = '') {
+  const idProducto = Number(producto?.id ?? producto?.idProducto);
+  if (!Number.isFinite(idProducto)) return;
+  const newKey = buildLineKey(idProducto, modifiers, nota);
+  const mappedModifiers = modifiers.map((m) => ({
+    idOpcionItem: Number(m.idOpcionItem || m.id),
+    nombre: m.nombre || m.name || 'Opción',
+    grupo: m.grupo || m.grupo_nombre || m.group || 'Opciones',
+    precio_extra: Number(m.precio_extra || 0),
+  }));
+  const oldIdx = cartState.items.findIndex((i) => i.key === oldKey);
+  if (oldIdx === -1) {
+    cartState.items.push({ key: newKey, idProducto, qty: qty || 1, modifiers: mappedModifiers, nota: String(nota || '').trim() });
+  } else {
+    const existingIdx = cartState.items.findIndex((i) => i.key === newKey && i.key !== oldKey);
+    if (existingIdx >= 0) {
+      cartState.items[existingIdx].qty += qty || 1;
+      cartState.items.splice(oldIdx, 1);
+    } else {
+      cartState.items[oldIdx] = { key: newKey, idProducto, qty: qty || 1, modifiers: mappedModifiers, nota: String(nota || '').trim() };
+    }
+  }
+  saveCartState();
+  updateCartUi();
+  const nombre = producto?.nombre || `Producto ${idProducto}`;
+  alert(`${nombre} actualizado correctamente`);
+}
+
+function editLineItem(key) {
+  const line = cartState.items.find((i) => i.key === key);
+  if (!line) return;
+  const product = productosById.get(Number(line.idProducto));
+  if (!product) return;
+  openModifiersDrawer(product, line);
 }
 
 function updateCartUi() {
@@ -1322,20 +1401,24 @@ function updateCartUi() {
     row.innerHTML = `
       <div class="flex items-start gap-3">
         ${imgSrc ? `<img src="${imgSrc}" alt="${product?.nombre || ''}" class="w-20 h-20 rounded-lg object-cover flex-shrink-0" />` : ''}
-        <div class="flex-1">
-          <div class="font-semibold text-base sm:text-lg">${product?.nombre || `Producto ${item.idProducto}`}</div>
-          <div class="text-xs text-gray-500 space-y-1 mt-1">
-            ${renderModifiersByGroup(mods)}
-          </div>
-          <div class="mt-2 text-sm font-semibold">Total: $${lineSubtotal.toFixed(2)}</div>
+      <div class="flex-1">
+        <div class="font-semibold text-base sm:text-lg">${product?.nombre || `Producto ${item.idProducto}`}</div>
+        <div class="text-xs text-gray-500 space-y-1 mt-1">
+          ${renderModifiersByGroup(mods)}
         </div>
+        ${item.nota ? `<div class="text-xs text-gray-500 mt-2"><span class="font-semibold text-gray-600">Nota:</span> ${item.nota}</div>` : ''}
+        <div class="mt-2 text-sm font-semibold">Total: $${lineSubtotal.toFixed(2)}</div>
+      </div>
         <div class="flex flex-col items-center gap-2 min-w-[90px]">
           <div class="flex items-center gap-2">
             <button type="button" data-cart-action="dec" data-key="${item.key}" class="w-8 h-8 rounded-full border text-sm">-</button>
             <span class="min-w-[24px] text-center text-sm">${item.qty}</span>
             <button type="button" data-cart-action="inc" data-key="${item.key}" class="w-8 h-8 rounded-full border text-sm">+</button>
           </div>
-          <button type="button" data-cart-action="remove" data-key="${item.key}" class="text-xs text-gray-400">Quitar</button>
+          <div class="flex items-center gap-3 text-xs">
+            <button type="button" data-cart-action="edit" data-key="${item.key}" class="text-blue-500">Editar</button>
+            <button type="button" data-cart-action="remove" data-key="${item.key}" class="text-red-500">Eliminar</button>
+          </div>
         </div>
       </div>
     `;
@@ -1385,6 +1468,7 @@ async function submitOrder() {
       idProducto: Number(i.idProducto),
       qty: Number(i.qty),
       modifiers: (i.modifiers || []).map((m) => ({ idOpcionItem: Number(m.idOpcionItem || m.id) })),
+      nota: i.nota || '',
     })),
     mode: orderMode,
     mesa: mesaParam || null,
