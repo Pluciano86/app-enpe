@@ -15,6 +15,43 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+const columnCache = new Map<string, Set<string> | null>();
+
+async function getTableColumns(table: string, schema = "public"): Promise<Set<string> | null> {
+  const key = `${schema}.${table}`;
+  if (columnCache.has(key)) return columnCache.get(key)!;
+  try {
+    const { data, error } = await supabase
+      .from("information_schema.columns")
+      .select("column_name")
+      .eq("table_schema", schema)
+      .eq("table_name", table);
+    if (error) {
+      console.warn("[clover-create-order] No se pudo obtener columnas de", table, error.message);
+      columnCache.set(key, null);
+      return null;
+    }
+    const cols = new Set<string>();
+    (data || []).forEach((r: any) => r?.column_name && cols.add(r.column_name));
+    columnCache.set(key, cols);
+    return cols;
+  } catch (err) {
+    console.warn("[clover-create-order] Error inesperado obteniendo columnas", err);
+    columnCache.set(key, null);
+    return null;
+  }
+}
+
+async function resolveColumn(table: string, candidates: string[]) {
+  const cols = await getTableColumns(table);
+  if (cols) {
+    for (const name of candidates) {
+      if (cols.has(name)) return name;
+    }
+  }
+  return candidates[0];
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -617,21 +654,23 @@ async function handler(req: Request): Promise<Response> {
     if (!checkoutUrl) return jsonResponse({ error: "checkout_url no recibido" }, 502);
   }
 
+  const orderInsert: Record<string, unknown> = {
+    idcomercio: idComercio,
+    clover_merchant_id: merchantId,
+    clover_order_id: cloverOrderId,
+    checkout_session_id: checkoutSessionId,
+    checkout_url: checkoutUrl,
+    total,
+    status: mode === "mesa" ? "sent" : "pending",
+    idempotency_key: idempotencyKey,
+    order_type: mode,
+    mesa: mesa,
+    source: source,
+  };
+
   const { data: orderRow, error: orderErr } = await supabase
     .from("ordenes")
-    .insert({
-      idComercio,
-      clover_merchant_id: merchantId,
-      clover_order_id: cloverOrderId,
-      checkout_session_id: checkoutSessionId,
-      checkout_url: checkoutUrl,
-      total,
-      status: mode === "mesa" ? "sent" : "pending",
-      idempotency_key: idempotencyKey,
-      order_type: mode,
-      mesa: mesa,
-      source: source,
-    })
+    .insert(orderInsert)
     .select("id, status, checkout_url, clover_order_id, checkout_session_id, total")
     .single();
 
@@ -663,8 +702,8 @@ async function handler(req: Request): Promise<Response> {
     const modsExtra = mods.reduce((sum, mod) => sum + (toNumber(mod.precio_extra) || 0), 0);
     const unitPrice = Number.isFinite(basePrice) ? basePrice + modsExtra : 0;
     return {
-      idOrden: orderRow.id,
-      idProducto: item.idProducto,
+      idorden: orderRow.id,
+      idproducto: item.idProducto,
       clover_item_id: product.clover_item_id,
       qty: item.qty,
       price_snapshot: unitPrice,
