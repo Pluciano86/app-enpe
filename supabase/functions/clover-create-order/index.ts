@@ -20,21 +20,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-function normalizeOauthBase(raw: string) {
-  const fallback = "https://sandbox.dev.clover.com";
+function normalizeOauthApiBase(raw: string) {
+  const fallback = "https://apisandbox.dev.clover.com";
   if (!raw) return fallback;
   try {
     const url = new URL(raw);
     if (url.pathname.startsWith("/auth-token")) {
       url.pathname = "/";
     }
+    const host = url.host.toLowerCase();
+    let mappedHost = host;
+    if (host === "sandbox.dev.clover.com") mappedHost = "apisandbox.dev.clover.com";
+    else if (host === "www.clover.com") mappedHost = "api.clover.com";
+    else if (host === "www.eu.clover.com") mappedHost = "api.eu.clover.com";
+    else if (host === "www.la.clover.com") mappedHost = "api.la.clover.com";
+    url.host = mappedHost;
+    url.pathname = "/";
     return url.toString().replace(/\/$/, "");
   } catch {
     return fallback;
   }
 }
 
-const OAUTH_BASE = normalizeOauthBase(CLOVER_OAUTH_BASE);
+const OAUTH_API_BASE = normalizeOauthApiBase(CLOVER_OAUTH_BASE);
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -81,13 +89,10 @@ class CloverApiError extends Error {
 }
 
 async function refreshToken(refresh_token: string) {
-  const tokenUrl = new URL("/oauth/v2/token", OAUTH_BASE);
+  const tokenUrl = new URL("/oauth/v2/refresh", OAUTH_API_BASE);
   const payload = {
-    grant_type: "refresh_token",
     refresh_token,
     client_id: CLOVER_CLIENT_ID,
-    client_secret: CLOVER_CLIENT_SECRET,
-    redirect_uri: CLOVER_REDIRECT_URI,
   };
   const formBody = new URLSearchParams(payload).toString();
   const jsonBody = JSON.stringify(payload);

@@ -40,6 +40,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function normalizeOauthApiBase(raw: string) {
+  const fallback = "https://apisandbox.dev.clover.com";
+  if (!raw) return fallback;
+  try {
+    const url = new URL(raw);
+    if (url.pathname.startsWith("/auth-token")) {
+      url.pathname = "/";
+    }
+    const host = url.host.toLowerCase();
+    let mappedHost = host;
+    if (host === "sandbox.dev.clover.com") mappedHost = "apisandbox.dev.clover.com";
+    else if (host === "www.clover.com") mappedHost = "api.clover.com";
+    else if (host === "www.eu.clover.com") mappedHost = "api.eu.clover.com";
+    else if (host === "www.la.clover.com") mappedHost = "api.la.clover.com";
+    url.host = mappedHost;
+    url.pathname = "/";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return fallback;
+  }
+}
+
+const OAUTH_API_BASE = normalizeOauthApiBase(CLOVER_OAUTH_BASE);
+
 function fromBase64Url(str: string) {
   const pad = str.length % 4 === 0 ? 0 : 4 - (str.length % 4);
   const b64 = str.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat(pad);
@@ -104,7 +128,7 @@ async function verifyState(state: string) {
 }
 
 async function exchangeToken(code: string) {
-  const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
+  const tokenUrl = new URL("/oauth/v2/token", OAUTH_API_BASE);
 
   const resp = await fetch(tokenUrl.toString(), {
     method: "POST",
