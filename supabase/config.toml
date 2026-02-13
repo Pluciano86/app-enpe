@@ -207,6 +207,9 @@ verify_jwt = false
 
 [functions.clover-create-order]
 verify_jwt = false
+
+[functions.clover-refresh-tokens]
+verify_jwt = false
 # timebox = "24h"
 # Force log out if the user has been inactive longer than the specified duration.
 # inactivity_timeout = "8h"
