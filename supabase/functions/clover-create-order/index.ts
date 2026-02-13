@@ -261,28 +261,64 @@ async function handler(req: Request): Promise<Response> {
   const modifierByProduct = new Map<number, any[]>();
 
   if (modifierIds.length) {
-    const { data: groups, error: groupsErr } = await supabase
-      .from("producto_opcion_grupos")
-      .select("id, idProducto")
-      .in("idProducto", productIds);
-    if (groupsErr) return jsonResponse({ error: groupsErr.message }, 500);
-    const groupIds = (groups ?? []).map((g) => g.id);
+    let groups: any[] = [];
+    let groupIds: number[] = [];
     const groupToProduct = new Map<number, number>();
-    for (const g of groups ?? []) groupToProduct.set(g.id, g.idProducto);
+    {
+      const resp = await supabase
+        .from("producto_opcion_grupos")
+        .select("id, idproducto")
+        .in("idproducto", productIds);
+      if (!resp.error) {
+        groups = resp.data ?? [];
+        groupIds = (groups ?? []).map((g) => g.id);
+        for (const g of groups ?? []) groupToProduct.set(g.id, g.idproducto);
+      } else {
+        const msg = (resp.error?.message || "").toLowerCase();
+        if (!(msg.includes("column") && msg.includes("idproducto") && msg.includes("does not exist"))) {
+          return jsonResponse({ error: resp.error.message }, 500);
+        }
+        const fallback = await supabase
+          .from("producto_opcion_grupos")
+          .select("id, idProducto")
+          .in("idProducto", productIds);
+        if (fallback.error) return jsonResponse({ error: fallback.error.message }, 500);
+        groups = fallback.data ?? [];
+        groupIds = (groups ?? []).map((g) => g.id);
+        for (const g of groups ?? []) groupToProduct.set(g.id, g.idProducto);
+      }
+    }
 
     if (!groupIds.length) {
       return jsonResponse({ error: "Los productos no tienen modificadores configurados" }, 400);
     }
 
-    const { data: modItems, error: modErr } = await supabase
-      .from("producto_opcion_items")
-      .select("id, clover_modifier_id, precio_extra, idGrupo, nombre")
-      .in("id", modifierIds)
-      .in("idGrupo", groupIds);
-    if (modErr) return jsonResponse({ error: modErr.message }, 500);
+    let modItems: any[] = [];
+    {
+      const resp = await supabase
+        .from("producto_opcion_items")
+        .select("id, clover_modifier_id, precio_extra, idgrupo, nombre")
+        .in("id", modifierIds)
+        .in("idgrupo", groupIds);
+      if (!resp.error) {
+        modItems = resp.data ?? [];
+      } else {
+        const msg = (resp.error?.message || "").toLowerCase();
+        if (!(msg.includes("column") && msg.includes("idgrupo") && msg.includes("does not exist"))) {
+          return jsonResponse({ error: resp.error.message }, 500);
+        }
+        const fallback = await supabase
+          .from("producto_opcion_items")
+          .select("id, clover_modifier_id, precio_extra, idGrupo, nombre")
+          .in("id", modifierIds)
+          .in("idGrupo", groupIds);
+        if (fallback.error) return jsonResponse({ error: fallback.error.message }, 500);
+        modItems = fallback.data ?? [];
+      }
+    }
 
     for (const m of modItems ?? []) {
-      const productId = groupToProduct.get(m.idGrupo);
+      const productId = groupToProduct.get(m.idgrupo ?? m.idGrupo);
       if (!productId) continue;
       modifierMap.set(m.id, { ...m, idProducto: productId });
       const list = modifierByProduct.get(productId) ?? [];
@@ -312,29 +348,61 @@ async function handler(req: Request): Promise<Response> {
     }
   }
 
-  const { data: taxRows, error: taxErr } = await supabase
-    .from("clover_tax_rates")
-    .select("id, clover_tax_rate_id, nombre, rate, is_default")
-    .eq("idComercio", idComercio);
-  if (taxErr) return jsonResponse({ error: taxErr.message }, 500);
+  let taxRows: any[] = [];
+  {
+    const resp = await supabase
+      .from("clover_tax_rates")
+      .select("id, clover_tax_rate_id, nombre, rate, is_default")
+      .eq("idcomercio", idComercio);
+    if (!resp.error) {
+      taxRows = resp.data ?? [];
+    } else {
+      const msg = (resp.error?.message || "").toLowerCase();
+      if (!(msg.includes("column") && msg.includes("idcomercio") && msg.includes("does not exist"))) {
+        return jsonResponse({ error: resp.error.message }, 500);
+      }
+      const fallback = await supabase
+        .from("clover_tax_rates")
+        .select("id, clover_tax_rate_id, nombre, rate, is_default")
+        .eq("idComercio", idComercio);
+      if (fallback.error) return jsonResponse({ error: fallback.error.message }, 500);
+      taxRows = fallback.data ?? [];
+    }
+  }
 
   const taxById = new Map<number, any>();
   for (const t of taxRows ?? []) taxById.set(t.id, t);
   const defaultTaxRates = (taxRows ?? []).filter((t) => Boolean(t.is_default) && Number.isFinite(Number(t.rate)));
 
-  const { data: productTaxRows, error: productTaxErr } = await supabase
-    .from("producto_tax_rates")
-    .select("idProducto, idTaxRate")
-    .in("idProducto", productIds);
-  if (productTaxErr) return jsonResponse({ error: productTaxErr.message }, 500);
+  let productTaxRows: any[] = [];
+  {
+    const resp = await supabase
+      .from("producto_tax_rates")
+      .select("idproducto, idtaxrate")
+      .in("idproducto", productIds);
+    if (!resp.error) {
+      productTaxRows = resp.data ?? [];
+    } else {
+      const msg = (resp.error?.message || "").toLowerCase();
+      if (!(msg.includes("column") && msg.includes("idproducto") && msg.includes("does not exist"))) {
+        return jsonResponse({ error: resp.error.message }, 500);
+      }
+      const fallback = await supabase
+        .from("producto_tax_rates")
+        .select("idProducto, idTaxRate")
+        .in("idProducto", productIds);
+      if (fallback.error) return jsonResponse({ error: fallback.error.message }, 500);
+      productTaxRows = fallback.data ?? [];
+    }
+  }
 
   const productTaxMap = new Map<number, any[]>();
   for (const row of productTaxRows ?? []) {
-    const rate = taxById.get(row.idTaxRate);
+    const rate = taxById.get(row.idtaxrate ?? row.idTaxRate);
     if (!rate) continue;
-    const list = productTaxMap.get(row.idProducto) ?? [];
+    const list = productTaxMap.get(row.idproducto ?? row.idProducto) ?? [];
     list.push(rate);
-    productTaxMap.set(row.idProducto, list);
+    productTaxMap.set(row.idproducto ?? row.idProducto, list);
   }
 
   const resolveTaxRates = (idProducto: number) => {
