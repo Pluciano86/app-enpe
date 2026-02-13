@@ -40,23 +40,37 @@ function isAuthorized(req: Request) {
 
 async function refreshToken(refresh_token: string) {
   const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
-  const body = new URLSearchParams({
+  const payload = {
     grant_type: "refresh_token",
     refresh_token,
     client_id: CLOVER_CLIENT_ID,
     client_secret: CLOVER_CLIENT_SECRET,
     redirect_uri: CLOVER_REDIRECT_URI,
-  });
-  const resp = await fetch(tokenUrl.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!resp.ok) throw new Error(`Refresh token failed ${resp.status}: ${await resp.text()}`);
-  return await resp.json();
+  };
+  const formBody = new URLSearchParams(payload).toString();
+  const jsonBody = JSON.stringify(payload);
+  const preferJson = CLOVER_OAUTH_BASE.includes("auth-token");
+  const firstType = preferJson ? "application/json" : "application/x-www-form-urlencoded";
+  const secondType = preferJson ? "application/x-www-form-urlencoded" : "application/json";
+  const doRequest = (contentType: string) =>
+    fetch(tokenUrl.toString(), {
+      method: "POST",
+      headers: { "Content-Type": contentType, "Accept": "application/json" },
+      body: contentType === "application/json" ? jsonBody : formBody,
+    });
+
+  let resp = await doRequest(firstType);
+  if (resp.ok) return await resp.json();
+
+  if (resp.status === 415) {
+    resp = await doRequest(secondType);
+    if (resp.ok) return await resp.json();
+  }
+
+  throw new Error(`Refresh token failed ${resp.status}: ${await resp.text()}`);
 }
 
-async function processBatch(offset: number) {
+async function processBatch(offset: number, failures: Array<{ idComercio: number | null; error: string }>) {
   const { data, error } = await supabase
     .from("clover_conexiones")
     .select("id, idComercio, refresh_token, expires_at")
@@ -96,6 +110,12 @@ async function processBatch(offset: number) {
     } catch (err) {
       console.warn("[clover-refresh] failed", { idComercio: row.idComercio, err: err instanceof Error ? err.message : String(err) });
       failed++;
+      if (failures.length < 10) {
+        failures.push({
+          idComercio: row.idComercio ?? null,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   }
 
@@ -113,9 +133,10 @@ async function handler(req: Request): Promise<Response> {
   let refreshed = 0;
   let skipped = 0;
   let failed = 0;
+  const failures: Array<{ idComercio: number | null; error: string }> = [];
 
   while (true) {
-    const batch = await processBatch(offset);
+    const batch = await processBatch(offset, failures);
     total += batch.count;
     refreshed += batch.refreshed;
     skipped += batch.skipped;
@@ -124,7 +145,7 @@ async function handler(req: Request): Promise<Response> {
     offset += PAGE_SIZE;
   }
 
-  return jsonResponse({ ok: true, total, refreshed, skipped, failed });
+  return jsonResponse({ ok: true, total, refreshed, skipped, failed, failures });
 }
 
 Deno.serve(handler);

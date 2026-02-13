@@ -66,20 +66,34 @@ class CloverApiError extends Error {
 
 async function refreshToken(refresh_token: string) {
   const tokenUrl = new URL("/oauth/v2/token", CLOVER_OAUTH_BASE);
-  const body = new URLSearchParams({
+  const payload = {
     grant_type: "refresh_token",
     refresh_token,
     client_id: CLOVER_CLIENT_ID,
     client_secret: CLOVER_CLIENT_SECRET,
     redirect_uri: CLOVER_REDIRECT_URI,
-  });
-  const resp = await fetch(tokenUrl.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!resp.ok) throw new Error(`Refresh token failed ${resp.status}: ${await resp.text()}`);
-  return await resp.json();
+  };
+  const formBody = new URLSearchParams(payload).toString();
+  const jsonBody = JSON.stringify(payload);
+  const preferJson = CLOVER_OAUTH_BASE.includes("auth-token");
+  const firstType = preferJson ? "application/json" : "application/x-www-form-urlencoded";
+  const secondType = preferJson ? "application/x-www-form-urlencoded" : "application/json";
+  const doRequest = (contentType: string) =>
+    fetch(tokenUrl.toString(), {
+      method: "POST",
+      headers: { "Content-Type": contentType, "Accept": "application/json" },
+      body: contentType === "application/json" ? jsonBody : formBody,
+    });
+
+  let resp = await doRequest(firstType);
+  if (resp.ok) return await resp.json();
+
+  if (resp.status === 415) {
+    resp = await doRequest(secondType);
+    if (resp.ok) return await resp.json();
+  }
+
+  throw new Error(`Refresh token failed ${resp.status}: ${await resp.text()}`);
 }
 
 async function fetchClover(path: string, token: string) {
