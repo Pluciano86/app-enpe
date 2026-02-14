@@ -1181,6 +1181,24 @@ function buildCartDrawer() {
         <button type="button" data-cart-close class="text-gray-500 hover:text-gray-700">Cerrar</button>
       </div>
       <div id="cartItems" class="space-y-3"></div>
+      <div id="checkoutCustomerFields" class="mt-4 space-y-3">
+        <div class="text-sm font-semibold text-gray-800">Datos para el recibo</div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="space-y-1">
+            <label class="text-xs text-gray-500">Nombre</label>
+            <input id="cartFirstName" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Nombre" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs text-gray-500">Apellido</label>
+            <input id="cartLastName" type="text" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Apellido" />
+          </div>
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs text-gray-500">Email</label>
+          <input id="cartEmail" type="email" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="correo@ejemplo.com" />
+          <p class="text-[11px] text-gray-400">El recibo será enviado a este email.</p>
+        </div>
+      </div>
       <div class="mt-4 space-y-1 text-sm">
         <div class="flex items-center justify-between">
           <span>Subtotal</span>
@@ -1219,6 +1237,10 @@ function buildCartDrawer() {
   if (checkoutBtn) {
     checkoutBtn.textContent = allowMesa ? 'Enviar orden a cocina' : 'Proceder con el pago';
     checkoutBtn.addEventListener('click', submitOrder);
+  }
+  const customerFields = cartDrawer.querySelector('#checkoutCustomerFields');
+  if (customerFields && !allowPickup) {
+    customerFields.classList.add('hidden');
   }
   document.body.appendChild(cartDrawer);
 }
@@ -1462,6 +1484,27 @@ function setupCartBarSticky() {
 async function submitOrder() {
   const items = getCartItemsArray();
   if (!items.length) return;
+  let customer = null;
+  if (allowPickup) {
+    const firstName = String(document.querySelector('#cartFirstName')?.value || '').trim();
+    const lastName = String(document.querySelector('#cartLastName')?.value || '').trim();
+    const email = String(document.querySelector('#cartEmail')?.value || '').trim();
+    if (!firstName || !lastName || !email) {
+      alert('Por favor completa nombre, apellido y email antes de pagar.');
+      return;
+    }
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailOk) {
+      alert('Ingresa un email válido para recibir el recibo.');
+      return;
+    }
+    customer = {
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`.trim(),
+      email,
+    };
+  }
   const payload = {
     idComercio: Number(idComercio),
     items: items.map((i) => ({
@@ -1470,6 +1513,7 @@ async function submitOrder() {
       modifiers: (i.modifiers || []).map((m) => ({ idOpcionItem: Number(m.idOpcionItem || m.id) })),
       nota: i.nota || '',
     })),
+    ...(customer ? { customer } : {}),
     mode: orderMode,
     mesa: mesaParam || null,
     source: orderSource,
