@@ -344,6 +344,7 @@ async function handler(req: Request): Promise<Response> {
   const modifierIds = Array.from(new Set(items.flatMap((item) => item.modifiers)));
   const modifierMap = new Map<number, any>();
   const modifierByProduct = new Map<number, any[]>();
+  const groupNameById = new Map<number, string>();
 
   if (modifierIds.length) {
     let groups: any[] = [];
@@ -352,12 +353,15 @@ async function handler(req: Request): Promise<Response> {
     {
       const resp = await supabase
         .from("producto_opcion_grupos")
-        .select("id, idproducto")
+        .select("id, idproducto, nombre")
         .in("idproducto", productIds);
       if (!resp.error) {
         groups = resp.data ?? [];
         groupIds = (groups ?? []).map((g) => g.id);
-        for (const g of groups ?? []) groupToProduct.set(g.id, g.idproducto);
+        for (const g of groups ?? []) {
+          groupToProduct.set(g.id, g.idproducto);
+          if (g.nombre) groupNameById.set(g.id, g.nombre);
+        }
       } else {
         const msg = (resp.error?.message || "").toLowerCase();
         if (!(msg.includes("column") && msg.includes("idproducto") && msg.includes("does not exist"))) {
@@ -365,12 +369,15 @@ async function handler(req: Request): Promise<Response> {
         }
         const fallback = await supabase
           .from("producto_opcion_grupos")
-          .select("id, idProducto")
+          .select("id, idProducto, nombre")
           .in("idProducto", productIds);
         if (fallback.error) return jsonResponse({ error: fallback.error.message }, 500);
         groups = fallback.data ?? [];
         groupIds = (groups ?? []).map((g) => g.id);
-        for (const g of groups ?? []) groupToProduct.set(g.id, g.idProducto);
+        for (const g of groups ?? []) {
+          groupToProduct.set(g.id, g.idProducto);
+          if (g.nombre) groupNameById.set(g.id, g.nombre);
+        }
       }
     }
 
@@ -405,7 +412,12 @@ async function handler(req: Request): Promise<Response> {
     for (const m of modItems ?? []) {
       const productId = groupToProduct.get(m.idgrupo ?? m.idGrupo);
       if (!productId) continue;
-      modifierMap.set(m.id, { ...m, idProducto: productId });
+      const groupId = m.idgrupo ?? m.idGrupo;
+      modifierMap.set(m.id, {
+        ...m,
+        idProducto: productId,
+        grupo_nombre: groupId ? groupNameById.get(groupId) : undefined,
+      });
       const list = modifierByProduct.get(productId) ?? [];
       list.push(m);
       modifierByProduct.set(productId, list);
@@ -511,6 +523,27 @@ async function handler(req: Request): Promise<Response> {
       }))
       .filter((r) => Number.isFinite(r.rate) && r.rate > 0);
 
+  const formatModifierNote = (mods: any[]) => {
+    if (!mods.length) return "";
+    const grouped = new Map<string, any[]>();
+    for (const mod of mods) {
+      const group = (mod.grupo_nombre ?? "Opciones").trim();
+      const list = grouped.get(group) ?? [];
+      list.push(mod);
+      grouped.set(group, list);
+    }
+    const lines: string[] = [];
+    for (const [group, list] of grouped) {
+      const label = list.map((m) => {
+        const extra = Number(m.precio_extra);
+        const extraLabel = Number.isFinite(extra) && extra > 0 ? ` (+$${extra.toFixed(2)})` : "";
+        return `${m.nombre ?? "Opcion"}${extraLabel}`;
+      }).join(", ");
+      lines.push(`${group}: ${label}`);
+    }
+    return lines.join("\n");
+  };
+
   let checkoutLineItems: Array<{ name: string; price: number; unitQty: number; note?: string; taxRates?: Array<{ name: string; rate: number }> }> = [];
   let total = 0;
   try {
@@ -524,11 +557,16 @@ async function handler(req: Request): Promise<Response> {
       const modsExtra = mods.reduce((sum, mod) => sum + (toNumber(mod.precio_extra) || 0), 0);
       const unitPrice = basePrice + modsExtra;
       const taxRates = toCheckoutTaxRates(resolveTaxRates(item.idProducto));
+      const modsNote = formatModifierNote(mods);
+      const noteParts: string[] = [];
+      if (modsNote) noteParts.push(modsNote);
+      if (item.nota) noteParts.push(`Nota: ${item.nota}`);
+      const note = noteParts.length ? noteParts.join("\n") : undefined;
       return {
         name: product?.nombre ?? `Producto ${item.idProducto}`,
         price: toCents(unitPrice),
         unitQty: item.qty,
-        note: item.nota ?? undefined,
+        note,
         ...(taxRates.length ? { taxRates } : {}),
       };
     });
