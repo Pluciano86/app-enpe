@@ -578,73 +578,73 @@ async function handler(req: Request): Promise<Response> {
   }
 
   let cloverOrderId: string | null = null;
-  try {
-    const noteBase = mode === "mesa"
-      ? (mesa ? `Mesa ${mesa} - Findixi` : "Mesa - Findixi")
-      : "Findixi Online Order";
-    const orderResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders`, {
-      method: "POST",
-      body: { state: "open", note: noteBase },
-    });
-    cloverOrderId = orderResp?.id ?? null;
-  } catch (err) {
-    console.error("Error creando orden Clover", err);
-    if (err instanceof CloverApiError && err.status === 401) {
-      return needsReconnectResponse();
-    }
-    if (err instanceof CloverApiError) {
-      return jsonResponse({
-        error: "No se pudo crear orden en Clover",
-        status: err.status,
-        raw: err.raw,
-        url: err.url,
-        baseUrl: CLOVER_API_BASE,
-        merchantId,
-      }, 502);
-    }
-    return jsonResponse({
-      error: "No se pudo crear orden en Clover",
-      details: err instanceof Error ? err.message : String(err),
-    }, 502);
-  }
-
-  if (!cloverOrderId) return jsonResponse({ error: "Clover order id no recibido" }, 502);
-
-  for (const item of items) {
-    const product = productMap.get(item.idProducto);
-    const taxRates = toCloverTaxRates(resolveTaxRates(item.idProducto));
-    let lineResp;
+  if (mode === "mesa") {
     try {
-      lineResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders/${cloverOrderId}/line_items`, {
+      const noteBase = mesa ? `Mesa ${mesa} - Findixi` : "Mesa - Findixi";
+      const orderResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders`, {
         method: "POST",
-        body: {
-          item: { id: product.clover_item_id },
-          unitQty: item.qty,
-          note: item.nota ?? undefined,
-          ...(taxRates.length ? { taxRates } : {}),
-        },
+        body: { state: "open", note: noteBase },
       });
+      cloverOrderId = orderResp?.id ?? null;
     } catch (err) {
+      console.error("Error creando orden Clover", err);
       if (err instanceof CloverApiError && err.status === 401) {
         return needsReconnectResponse();
       }
-      return jsonResponse({ error: "No se pudo crear line item en Clover" }, 502);
+      if (err instanceof CloverApiError) {
+        return jsonResponse({
+          error: "No se pudo crear orden en Clover",
+          status: err.status,
+          raw: err.raw,
+          url: err.url,
+          baseUrl: CLOVER_API_BASE,
+          merchantId,
+        }, 502);
+      }
+      return jsonResponse({
+        error: "No se pudo crear orden en Clover",
+        details: err instanceof Error ? err.message : String(err),
+      }, 502);
     }
-    const lineItemId = lineResp?.id ?? lineResp?.lineItem?.id ?? null;
-    if (!lineItemId) return jsonResponse({ error: "No se pudo crear line item en Clover" }, 502);
 
-    for (const modId of item.modifiers) {
-      const mod = modifierMap.get(modId);
+    if (!cloverOrderId) return jsonResponse({ error: "Clover order id no recibido" }, 502);
+
+    for (const item of items) {
+      const product = productMap.get(item.idProducto);
+      const taxRates = toCloverTaxRates(resolveTaxRates(item.idProducto));
+      let lineResp;
       try {
-        await fetchCloverWithAutoRefresh(
-          `/v3/merchants/${merchantId}/orders/${cloverOrderId}/line_items/${lineItemId}/modifications`,
-          { method: "POST", body: { modifier: { id: mod.clover_modifier_id } } },
-        );
+        lineResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders/${cloverOrderId}/line_items`, {
+          method: "POST",
+          body: {
+            item: { id: product.clover_item_id },
+            unitQty: item.qty,
+            note: item.nota ?? undefined,
+            ...(taxRates.length ? { taxRates } : {}),
+          },
+        });
       } catch (err) {
         if (err instanceof CloverApiError && err.status === 401) {
           return needsReconnectResponse();
         }
-        return jsonResponse({ error: "No se pudo crear modificador en Clover" }, 502);
+        return jsonResponse({ error: "No se pudo crear line item en Clover" }, 502);
+      }
+      const lineItemId = lineResp?.id ?? lineResp?.lineItem?.id ?? null;
+      if (!lineItemId) return jsonResponse({ error: "No se pudo crear line item en Clover" }, 502);
+
+      for (const modId of item.modifiers) {
+        const mod = modifierMap.get(modId);
+        try {
+          await fetchCloverWithAutoRefresh(
+            `/v3/merchants/${merchantId}/orders/${cloverOrderId}/line_items/${lineItemId}/modifications`,
+            { method: "POST", body: { modifier: { id: mod.clover_modifier_id } } },
+          );
+        } catch (err) {
+          if (err instanceof CloverApiError && err.status === 401) {
+            return needsReconnectResponse();
+          }
+          return jsonResponse({ error: "No se pudo crear modificador en Clover" }, 502);
+        }
       }
     }
   }
@@ -668,6 +668,7 @@ async function handler(req: Request): Promise<Response> {
       });
       checkoutUrl = checkoutResp?.href ?? checkoutResp?.url ?? null;
       checkoutSessionId = checkoutResp?.checkoutSessionId ?? checkoutResp?.id ?? null;
+      cloverOrderId = checkoutResp?.orderId ?? checkoutResp?.order?.id ?? cloverOrderId;
     } catch (err) {
       console.error("Error creando Hosted Checkout", err);
       if (err instanceof CloverApiError && err.status === 401) {
