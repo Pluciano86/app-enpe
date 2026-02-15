@@ -1564,11 +1564,13 @@ async function submitOrder() {
   };
   if (allowPickup) {
     const basePath = isDev ? '/public' : '';
-    const ordersUrl = `${window.location.origin}${basePath}/pedidos.html?tab=activos`;
-    payload.redirectUrls = {
-      successUrl: ordersUrl,
-      cancelUrl: ordersUrl,
-    };
+    if (window.location.protocol === 'https:') {
+      const ordersUrl = `${window.location.origin}${basePath}/pedidos.html?tab=activos&session_id={CHECKOUT_SESSION_ID}`;
+      payload.redirectUrls = {
+        success: ordersUrl,
+        failure: ordersUrl,
+      };
+    }
   }
 
   try {
