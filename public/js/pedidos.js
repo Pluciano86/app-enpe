@@ -190,11 +190,11 @@ function buildOrderCard(order, commerce, items) {
     </div>
     <div class="flex items-center gap-3">
       ${mapUrl ? `<a href="${mapUrl}" target="_blank" class="inline-flex items-center gap-2 text-xs text-gray-600">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg" alt="Google Maps" class="h-8 w-8 rounded-full shadow">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg" alt="Google Maps" class="h-8 w-12 object-contain">
         Google Maps
       </a>` : ''}
       ${wazeUrl ? `<a href="${wazeUrl}" target="_blank" class="inline-flex items-center gap-2 text-xs text-gray-600">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg" alt="Waze" class="h-8 w-8 rounded-full shadow">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg" alt="Waze" class="h-8 w-12 object-contain">
         Waze
       </a>` : ''}
     </div>
