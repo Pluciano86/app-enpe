@@ -30,6 +30,49 @@ const footerTelefono = document.getElementById('footerTelefono');
 const footerFacebook = document.getElementById('footerFacebook');
 const footerInstagram = document.getElementById('footerInstagram');
 const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const ORDER_HISTORY_KEY = 'findixi_orders';
+
+function loadOrderHistory() {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(ORDER_HISTORY_KEY);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) {
+      return data
+        .map((item) => {
+          if (typeof item === 'number' || typeof item === 'string') return { id: Number(item) };
+          return item && typeof item === 'object' ? item : null;
+        })
+        .filter((item) => item && Number.isFinite(Number(item.id)));
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOrderHistory(list) {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify(list));
+  } catch {
+    // ignore
+  }
+}
+
+function rememberOrder(orderId, comercioId) {
+  const idNum = Number(orderId);
+  if (!Number.isFinite(idNum) || idNum <= 0) return;
+  const history = loadOrderHistory();
+  if (history.some((entry) => Number(entry.id) === idNum)) return;
+  history.unshift({
+    id: idNum,
+    idComercio: Number(comercioId) || null,
+    created_at_local: new Date().toISOString(),
+  });
+  saveOrderHistory(history.slice(0, 50));
+}
 
 const DEFAULT_TEMA = {
   colortexto: '#1f2937',
@@ -1519,6 +1562,14 @@ async function submitOrder() {
     source: orderSource,
     idempotencyKey: `order_${idComercio}_${orderMode}_${mesaParam || 'na'}_${Date.now()}`,
   };
+  if (allowPickup) {
+    const basePath = isDev ? '/public' : '';
+    const ordersUrl = `${window.location.origin}${basePath}/pedidos.html?tab=activos`;
+    payload.redirectUrls = {
+      successUrl: ordersUrl,
+      cancelUrl: ordersUrl,
+    };
+  }
 
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -1543,6 +1594,9 @@ async function submitOrder() {
       alert(msg);
       return;
     }
+
+    const orderId = json?.order?.id;
+    if (orderId) rememberOrder(orderId, idComercio);
 
     if (orderMode === 'pickup') {
       const url = json?.checkout_url || json?.order?.checkout_url;

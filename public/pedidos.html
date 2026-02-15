@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/png" href="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/findixi/loader.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mis pedidos</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    body { font-family: 'Kanit', sans-serif; }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+    }
+    .status-line {
+      height: 2px;
+      flex: 1;
+    }
+  </style>
+</head>
+<body class="bg-[#f1f4f8] text-gray-800">
+  <div class="min-h-screen flex justify-center bg-[#f1f4f8]">
+    <div class="w-full max-w-md bg-white min-h-screen">
+      <header class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-100">
+        <div class="flex items-center justify-between px-4 py-4">
+          <div class="flex items-center gap-3">
+            <a href="index.html" class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">
+              <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div>
+              <h1 class="text-lg font-semibold">Mis pedidos</h1>
+              <p class="text-xs text-gray-500">Seguimiento de tus órdenes</p>
+            </div>
+          </div>
+          <button id="btnRefresh" class="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+        <div class="px-4 pb-3">
+          <div class="flex gap-2">
+            <button id="tabActivos" class="flex-1 rounded-full border px-3 py-2 text-sm font-semibold">Activos</button>
+            <button id="tabPasados" class="flex-1 rounded-full border px-3 py-2 text-sm font-semibold">Pasados</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="px-4 py-4 space-y-4">
+        <div id="ordersEmpty" class="hidden text-center text-gray-500 py-12">
+          <div class="text-4xl mb-3">🧾</div>
+          <p class="text-sm">Aún no tienes pedidos registrados en este dispositivo.</p>
+          <p class="text-xs mt-2">Cuando completes un pago, aquí verás el estado y detalles.</p>
+        </div>
+        <div id="ordersLoading" class="hidden text-center text-gray-500 py-12">
+          Cargando pedidos...
+        </div>
+        <div id="ordersContainer" class="space-y-4"></div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="./shared/supabaseClient.js"></script>
+  <script type="module" src="./js/pedidos.js"></script>
+</body>
+</html>
