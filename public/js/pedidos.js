@@ -1,5 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
+import { formatearTelefonoDisplay, formatearTelefonoHref, getPublicBase } from '../shared/utils.js';
 
 const ORDER_HISTORY_KEY = 'findixi_orders';
 const tabActivos = document.getElementById('tabActivos');
@@ -139,6 +139,13 @@ function buildMapsUrl(lat, lon) {
 function buildWazeUrl(lat, lon) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   return `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+}
+
+function resolveLogoUrl(rawValue) {
+  const raw = String(rawValue ?? '').trim();
+  if (!raw) return null;
+  if (raw.startsWith('http')) return raw;
+  return getPublicBase(`galeriacomercios/${raw}`);
 }
 
 function buildOrderCard(order, commerce, items) {
@@ -332,10 +339,7 @@ async function loadOrders() {
       .eq('logo', true);
 
     (logosData || []).forEach((entry) => {
-      const { data: publicData } = supabase.storage
-        .from('galeriacomercios')
-        .getPublicUrl(entry.imagen);
-      comercioLogoMap.set(entry.idComercio, publicData?.publicUrl || null);
+      comercioLogoMap.set(entry.idComercio, resolveLogoUrl(entry.imagen));
     });
   }
 
@@ -343,7 +347,7 @@ async function loadOrders() {
   (comercios || []).forEach((c) => {
     let logoUrl = null;
     if (c.logo) {
-      logoUrl = supabase.storage.from('galeriacomercios').getPublicUrl(c.logo).data?.publicUrl || null;
+      logoUrl = resolveLogoUrl(c.logo);
     } else if (comercioLogoMap.has(c.id)) {
       logoUrl = comercioLogoMap.get(c.id);
     }
