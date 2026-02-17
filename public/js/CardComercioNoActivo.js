@@ -1,4 +1,4 @@
-import { getPublicBase, calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { getPublicBase, calcularTiempoEnVehiculo, formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
 
 export function cardComercioNoActivo(comercio) {
   const div = document.createElement('div');
@@ -39,8 +39,8 @@ export function cardComercioNoActivo(comercio) {
 
 ${
   comercio.telefono && comercio.telefono.trim() && comercio.telefono.toLowerCase() !== "null"
-    ? `<a href="tel:${comercio.telefono}" class="text-[15px] text-gray-600 mt-1 mb-1 no-underline">
-         ${comercio.telefono}
+    ? `<a href="${formatearTelefonoHref(comercio.telefono)}" class="text-[15px] text-gray-600 mt-1 mb-1 no-underline">
+         ${formatearTelefonoDisplay(comercio.telefono)}
        </a>`
     : `<div class="text-[15px] text-gray-600 mt-1 mb-1 h-[22px]">&nbsp;</div>`
 }

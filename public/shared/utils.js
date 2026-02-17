@@ -51,3 +51,25 @@ export function formatearHorario(apertura, cierre, cerrado) {
 
   return 'Horario no disponible';
 }
+
+export function normalizarTelefono(telefono = '') {
+  const digits = String(telefono || '').replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1);
+  return digits;
+}
+
+export function formatearTelefonoDisplay(telefono = '') {
+  const digits = normalizarTelefono(telefono);
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return String(telefono || '').trim();
+}
+
+export function formatearTelefonoHref(telefono = '') {
+  const rawDigits = String(telefono || '').replace(/\D/g, '');
+  if (!rawDigits) return '';
+  if (rawDigits.length === 10) return `tel:${rawDigits}`;
+  if (rawDigits.length === 11 && rawDigits.startsWith('1')) return `tel:+${rawDigits}`;
+  return `tel:${rawDigits}`;
+}

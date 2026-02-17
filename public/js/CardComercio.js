@@ -1,5 +1,5 @@
 // ✅ public/js/cardComercio.js
-import { getPublicBase, calcularTiempoEnVehiculo } from '../shared/utils.js';
+import { getPublicBase, calcularTiempoEnVehiculo, formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
 import { t, interpolate } from './i18n.js';
 
 function resolveAppBase() {
@@ -93,11 +93,11 @@ export function cardComercio(comercio) {
     ${
       comercio.telefono && comercio.telefono.trim() !== ''
         ? `
-        <a href="tel:${comercio.telefono}" 
+        <a href="${formatearTelefonoHref(comercio.telefono)}" 
           class="inline-flex items-center justify-center gap-2 text-[15px] text-white font-medium 
                  bg-red-600 rounded-full px-4 py-[6px] mb-2 shadow hover:bg-red-700 transition 
                  mx-auto mt-2 max-w-[100%]">
-          <i class="fa-solid fa-phone text-base"></i> ${comercio.telefono}
+          <i class="fa-solid fa-phone text-base"></i> ${formatearTelefonoDisplay(comercio.telefono)}
         </a>
         `
         : ''

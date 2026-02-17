@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
 
 const ORDER_HISTORY_KEY = 'findixi_orders';
 const tabActivos = document.getElementById('tabActivos');
@@ -150,6 +151,8 @@ function buildOrderCard(order, commerce, items) {
   const lon = Number(commerce?.longitud);
   const mapUrl = buildMapsUrl(lat, lon);
   const wazeUrl = buildWazeUrl(lat, lon);
+  const telefonoDisplay = commerce?.telefono ? formatearTelefonoDisplay(commerce.telefono) : '';
+  const telefonoHref = commerce?.telefono ? formatearTelefonoHref(commerce.telefono) : '';
 
   const card = document.createElement('div');
   card.className = 'bg-white border border-gray-100 shadow-sm rounded-2xl p-4 space-y-3';
@@ -241,10 +244,10 @@ function buildOrderCard(order, commerce, items) {
         ${order.order_type === 'mesa' && order.mesa ? `<div class="text-xs text-gray-500">Mesa ${order.mesa}</div>` : ''}
       </div>
     </div>
-    ${commerce?.telefono ? `
+    ${telefonoDisplay ? `
       <div class="flex justify-center">
-        <a href="tel:${commerce.telefono}" class="inline-flex items-center justify-center gap-2 text-white text-lg font-semibold bg-red-600 rounded-full px-6 py-1 shadow hover:bg-red-700 transition">
-          <i class="fa-solid fa-phone text-base"></i> ${commerce.telefono}
+        <a href="${telefonoHref}" class="inline-flex items-center justify-center gap-2 text-white text-lg font-semibold bg-red-600 rounded-full px-6 py-1 shadow hover:bg-red-700 transition">
+          <i class="fa-solid fa-phone text-base"></i> ${telefonoDisplay}
         </a>
       </div>` : ''}
     ${commerce?.direccion ? `<div class="flex items-center gap-2 text-[#3ea6c4] font-medium text-base leading-none mx-auto w-fit"><i class="fas fa-map-pin"></i> ${commerce.direccion}</div>` : ''}

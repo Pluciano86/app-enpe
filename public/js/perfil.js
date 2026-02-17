@@ -1,5 +1,6 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { formatTiempo } from '../shared/osrmClient.js';
+import { formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
 import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';
@@ -486,8 +487,14 @@ export async function obtenerComercioPorID(idComercio) {
   const telefonoElemento = document.getElementById('telefonoComercio');
 
   if (!esJangueo && data.telefono) {
-    telefonoElemento.innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${data.telefono}`;
-    telefonoElemento.href = `tel:${data.telefono}`;
+    const telefonoDisplay = formatearTelefonoDisplay(data.telefono);
+    const telefonoHref = formatearTelefonoHref(data.telefono);
+    telefonoElemento.innerHTML = `<i class="fa-solid fa-phone text-xl"></i> ${telefonoDisplay}`;
+    if (telefonoHref) {
+      telefonoElemento.href = telefonoHref;
+    } else {
+      telefonoElemento.removeAttribute('href');
+    }
   } else if (telefonoElemento) {
     telefonoElemento.classList.add('hidden');
   }
