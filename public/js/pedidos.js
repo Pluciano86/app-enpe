@@ -118,9 +118,8 @@ function formatDate(value) {
 
 function statusToStep(status) {
   const s = String(status || '').toLowerCase();
-  if (s === 'ready') return 4;
-  if (s === 'preparing') return 3;
-  if (s === 'confirmed' || s === 'paid') return 2;
+  if (s === 'ready') return 3;
+  if (s === 'preparing') return 2;
   return 1;
 }
 
@@ -183,23 +182,22 @@ function buildOrderCard(order, commerce, items) {
   }).join('');
 
   const steps = [
-    { icon: 'fa-inbox', label: `Orden recibida por ${commerce?.nombre || 'comercio'}` },
-    { icon: 'fa-circle-check', label: 'Orden recibida y confirmada' },
-    { icon: 'fa-kitchen-set', label: 'Orden en preparación' },
-    { icon: 'fa-bag-shopping', label: 'Orden lista para recoger' },
+    { icon: 'fa-circle-check', label: 'Confirmado' },
+    { icon: 'fa-kitchen-set', label: 'En preparación' },
+    { icon: 'fa-bag-shopping', label: 'Lista para recoger' },
   ];
 
   const stepsHtml = steps.map((s, index) => {
     const active = step >= index + 1;
-    const dotClass = active ? 'bg-green-500' : 'bg-gray-300';
+    const iconClass = active ? 'text-green-600' : 'text-gray-400';
     const textClass = active ? 'text-green-700' : 'text-gray-500';
+    const circleClass = active ? 'bg-green-100 border-green-200' : 'bg-gray-100 border-gray-200';
     return `
-      <div class="flex items-start gap-2">
-        <div class="flex items-center gap-2">
-          <div class="status-dot ${dotClass}"></div>
-          <i class="fa-solid ${s.icon} text-xs ${textClass}"></i>
+      <div class="flex flex-col items-center text-center gap-2">
+        <div class="w-10 h-10 rounded-full border ${circleClass} flex items-center justify-center">
+          <i class="fa-solid ${s.icon} ${iconClass}"></i>
         </div>
-        <div class="text-xs ${textClass}">${s.label}</div>
+        <div class="text-[11px] leading-tight ${textClass}">${s.label}</div>
       </div>
     `;
   }).join('');
@@ -220,17 +218,18 @@ function buildOrderCard(order, commerce, items) {
       ${commerce?.telefono ? `<a href="tel:${commerce.telefono}" class="inline-flex items-center gap-1 text-gray-600"><i class="fa-solid fa-phone"></i> ${commerce.telefono}</a>` : ''}
       ${commerce?.direccion ? `<span class="inline-flex items-center gap-1"><i class="fa-solid fa-location-dot"></i>${commerce.direccion}</span>` : ''}
     </div>
-    <div class="flex items-center gap-3">
-      ${mapUrl ? `<a href="${mapUrl}" target="_blank" class="inline-flex items-center gap-2 text-xs text-gray-600">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg" alt="Google Maps" class="h-8 w-12 object-contain">
-        Google Maps
+    <div class="flex items-center gap-4">
+      ${mapUrl ? `<a href="${mapUrl}" target="_blank" aria-label="Google Maps" class="inline-flex items-center justify-center">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg" alt="Google Maps" class="h-12 w-16 object-contain">
       </a>` : ''}
-      ${wazeUrl ? `<a href="${wazeUrl}" target="_blank" class="inline-flex items-center gap-2 text-xs text-gray-600">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg" alt="Waze" class="h-8 w-12 object-contain">
-        Waze
+      ${wazeUrl ? `<a href="${wazeUrl}" target="_blank" aria-label="Waze" class="inline-flex items-center justify-center">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg" alt="Waze" class="h-12 w-16 object-contain">
       </a>` : ''}
     </div>
-    <div class="space-y-2">${stepsHtml}</div>
+    <div class="space-y-3">
+      <div class="text-sm font-semibold text-gray-800">Status de la Orden:</div>
+      <div class="grid grid-cols-3 gap-2">${stepsHtml}</div>
+    </div>
     <div class="border-t border-gray-100 pt-3 space-y-2">
       ${itemsHtml || '<div class="text-xs text-gray-400">Sin detalles de items.</div>'}
       <div class="flex items-center justify-between text-sm font-semibold pt-2">
@@ -289,11 +288,29 @@ async function loadOrders() {
     .select('id, nombre, direccion, telefono, latitud, longitud, logo')
     .in('id', comercioIds);
 
+  const comercioLogoMap = new Map();
+  if (comercioIds.length) {
+    const { data: logosData } = await supabase
+      .from('imagenesComercios')
+      .select('idComercio, imagen')
+      .in('idComercio', comercioIds)
+      .eq('logo', true);
+
+    (logosData || []).forEach((entry) => {
+      const { data: publicData } = supabase.storage
+        .from('galeriacomercios')
+        .getPublicUrl(entry.imagen);
+      comercioLogoMap.set(entry.idComercio, publicData?.publicUrl || null);
+    });
+  }
+
   const comercioMap = new Map();
   (comercios || []).forEach((c) => {
     let logoUrl = null;
     if (c.logo) {
       logoUrl = supabase.storage.from('galeriacomercios').getPublicUrl(c.logo).data?.publicUrl || null;
+    } else if (comercioLogoMap.has(c.id)) {
+      logoUrl = comercioLogoMap.get(c.id);
     }
     comercioMap.set(c.id, { ...c, logoUrl });
   });
