@@ -57,6 +57,59 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const PICKUP_ORDER_TYPE_NAME = "Pickup (Findixi)";
+const PICKUP_ORDER_TYPE_NAME_ALT = "Pick Up (Findixi)";
+
+function normalizeName(value: string) {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function normalizeKey(value: string) {
+  return normalizeName(value).replace(/[^a-z0-9]/g, "");
+}
+
+function extractOrderTypeName(orderType: any) {
+  return (
+    orderType?.label ??
+    orderType?.name ??
+    orderType?.title ??
+    orderType?.displayName ??
+    orderType?.orderTypeName ??
+    null
+  );
+}
+
+function extractSystemOrderTypeId(systemType: any) {
+  return (
+    systemType?.id ??
+    systemType?.systemOrderTypeId ??
+    systemType?.systemOrderType ??
+    systemType?.code ??
+    null
+  );
+}
+
+function isPickupSystemType(systemType: any) {
+  const raw = [
+    systemType?.id,
+    systemType?.name,
+    systemType?.label,
+    systemType?.displayName,
+    systemType?.type,
+    systemType?.code,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return /pickup|pick\s*up|take\s*out|takeout|to-go|togo|carry\s*out/.test(raw);
+}
+
+function toArray(x: any) {
+  if (Array.isArray(x)) return x;
+  if (x && Array.isArray(x.elements)) return x.elements;
+  return [];
+}
+
 function normalizeOauthApiBase(raw: string) {
   const fallback = "https://apisandbox.dev.clover.com";
   if (!raw) return fallback;
@@ -322,6 +375,84 @@ async function handler(req: Request): Promise<Response> {
     }
   };
 
+  const ensurePickupOrderType = async () => {
+    const desiredKeys = new Set([
+      normalizeKey(PICKUP_ORDER_TYPE_NAME),
+      normalizeKey(PICKUP_ORDER_TYPE_NAME_ALT),
+    ]);
+
+    const existingId = (conn as any)?.clover_order_type_id ?? null;
+    const existingName = (conn as any)?.clover_order_type_name ?? null;
+    if (existingId) {
+      return { id: existingId, name: existingName ?? PICKUP_ORDER_TYPE_NAME };
+    }
+
+    const orderTypesResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/order_types?limit=200`);
+    const orderTypes = toArray(orderTypesResp?.elements ?? orderTypesResp?.orderTypes ?? orderTypesResp);
+    const nameKey =
+      orderTypes.find((ot: any) => typeof ot?.label === "string")?.label !== undefined ? "label"
+        : orderTypes.find((ot: any) => typeof ot?.name === "string")?.name !== undefined ? "name"
+        : orderTypes.find((ot: any) => typeof ot?.title === "string")?.title !== undefined ? "title"
+        : orderTypes.find((ot: any) => typeof ot?.displayName === "string")?.displayName !== undefined ? "displayName"
+        : "label";
+
+    const existing = orderTypes.find((ot: any) => {
+      const label = extractOrderTypeName(ot);
+      return label && desiredKeys.has(normalizeKey(label));
+    });
+
+    let orderTypeId = existing?.id ?? null;
+    let orderTypeName = extractOrderTypeName(existing) ?? null;
+
+    if (!orderTypeId) {
+      const systemResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/system_order_types`);
+      const systemTypes = toArray(systemResp?.elements ?? systemResp?.systemOrderTypes ?? systemResp);
+      const pickupSystem = systemTypes.find(isPickupSystemType);
+      const pickupSystemId = extractSystemOrderTypeId(pickupSystem);
+
+      const payloadCandidates: Record<string, unknown>[] = [
+        { [nameKey]: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+        { label: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+        { name: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+        { [nameKey]: PICKUP_ORDER_TYPE_NAME },
+        { label: PICKUP_ORDER_TYPE_NAME },
+        { name: PICKUP_ORDER_TYPE_NAME },
+      ];
+
+      let created: any = null;
+      let lastErr: unknown = null;
+      for (const payload of payloadCandidates) {
+        try {
+          created = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/order_types`, {
+            method: "POST",
+            body: payload,
+          });
+          if (created?.id) break;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+
+      if (!created?.id) {
+        if (lastErr instanceof Error) throw lastErr;
+        throw new Error("No se pudo crear order type Pickup (Findixi)");
+      }
+      orderTypeId = created.id;
+      orderTypeName = extractOrderTypeName(created) ?? PICKUP_ORDER_TYPE_NAME;
+    }
+
+    const cols = await getTableColumns("clover_conexiones");
+    const updatePayload: Record<string, unknown> = {};
+    if (cols?.has("clover_order_type_id")) updatePayload.clover_order_type_id = orderTypeId;
+    if (cols?.has("clover_order_type_name")) updatePayload.clover_order_type_name = orderTypeName;
+    if (cols?.has("order_type_ready_at")) updatePayload.order_type_ready_at = new Date().toISOString();
+    if (Object.keys(updatePayload).length) {
+      await supabase.from("clover_conexiones").update(updatePayload).eq("idComercio", idComercio);
+    }
+
+    return { id: orderTypeId, name: orderTypeName };
+  };
+
   const productIds = Array.from(new Set(items.map((item) => item.idProducto)));
 
   const { data: menus, error: menusErr } = await supabase
@@ -519,6 +650,19 @@ async function handler(req: Request): Promise<Response> {
       .map((r) => ({ name: r.nombre ?? "Tax", rate: Number(r.rate) }))
       .filter((r) => Number.isFinite(r.rate) && r.rate > 0);
 
+  let pickupOrderType: { id: string; name?: string | null } | null = null;
+  if (mode === "pickup") {
+    try {
+      pickupOrderType = await ensurePickupOrderType();
+    } catch (err) {
+      console.error("Error asegurando order type Pickup", err);
+      return jsonResponse({
+        error: "No se pudo configurar Pickup en Clover. Reintenta Sincronizar o reconecta Clover.",
+        details: err instanceof Error ? err.message : String(err),
+      }, 502);
+    }
+  }
+
   const toCloverTaxRates = (rates: any[]) =>
     rates
       .map((r) => ({
@@ -680,6 +824,21 @@ async function handler(req: Request): Promise<Response> {
       checkoutUrl = checkoutResp?.href ?? checkoutResp?.url ?? null;
       checkoutSessionId = checkoutResp?.checkoutSessionId ?? checkoutResp?.id ?? null;
       cloverOrderId = checkoutResp?.orderId ?? checkoutResp?.order?.id ?? cloverOrderId;
+
+      if (pickupOrderType?.id && cloverOrderId) {
+        try {
+          await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders/${cloverOrderId}`, {
+            method: "POST",
+            body: { orderType: { id: pickupOrderType.id } },
+          });
+        } catch (err) {
+          console.error("No se pudo asignar orderType Pickup", err);
+          return jsonResponse({
+            error: "No se pudo configurar Pickup en Clover. Reintenta Sincronizar o reconecta Clover.",
+            details: err instanceof Error ? err.message : String(err),
+          }, 502);
+        }
+      }
     } catch (err) {
       console.error("Error creando Hosted Checkout", err);
       if (err instanceof CloverApiError && err.status === 401) {

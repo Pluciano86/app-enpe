@@ -40,6 +40,59 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const PICKUP_ORDER_TYPE_NAME = "Pickup (Findixi)";
+const PICKUP_ORDER_TYPE_NAME_ALT = "Pick Up (Findixi)";
+
+function normalizeName(value: string) {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function normalizeKey(value: string) {
+  return normalizeName(value).replace(/[^a-z0-9]/g, "");
+}
+
+function extractOrderTypeName(orderType: any) {
+  return (
+    orderType?.label ??
+    orderType?.name ??
+    orderType?.title ??
+    orderType?.displayName ??
+    orderType?.orderTypeName ??
+    null
+  );
+}
+
+function extractSystemOrderTypeId(systemType: any) {
+  return (
+    systemType?.id ??
+    systemType?.systemOrderTypeId ??
+    systemType?.systemOrderType ??
+    systemType?.code ??
+    null
+  );
+}
+
+function isPickupSystemType(systemType: any) {
+  const raw = [
+    systemType?.id,
+    systemType?.name,
+    systemType?.label,
+    systemType?.displayName,
+    systemType?.type,
+    systemType?.code,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return /pickup|pick\s*up|take\s*out|takeout|to-go|togo|carry\s*out/.test(raw);
+}
+
+function toArray(x: any) {
+  if (Array.isArray(x)) return x;
+  if (x && Array.isArray(x.elements)) return x.elements;
+  return [];
+}
+
 function normalizeOauthApiBase(raw: string) {
   const fallback = "https://apisandbox.dev.clover.com";
   if (!raw) return fallback;
@@ -151,6 +204,34 @@ async function exchangeToken(code: string) {
   } catch {
     throw new Error(`Clover token non-JSON ${resp.status}: ${raw.slice(0, 200)}`);
   }
+}
+
+async function cloverRequest(
+  path: string,
+  token: string,
+  options: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
+) {
+  const url = path.startsWith("http") ? new URL(path) : new URL(path, CLOVER_API_BASE);
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers ?? {}),
+  };
+  let body: string | undefined;
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(options.body);
+  }
+  const resp = await fetch(url.toString(), {
+    method: options.method ?? "GET",
+    headers,
+    body,
+  });
+  if (!resp.ok) {
+    const raw = await resp.text();
+    throw new Error(`Clover API ${url.pathname} -> ${resp.status}: ${raw}`);
+  }
+  if (resp.status === 204) return null;
+  return await resp.json();
 }
 
 async function handler(req: Request): Promise<Response> {
@@ -270,6 +351,85 @@ async function handler(req: Request): Promise<Response> {
     if (upsertError) {
       console.error("[clover-callback] Error upsert clover_conexiones:", upsertError?.message || upsertError);
       throw upsertError;
+    }
+
+    try {
+      const desiredKeys = new Set([
+        normalizeKey(PICKUP_ORDER_TYPE_NAME),
+        normalizeKey(PICKUP_ORDER_TYPE_NAME_ALT),
+      ]);
+
+      const orderTypesResp = await cloverRequest(`/v3/merchants/${merchant_id ?? merchantId}/order_types?limit=200`, access_token);
+      const orderTypes = toArray(orderTypesResp?.elements ?? orderTypesResp?.orderTypes ?? orderTypesResp);
+      const nameKey =
+        orderTypes.find((ot: any) => typeof ot?.label === "string")?.label !== undefined ? "label"
+          : orderTypes.find((ot: any) => typeof ot?.name === "string")?.name !== undefined ? "name"
+          : orderTypes.find((ot: any) => typeof ot?.title === "string")?.title !== undefined ? "title"
+          : orderTypes.find((ot: any) => typeof ot?.displayName === "string")?.displayName !== undefined ? "displayName"
+          : "label";
+
+      let existing = orderTypes.find((ot: any) => {
+        const label = extractOrderTypeName(ot);
+        return label && desiredKeys.has(normalizeKey(label));
+      });
+
+      let orderTypeId = existing?.id ?? null;
+      let orderTypeName = extractOrderTypeName(existing) ?? null;
+
+      if (!orderTypeId) {
+        const systemResp = await cloverRequest(`/v3/merchants/${merchant_id ?? merchantId}/system_order_types`, access_token);
+        const systemTypes = toArray(systemResp?.elements ?? systemResp?.systemOrderTypes ?? systemResp);
+        const pickupSystem = systemTypes.find(isPickupSystemType);
+        const pickupSystemId = extractSystemOrderTypeId(pickupSystem);
+
+        const payloadCandidates: Record<string, unknown>[] = [
+          { [nameKey]: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+          { label: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+          { name: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+          { [nameKey]: PICKUP_ORDER_TYPE_NAME },
+          { label: PICKUP_ORDER_TYPE_NAME },
+          { name: PICKUP_ORDER_TYPE_NAME },
+        ];
+
+        let created: any = null;
+        let lastErr: unknown = null;
+        for (const payload of payloadCandidates) {
+          try {
+            created = await cloverRequest(`/v3/merchants/${merchant_id ?? merchantId}/order_types`, access_token, {
+              method: "POST",
+              body: payload,
+            });
+            if (created?.id) break;
+          } catch (err) {
+            lastErr = err;
+          }
+        }
+
+        if (!created?.id) {
+          if (lastErr instanceof Error) throw lastErr;
+          throw new Error("No se pudo crear order type Pickup (Findixi)");
+        }
+        orderTypeId = created.id;
+        orderTypeName = extractOrderTypeName(created) ?? PICKUP_ORDER_TYPE_NAME;
+      }
+
+      const colsConn = await getTableColumns("clover_conexiones");
+      const updatePayload: Record<string, unknown> = {};
+      if (colsConn?.has("clover_order_type_id")) updatePayload.clover_order_type_id = orderTypeId;
+      if (colsConn?.has("clover_order_type_name")) updatePayload.clover_order_type_name = orderTypeName;
+      if (colsConn?.has("order_type_ready_at")) updatePayload.order_type_ready_at = new Date().toISOString();
+      if (Object.keys(updatePayload).length) {
+        await supabase.from("clover_conexiones").update(updatePayload).eq("idComercio", idComercio);
+      }
+    } catch (err) {
+      console.error("[clover-callback] Error asegurando order type Pickup", err);
+      return new Response(
+        JSON.stringify({
+          error: "No se pudo configurar Pickup en Clover. Reintenta Sincronizar o reconecta Clover.",
+          details: err instanceof Error ? err.message : String(err),
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
     }
 
     const fallback = "https://comercio.enpe-erre.com/adminMenuComercio.html";

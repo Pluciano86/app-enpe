@@ -57,6 +57,53 @@ function toArray(x: any) {
   return [];
 }
 
+const PICKUP_ORDER_TYPE_NAME = "Pickup (Findixi)";
+const PICKUP_ORDER_TYPE_NAME_ALT = "Pick Up (Findixi)";
+
+function normalizeName(value: string) {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function normalizeKey(value: string) {
+  return normalizeName(value).replace(/[^a-z0-9]/g, "");
+}
+
+function extractOrderTypeName(orderType: any) {
+  return (
+    orderType?.label ??
+    orderType?.name ??
+    orderType?.title ??
+    orderType?.displayName ??
+    orderType?.orderTypeName ??
+    null
+  );
+}
+
+function extractSystemOrderTypeId(systemType: any) {
+  return (
+    systemType?.id ??
+    systemType?.systemOrderTypeId ??
+    systemType?.systemOrderType ??
+    systemType?.code ??
+    null
+  );
+}
+
+function isPickupSystemType(systemType: any) {
+  const raw = [
+    systemType?.id,
+    systemType?.name,
+    systemType?.label,
+    systemType?.displayName,
+    systemType?.type,
+    systemType?.code,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return /pickup|pick\s*up|take\s*out|takeout|to-go|togo|carry\s*out/.test(raw);
+}
+
 const columnExistsCache = new Map<string, Map<string, boolean>>();
 async function hasColumn(table: string, column: string) {
   const cache = columnExistsCache.get(table) ?? new Map<string, boolean>();
@@ -121,19 +168,35 @@ async function refreshToken(refresh_token: string) {
   throw new Error(`Refresh token failed ${first.resp.status}: ${first.raw}`);
 }
 
-async function fetchClover(path: string, token: string) {
+async function cloverRequest(
+  path: string,
+  token: string,
+  options: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
+) {
   const base =
     path.startsWith("/oauth/v2/token") ? OAUTH_API_BASE
       : path.startsWith("/v3/") ? CLOVER_API_BASE
       : CLOVER_API_BASE;
   const url = path.startsWith("http") ? new URL(path) : new URL(path, base);
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers ?? {}),
+  };
+  let body: string | undefined;
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(options.body);
+  }
   const resp = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${token}` },
+    method: options.method ?? "GET",
+    headers,
+    body,
   });
   if (!resp.ok) {
     const raw = await resp.text();
     throw new CloverApiError(resp.status, url.pathname, raw);
   }
+  if (resp.status === 204) return null;
   return await resp.json();
 }
 
@@ -186,9 +249,12 @@ async function handler(req: Request): Promise<Response> {
     }
   }
 
-  const fetchCloverWithAutoRefresh = async (path: string) => {
+  const fetchCloverWithAutoRefresh = async (
+    path: string,
+    options: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
+  ) => {
     try {
-      return await fetchClover(path, accessToken);
+      return await cloverRequest(path, accessToken, options);
     } catch (err) {
       if (err instanceof CloverApiError && err.status === 401 && refreshTokenVal && !refreshedAfter401) {
         refreshedAfter401 = true;
@@ -209,7 +275,7 @@ async function handler(req: Request): Promise<Response> {
           throw err;
         }
         try {
-          return await fetchClover(path, accessToken);
+          return await cloverRequest(path, accessToken, options);
         } catch (retryErr) {
           if (retryErr instanceof CloverApiError && retryErr.status === 401) {
             throw retryErr;
@@ -221,7 +287,85 @@ async function handler(req: Request): Promise<Response> {
     }
   };
 
+  const ensurePickupOrderType = async () => {
+    const desiredKeys = new Set([
+      normalizeKey(PICKUP_ORDER_TYPE_NAME),
+      normalizeKey(PICKUP_ORDER_TYPE_NAME_ALT),
+    ]);
+
+    const orderTypesResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/order_types?limit=200`);
+    const orderTypes = toArray(orderTypesResp?.elements ?? orderTypesResp?.orderTypes ?? orderTypesResp);
+    const nameKey =
+      orderTypes.find((ot: any) => typeof ot?.label === "string")?.label !== undefined ? "label"
+        : orderTypes.find((ot: any) => typeof ot?.name === "string")?.name !== undefined ? "name"
+        : orderTypes.find((ot: any) => typeof ot?.title === "string")?.title !== undefined ? "title"
+        : orderTypes.find((ot: any) => typeof ot?.displayName === "string")?.displayName !== undefined ? "displayName"
+        : "label";
+
+    const existing = orderTypes.find((ot: any) => {
+      const label = extractOrderTypeName(ot);
+      return label && desiredKeys.has(normalizeKey(label));
+    });
+
+    let orderTypeId = existing?.id ?? null;
+    let orderTypeName = extractOrderTypeName(existing) ?? null;
+
+    if (!orderTypeId) {
+      const systemResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/system_order_types`);
+      const systemTypes = toArray(systemResp?.elements ?? systemResp?.systemOrderTypes ?? systemResp);
+      const pickupSystem = systemTypes.find(isPickupSystemType);
+      const pickupSystemId = extractSystemOrderTypeId(pickupSystem);
+
+      const payloadCandidates: Record<string, unknown>[] = [
+        { [nameKey]: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+        { label: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+        { name: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
+        { [nameKey]: PICKUP_ORDER_TYPE_NAME },
+        { label: PICKUP_ORDER_TYPE_NAME },
+        { name: PICKUP_ORDER_TYPE_NAME },
+      ];
+
+      let created: any = null;
+      let lastErr: unknown = null;
+      for (const payload of payloadCandidates) {
+        try {
+          created = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/order_types`, {
+            method: "POST",
+            body: payload,
+          });
+          if (created?.id) break;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+
+      if (!created?.id) {
+        if (lastErr instanceof Error) throw lastErr;
+        throw new Error("No se pudo crear order type Pickup (Findixi)");
+      }
+      orderTypeId = created.id;
+      orderTypeName = extractOrderTypeName(created) ?? PICKUP_ORDER_TYPE_NAME;
+    }
+
+    const updatePayload: Record<string, unknown> = {};
+    if (await hasColumn("clover_conexiones", "clover_order_type_id")) {
+      updatePayload.clover_order_type_id = orderTypeId;
+    }
+    if (await hasColumn("clover_conexiones", "clover_order_type_name")) {
+      updatePayload.clover_order_type_name = orderTypeName;
+    }
+    if (await hasColumn("clover_conexiones", "order_type_ready_at")) {
+      updatePayload.order_type_ready_at = new Date().toISOString();
+    }
+    if (Object.keys(updatePayload).length) {
+      await supabase.from("clover_conexiones").update(updatePayload).eq("idComercio", idComercio);
+    }
+
+    return { id: orderTypeId, name: orderTypeName };
+  };
+
   try {
+    const pickupOrderType = await ensurePickupOrderType();
     console.log("[clover-import] Fetching categories & items", { merchantId, idComercio });
     const catsJson = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/categories`);
     const categories: any[] = toArray(catsJson?.elements ?? catsJson?.categories ?? catsJson);
@@ -454,7 +598,13 @@ async function handler(req: Request): Promise<Response> {
 
     await supabase.from("clover_conexiones").update({ last_imported_at: new Date().toISOString() }).eq("idComercio", idComercio);
 
-    return jsonResponse({ ok: true, menus: menuPayload.length, productos: productoPayload.length, opciones: modifierPayload.length });
+    return jsonResponse({
+      ok: true,
+      menus: menuPayload.length,
+      productos: productoPayload.length,
+      opciones: modifierPayload.length,
+      pickupOrderType,
+    });
   } catch (err) {
     console.error("[clover-import] error", err);
     if (err instanceof CloverApiError) {
