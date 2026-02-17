@@ -80,7 +80,7 @@
 
   
   <!-- Footer fijo -->
-  <footer class="fixed bottom-0 w-full bg-[#231F20] text-white text-sm">
+  <footer class="fixed bottom-0 w-full bg-[#231F20] text-white text-sm" data-footer-fixed style="transform: translateY(var(--footer-offset, 0px));">
     <div class="bg-[#4a4a4a] py-2 px-4">
       <div class="max-w-5xl mx-auto flex flex-row flex-wrap items-center justify-center sm:justify-between gap-3 text-center sm:text-left">
         <div class="flex items-center gap-3 justify-center sm:justify-start">
@@ -122,6 +122,7 @@
   <!-- Scripts -->
   <script type="module" src="../shared/supabaseClient.js"></script>
   <script type="module" src="./menuComercio.js"></script>
+  <script type="module" src="../js/footerViewportFix.js"></script>
   <script src="../js/bloquearPantalla.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { translateDom, t } from './i18n.js';
+import { attachFooterViewportFix } from './footerViewportFix.js';
 
 const container = document.getElementById('footerContainer');
 
@@ -38,13 +39,14 @@ function renderFooter() {
   const maxWidth = '28rem'; // igual que max-w-md para alinear con el header/columna
   container.innerHTML = `
     <footer
+      data-footer-fixed
       class="fixed bottom-0 z-50 text-white bg-[#023047] border-t border-gray-700 shadow-lg"
       style="
         padding-bottom: env(safe-area-inset-bottom);
         width: 100%;
         max-width: ${maxWidth};
         left: 50%;
-        transform: translateX(-50%);
+        transform: translate(-50%, var(--footer-offset, 0px));
       ">
       <nav class="flex justify-around py-2">
         <a href="${base}index.html" class="flex flex-col items-center text-sm font-extralight w-1/4">
@@ -81,6 +83,7 @@ function renderFooter() {
 
 renderFooter();
 translateDom(container);
+attachFooterViewportFix(container?.querySelector('footer'));
 
 window.addEventListener('lang:changed', () => {
   translateDom(container);
