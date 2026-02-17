@@ -156,7 +156,7 @@ function buildOrderCard(order, commerce, items) {
 
   const logoUrl = commerce?.logoUrl;
   const logoHtml = logoUrl
-    ? `<img src="${logoUrl}" alt="${commerce?.nombre || 'Comercio'}" class="w-full h-full object-cover">`
+    ? `<img src="${logoUrl}" alt="${commerce?.nombre || 'Comercio'}" class="w-full h-full object-contain">`
     : `<div class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs">Sin logo</div>`;
 
   const itemsHtml = items.map((item) => {
@@ -242,18 +242,18 @@ function buildOrderCard(order, commerce, items) {
       </div>
     </div>
     ${commerce?.telefono ? `
-      <a href="tel:${commerce.telefono}" class="inline-flex items-center justify-center gap-2 bg-red-600 text-white font-semibold rounded-full px-6 py-2 text-sm shadow mx-auto w-fit">
-        <i class="fa-solid fa-phone"></i> ${commerce.telefono}
+      <a href="tel:${commerce.telefono}" class="inline-flex items-center justify-center gap-2 text-white text-3xl font-semibold bg-red-600 rounded-full px-8 py-[6px] mb-1 shadow hover:bg-red-700 transition mx-auto w-fit">
+        <i class="fa-solid fa-phone text-2xl"></i> ${commerce.telefono}
       </a>` : ''}
-    ${commerce?.direccion ? `<div class="text-sm text-[#3ea6c4] font-medium text-center"><i class="fa-solid fa-location-dot"></i> ${commerce.direccion}</div>` : ''}
-    <div class="flex items-center justify-center gap-3">
-      ${mapUrl ? `<a href="${mapUrl}" target="_blank" aria-label="Google Maps" class="inline-flex items-center gap-2 bg-gray-100 shadow px-3 py-2 rounded-full text-xs text-gray-600">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg" alt="Google Maps" class="h-6 w-10 object-contain">
-        Google Maps
+    ${commerce?.direccion ? `<div class="flex items-center gap-2 text-[#3ea6c4] font-medium text-base leading-none mx-auto w-fit"><i class="fas fa-map-pin"></i> ${commerce.direccion}</div>` : ''}
+    <div class="flex justify-center gap-4">
+      ${mapUrl ? `<a href="${mapUrl}" target="_blank">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg"
+             alt="Google Maps" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
       </a>` : ''}
-      ${wazeUrl ? `<a href="${wazeUrl}" target="_blank" aria-label="Waze" class="inline-flex items-center gap-2 bg-gray-100 shadow px-3 py-2 rounded-full text-xs text-gray-600">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg" alt="Waze" class="h-6 w-10 object-contain">
-        Waze
+      ${wazeUrl ? `<a href="${wazeUrl}" target="_blank">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg"
+             alt="Waze" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
       </a>` : ''}
     </div>
     <div class="space-y-3">
