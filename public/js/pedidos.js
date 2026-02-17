@@ -242,18 +242,20 @@ function buildOrderCard(order, commerce, items) {
       </div>
     </div>
     ${commerce?.telefono ? `
-      <a href="tel:${commerce.telefono}" class="inline-flex items-center justify-center gap-2 text-white text-3xl font-semibold bg-red-600 rounded-full px-8 py-[6px] mb-1 shadow hover:bg-red-700 transition mx-auto w-fit">
-        <i class="fa-solid fa-phone text-2xl"></i> ${commerce.telefono}
-      </a>` : ''}
+      <div class="flex justify-center">
+        <a href="tel:${commerce.telefono}" class="inline-flex items-center justify-center gap-2 text-white text-lg font-semibold bg-red-600 rounded-full px-6 py-1 shadow hover:bg-red-700 transition">
+          <i class="fa-solid fa-phone text-base"></i> ${commerce.telefono}
+        </a>
+      </div>` : ''}
     ${commerce?.direccion ? `<div class="flex items-center gap-2 text-[#3ea6c4] font-medium text-base leading-none mx-auto w-fit"><i class="fas fa-map-pin"></i> ${commerce.direccion}</div>` : ''}
-    <div class="flex justify-center gap-4">
+    <div class="flex justify-center gap-3">
       ${mapUrl ? `<a href="${mapUrl}" target="_blank">
         <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg"
-             alt="Google Maps" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
+             alt="Google Maps" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-8">
       </a>` : ''}
       ${wazeUrl ? `<a href="${wazeUrl}" target="_blank">
         <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg"
-             alt="Waze" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-10">
+             alt="Waze" class="shadow-[0px_9px_12px_-7px_rgba(0,_0,_0,_0.3)] rounded-full h-8">
       </a>` : ''}
     </div>
     <div class="space-y-3">
