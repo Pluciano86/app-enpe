@@ -213,6 +213,10 @@ async function handler(req: Request): Promise<Response> {
   const mesa = typeof mesaVal === "string" || typeof mesaVal === "number" ? String(mesaVal).trim() : null;
   const sourceRaw = String(body?.source ?? (mode === "mesa" ? "qr" : "app")).toLowerCase();
   const source = sourceRaw === "qr" || sourceRaw === "app" ? sourceRaw : (mode === "mesa" ? "qr" : "app");
+  const customer = body?.customer && typeof body.customer === "object" ? body.customer : null;
+  const customerName = customer?.name || [customer?.firstName, customer?.lastName].filter(Boolean).join(" ").trim();
+  const customerEmail = typeof customer?.email === "string" ? customer.email.trim() : null;
+  const customerPhone = typeof customer?.phone === "string" ? customer.phone.trim() : null;
 
   const items = rawItems.map((item: any) => {
     const idProducto = Number(item?.idProducto ?? item?.id);
@@ -232,6 +236,8 @@ async function handler(req: Request): Promise<Response> {
   const idempotencyKey = typeof body?.idempotencyKey === "string" && body.idempotencyKey.trim()
     ? body.idempotencyKey.trim()
     : null;
+
+  const orderLinkToken = crypto.randomUUID();
 
   if (idempotencyKey) {
     const { data: existingOrder, error: existingErr } = await supabase
@@ -659,7 +665,12 @@ async function handler(req: Request): Promise<Response> {
         tips: { enabled: body?.tipsEnabled !== false },
       };
       if (body?.redirectUrls && typeof body.redirectUrls === "object") {
-        checkoutPayload.redirectUrls = body.redirectUrls;
+        const redirectUrls: Record<string, string> = {};
+        for (const [key, value] of Object.entries(body.redirectUrls)) {
+          if (typeof value !== "string") continue;
+          redirectUrls[key] = value.replace("{ORDER_TOKEN}", orderLinkToken);
+        }
+        checkoutPayload.redirectUrls = redirectUrls;
       }
       const checkoutResp = await fetchCloverWithAutoRefresh("/invoicingcheckoutservice/v1/checkouts", {
         method: "POST",
@@ -706,6 +717,15 @@ async function handler(req: Request): Promise<Response> {
     mesa: mesa,
     source: source,
   };
+
+  const orderCols = await getTableColumns("ordenes");
+  if (orderCols) {
+    if (orderCols.has("customer_email")) orderInsert.customer_email = customerEmail;
+    if (orderCols.has("customer_phone")) orderInsert.customer_phone = customerPhone;
+    if (orderCols.has("customer_name")) orderInsert.customer_name = customerName || null;
+    if (orderCols.has("order_link_token")) orderInsert.order_link_token = orderLinkToken;
+    if (orderCols.has("order_link_expires_at")) orderInsert.order_link_expires_at = null;
+  }
 
   const { data: orderRow, error: orderErr } = await supabase
     .from("ordenes")
@@ -759,6 +779,7 @@ async function handler(req: Request): Promise<Response> {
     checkout_url: checkoutUrl,
     clover_order_id: cloverOrderId,
     checkout_session_id: checkoutSessionId,
+    order_link_token: orderLinkToken,
   });
 }
 

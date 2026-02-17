@@ -1237,6 +1237,11 @@ function buildCartDrawer() {
           </div>
         </div>
         <div class="space-y-1">
+          <label class="text-xs text-gray-500">Teléfono</label>
+          <input id="cartPhone" type="tel" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="787-000-0000" />
+          <p class="text-[11px] text-gray-400">Necesario para enviarte el enlace del pedido.</p>
+        </div>
+        <div class="space-y-1">
           <label class="text-xs text-gray-500">Email</label>
           <input id="cartEmail" type="email" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="correo@ejemplo.com" />
           <p class="text-[11px] text-gray-400">El recibo será enviado a este email.</p>
@@ -1531,9 +1536,10 @@ async function submitOrder() {
   if (allowPickup) {
     const firstName = String(document.querySelector('#cartFirstName')?.value || '').trim();
     const lastName = String(document.querySelector('#cartLastName')?.value || '').trim();
+    const phone = String(document.querySelector('#cartPhone')?.value || '').trim();
     const email = String(document.querySelector('#cartEmail')?.value || '').trim();
-    if (!firstName || !lastName || !email) {
-      alert('Por favor completa nombre, apellido y email antes de pagar.');
+    if (!firstName || !lastName || !email || !phone) {
+      alert('Por favor completa nombre, apellido, teléfono y email antes de pagar.');
       return;
     }
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -1541,11 +1547,18 @@ async function submitOrder() {
       alert('Ingresa un email válido para recibir el recibo.');
       return;
     }
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 7) {
+      alert('Ingresa un teléfono válido.');
+      return;
+    }
     customer = {
       firstName,
       lastName,
       name: `${firstName} ${lastName}`.trim(),
       email,
+      phone,
+      phoneNumber: phone,
     };
   }
   const payload = {
@@ -1565,7 +1578,7 @@ async function submitOrder() {
   if (allowPickup) {
     const basePath = isDev ? '/public' : '';
     if (window.location.protocol === 'https:') {
-      const ordersUrl = `${window.location.origin}${basePath}/pedidos.html?tab=activos&session_id={CHECKOUT_SESSION_ID}`;
+      const ordersUrl = `${window.location.origin}${basePath}/pedidos.html?tab=activos&token={ORDER_TOKEN}&session_id={CHECKOUT_SESSION_ID}`;
       payload.redirectUrls = {
         success: ordersUrl,
         failure: ordersUrl,

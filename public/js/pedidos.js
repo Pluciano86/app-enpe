@@ -57,6 +57,38 @@ function loadOrderHistory() {
   }
 }
 
+function getTokenParam() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('token') || '';
+}
+
+async function fetchOrdersByToken(token) {
+  if (!token) return [];
+  const { data, error } = await supabase
+    .from('ordenes')
+    .select('id, idcomercio, clover_order_id, checkout_url, total, status, created_at, order_type, mesa, source, order_link_expires_at')
+    .eq('order_link_token', token)
+    .maybeSingle();
+  if (error || !data) return [];
+  const expired = data.order_link_expires_at && new Date(data.order_link_expires_at).getTime() < Date.now();
+  const status = String(data.status || '').toLowerCase();
+  if (expired || STATUS_PAST.has(status)) {
+    return [{ ...data, link_expired: true }];
+  }
+  return [data];
+}
+
+async function fetchOrdersByEmail(email) {
+  if (!email) return [];
+  const { data, error } = await supabase
+    .from('ordenes')
+    .select('id, idcomercio, clover_order_id, checkout_url, total, status, created_at, order_type, mesa, source')
+    .eq('customer_email', email)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data;
+}
+
 function setLoading(isLoading) {
   if (ordersLoading) {
     ordersLoading.classList.toggle('hidden', !isLoading);
@@ -216,21 +248,36 @@ async function loadOrders() {
   setEmpty(false);
   if (ordersContainer) ordersContainer.innerHTML = '';
 
-  const history = loadOrderHistory();
-  const orderIds = history.map((h) => Number(h.id)).filter((id) => Number.isFinite(id));
-  if (!orderIds.length) {
-    setLoading(false);
-    setEmpty(true);
-    return;
+  const token = getTokenParam();
+  let orders = [];
+  if (token) {
+    orders = await fetchOrdersByToken(token);
   }
 
-  const { data: orders, error: orderErr } = await supabase
-    .from('ordenes')
-    .select('id, idcomercio, clover_order_id, checkout_url, total, status, created_at, order_type, mesa, source')
-    .in('id', orderIds)
-    .order('created_at', { ascending: false });
+  if (!orders.length) {
+    const history = loadOrderHistory();
+    const orderIds = history.map((h) => Number(h.id)).filter((id) => Number.isFinite(id));
+    if (orderIds.length) {
+      const resp = await supabase
+        .from('ordenes')
+        .select('id, idcomercio, clover_order_id, checkout_url, total, status, created_at, order_type, mesa, source')
+        .in('id', orderIds)
+        .order('created_at', { ascending: false });
+      if (!resp.error && resp.data) {
+        orders = resp.data;
+      }
+    }
+  }
 
-  if (orderErr || !orders) {
+  if (!orders.length) {
+    const { data: { user } } = await supabase.auth.getUser();
+    const userEmail = user?.email || '';
+    if (userEmail) {
+      orders = await fetchOrdersByEmail(userEmail);
+    }
+  }
+
+  if (!orders.length) {
     setLoading(false);
     setEmpty(true);
     return;
@@ -295,6 +342,12 @@ async function loadOrders() {
     const commerce = comercioMap.get(order.idcomercio) || {};
     const items = itemsByOrder.get(order.id) || [];
     const card = buildOrderCard(order, commerce, items);
+    if (order.link_expired) {
+      const msg = document.createElement('div');
+      msg.className = 'text-xs text-red-500 font-semibold mt-2';
+      msg.textContent = 'Este enlace de pedido ya expiró.';
+      card.appendChild(msg);
+    }
     ordersContainer.appendChild(card);
   });
 

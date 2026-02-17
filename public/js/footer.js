@@ -8,6 +8,8 @@ const isLiveServer = location.hostname === '127.0.0.1' || location.hostname === 
 const ruta = location.pathname;
 const loginPath = isLiveServer ? '/public/logearse.html' : '/logearse.html';
 const cuentaPath = isLiveServer ? '/public/usuarios/cuentaUsuario.html' : '/usuarios/cuentaUsuario.html';
+const privacyPath = isLiveServer ? '/public/privacy-policy.html' : '/privacy-policy.html';
+const termsPath = isLiveServer ? '/public/terms-of-service.html' : '/terms-of-service.html';
 
 let nivel = 0;
 if (isLiveServer && ruta.includes('/public/')) {
@@ -66,6 +68,13 @@ function renderFooter() {
           <span id="footerTexto" data-i18n="footer.cuenta">${defaultCuentaTexto}</span>
         </a>
       </nav>
+      <div class="flex flex-wrap justify-center gap-x-3 gap-y-1 px-3 pb-2 text-[11px] text-white/80 border-t border-white/10">
+        <a href="${privacyPath}" class="hover:text-white underline-offset-2 hover:underline">Privacy Policy</a>
+        <span class="opacity-60">•</span>
+        <a href="${termsPath}" class="hover:text-white underline-offset-2 hover:underline">Terms of Service</a>
+        <span class="opacity-60">•</span>
+        <a href="mailto:info@findixi.com" class="hover:text-white underline-offset-2 hover:underline">info@findixi.com</a>
+      </div>
     </footer>
   `;
 }
