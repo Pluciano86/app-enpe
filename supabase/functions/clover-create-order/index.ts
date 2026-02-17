@@ -760,13 +760,17 @@ async function handler(req: Request): Promise<Response> {
     const basePrice = toNumber(product?.precio);
     const modsExtra = mods.reduce((sum, mod) => sum + (toNumber(mod.precio_extra) || 0), 0);
     const unitPrice = Number.isFinite(basePrice) ? basePrice + modsExtra : 0;
+    const modsWithGroup = mods.map((mod) => ({
+      ...mod,
+      grupo: mod.grupo_nombre ?? mod.grupo ?? null,
+    }));
     return {
       idorden: orderRow.id,
       idproducto: item.idProducto,
       clover_item_id: product.clover_item_id,
       qty: item.qty,
       price_snapshot: unitPrice,
-      modifiers: { items: mods, nota: item.nota ?? null },
+      modifiers: { items: modsWithGroup, nota: item.nota ?? null },
     };
   });
 

@@ -161,13 +161,25 @@ function buildOrderCard(order, commerce, items) {
 
   const itemsHtml = items.map((item) => {
     const mods = item.modifiers?.items || [];
-    const modsHtml = mods.length
-      ? `<div class="text-xs text-gray-500">${mods.map((m) => {
+    const grouped = new Map();
+    mods.forEach((m) => {
+      const group = (m.grupo || m.grupo_nombre || 'Opciones').trim();
+      const list = grouped.get(group) || [];
+      list.push(m);
+      grouped.set(group, list);
+    });
+    const modsHtml = Array.from(grouped.entries()).map(([group, list]) => {
+      const lines = list.map((m) => {
         const extra = Number(m.precio_extra);
         const extraLabel = Number.isFinite(extra) && extra > 0 ? ` (+$${extra.toFixed(2)})` : '';
-        return `${m.nombre || 'Opción'}${extraLabel}`;
-      }).join(', ')}</div>`
-      : '';
+        return `• ${m.nombre || 'Opción'}${extraLabel}`;
+      }).join('<br>');
+      return `
+        <div class="text-xs text-gray-500">
+          <span class="font-semibold text-gray-600">${group}:</span><br>${lines}
+        </div>
+      `;
+    }).join('');
     const noteHtml = item.modifiers?.nota ? `<div class="text-xs text-gray-500">Nota: ${item.modifiers.nota}</div>` : '';
     return `
       <div class="flex justify-between gap-2">
@@ -187,7 +199,7 @@ function buildOrderCard(order, commerce, items) {
     { icon: 'fa-bag-shopping', label: 'Lista para recoger' },
   ];
 
-  const stepsHtml = steps.map((s, index) => {
+  const stepPieces = steps.map((s, index) => {
     const active = step >= index + 1;
     const iconClass = active ? 'text-green-600' : 'text-gray-400';
     const textClass = active ? 'text-green-700' : 'text-gray-500';
@@ -200,35 +212,53 @@ function buildOrderCard(order, commerce, items) {
         <div class="text-[11px] leading-tight ${textClass}">${s.label}</div>
       </div>
     `;
-  }).join('');
+  });
+  const stepsHtml = stepPieces
+    .map((piece, index) => {
+      if (index === stepPieces.length - 1) return piece;
+      const active = step >= index + 2;
+      const arrowClass = active ? 'text-green-400' : 'text-gray-300';
+      return `
+        ${piece}
+        <div class="flex items-center justify-center ${arrowClass} text-xs px-1">
+          <i class="fa-solid fa-chevron-right"></i>
+          <i class="fa-solid fa-chevron-right"></i>
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+      `;
+    })
+    .join('');
 
   card.innerHTML = `
     <div class="flex items-start gap-3">
-      <div class="w-14 h-14 rounded-xl overflow-hidden border border-gray-100">${logoHtml}</div>
+      <div class="w-16 h-16 rounded-2xl overflow-hidden border border-gray-100 bg-white">${logoHtml}</div>
       <div class="flex-1">
         <div class="flex items-center justify-between">
           <div class="text-sm font-semibold">${commerce?.nombre || 'Comercio'}</div>
-          <div class="text-[11px] px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">${statusLabel}</div>
+          <div class="text-[11px] px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">${statusLabel}</div>
         </div>
         <div class="text-xs text-gray-500">${created}</div>
         ${order.order_type === 'mesa' && order.mesa ? `<div class="text-xs text-gray-500">Mesa ${order.mesa}</div>` : ''}
       </div>
     </div>
-    <div class="flex items-center gap-3 text-xs text-gray-500">
-      ${commerce?.telefono ? `<a href="tel:${commerce.telefono}" class="inline-flex items-center gap-1 text-gray-600"><i class="fa-solid fa-phone"></i> ${commerce.telefono}</a>` : ''}
-      ${commerce?.direccion ? `<span class="inline-flex items-center gap-1"><i class="fa-solid fa-location-dot"></i>${commerce.direccion}</span>` : ''}
-    </div>
-    <div class="flex items-center gap-4">
-      ${mapUrl ? `<a href="${mapUrl}" target="_blank" aria-label="Google Maps" class="inline-flex items-center justify-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg" alt="Google Maps" class="h-12 w-16 object-contain">
+    ${commerce?.telefono ? `
+      <a href="tel:${commerce.telefono}" class="inline-flex items-center justify-center gap-2 bg-red-600 text-white font-semibold rounded-full px-6 py-2 text-sm shadow mx-auto w-fit">
+        <i class="fa-solid fa-phone"></i> ${commerce.telefono}
       </a>` : ''}
-      ${wazeUrl ? `<a href="${wazeUrl}" target="_blank" aria-label="Waze" class="inline-flex items-center justify-center">
-        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg" alt="Waze" class="h-12 w-16 object-contain">
+    ${commerce?.direccion ? `<div class="text-sm text-[#3ea6c4] font-medium text-center"><i class="fa-solid fa-location-dot"></i> ${commerce.direccion}</div>` : ''}
+    <div class="flex items-center justify-center gap-3">
+      ${mapUrl ? `<a href="${mapUrl}" target="_blank" aria-label="Google Maps" class="inline-flex items-center gap-2 bg-gray-100 shadow px-3 py-2 rounded-full text-xs text-gray-600">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//google%20map.jpg" alt="Google Maps" class="h-6 w-10 object-contain">
+        Google Maps
+      </a>` : ''}
+      ${wazeUrl ? `<a href="${wazeUrl}" target="_blank" aria-label="Waze" class="inline-flex items-center gap-2 bg-gray-100 shadow px-3 py-2 rounded-full text-xs text-gray-600">
+        <img src="https://zgjaxanqfkweslkxtayt.supabase.co/storage/v1/object/public/galeriacomercios//waze.jpg" alt="Waze" class="h-6 w-10 object-contain">
+        Waze
       </a>` : ''}
     </div>
     <div class="space-y-3">
-      <div class="text-sm font-semibold text-gray-800">Status de la Orden:</div>
-      <div class="grid grid-cols-3 gap-2">${stepsHtml}</div>
+      <div class="text-sm font-semibold text-gray-800 text-center">Status de la Orden:</div>
+      <div class="flex items-center justify-center gap-2">${stepsHtml}</div>
     </div>
     <div class="border-t border-gray-100 pt-3 space-y-2">
       ${itemsHtml || '<div class="text-xs text-gray-400">Sin detalles de items.</div>'}
