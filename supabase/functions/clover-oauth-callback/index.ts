@@ -353,6 +353,7 @@ async function handler(req: Request): Promise<Response> {
       throw upsertError;
     }
 
+    let pickupError: string | null = null;
     try {
       const desiredKeys = new Set([
         normalizeKey(PICKUP_ORDER_TYPE_NAME),
@@ -422,14 +423,8 @@ async function handler(req: Request): Promise<Response> {
         await supabase.from("clover_conexiones").update(updatePayload).eq("idComercio", idComercio);
       }
     } catch (err) {
+      pickupError = err instanceof Error ? err.message : String(err);
       console.error("[clover-callback] Error asegurando order type Pickup", err);
-      return new Response(
-        JSON.stringify({
-          error: "No se pudo configurar Pickup en Clover. Reintenta Sincronizar o reconecta Clover.",
-          details: err instanceof Error ? err.message : String(err),
-        }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
-      );
     }
 
     const fallback = "https://comercio.enpe-erre.com/adminMenuComercio.html";
@@ -442,6 +437,9 @@ async function handler(req: Request): Promise<Response> {
     const redirectUrl = new URL(redirectBase);
     redirectUrl.searchParams.set("id", String(idComercio));
     redirectUrl.searchParams.set("clover", "ok");
+    if (pickupError) {
+      redirectUrl.searchParams.set("pickup_error", "1");
+    }
     return Response.redirect(redirectUrl.toString(), 302);
   } catch (err) {
     console.error("clover-oauth-callback error", err);
