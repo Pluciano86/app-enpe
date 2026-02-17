@@ -77,9 +77,31 @@ async function handler(req: Request): Promise<Response> {
   const returnToRaw = url.searchParams.get("return_to");
   const returnTo = isReturnToAllowed(returnToRaw);
 
-  const idComercio = Number(idComercioRaw);
+  let idComercio = Number(idComercioRaw);
   if (!Number.isFinite(idComercio) || idComercio <= 0) {
-    return new Response(JSON.stringify({ error: "idComercio inválido" }), { status: 400, headers: corsHeaders });
+    // Intentar resolver por merchant_id si existe
+    if (merchantId) {
+      const { data: conn } = await supabase
+        .from("clover_conexiones")
+        .select("idComercio")
+        .eq("clover_merchant_id", merchantId)
+        .maybeSingle();
+      if (conn?.idComercio) {
+        idComercio = Number(conn.idComercio);
+      }
+    }
+  }
+  if (!Number.isFinite(idComercio) || idComercio <= 0) {
+    const fallbackHost = returnTo ? new URL(returnTo).origin : "https://comercio.enpe-erre.com";
+    const vincularUrl = `${fallbackHost}/vincularClover.html${merchantId ? `?merchant_id=${encodeURIComponent(merchantId)}` : ""}`;
+    return new Response(
+      JSON.stringify({
+        error: "idComercio inválido",
+        vincular_url: vincularUrl,
+        hint: "Abre el vincular_url para asociar este merchant con un idComercio.",
+      }),
+      { status: 400, headers: corsHeaders },
+    );
   }
 
   // Valida que exista el comercio
