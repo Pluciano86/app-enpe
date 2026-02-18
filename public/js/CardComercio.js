@@ -143,8 +143,8 @@ export function cardComercio(comercio) {
 
     ${
       !permitePerfil
-        ? `<div class="mt-2 mb-1 inline-flex items-center justify-center px-3 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-600">
-             Perfil próximamente
+        ? `<div class="absolute top-2 left-2 z-30 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gray-100 text-gray-600 border border-gray-200">
+             Perfil no activo
            </div>`
         : ''
     }
@@ -199,30 +199,126 @@ export function cardComercio(comercio) {
     // bubble handled in shared click handler below
   }
 
-  const showBubble = (message) => {
+  let bubbleState = null;
+
+  const escapeHtml = (value) =>
+    String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const ensureBubble = () => {
     let bubble = div.querySelector('.basic-plan-bubble');
-    if (!bubble) {
-      bubble = document.createElement('div');
-      bubble.className =
-        'basic-plan-bubble absolute left-1/2 -translate-x-1/2 top-2 bg-black/85 text-white text-[11px] px-3 py-1.5 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-200 z-50';
-      bubble.textContent = message;
-      div.appendChild(bubble);
-    } else {
-      bubble.textContent = message;
+    if (bubble) return bubble;
+
+    bubble = document.createElement('div');
+    bubble.className =
+      'basic-plan-bubble absolute left-1/2 -translate-x-1/2 top-2 z-50 w-[90%] max-w-[230px] opacity-0 translate-y-2 pointer-events-none transition-all duration-200 ease-out';
+    bubble.setAttribute('role', 'status');
+    bubble.setAttribute('aria-live', 'polite');
+
+    const box = document.createElement('div');
+    box.className =
+      'relative bg-white text-gray-800 border border-gray-200 rounded-2xl shadow-lg px-3 py-2.5 text-center';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className =
+      'absolute top-1 right-1 w-5 h-5 text-gray-400 hover:text-gray-600 rounded-full flex items-center justify-center';
+    closeBtn.setAttribute('aria-label', 'Cerrar');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideBubble();
+    });
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full bg-sky-100 text-sky-600';
+    iconWrap.innerHTML = '<i class="fa-solid fa-circle-info text-xs"></i>';
+
+    const title = document.createElement('div');
+    title.className = 'font-semibold text-[13px] text-gray-900 leading-tight';
+    title.textContent = 'Perfil aún no disponible';
+
+    const msg = document.createElement('div');
+    msg.className = 'text-[11px] text-gray-600 leading-snug mt-1';
+    const nombreComercio = comercio?.nombre || 'este comercio';
+    msg.innerHTML =
+      `Este comercio todavía no ha activado su perfil completo en ` +
+      `<span class="text-[#f57c00] font-semibold">Findixi</span>.<br>` +
+      `Le notificaremos que hay personas interesadas en conocer más sobre` +
+      `<br><span class="text-sky-600 font-semibold">${escapeHtml(nombreComercio)}</span>.`;
+
+    const caret = document.createElement('span');
+    caret.className =
+      'absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-white border-b border-r border-gray-200 rotate-45';
+
+    box.appendChild(closeBtn);
+    box.appendChild(iconWrap);
+    box.appendChild(title);
+    box.appendChild(msg);
+    box.appendChild(caret);
+    bubble.appendChild(box);
+
+    bubble.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    div.appendChild(bubble);
+    return bubble;
+  };
+
+  const hideBubble = () => {
+    const bubble = div.querySelector('.basic-plan-bubble');
+    if (!bubble || !bubbleState?.visible) return;
+    bubbleState.visible = false;
+    bubble.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+    bubble.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+    if (bubbleState.timer) {
+      clearTimeout(bubbleState.timer);
+      bubbleState.timer = null;
     }
-    bubble.classList.remove('opacity-0');
-    bubble.classList.add('opacity-100');
-    if (bubble._hideTimer) clearTimeout(bubble._hideTimer);
-    bubble._hideTimer = setTimeout(() => {
-      bubble.classList.remove('opacity-100');
-      bubble.classList.add('opacity-0');
-    }, 2200);
+    if (bubbleState.outsideHandler) {
+      document.removeEventListener('click', bubbleState.outsideHandler);
+      bubbleState.outsideHandler = null;
+    }
+  };
+
+  const showBubble = () => {
+    const bubble = ensureBubble();
+    if (!bubbleState) bubbleState = {};
+
+    bubbleState.visible = true;
+    bubble.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+    bubble.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+
+    if (bubbleState.timer) clearTimeout(bubbleState.timer);
+    bubbleState.timer = setTimeout(() => {
+      hideBubble();
+    }, 3000);
+
+    if (!bubbleState.outsideHandler) {
+      bubbleState.outsideHandler = (evt) => {
+        if (!bubble.contains(evt.target)) {
+          hideBubble();
+        }
+      };
+      document.addEventListener('click', bubbleState.outsideHandler);
+    }
   };
 
   // Controlar navegación para evitar saltar al perfil en plan básico
   div.addEventListener('click', async (event) => {
     const telLink = event.target.closest('a[href^="tel:"]');
     if (telLink) return;
+
+    if (bubbleState?.visible) {
+      hideBubble();
+      return;
+    }
 
     event.preventDefault();
     event.stopPropagation();
@@ -237,7 +333,7 @@ export function cardComercio(comercio) {
       return;
     }
 
-    showBubble('Este comercio está en plan básico. Puedes llamarlo por teléfono.');
+    showBubble();
   });
 
   return div;

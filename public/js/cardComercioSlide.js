@@ -85,30 +85,125 @@ export function cardComercioSlide(comercio) {
     card.setAttribute('aria-disabled', 'true');
     card.setAttribute('tabindex', '-1');
 
-    const showBubble = (message) => {
+    let bubbleState = null;
+
+    const escapeHtml = (value) =>
+      String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+    const ensureBubble = () => {
       let bubble = card.querySelector('.basic-plan-bubble');
-      if (!bubble) {
-        bubble = document.createElement('div');
-        bubble.className =
-          'basic-plan-bubble absolute left-1/2 -translate-x-1/2 top-3 bg-black/80 text-white text-[10px] px-3 py-1.5 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-200 z-20';
-        bubble.textContent = message;
-        card.appendChild(bubble);
-      } else {
-        bubble.textContent = message;
+      if (bubble) return bubble;
+
+      bubble = document.createElement('div');
+      bubble.className =
+        'basic-plan-bubble absolute left-1/2 -translate-x-1/2 top-1 z-20 w-[92%] max-w-[200px] opacity-0 translate-y-2 pointer-events-none transition-all duration-200 ease-out';
+      bubble.setAttribute('role', 'status');
+      bubble.setAttribute('aria-live', 'polite');
+
+      const box = document.createElement('div');
+      box.className =
+        'relative bg-white text-gray-800 border border-gray-200 rounded-2xl shadow-lg px-3 py-2 text-center';
+
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className =
+        'absolute top-1 right-1 w-5 h-5 text-gray-400 hover:text-gray-600 rounded-full flex items-center justify-center';
+      closeBtn.setAttribute('aria-label', 'Cerrar');
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        hideBubble();
+      });
+
+      const iconWrap = document.createElement('div');
+      iconWrap.className = 'mx-auto mb-1 flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-sky-600';
+      iconWrap.innerHTML = '<i class="fa-solid fa-circle-info text-[10px]"></i>';
+
+      const title = document.createElement('div');
+      title.className = 'font-semibold text-[11px] text-gray-900 leading-tight';
+      title.textContent = 'Perfil aún no disponible';
+
+      const msg = document.createElement('div');
+      msg.className = 'text-[10px] text-gray-600 leading-snug mt-1';
+      const nombreComercio = comercio?.nombre || 'este comercio';
+      msg.innerHTML =
+        `Este comercio todavía no ha activado su perfil completo en ` +
+        `<span class="text-[#f57c00] font-semibold">Findixi</span>.<br>` +
+        `Le notificaremos que hay personas interesadas en conocer más sobre` +
+        `<br><span class="text-sky-600 font-semibold">${escapeHtml(nombreComercio)}</span>.`;
+
+      const caret = document.createElement('span');
+      caret.className =
+        'absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-white border-b border-r border-gray-200 rotate-45';
+
+      box.appendChild(closeBtn);
+      box.appendChild(iconWrap);
+      box.appendChild(title);
+      box.appendChild(msg);
+      box.appendChild(caret);
+      bubble.appendChild(box);
+
+      bubble.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+
+      card.appendChild(bubble);
+      return bubble;
+    };
+
+    const hideBubble = () => {
+      const bubble = card.querySelector('.basic-plan-bubble');
+      if (!bubble || !bubbleState?.visible) return;
+      bubbleState.visible = false;
+      bubble.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+      bubble.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+      if (bubbleState.timer) {
+        clearTimeout(bubbleState.timer);
+        bubbleState.timer = null;
       }
-      bubble.classList.remove('opacity-0');
-      bubble.classList.add('opacity-100');
-      if (bubble._hideTimer) clearTimeout(bubble._hideTimer);
-      bubble._hideTimer = setTimeout(() => {
-        bubble.classList.remove('opacity-100');
-        bubble.classList.add('opacity-0');
-      }, 2200);
+      if (bubbleState.outsideHandler) {
+        document.removeEventListener('click', bubbleState.outsideHandler);
+        bubbleState.outsideHandler = null;
+      }
+    };
+
+    const showBubble = () => {
+      const bubble = ensureBubble();
+      if (!bubbleState) bubbleState = {};
+
+      bubbleState.visible = true;
+      bubble.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+      bubble.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+
+      if (bubbleState.timer) clearTimeout(bubbleState.timer);
+      bubbleState.timer = setTimeout(() => {
+        hideBubble();
+      }, 3000);
+
+      if (!bubbleState.outsideHandler) {
+        bubbleState.outsideHandler = (evt) => {
+          if (!bubble.contains(evt.target)) {
+            hideBubble();
+          }
+        };
+        document.addEventListener('click', bubbleState.outsideHandler);
+      }
     };
 
     card.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      showBubble('Perfil básico. Llama al comercio para más info.');
+      if (bubbleState?.visible) {
+        hideBubble();
+        return;
+      }
+      showBubble();
     });
   }
 
