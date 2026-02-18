@@ -332,10 +332,16 @@ async function handler(req: Request): Promise<Response> {
     let orderTypeName = extractOrderTypeName(existing) ?? null;
 
     if (!orderTypeId) {
-      const systemResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/system_order_types`);
-      const systemTypes = toArray(systemResp?.elements ?? systemResp?.systemOrderTypes ?? systemResp);
-      const pickupSystem = systemTypes.find(isPickupSystemType);
-      const pickupSystemId = extractSystemOrderTypeId(pickupSystem);
+      let pickupSystemId: string | null = null;
+      try {
+        const systemResp = await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/system_order_types`);
+        const systemTypes = toArray(systemResp?.elements ?? systemResp?.systemOrderTypes ?? systemResp);
+        const pickupSystem = systemTypes.find(isPickupSystemType);
+        pickupSystemId = extractSystemOrderTypeId(pickupSystem);
+      } catch (err) {
+        console.warn("[clover-import] No se pudo leer system_order_types, creando order type sin systemOrderTypeId", err);
+        pickupSystemId = null;
+      }
 
       const payloadCandidates: Record<string, unknown>[] = [
         { [nameKey]: PICKUP_ORDER_TYPE_NAME, ...(pickupSystemId ? { systemOrderTypeId: pickupSystemId } : {}) },
@@ -637,12 +643,15 @@ async function handler(req: Request): Promise<Response> {
           merchantId,
           status: err.status,
           raw: err.raw,
+          url: err.url,
           token_info: tokenPayload
             ? {
               iss: tokenPayload?.iss,
               merchant_uuid: tokenPayload?.merchant_uuid ?? tokenPayload?.merchantId,
               app_uuid: tokenPayload?.app_uuid,
               permission_bitmap: tokenPayload?.permission_bitmap,
+              exp: tokenPayload?.exp,
+              iat: tokenPayload?.iat,
             }
             : null,
         }, 401);
