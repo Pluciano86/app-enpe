@@ -256,6 +256,16 @@ async function handler(req: Request): Promise<Response> {
     : body?.merchants && typeof body.merchants === "object"
     ? Object.keys(body.merchants).length
     : 0;
+  let merchantSample: unknown = null;
+  if (body?.merchants && typeof body.merchants === "object") {
+    if (Array.isArray(body.merchants) && body.merchants.length) merchantSample = body.merchants[0];
+    else if (!Array.isArray(body.merchants) && merchantKeys.length) merchantSample = body.merchants[merchantKeys[0]];
+  }
+  const merchantCount = Array.isArray(body?.merchants)
+    ? body.merchants.length
+    : body?.merchants && typeof body.merchants === "object"
+    ? Object.keys(body.merchants).length
+    : 0;
   console.log("[clover-webhook] incoming", {
     merchantId: body?.merchant_id ?? body?.merchantId ?? body?.merchant?.id ?? null,
     objectId: body?.object_id ?? body?.objectId ?? body?.id ?? body?.data?.id ?? null,
@@ -265,6 +275,8 @@ async function handler(req: Request): Promise<Response> {
     bodyKeys,
     merchantCount,
     merchantKeys,
+    merchantSampleKeys: merchantSample && typeof merchantSample === "object" ? Object.keys(merchantSample as Record<string, unknown>) : [],
+    merchantSampleSnippet: merchantSample ? JSON.stringify(merchantSample).slice(0, 500) : undefined,
     rawSnippet: typeof body === "string" ? body.slice(0, 500) : undefined,
   });
 
@@ -294,31 +306,53 @@ async function handler(req: Request): Promise<Response> {
     }
 
     if (merchants && typeof merchants === "object") {
-      for (const [mId, updates] of Object.entries(merchants)) {
-        if (Array.isArray(updates)) {
-          for (const u of updates) {
-            events.push({
-              merchantId: String(mId),
-              objectId: u?.objectId ?? u?.object_id ?? u?.id ?? null,
-              eventType: u?.type ?? u?.eventType ?? u?.event?.type ?? null,
-            });
-          }
-          continue;
-        }
-        if (updates && typeof updates === "object") {
-          const buckets = ["events", "payments", "orders", "payment", "order"];
-          for (const key of buckets) {
-            const list = (updates as any)[key];
-            if (!Array.isArray(list)) continue;
-            for (const u of list) {
+      const extractFromNode = (
+        merchantId: string,
+        node: unknown,
+        depth: number,
+        hint?: string,
+      ) => {
+        if (!node || depth > 4) return;
+        if (Array.isArray(node)) {
+          for (const item of node) {
+            if (typeof item === "string") {
+              events.push({ merchantId, objectId: item, eventType: hint ?? null });
+              continue;
+            }
+            if (item && typeof item === "object") {
+              const obj = item as Record<string, unknown>;
+              const objectId = (obj.objectId ?? obj.object_id ?? obj.id ?? obj.paymentId ?? obj.orderId) as string | undefined;
               events.push({
-                merchantId: String(mId),
-                objectId: u?.objectId ?? u?.object_id ?? u?.id ?? u?.paymentId ?? u?.orderId ?? null,
-                eventType: u?.type ?? u?.eventType ?? (typeof key === "string" ? key.toUpperCase() : null),
+                merchantId,
+                objectId: objectId ?? null,
+                eventType: (obj.type ?? obj.eventType ?? hint ?? null) as string | null,
               });
+              extractFromNode(merchantId, obj, depth + 1, hint);
+            }
+          }
+          return;
+        }
+        if (node && typeof node === "object") {
+          const obj = node as Record<string, unknown>;
+          const objectId = (obj.objectId ?? obj.object_id ?? obj.id ?? obj.paymentId ?? obj.orderId) as string | undefined;
+          if (objectId) {
+            events.push({ merchantId, objectId, eventType: (obj.type ?? obj.eventType ?? hint ?? null) as string | null });
+          }
+          for (const [k, v] of Object.entries(obj)) {
+            if (["events", "payments", "orders", "payment", "order"].includes(k)) {
+              extractFromNode(merchantId, v, depth + 1, k.toUpperCase());
+            } else if (["created", "updated", "deleted"].includes(k)) {
+              extractFromNode(merchantId, v, depth + 1, `${hint ?? "EVENT"}_${k.toUpperCase()}`);
+            } else if (depth < 2) {
+              extractFromNode(merchantId, v, depth + 1, hint);
             }
           }
         }
+      };
+
+      for (const [mId, updates] of Object.entries(merchants)) {
+        const merchantId = String(mId);
+        extractFromNode(merchantId, updates, 0);
       }
     }
     return events;
