@@ -44,6 +44,27 @@ function normalizeOauthApiBase(raw: string) {
 
 const OAUTH_API_BASE = normalizeOauthApiBase(CLOVER_OAUTH_BASE);
 
+function fromBase64Url(str: string) {
+  const pad = str.length % 4 === 0 ? 0 : 4 - (str.length % 4);
+  const b64 = str.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat(pad);
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function decodeJwtPayload(token: string) {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payloadBytes = fromBase64Url(parts[1]);
+    const json = new TextDecoder().decode(payloadBytes);
+    return JSON.parse(json);
+  } catch (_e) {
+    return null;
+  }
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -608,6 +629,7 @@ async function handler(req: Request): Promise<Response> {
   } catch (err) {
     console.error("[clover-import] error", err);
     if (err instanceof CloverApiError) {
+      const tokenPayload = accessToken ? decodeJwtPayload(accessToken) : null;
       if (err.status === 401) {
         return jsonResponse({
           needs_reconnect: true,
@@ -615,6 +637,14 @@ async function handler(req: Request): Promise<Response> {
           merchantId,
           status: err.status,
           raw: err.raw,
+          token_info: tokenPayload
+            ? {
+              iss: tokenPayload?.iss,
+              merchant_uuid: tokenPayload?.merchant_uuid ?? tokenPayload?.merchantId,
+              app_uuid: tokenPayload?.app_uuid,
+              permission_bitmap: tokenPayload?.permission_bitmap,
+            }
+            : null,
         }, 401);
       }
       return jsonResponse({
