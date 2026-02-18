@@ -246,6 +246,9 @@ async function handler(req: Request): Promise<Response> {
     body?.event?.eventType ??
     body?.event?.name ??
     null;
+  const merchantKeys = Array.isArray(body?.merchants) && body.merchants.length
+    ? Object.keys(body.merchants[0] ?? {})
+    : [];
   console.log("[clover-webhook] incoming", {
     merchantId: body?.merchant_id ?? body?.merchantId ?? body?.merchant?.id ?? null,
     objectId: body?.object_id ?? body?.objectId ?? body?.id ?? body?.data?.id ?? null,
@@ -253,17 +256,44 @@ async function handler(req: Request): Promise<Response> {
     hasSecret: Boolean(providedSecret),
     contentType,
     bodyKeys,
+    merchantCount: Array.isArray(body?.merchants) ? body.merchants.length : 0,
+    merchantKeys,
     rawSnippet: typeof body === "string" ? body.slice(0, 500) : undefined,
   });
 
-  const merchantId =
+  const extractEventsFromMerchants = (merchants: any[]) => {
+    const events: Array<{ merchantId: string | null; objectId: string | null; eventType: string | null }> = [];
+    for (const m of merchants) {
+      const mId = m?.merchantId ?? m?.merchant_id ?? m?.id ?? m?.merchant?.id ?? null;
+      const mEvents = Array.isArray(m?.events) ? m.events : Array.isArray(m?.event) ? m.event : null;
+      if (mEvents && mEvents.length) {
+        for (const e of mEvents) {
+          events.push({
+            merchantId: mId,
+            objectId: e?.objectId ?? e?.object_id ?? e?.id ?? null,
+            eventType: e?.type ?? e?.eventType ?? e?.event?.type ?? null,
+          });
+        }
+      } else if (m?.objectId || m?.object_id || m?.id) {
+        events.push({
+          merchantId: mId,
+          objectId: m?.objectId ?? m?.object_id ?? m?.id ?? null,
+          eventType: m?.type ?? m?.eventType ?? null,
+        });
+      }
+    }
+    return events;
+  };
+
+  const merchantEvents = Array.isArray(body?.merchants) ? extractEventsFromMerchants(body.merchants) : [];
+  const fallbackMerchantId =
     body?.merchant_id ??
     body?.merchantId ??
     body?.merchant?.id ??
     body?.event?.merchantId ??
     body?.event?.merchant_id ??
-    null;
-  if (!merchantId) return jsonResponse({ error: "merchantId requerido" }, 400);
+    (merchantEvents[0]?.merchantId ?? null);
+  if (!fallbackMerchantId) return jsonResponse({ error: "merchantId requerido" }, 400);
 
   const objectId =
     body?.object_id ??
@@ -272,7 +302,7 @@ async function handler(req: Request): Promise<Response> {
     body?.paymentId ??
     body?.id ??
     body?.data?.id ??
-    null;
+    (merchantEvents[0]?.objectId ?? null);
 
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return jsonResponse({ error: "Supabase env missing" }, 500);
   if (!CLOVER_CLIENT_ID || !CLOVER_CLIENT_SECRET) return jsonResponse({ error: "Clover env missing" }, 500);
@@ -280,7 +310,7 @@ async function handler(req: Request): Promise<Response> {
   const { data: conn, error: connErr } = await supabase
     .from("clover_conexiones")
     .select("idComercio, access_token, refresh_token, expires_at, clover_order_type_id, clover_order_type_name")
-    .eq("clover_merchant_id", merchantId)
+    .eq("clover_merchant_id", fallbackMerchantId)
     .maybeSingle();
 
   if (connErr) return jsonResponse({ error: connErr.message }, 500);
@@ -418,13 +448,18 @@ async function handler(req: Request): Promise<Response> {
   const paymentId = objectId;
   let orderId: string | null = null;
 
-  try {
-    const payment = await fetchCloverWithAutoRefresh(
-      `/v3/merchants/${merchantId}/payments/${paymentId}?expand=order`,
-    );
-    orderId = payment?.order?.id ?? payment?.orderId ?? payment?.order_id ?? null;
-  } catch (err) {
-    console.warn("[clover-webhook] No se pudo leer payment", err);
+  const eventTypeLower = String(eventType ?? merchantEvents[0]?.eventType ?? "").toLowerCase();
+  if (eventTypeLower.includes("order")) {
+    orderId = paymentId;
+  } else if (paymentId) {
+    try {
+      const payment = await fetchCloverWithAutoRefresh(
+        `/v3/merchants/${fallbackMerchantId}/payments/${paymentId}?expand=order`,
+      );
+      orderId = payment?.order?.id ?? payment?.orderId ?? payment?.order_id ?? null;
+    } catch (err) {
+      console.warn("[clover-webhook] No se pudo leer payment", err);
+    }
   }
 
   let pickupOrderType: { id: string; name: string } | null = null;
@@ -448,7 +483,7 @@ async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders/${targetOrderId}`, {
+    await fetchCloverWithAutoRefresh(`/v3/merchants/${fallbackMerchantId}/orders/${targetOrderId}`, {
       method: "POST",
       body: { orderType: { id: pickupOrderType.id } },
     });
@@ -464,11 +499,12 @@ async function handler(req: Request): Promise<Response> {
 
   return jsonResponse({
     ok: true,
-    merchantId,
+    merchantId: fallbackMerchantId,
     paymentId,
     orderId: targetOrderId,
     orderTypeId: pickupOrderType.id,
     usedFallback: !orderId,
+    eventType: eventType ?? merchantEvents[0]?.eventType ?? null,
   });
 }
 
