@@ -248,6 +248,8 @@ async function handler(req: Request): Promise<Response> {
     null;
   const merchantKeys = Array.isArray(body?.merchants) && body.merchants.length
     ? Object.keys(body.merchants[0] ?? {})
+    : body?.merchants && typeof body.merchants === "object"
+    ? Object.keys(body.merchants)
     : [];
   console.log("[clover-webhook] incoming", {
     merchantId: body?.merchant_id ?? body?.merchantId ?? body?.merchant?.id ?? null,
@@ -261,31 +263,48 @@ async function handler(req: Request): Promise<Response> {
     rawSnippet: typeof body === "string" ? body.slice(0, 500) : undefined,
   });
 
-  const extractEventsFromMerchants = (merchants: any[]) => {
+  const extractEventsFromMerchants = (merchants: any) => {
     const events: Array<{ merchantId: string | null; objectId: string | null; eventType: string | null }> = [];
-    for (const m of merchants) {
-      const mId = m?.merchantId ?? m?.merchant_id ?? m?.id ?? m?.merchant?.id ?? null;
-      const mEvents = Array.isArray(m?.events) ? m.events : Array.isArray(m?.event) ? m.event : null;
-      if (mEvents && mEvents.length) {
-        for (const e of mEvents) {
+    if (Array.isArray(merchants)) {
+      for (const m of merchants) {
+        const mId = m?.merchantId ?? m?.merchant_id ?? m?.id ?? m?.merchant?.id ?? null;
+        const mEvents = Array.isArray(m?.events) ? m.events : Array.isArray(m?.event) ? m.event : null;
+        if (mEvents && mEvents.length) {
+          for (const e of mEvents) {
+            events.push({
+              merchantId: mId,
+              objectId: e?.objectId ?? e?.object_id ?? e?.id ?? null,
+              eventType: e?.type ?? e?.eventType ?? e?.event?.type ?? null,
+            });
+          }
+        } else if (m?.objectId || m?.object_id || m?.id) {
           events.push({
             merchantId: mId,
-            objectId: e?.objectId ?? e?.object_id ?? e?.id ?? null,
-            eventType: e?.type ?? e?.eventType ?? e?.event?.type ?? null,
+            objectId: m?.objectId ?? m?.object_id ?? m?.id ?? null,
+            eventType: m?.type ?? m?.eventType ?? null,
           });
         }
-      } else if (m?.objectId || m?.object_id || m?.id) {
-        events.push({
-          merchantId: mId,
-          objectId: m?.objectId ?? m?.object_id ?? m?.id ?? null,
-          eventType: m?.type ?? m?.eventType ?? null,
-        });
+      }
+      return events;
+    }
+
+    if (merchants && typeof merchants === "object") {
+      for (const [mId, updates] of Object.entries(merchants)) {
+        if (Array.isArray(updates)) {
+          for (const u of updates) {
+            events.push({
+              merchantId: String(mId),
+              objectId: u?.objectId ?? u?.object_id ?? u?.id ?? null,
+              eventType: u?.type ?? u?.eventType ?? u?.event?.type ?? null,
+            });
+          }
+        }
       }
     }
     return events;
   };
 
-  const merchantEvents = Array.isArray(body?.merchants) ? extractEventsFromMerchants(body.merchants) : [];
+  const merchantEvents = extractEventsFromMerchants(body?.merchants);
   const fallbackMerchantId =
     body?.merchant_id ??
     body?.merchantId ??
@@ -303,6 +322,13 @@ async function handler(req: Request): Promise<Response> {
     body?.id ??
     body?.data?.id ??
     (merchantEvents[0]?.objectId ?? null);
+
+  const normalizeObjectId = (raw: string | null) => {
+    if (!raw) return null;
+    const str = String(raw);
+    if (str.includes(":")) return str.split(":")[1] || str;
+    return str;
+  };
 
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return jsonResponse({ error: "Supabase env missing" }, 500);
   if (!CLOVER_CLIENT_ID || !CLOVER_CLIENT_SECRET) return jsonResponse({ error: "Clover env missing" }, 500);
@@ -445,7 +471,7 @@ async function handler(req: Request): Promise<Response> {
     return jsonResponse({ ok: true, ignored: true, reason: "No objectId" });
   }
 
-  const paymentId = objectId;
+  const paymentId = normalizeObjectId(objectId);
   let orderId: string | null = null;
 
   const eventTypeLower = String(eventType ?? merchantEvents[0]?.eventType ?? "").toLowerCase();
