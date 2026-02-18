@@ -1,5 +1,6 @@
 // public/js/comidaCarousel.js
 import { supabase } from "../shared/supabaseClient.js";
+import { resolverPlanComercio } from "/shared/planes.js";
 
 /**
  * 🔹 Carrusel de "Aquí en Pe Erre se come bien"
@@ -21,6 +22,14 @@ export async function renderComidaCarousel(containerId) {
         nombre,
         municipio,
         activo,
+        plan_id,
+        plan_nivel,
+        plan_nombre,
+        permite_perfil,
+        aparece_en_cercanos,
+        permite_menu,
+        permite_especiales,
+        permite_ordenes,
         ComercioCategorias ( idCategoria )
       `)
       .eq("activo", true)
@@ -29,9 +38,9 @@ export async function renderComidaCarousel(containerId) {
     if (comerciosError) throw comerciosError;
 
     // 🔹 Filtrar solo los de la categoría Restaurantes
-    const comerciosFiltrados = comercios.filter((c) =>
-      c.ComercioCategorias?.some((cc) => cc.idCategoria === idRestaurantes)
-    );
+    const comerciosFiltrados = comercios
+      .filter((c) => c.ComercioCategorias?.some((cc) => cc.idCategoria === idRestaurantes))
+      .filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
 
     if (comerciosFiltrados.length === 0) {
       container.innerHTML = `<p class="text-gray-500 text-center">No hay restaurantes disponibles</p>`;

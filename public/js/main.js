@@ -11,6 +11,7 @@ import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js'
 import { supabase } from '../shared/supabaseClient.js';
 import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
 import { showPopupFavoritosVacios } from './popups.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);
@@ -647,6 +648,7 @@ if (total === 0) {
     // 🔍 Buscar comercios cercanos dentro de 25 km (igual que Lugares)
     if (referencia) {
       let cercanos = listaOriginal
+        .filter((c) => resolverPlanComercio(c).aparece_en_cercanos)
         .filter((c) =>
           c.latitud &&
           c.longitud &&

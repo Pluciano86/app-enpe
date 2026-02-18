@@ -3,6 +3,7 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseCli
 import { getMenuI18n } from '../shared/menuI18n.js';
 import { mountLangSelector } from '../shared/langSelector.js';
 import { getLang } from '../js/i18n.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 const params = new URLSearchParams(window.location.search);
 const idComercio = params.get('idComercio') || params.get('id');
@@ -31,6 +32,8 @@ const footerFacebook = document.getElementById('footerFacebook');
 const footerInstagram = document.getElementById('footerInstagram');
 const isDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const ORDER_HISTORY_KEY = 'findixi_orders';
+let planPermiteMenu = true;
+let planPermiteOrdenes = true;
 
 function loadOrderHistory() {
   if (typeof localStorage === 'undefined') return [];
@@ -72,6 +75,24 @@ function rememberOrder(orderId, comercioId) {
     created_at_local: new Date().toISOString(),
   });
   saveOrderHistory(history.slice(0, 50));
+}
+
+function mostrarBloqueoMenu() {
+  const existente = document.getElementById('menuPlanOverlay');
+  if (existente) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'menuPlanOverlay';
+  overlay.className = 'fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4';
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-3">
+      <h2 class="text-xl font-semibold text-gray-900">Menú disponible en Findixi Plus</h2>
+      <p class="text-sm text-gray-600">Este comercio aún no tiene habilitado su menú en Findixi.</p>
+      <a href="../listadoComercios.html" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+        Volver al listado
+      </a>
+    </div>
+  `;
+  document.body.appendChild(overlay);
 }
 
 const DEFAULT_TEMA = {
@@ -331,11 +352,19 @@ async function cargarDatos() {
 
   const { data: comercio, error: errorComercio } = await supabase
     .from('Comercios')
-    .select('id, nombre, colorPrimario, colorSecundario, logo, telefono, facebook, instagram')
+    .select('id, nombre, colorPrimario, colorSecundario, logo, telefono, facebook, instagram, plan_id, plan_nivel, plan_nombre, permite_menu, permite_ordenes')
     .eq('id', idComercio)
     .single();
 
   if (errorComercio || !comercio) return alert('Error cargando comercio');
+
+  const planInfo = resolverPlanComercio(comercio || {});
+  planPermiteMenu = planInfo.permite_menu;
+  planPermiteOrdenes = planInfo.permite_ordenes;
+  if (!planPermiteMenu) {
+    mostrarBloqueoMenu();
+    return;
+  }
 
   if (heroNombre) {
     const colorComercioVal = temaActual.colorComercio || temaActual.colortitulo;
@@ -436,7 +465,7 @@ async function cargarDatos() {
     if (p?.id) productosById.set(p.id, p);
   });
   await cargarTaxRates(menuIds);
-  if (allowOrdering) updateCartUi();
+  if (allowOrdering && planPermiteOrdenes) updateCartUi();
 
   seccionesEl.innerHTML = '';
   let seccionActiva = null;
@@ -605,7 +634,7 @@ async function cargarDatos() {
             </div>
           `;
 
-          if (allowOrdering) {
+          if (allowOrdering && planPermiteOrdenes) {
             const actions = div.querySelector('.product-actions');
             if (actions) {
               const btn = document.createElement('button');
@@ -866,7 +895,7 @@ function initOrderUi() {
     mainEl.parentElement.insertBefore(cartBarPlaceholder, mainEl);
   }
 
-  if (!allowOrdering) return;
+  if (!allowOrdering || !planPermiteOrdenes) return;
   buildCartBar();
   buildCartDrawer();
   buildModifiersDrawer();
@@ -1530,6 +1559,10 @@ function setupCartBarSticky() {
 }
 
 async function submitOrder() {
+  if (!planPermiteOrdenes) {
+    alert('Las órdenes en línea están disponibles solo en Findixi Premium.');
+    return;
+  }
   const items = getCartItemsArray();
   if (!items.length) return;
   let customer = null;

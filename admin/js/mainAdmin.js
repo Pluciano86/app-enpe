@@ -1,6 +1,12 @@
 import { getPublicBase } from '../shared/utils.js';
 import { resolvePath } from '../shared/pathResolver.js';
 import { supabase } from '../shared/supabaseClient.js';
+import {
+  PLANES_PRELIMINARES,
+  formatoPrecio,
+  resolverPlanComercio,
+  buildComercioPlanPayload,
+} from '/shared/planes.js';
 
 const baseImageUrl = getPublicBase('galeriacomercios');
 const UNKNOWN_CATEGORY_LABEL = 'Sin categoría';
@@ -14,6 +20,9 @@ let categoriasCache = null;
 let categoriasPromise = null;
 let subcategoriasCache = null;
 let subcategoriasPromise = null;
+let planesCatalogo = null;
+let planesOptions = [];
+let planesMap = new Map();
 
 export const idComercio = new URLSearchParams(window.location.search).get('id');
 
@@ -29,6 +38,178 @@ function parseDelimitedList(value) {
     .split(',')
     .map(entry => entry.trim())
     .filter(entry => entry.length > 0);
+}
+
+function toNumber(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(',', '.'));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function buildPlanKey(plan) {
+  if (!plan) return '';
+  if (plan.id !== undefined && plan.id !== null && plan.id !== '') return `id:${plan.id}`;
+  if (plan.slug) return `slug:${plan.slug}`;
+  if (plan.nivel !== undefined && plan.nivel !== null) return `nivel:${plan.nivel}`;
+  if (plan.plan_nivel !== undefined && plan.plan_nivel !== null) return `nivel:${plan.plan_nivel}`;
+  if (plan.nombre) return `nombre:${plan.nombre}`;
+  return 'nivel:0';
+}
+
+async function cargarPlanesCatalogo() {
+  try {
+    const { data, error } = await supabase
+      .from('planes')
+      .select('*')
+      .eq('activo', true)
+      .order('orden', { ascending: true });
+    if (error) throw error;
+    if (Array.isArray(data) && data.length) return data;
+  } catch (error) {
+    console.warn('No se pudieron cargar planes desde Supabase:', error?.message || error);
+  }
+  return PLANES_PRELIMINARES;
+}
+
+function rebuildPlanesOptions(planes) {
+  planesOptions = [];
+  planesMap = new Map();
+  (planes || []).forEach(plan => {
+    const nivel = Number(plan.nivel ?? plan.plan_nivel ?? 0);
+    const nombre = toNonEmptyString(plan.nombre) || toNonEmptyString(plan.plan_nombre) || 'Plan';
+    const precio = plan.precio ?? plan.plan_precio ?? '';
+    const key = buildPlanKey(plan);
+    planesOptions.push({
+      key,
+      plan,
+      nombre,
+      nivel,
+      precio,
+    });
+    planesMap.set(key, plan);
+  });
+}
+
+async function ensurePlanesCatalogo() {
+  if (planesCatalogo) return planesCatalogo;
+  planesCatalogo = await cargarPlanesCatalogo();
+  rebuildPlanesOptions(planesCatalogo);
+  return planesCatalogo;
+}
+
+function encontrarPlanKeyActual(planInfo) {
+  if (!planInfo) return null;
+  if (planInfo.plan_id !== null && planInfo.plan_id !== undefined) {
+    const match = planesOptions.find(opt => String(opt.plan.id) === String(planInfo.plan_id));
+    if (match) return match.key;
+  }
+  const matchNivel = planesOptions.find(opt => Number(opt.nivel) === Number(planInfo.nivel));
+  if (matchNivel) return matchNivel.key;
+  if (planInfo.slug) {
+    const matchSlug = planesOptions.find(
+      opt => toNonEmptyString(opt.plan.slug).toLowerCase() === toNonEmptyString(planInfo.slug).toLowerCase()
+    );
+    if (matchSlug) return matchSlug.key;
+  }
+  if (planInfo.nombre) {
+    const matchNombre = planesOptions.find(
+      opt => toNonEmptyString(opt.nombre).toLowerCase() === toNonEmptyString(planInfo.nombre).toLowerCase()
+    );
+    if (matchNombre) return matchNombre.key;
+  }
+  return planesOptions[0]?.key ?? null;
+}
+
+function buildPlanControl(comercio, { compact = false } = {}) {
+  const wrapper = document.createElement('div');
+  wrapper.className = compact ? 'flex flex-col gap-2' : 'flex items-center gap-2';
+
+  if (!planesOptions.length) {
+    const empty = document.createElement('span');
+    empty.className = 'text-xs text-gray-400';
+    empty.textContent = 'Sin planes';
+    wrapper.appendChild(empty);
+    return wrapper;
+  }
+
+  const planInfo = resolverPlanComercio(comercio);
+  const selectedKey = encontrarPlanKeyActual(planInfo);
+  let currentKey = selectedKey;
+
+  const select = document.createElement('select');
+  select.className = 'plan-select border rounded px-2 py-1 text-xs bg-white w-full';
+  planesOptions.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt.key;
+    option.textContent = `${opt.nombre} — Nivel ${opt.nivel} (${formatoPrecio(opt.precio)})`;
+    select.appendChild(option);
+  });
+  if (selectedKey) select.value = selectedKey;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn-plan-update px-2 py-1 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700';
+  button.textContent = 'Actualizar';
+
+  button.addEventListener('click', async () => {
+    const selected = select.value;
+    const plan = planesMap.get(selected);
+    if (!plan) {
+      alert('Plan inválido.');
+      return;
+    }
+    const nombrePlan = toNonEmptyString(plan.nombre) || toNonEmptyString(plan.slug) || 'seleccionado';
+    const confirmar = confirm(`¿Cambiar plan a ${nombrePlan}?`);
+    if (!confirmar) {
+      if (currentKey) select.value = currentKey;
+      return;
+    }
+
+    const payload = buildComercioPlanPayload(plan);
+    const prevKey = currentKey;
+    button.disabled = true;
+    select.disabled = true;
+    button.textContent = 'Actualizando...';
+
+    try {
+      const { error } = await supabase
+        .from('Comercios')
+        .update(payload)
+        .eq('id', comercio.id);
+      if (error) throw error;
+
+      currentKey = selected;
+      const idx = todosLosComercios.findIndex(item => String(item.id) === String(comercio.id));
+      if (idx !== -1) {
+        todosLosComercios[idx] = { ...todosLosComercios[idx], ...payload };
+      }
+      actualizarPlanLabels(comercio.id, plan);
+      alert('Plan actualizado.');
+    } catch (error) {
+      console.error('Error actualizando plan:', error);
+      alert('No se pudo actualizar el plan.');
+      if (prevKey) select.value = prevKey;
+    } finally {
+      button.disabled = false;
+      select.disabled = false;
+      button.textContent = 'Actualizar';
+    }
+  });
+
+  wrapper.appendChild(select);
+  wrapper.appendChild(button);
+  return wrapper;
+}
+
+function actualizarPlanLabels(idComercio, plan) {
+  const nombre = toNonEmptyString(plan?.nombre) || toNonEmptyString(plan?.slug) || 'Plan';
+  const nivel = Number(plan?.nivel ?? plan?.plan_nivel ?? 0);
+  document.querySelectorAll(`.plan-label[data-id="${idComercio}"]`).forEach((el) => {
+    el.textContent = `Plan: ${nombre} (Nivel ${nivel})`;
+  });
 }
 
 async function getCategoriasCache() {
@@ -242,7 +423,7 @@ export async function cargarComercios({ showLoader = false } = {}) {
     if (tabla) {
       tabla.innerHTML = `
         <tr>
-          <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500 animate-pulse">
+          <td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500 animate-pulse">
             Actualizando...
           </td>
         </tr>`;
@@ -256,6 +437,7 @@ export async function cargarComercios({ showLoader = false } = {}) {
   }
 
   try {
+    await ensurePlanesCatalogo();
     let comerciosQuery = supabase
       .from('Comercios')
       .select(
@@ -365,7 +547,7 @@ export function filtrarYMostrarComercios() {
   if (lista.length === 0) {
     tabla.innerHTML = `
       <tr>
-        <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500">
+        <td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500">
           No se encontraron comercios con estos criterios.
         </td>
       </tr>`;
@@ -391,6 +573,7 @@ export function filtrarYMostrarComercios() {
       <td class="px-4 py-2">${nombreCategoria}</td>
       <td class="px-4 py-2">${nombreMunicipio}</td>
       <td class="px-4 py-2">-</td>
+      <td class="px-4 py-2 plan-cell" data-id="${c.id}"></td>
       <td class="px-4 py-2 text-center">
         <input type="checkbox" class="toggle-activo" data-id="${c.id}" ${c.activo ? 'checked' : ''}>
       </td>
@@ -401,9 +584,14 @@ export function filtrarYMostrarComercios() {
       </td>
     `;
     tabla.appendChild(fila);
+    const planCell = fila.querySelector('.plan-cell');
+    if (planCell) {
+      planCell.appendChild(buildPlanControl(c));
+    }
 
     const card = document.createElement('div');
     card.className = 'bg-white rounded-lg shadow p-4 flex flex-col gap-2';
+    const planInfo = resolverPlanComercio(c);
     card.innerHTML = `
       <div class="flex gap-4 items-start">
         <div class="flex gap-3 flex-1">
@@ -412,6 +600,7 @@ export function filtrarYMostrarComercios() {
             <div class="text-xl font-bold text-gray-800">${c.nombre}</div>
             <div class="text-sm text-gray-600">Categoría: <strong>${nombreCategoria}</strong></div>
             <div class="text-sm text-gray-600">Municipio: <strong>${nombreMunicipio}</strong></div>
+            <div class="text-xs text-gray-500 plan-label" data-id="${c.id}">Plan: ${planInfo.nombre} (Nivel ${planInfo.nivel})</div>
             <span class="text-xs text-gray-500">Desde: ${new Date(c.created_at).toLocaleDateString()}</span>
           </div>
         </div>
@@ -424,8 +613,13 @@ export function filtrarYMostrarComercios() {
           <button class="text-red-500 btn-eliminar" data-id="${c.id}"><i class="fas fa-times-circle"></i></button>
         </div>
       </div>
+      <div class="plan-card" data-id="${c.id}"></div>
     `;
     tablaMobile.appendChild(card);
+    const planCard = card.querySelector('.plan-card');
+    if (planCard) {
+      planCard.appendChild(buildPlanControl(c, { compact: true }));
+    }
   });
 
   document.querySelectorAll('.btn-editar').forEach(btn => {

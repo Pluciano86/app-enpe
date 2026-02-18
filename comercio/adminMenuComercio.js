@@ -1,5 +1,6 @@
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseClient.js';
 import { FONTS_MENU } from './js/fontsMenu.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 function getPublicBase() {
   return '/';
@@ -91,6 +92,8 @@ const botonStrokeWidth = document.getElementById('botonStrokeWidth');
 const botonStrokeColor = document.getElementById('botonStrokeColor');
 const botonShadow = document.getElementById('botonShadow');
 const cloverBar = document.getElementById('cloverBar');
+const planBadge = document.getElementById('planBadge');
+const btnCambiarPlan = document.getElementById('btnCambiarPlan');
 
 let editandoId = null;
 let linkFuente = null;
@@ -103,6 +106,9 @@ let backgroundPath = '';
 let temaActual = {};
 let tieneSucursales = false;
 let tema;
+let planInfo = null;
+let planPermiteMenu = true;
+let planPermiteOrdenes = true;
 const COVER_BUCKET = 'galeriacomercios';
 const COVER_PREFIX = 'menus/portada';
 const BACKGROUND_PREFIX = 'menus/background';
@@ -168,6 +174,76 @@ const DEFAULT_TEMA = {
   boton_stroke_width: 0,
   boton_stroke_color: '#000000',
 };
+
+function renderPlanBadge(info) {
+  if (planBadge) {
+    planBadge.textContent = `${info.nombre} (Nivel ${info.nivel})`;
+  }
+  if (btnCambiarPlan && idComercio) {
+    btnCambiarPlan.href = `./paquetes.html?id=${idComercio}`;
+  }
+}
+
+function mostrarOverlayPlan({ titulo, mensaje }) {
+  const existente = document.getElementById('planOverlay');
+  if (existente) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'planOverlay';
+  overlay.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-3">
+      <h2 class="text-xl font-semibold text-gray-900">${titulo}</h2>
+      <p class="text-sm text-gray-600">${mensaje}</p>
+      <a href="./paquetes.html?id=${idComercio}" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+        Cambiar Plan
+      </a>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function bloquearMenuPorPlan() {
+  mostrarOverlayPlan({
+    titulo: 'Menú disponible en Findixi Plus',
+    mensaje: 'Actualiza tu plan para administrar menú, secciones y productos.',
+  });
+}
+
+function bloquearCloverPorPlan() {
+  if (!cloverBar) return;
+  cloverBar.innerHTML = `
+    <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-600 text-sm">
+      Órdenes Clover disponibles en Premium
+    </div>
+  `;
+}
+
+async function cargarPlanComercio() {
+  if (!idComercio) return null;
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('plan_id, plan_nivel, plan_nombre, permite_menu, permite_ordenes')
+    .eq('id', idComercio)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('No se pudo cargar plan del comercio:', error?.message || error);
+    return null;
+  }
+
+  planInfo = resolverPlanComercio(data || {});
+  planPermiteMenu = planInfo.permite_menu;
+  planPermiteOrdenes = planInfo.permite_ordenes;
+  renderPlanBadge(planInfo);
+
+  if (!planPermiteMenu) {
+    bloquearMenuPorPlan();
+  }
+  if (!planPermiteOrdenes) {
+    bloquearCloverPorPlan();
+  }
+  return planInfo;
+}
 
 let draggingSeccion = null;
 let guardandoOrden = false;
@@ -750,6 +826,8 @@ async function guardarTema() {
 
 async function cargarDatos() {
   if (!idComercio) return alert('ID de comercio no encontrado en la URL');
+
+  await cargarPlanComercio();
 
   const { data: comercio, error } = await supabase
     .from('Comercios')
@@ -1341,6 +1419,10 @@ function renderCloverBar(state) {
 
 async function refreshCloverBar() {
   if (!cloverBar) return;
+  if (!planPermiteOrdenes) {
+    bloquearCloverPorPlan();
+    return;
+  }
   try {
     const conn = await obtenerConexionClover();
     const accessToken = (conn?.access_token || "").trim();
@@ -1369,6 +1451,10 @@ async function refreshCloverBar() {
 async function lanzarImportacionClover() {
   if (!idComercio) {
     alert('ID de comercio no encontrado en la URL');
+    return false;
+  }
+  if (!planPermiteOrdenes) {
+    alert('Las órdenes Clover están disponibles solo en Findixi Premium.');
     return false;
   }
   try {
@@ -1437,6 +1523,10 @@ async function lanzarImportacionClover() {
 
 function iniciarOauthClover() {
   if (!idComercio) return alert('ID de comercio no encontrado');
+  if (!planPermiteOrdenes) {
+    alert('Las órdenes Clover están disponibles solo en Findixi Premium.');
+    return;
+  }
   const url = `${FUNCTIONS_BASE}/clover-oauth-start?idComercio=${idComercio}`;
   window.location.href = url;
 }

@@ -9,6 +9,7 @@ import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js'
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
 import { mostrarPopupUbicacionDenegada, showPopupFavoritosVacios } from './popups.js';
 import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 const EMOJIS_CATEGORIA = {
   "Restaurantes": "🍽️",
@@ -1074,7 +1075,10 @@ export async function fetchCercanosParaCoordenadas({
     const { data, error } = await supabase.rpc('buscar_comercios_filtrados', payload);
     if (error) throw error;
     const referencia = { lat, lon };
-    return (Array.isArray(data) ? data : []).map((record) => normalizarComercio(record, referencia));
+    const normalizados = (Array.isArray(data) ? data : []).map((record) =>
+      normalizarComercio(record, referencia)
+    );
+    return normalizados.filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
   } catch (error) {
     console.error('❌ Error en fetchCercanosParaCoordenadas:', error);
     return [];

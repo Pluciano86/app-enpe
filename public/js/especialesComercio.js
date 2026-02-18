@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 const especialesBox = document.getElementById('especialesBox');
@@ -30,7 +31,26 @@ async function obtenerImagenDeEspecial(idEspecial) {
   return supabase.storage.from('galeriacomercios').getPublicUrl(data.imagen).data.publicUrl;
 }
 
+async function obtenerPlanComercio() {
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('plan_id, plan_nivel, plan_nombre, permite_especiales')
+    .eq('id', idComercio)
+    .maybeSingle();
+  if (error) {
+    console.warn('No se pudo cargar plan del comercio:', error?.message || error);
+    return null;
+  }
+  return resolverPlanComercio(data || {});
+}
+
 async function cargarEspecialesComercio() {
+  const planInfo = await obtenerPlanComercio();
+  if (planInfo && !planInfo.permite_especiales) {
+    especialesBox?.classList.add('hidden');
+    return;
+  }
+
   const hoy = new Date();
   const hora = hoy.getHours();
   const dia = hoy.getDay();

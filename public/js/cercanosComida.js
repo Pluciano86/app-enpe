@@ -4,6 +4,7 @@ import { supabase } from '../shared/supabaseClient.js';
 import { getPublicBase, calcularTiempoEnVehiculo } from '../shared/utils.js';
 import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 import { calcularDistancia } from './distanciaLugar.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 let ultimoCercanos = null;
 
@@ -77,6 +78,14 @@ export async function mostrarCercanosComida(comercioOrigen) {
         longitud,
         activo,
         idMunicipio,
+        plan_id,
+        plan_nivel,
+        plan_nombre,
+        permite_perfil,
+        aparece_en_cercanos,
+        permite_menu,
+        permite_especiales,
+        permite_ordenes,
         ComercioCategorias ( idCategoria )
       `)
       .eq('activo', true)
@@ -85,9 +94,9 @@ export async function mostrarCercanosComida(comercioOrigen) {
     if (error) throw error;
 
     // 🔹 Filtrar solo los que pertenecen a las categorías válidas
-    const comerciosFiltrados = comercios.filter((c) =>
-      c.ComercioCategorias?.some((cc) => categoriasValidas.includes(cc.idCategoria))
-    );
+    const comerciosFiltrados = comercios
+      .filter((c) => c.ComercioCategorias?.some((cc) => categoriasValidas.includes(cc.idCategoria)))
+      .filter((c) => resolverPlanComercio(c).aparece_en_cercanos);
 
     const comerciosConCoords = comerciosFiltrados.filter(c =>
       typeof c.latitud === 'number' &&

@@ -101,6 +101,27 @@ loadAdminHeader();
         <label for="descripcion">Descripción</label>
         <textarea id="descripcion" rows="4" class="w-full border rounded px-3 py-2 text-sm"></textarea>
       </div>
+
+      <!-- Plan del comercio (admin) -->
+      <div class="md:col-span-2 bg-white border rounded p-4 shadow-sm" id="adminPlanSection">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800">Plan del comercio</h3>
+            <p id="planActualAdmin" class="text-sm text-gray-600">Cargando plan...</p>
+          </div>
+          <span class="text-xs text-gray-400">Solo administradores</span>
+        </div>
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div class="md:col-span-2">
+            <label for="selectPlanAdmin">Selecciona un plan</label>
+            <select id="selectPlanAdmin" class="w-full border rounded px-3 py-2 text-sm"></select>
+            <p id="planPreviewAdmin" class="text-xs text-gray-500 mt-1"></p>
+          </div>
+          <button id="btnActualizarPlanAdmin" type="button" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 w-full">
+            Actualizar Plan
+          </button>
+        </div>
+      </div>
     </form>
 
     <!-- Logo -->

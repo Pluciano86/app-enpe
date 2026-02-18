@@ -1,10 +1,13 @@
 // adminEspeciales.js
 import { supabase } from '../shared/supabaseClient.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sabado'];
 let tipoActual = 'almuerzo';
 let diaSeleccionado = null;
 const idComercio = new URLSearchParams(window.location.search).get('id');
+const planBadge = document.getElementById('planBadge');
+const btnCambiarPlan = document.getElementById('btnCambiarPlan');
 
 // Elementos DOM
 const contenedorDias = document.getElementById('contenedorDias');
@@ -58,8 +61,55 @@ function actualizarBotones() {
   btnHappy.classList.toggle('bg-gray-200', tipoActual !== 'happyhour');
   btnHappy.classList.toggle('text-gray-700', tipoActual !== 'happyhour');
 }
-actualizarBotones();
-cargarEspeciales();
+function mostrarOverlayPlan() {
+  const existente = document.getElementById('planOverlay');
+  if (existente) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'planOverlay';
+  overlay.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
+  overlay.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-3">
+      <h2 class="text-xl font-semibold text-gray-900">Especiales disponibles en Findixi Plus</h2>
+      <p class="text-sm text-gray-600">Actualiza tu plan para administrar almuerzos y happy hours.</p>
+      <a href="../paquetes.html?id=${idComercio}" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+        Cambiar Plan
+      </a>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function cargarPlan() {
+  if (!idComercio) return true;
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('plan_id, plan_nivel, plan_nombre, permite_especiales')
+    .eq('id', idComercio)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('No se pudo cargar plan del comercio:', error?.message || error);
+    return true;
+  }
+
+  const planInfo = resolverPlanComercio(data || {});
+  if (planBadge) planBadge.textContent = `${planInfo.nombre} (Nivel ${planInfo.nivel})`;
+  if (btnCambiarPlan) btnCambiarPlan.href = `../paquetes.html?id=${idComercio}`;
+
+  if (!planInfo.permite_especiales) {
+    mostrarOverlayPlan();
+    return false;
+  }
+  return true;
+}
+
+async function init() {
+  const planOk = await cargarPlan();
+  actualizarBotones();
+  if (planOk) cargarEspeciales();
+}
+
+init();
 
 async function cargarEspeciales() {
   contenedorDias.innerHTML = '';

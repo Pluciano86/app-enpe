@@ -1,5 +1,6 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { t } from './i18n.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 async function mostrarGridComida({ idArea, idMunicipio }) {
   const grid = document.getElementById("gridComida");
@@ -60,6 +61,14 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
         idArea,
         idMunicipio,
         activo,
+        plan_id,
+        plan_nivel,
+        plan_nombre,
+        permite_perfil,
+        aparece_en_cercanos,
+        permite_menu,
+        permite_especiales,
+        permite_ordenes,
         ComercioCategorias ( idCategoria )
       `)
       .eq("activo", true)
@@ -68,9 +77,9 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
     if (error) throw error;
 
     // 🔹 Filtrar comercios de comida
-    let comerciosFiltrados = comercios.filter(c =>
-      c.ComercioCategorias?.some(cc => categoriasComida.includes(cc.idCategoria))
-    );
+    let comerciosFiltrados = comercios
+      .filter(c => c.ComercioCategorias?.some(cc => categoriasComida.includes(cc.idCategoria)))
+      .filter(c => resolverPlanComercio(c).aparece_en_cercanos);
 
     // 🔹 Filtrar por municipio o área
     if (idMunicipio) {
@@ -83,10 +92,12 @@ async function mostrarGridComida({ idArea, idMunicipio }) {
 
     // 🔹 Fallback: si no hay en el municipio, buscar por área
     if ((!comerciosFiltrados || comerciosFiltrados.length === 0) && idArea) {
-      comerciosFiltrados = comercios.filter(c =>
-        municipiosIds.includes(c.idMunicipio) &&
-        c.ComercioCategorias?.some(cc => categoriasComida.includes(cc.idCategoria))
-      );
+      comerciosFiltrados = comercios
+        .filter(c =>
+          municipiosIds.includes(c.idMunicipio) &&
+          c.ComercioCategorias?.some(cc => categoriasComida.includes(cc.idCategoria))
+        )
+        .filter(c => resolverPlanComercio(c).aparece_en_cercanos);
 
       if (nombreMunicipio && nombreArea) {
         mensajeFallback = `

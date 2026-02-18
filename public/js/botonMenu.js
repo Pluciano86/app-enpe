@@ -1,5 +1,6 @@
 // botonMenu.js
 import { supabase } from '../shared/supabaseClient.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
@@ -18,6 +19,19 @@ async function tieneMenuActivo(id) {
     return false;
   }
   return !!data;
+}
+
+async function obtenerPlanComercio(id) {
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('plan_id, plan_nivel, plan_nombre, permite_menu')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) {
+    console.warn('No se pudo cargar plan del comercio:', error?.message || error);
+    return null;
+  }
+  return resolverPlanComercio(data || {});
 }
 
 async function obtenerRelacionadoConMenus(idActual) {
@@ -45,6 +59,11 @@ async function obtenerRelacionadoConMenus(idActual) {
 async function mostrarBotonMenu() {
   if (!btnVerMenu || !idComercio) return;
 
+  const planActual = await obtenerPlanComercio(idComercio);
+  if (planActual && !planActual.permite_menu) {
+    return;
+  }
+
   let idParaMenu = idComercio;
   const tieneMenuPropio = await tieneMenuActivo(idComercio);
   if (!tieneMenuPropio) {
@@ -54,6 +73,11 @@ async function mostrarBotonMenu() {
     } else {
       return; // no hay menú ni en sucursales relacionadas
     }
+  }
+
+  const planMenu = idParaMenu !== idComercio ? await obtenerPlanComercio(idParaMenu) : planActual;
+  if (planMenu && !planMenu.permite_menu) {
+    return;
   }
 
   btnVerMenu.href = `menu/menuComercio.html?idComercio=${idParaMenu}&modo=pickup&source=app`;

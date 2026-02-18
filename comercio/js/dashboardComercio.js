@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 const btnLogout = document.getElementById('btnLogout');
 const userNombre = document.getElementById('userNombre');
@@ -91,7 +92,7 @@ async function cargarComercios(user) {
 
   const { data: comercios, error: errCom } = await supabase
     .from('Comercios')
-    .select('id, nombre, logo')
+    .select('id, nombre, logo, plan_id, plan_nivel, plan_nombre, permite_menu, permite_especiales, permite_ordenes')
     .in('id', ids);
 
   if (errCom || !comercios?.length) {
@@ -101,6 +102,7 @@ async function cargarComercios(user) {
 
   comercios.forEach((c) => {
     const card = document.createElement('div');
+    const planInfo = resolverPlanComercio(c);
     const counts = colaboradoresMap[c.id] || { admin: 0, editor: 0 };
     card.className = 'bg-white border border-gray-200 rounded-2xl shadow p-4 sm:p-5 flex flex-col gap-4 sm:gap-5';
 
@@ -132,11 +134,16 @@ async function cargarComercios(user) {
 
     bloqueInfo.appendChild(logoWrap);
 
+    const planChip = document.createElement('div');
+    planChip.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700';
+    planChip.textContent = `Plan: ${planInfo.nombre}`;
+    bloqueInfo.appendChild(planChip);
+
     filaTop.appendChild(bloqueInfo);
 
     // fila inferior botones principales
     const filaBottom = document.createElement('div');
-    filaBottom.className = 'grid grid-cols-1 sm:grid-cols-3 gap-2';
+    filaBottom.className = 'grid grid-cols-1 sm:grid-cols-4 gap-2';
 
     const btnEditar = document.createElement('a');
     btnEditar.href = `./editarPerfilComercio.html?id=${c.id}`;
@@ -180,9 +187,28 @@ async function cargarComercios(user) {
     verColab.addEventListener('click', () => verColaboradores(c.id));
     btnEspeciales.textContent = 'Almuerzos & Happy Hours';
 
+    const bloquearBoton = (btn, texto) => {
+      btn.classList.add('opacity-60', 'pointer-events-none');
+      if (texto) btn.textContent = texto;
+    };
+
+    if (!planInfo.permite_menu) {
+      bloquearBoton(btnMenu, 'Menú (Plus)');
+    }
+
+    if (!planInfo.permite_especiales) {
+      bloquearBoton(btnEspeciales, 'Especiales (Plus)');
+    }
+
+    const btnPaquetes = document.createElement('a');
+    btnPaquetes.href = `./paquetes.html?id=${c.id}`;
+    btnPaquetes.className = 'w-full px-3 py-2 text-sm sm:text-base font-normal leading-snug bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-center flex items-center justify-center';
+    btnPaquetes.textContent = 'Paquetes';
+
     filaBottom.appendChild(btnEditar);
     filaBottom.appendChild(btnMenu);
     filaBottom.appendChild(btnEspeciales);
+    filaBottom.appendChild(btnPaquetes);
 
     card.appendChild(filaTop);
     card.appendChild(filaBottom);

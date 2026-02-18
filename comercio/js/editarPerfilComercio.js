@@ -1,4 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
@@ -16,6 +17,9 @@ const btnGuardar = document.getElementById('btn-guardar');
 const btnAdminMenu = document.getElementById('btnAdminMenu');
 const btnAdministrarEspeciales = document.getElementById('btnAdministrarEspeciales');
 const btnAgregarFeriado = document.getElementById('agregarFeriado');
+const planBadge = document.getElementById('planBadge');
+const planCta = document.getElementById('planCta');
+const btnCambiarPlan = document.getElementById('btnCambiarPlan');
 
 const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -82,7 +86,7 @@ async function cargarDatos() {
   if (!idComercio) return;
   const { data, error } = await supabase
     .from('Comercios')
-    .select('telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion')
+    .select('telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos')
     .eq('id', idComercio)
     .maybeSingle();
   if (!error && data) {
@@ -94,6 +98,41 @@ async function cargarDatos() {
     tiktok.value = data.tiktok || '';
     webpage.value = data.webpage || '';
     descripcion.value = data.descripcion || '';
+
+    const planInfo = resolverPlanComercio(data);
+    if (planBadge) planBadge.textContent = `${planInfo.nombre} (Nivel ${planInfo.nivel})`;
+    if (btnCambiarPlan) btnCambiarPlan.href = `./paquetes.html?id=${idComercio}`;
+
+    const puedeRedes = planInfo.nivel >= 1;
+    const puedeMenu = planInfo.permite_menu;
+    const puedeEspeciales = planInfo.permite_especiales;
+
+    const bloquearInput = (el) => {
+      if (!el) return;
+      el.disabled = true;
+      el.classList.add('bg-gray-100', 'cursor-not-allowed');
+    };
+
+    if (!puedeRedes) {
+      [whatsapp, facebook, instagram, tiktok, webpage, descripcion].forEach(bloquearInput);
+      if (planCta) {
+        planCta.classList.remove('hidden');
+        planCta.innerHTML = `
+          <div class="font-semibold">Estas opciones requieren Findixi Regular o superior.</div>
+          <p class="text-sm">Mejora tu plan para activar redes sociales y descripción.</p>
+        `;
+      }
+    }
+
+    if (!puedeMenu && btnAdminMenu) {
+      btnAdminMenu.classList.add('opacity-60', 'pointer-events-none');
+      btnAdminMenu.textContent = 'Menú (Plus)';
+    }
+
+    if (!puedeEspeciales && btnAdministrarEspeciales) {
+      btnAdministrarEspeciales.classList.add('opacity-60', 'pointer-events-none');
+      btnAdministrarEspeciales.textContent = 'Especiales (Plus)';
+    }
   }
 
   const { data: horarios, error: errHor } = await supabase

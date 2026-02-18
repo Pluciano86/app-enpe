@@ -1,6 +1,8 @@
 // ✅ public/js/cardComercio.js
 import { getPublicBase, calcularTiempoEnVehiculo, formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
 import { t, interpolate } from './i18n.js';
+import { showPopup } from './popups.js';
+import { resolverPlanComercio } from '/shared/planes.js';
 
 function resolveAppBase() {
   const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
@@ -14,6 +16,9 @@ export function cardComercio(comercio) {
     text-center transition-transform duration-300 hover:scale-[1.02]
     w-full max-w-[180px] sm:max-w-[200px] mx-auto
   `;
+
+  const planInfo = resolverPlanComercio(comercio || {});
+  const permitePerfil = planInfo.permite_perfil !== false;
 
   // 🕒 Calcular tiempo estimado de llegada con i18n
   let minutosEstimados = null;
@@ -68,8 +73,9 @@ export function cardComercio(comercio) {
       <img src="${urlPortada}" alt="${comercio.nombre}" class="w-full h-full object-cover" loading="lazy" />
     </div>
 
-    <a href="${resolveAppBase()}perfilComercio.html?id=${comercio.id}" 
-       class="relative w-full flex flex-col items-center pt-9 mt-6 no-underline">
+    <a href="${permitePerfil ? `${resolveAppBase()}perfilComercio.html?id=${comercio.id}` : '#'}" 
+       data-plan-bloqueado="${permitePerfil ? 'false' : 'true'}"
+       class="relative w-full flex flex-col items-center pt-9 mt-6 no-underline ${permitePerfil ? '' : 'cursor-default'}">
 
       <img 
         src="${logoUrl}" 
@@ -89,6 +95,14 @@ export function cardComercio(comercio) {
         </div>
       </div>
     </a>
+
+    ${
+      !permitePerfil
+        ? `<div class="mt-2 mb-1 inline-flex items-center justify-center px-3 py-1 text-xs font-semibold rounded-full bg-gray-200 text-gray-600">
+             Perfil próximamente
+           </div>`
+        : ''
+    }
 
     ${
       comercio.telefono && comercio.telefono.trim() !== ''
@@ -128,6 +142,19 @@ export function cardComercio(comercio) {
     }
   </div>
 `;
+
+  if (!permitePerfil) {
+    const link = div.querySelector('[data-plan-bloqueado=\"true\"]');
+    if (link) {
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        showPopup(`
+          <h3 class=\"text-lg font-semibold text-gray-900 mb-2\">Perfil en construcción</h3>
+          <p class=\"text-sm text-gray-600\">Este comercio aún está en el plan básico de Findixi. Muy pronto podrás ver su perfil completo y más detalles.</p>
+        `);
+      });
+    }
+  }
 
   return div;
 }

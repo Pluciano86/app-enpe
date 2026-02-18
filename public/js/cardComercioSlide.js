@@ -1,6 +1,8 @@
 // public/js/cardComercioSlide.js
 import { supabase } from "../shared/supabaseClient.js";
 import { t } from "./i18n.js";
+import { showPopup } from "./popups.js";
+import { resolverPlanComercio } from "/shared/planes.js";
 
 const CATEGORIA_KEY_BY_ES = {
   "Restaurantes": "categoria.restaurantes",
@@ -41,10 +43,14 @@ export function cardComercioSlide(comercio) {
       : t("categoria.sin");
 
   // 🔹 Crear tarjeta
+  const planInfo = resolverPlanComercio(comercio || {});
+  const permitePerfil = planInfo.permite_perfil !== false;
+
   const card = document.createElement("a");
-  card.href = `perfilComercio.html?id=${id}`;
+  card.href = permitePerfil ? `perfilComercio.html?id=${id}` : "#";
+  card.dataset.planBloqueado = permitePerfil ? "false" : "true";
   card.className =
-    "block bg-white rounded-xl mb-1 overflow-hidden shadow w-[160px] sm:w-[180px]";
+    `block bg-white rounded-xl mb-1 overflow-hidden shadow w-[160px] sm:w-[180px] ${permitePerfil ? '' : 'cursor-default'}`;
 
   // 🔹 Estructura visual idéntica al estilo de Playas
   card.innerHTML = `
@@ -75,6 +81,16 @@ export function cardComercioSlide(comercio) {
       </p>
     </div>
   `;
+
+  if (!permitePerfil) {
+    card.addEventListener("click", (event) => {
+      event.preventDefault();
+      showPopup(`
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">Perfil en construcción</h3>
+        <p class="text-sm text-gray-600">Este comercio aún está en el plan básico de Findixi.</p>
+      `);
+    });
+  }
 
   return card;
 }
