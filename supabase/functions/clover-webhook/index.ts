@@ -183,13 +183,29 @@ async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
 
   let body: any = null;
+  let rawText = "";
+  const contentType = req.headers.get("content-type") ?? "";
   if (req.method === "POST") {
     try {
-      body = await req.json();
-    } catch {
-      return jsonResponse({ error: "JSON invalido" }, 400);
+      rawText = await req.text();
+      if (rawText) {
+        try {
+          body = JSON.parse(rawText);
+        } catch {
+          const params = new URLSearchParams(rawText);
+          if ([...params.keys()].length) {
+            body = Object.fromEntries(params.entries());
+          } else {
+            body = rawText;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[clover-webhook] No se pudo leer body", err);
+      body = null;
     }
   }
+  if (Array.isArray(body) && body.length === 1) body = body[0];
 
   const providedSecret =
     req.headers.get("x-findixi-secret") ??
@@ -222,6 +238,7 @@ async function handler(req: Request): Promise<Response> {
 
   if (req.method !== "POST") return jsonResponse({ error: "Metodo no permitido" }, 405);
 
+  const bodyKeys = body && typeof body === "object" ? Object.keys(body) : [];
   const eventType =
     body?.type ??
     body?.eventType ??
@@ -234,6 +251,9 @@ async function handler(req: Request): Promise<Response> {
     objectId: body?.object_id ?? body?.objectId ?? body?.id ?? body?.data?.id ?? null,
     eventType,
     hasSecret: Boolean(providedSecret),
+    contentType,
+    bodyKeys,
+    rawSnippet: typeof body === "string" ? body.slice(0, 500) : undefined,
   });
 
   const merchantId =
