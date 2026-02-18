@@ -368,10 +368,6 @@ async function handler(req: Request): Promise<Response> {
     console.warn("[clover-webhook] No se pudo leer payment", err);
   }
 
-  if (!orderId) {
-    return jsonResponse({ ok: true, ignored: true, reason: "No orderId" });
-  }
-
   let pickupOrderType: { id: string; name: string } | null = null;
   try {
     pickupOrderType = await ensurePickupOrderType();
@@ -386,12 +382,21 @@ async function handler(req: Request): Promise<Response> {
     return jsonResponse({ ok: true, ignored: true, reason: "No pickup order type" });
   }
 
+  // Si no obtuvimos orderId desde payment, intentamos usar el objectId como orderId.
+  const targetOrderId = orderId ?? paymentId;
+  if (!targetOrderId) {
+    return jsonResponse({ ok: true, ignored: true, reason: "No orderId" });
+  }
+
   try {
-    await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders/${orderId}`, {
+    await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders/${targetOrderId}`, {
       method: "POST",
       body: { orderType: { id: pickupOrderType.id } },
     });
   } catch (err) {
+    if (err instanceof CloverApiError && err.status === 404) {
+      return jsonResponse({ ok: true, ignored: true, reason: "Order not found" });
+    }
     return jsonResponse({
       error: "No se pudo asignar order type",
       details: err instanceof Error ? err.message : String(err),
@@ -402,8 +407,9 @@ async function handler(req: Request): Promise<Response> {
     ok: true,
     merchantId,
     paymentId,
-    orderId,
+    orderId: targetOrderId,
     orderTypeId: pickupOrderType.id,
+    usedFallback: !orderId,
   });
 }
 
