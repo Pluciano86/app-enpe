@@ -180,22 +180,61 @@ async function cloverRequest(
 
 async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return jsonResponse({ ok: true });
-  if (req.method !== "POST") return jsonResponse({ error: "Metodo no permitido" }, 405);
+  const url = new URL(req.url);
+
+  let body: any = null;
+  if (req.method === "POST") {
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse({ error: "JSON invalido" }, 400);
+    }
+  }
+
+  const providedSecret =
+    req.headers.get("x-findixi-secret") ??
+    url.searchParams.get("secret") ??
+    body?.secret ??
+    "";
+
+  const verificationCode =
+    body?.verificationCode ??
+    body?.verification_code ??
+    body?.verification_code_id ??
+    url.searchParams.get("verificationCode") ??
+    url.searchParams.get("verification_code") ??
+    null;
+
+  if (verificationCode) {
+    console.log("[clover-webhook] verificationCode:", verificationCode);
+    return jsonResponse({ ok: true, verificationCode });
+  }
 
   if (CLOVER_WEBHOOK_SECRET) {
-    const provided =
-      req.headers.get("x-findixi-secret") ?? new URL(req.url).searchParams.get("secret") ?? "";
-    if (provided !== CLOVER_WEBHOOK_SECRET) {
+    if (providedSecret !== CLOVER_WEBHOOK_SECRET) {
+      console.warn("[clover-webhook] Secret inválido", {
+        hasSecret: Boolean(providedSecret),
+        secretMatch: false,
+      });
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
   }
 
-  let body: any = null;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonResponse({ error: "JSON invalido" }, 400);
-  }
+  if (req.method !== "POST") return jsonResponse({ error: "Metodo no permitido" }, 405);
+
+  const eventType =
+    body?.type ??
+    body?.eventType ??
+    body?.event?.type ??
+    body?.event?.eventType ??
+    body?.event?.name ??
+    null;
+  console.log("[clover-webhook] incoming", {
+    merchantId: body?.merchant_id ?? body?.merchantId ?? body?.merchant?.id ?? null,
+    objectId: body?.object_id ?? body?.objectId ?? body?.id ?? body?.data?.id ?? null,
+    eventType,
+    hasSecret: Boolean(providedSecret),
+  });
 
   const merchantId =
     body?.merchant_id ??
