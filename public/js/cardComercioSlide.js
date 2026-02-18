@@ -184,7 +184,7 @@ export function cardComercioSlide(comercio) {
       if (bubbleState.timer) clearTimeout(bubbleState.timer);
       bubbleState.timer = setTimeout(() => {
         hideBubble();
-      }, 3000);
+      }, 10000);
 
       if (!bubbleState.outsideHandler) {
         bubbleState.outsideHandler = (evt) => {
