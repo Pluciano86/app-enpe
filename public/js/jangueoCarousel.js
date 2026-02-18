@@ -1,6 +1,6 @@
 // public/js/jangueoCarousel.js
 import { supabase } from "../shared/supabaseClient.js";
-import { resolverPlanComercio } from "/shared/planes.js";
+import { resolverPlanComercio } from "../shared/planes.js";
 
 /**
  * 🔹 Carrusel de lugares para janguear

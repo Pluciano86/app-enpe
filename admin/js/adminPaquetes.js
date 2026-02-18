@@ -1,5 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { PLANES_PRELIMINARES, formatoPrecio, obtenerPlanPorNivel } from '/shared/planes.js';
+import { PLANES_PRELIMINARES, formatoPrecio, obtenerPlanPorNivel } from '../shared/planes.js';
 
 const planForm = document.getElementById('planForm');
 const planId = document.getElementById('planId');

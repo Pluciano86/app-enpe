@@ -1,5 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 const btnLogout = document.getElementById('btnLogout');
 const userNombre = document.getElementById('userNombre');

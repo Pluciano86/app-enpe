@@ -1,6 +1,6 @@
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseClient.js';
 import { FONTS_MENU } from './js/fontsMenu.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 function getPublicBase() {
   return '/';

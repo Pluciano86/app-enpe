@@ -1,6 +1,6 @@
 // public/js/comidaCarousel.js
 import { supabase } from "../shared/supabaseClient.js";
-import { resolverPlanComercio } from "/shared/planes.js";
+import { resolverPlanComercio } from "../shared/planes.js";
 
 /**
  * 🔹 Carrusel de "Aquí en Pe Erre se come bien"

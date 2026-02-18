@@ -6,7 +6,7 @@ import {
   formatoPrecio,
   resolverPlanComercio,
   buildComercioPlanPayload,
-} from '/shared/planes.js';
+} from '../shared/planes.js';
 
 const baseImageUrl = getPublicBase('galeriacomercios');
 const UNKNOWN_CATEGORY_LABEL = 'Sin categoría';

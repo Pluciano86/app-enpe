@@ -5,7 +5,7 @@ import {
   resolverPlanComercio,
   buildComercioPlanPayload,
   obtenerPlanPorNivel,
-} from '/shared/planes.js';
+} from '../shared/planes.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 const comercioNombre = document.getElementById('comercioNombre');

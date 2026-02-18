@@ -1,6 +1,6 @@
 import { supabase } from "../shared/supabaseClient.js";
 import { cardComida } from "./cardComida.js";
-import { resolverPlanComercio } from "/shared/planes.js";
+import { resolverPlanComercio } from "../shared/planes.js";
 
 // 🔹 Muestra los comercios activos tipo “Lugares para Comer”
 export async function mostrarListadoComida() {

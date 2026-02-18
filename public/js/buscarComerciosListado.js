@@ -9,7 +9,7 @@ import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js'
 import { detectarMunicipioUsuario } from './detectarMunicipio.js';
 import { mostrarPopupUbicacionDenegada, showPopupFavoritosVacios } from './popups.js';
 import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 const EMOJIS_CATEGORIA = {
   "Restaurantes": "🍽️",

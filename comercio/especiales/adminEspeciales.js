@@ -1,6 +1,6 @@
 // adminEspeciales.js
 import { supabase } from '../shared/supabaseClient.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sabado'];
 let tipoActual = 'almuerzo';

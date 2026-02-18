@@ -1,6 +1,6 @@
 import { supabase } from '../shared/supabaseClient.js';
 import { t } from './i18n.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 async function mostrarGridComida({ idArea, idMunicipio }) {
   const grid = document.getElementById("gridComida");

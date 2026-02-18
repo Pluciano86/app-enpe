@@ -5,7 +5,7 @@ import { calcularTiemposParaLista } from './calcularTiemposParaLista.js';
 import { mostrarCercanosComida } from './cercanosComida.js';
 import { mostrarPlayasCercanas } from './playasCercanas.js';
 import { showPopup } from './popups.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 import { mostrarLugaresCercanos } from './lugaresCercanos.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');

@@ -11,7 +11,7 @@ import { createGlobalBannerElement, destroyCarousel } from './bannerCarousel.js'
 import { supabase } from '../shared/supabaseClient.js';
 import { requireAuthSilent, showAuthModal, ACTION_MESSAGES } from './authGuard.js';
 import { showPopupFavoritosVacios } from './popups.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 function obtenerIdCategoriaDesdeURL() {
   const params = new URLSearchParams(window.location.search);

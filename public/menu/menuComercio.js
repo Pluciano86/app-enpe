@@ -3,7 +3,7 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/supabaseCli
 import { getMenuI18n } from '../shared/menuI18n.js';
 import { mountLangSelector } from '../shared/langSelector.js';
 import { getLang } from '../js/i18n.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 const params = new URLSearchParams(window.location.search);
 const idComercio = params.get('idComercio') || params.get('id');

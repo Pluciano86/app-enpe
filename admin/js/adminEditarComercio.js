@@ -17,7 +17,7 @@ import {
   formatoPrecio,
   resolverPlanComercio,
   buildComercioPlanPayload,
-} from '/shared/planes.js';
+} from '../shared/planes.js';
 
 console.log('adminEditarComercio loaded', { supabase });
 

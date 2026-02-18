@@ -1,8 +1,7 @@
 // public/js/cardComercioSlide.js
 import { supabase } from "../shared/supabaseClient.js";
 import { t } from "./i18n.js";
-import { showPopup } from "./popups.js";
-import { resolverPlanComercio } from "/shared/planes.js";
+import { resolverPlanComercio } from "../shared/planes.js";
 
 const CATEGORIA_KEY_BY_ES = {
   "Restaurantes": "categoria.restaurantes",
@@ -50,7 +49,7 @@ export function cardComercioSlide(comercio) {
   card.href = permitePerfil ? `perfilComercio.html?id=${id}` : "#";
   card.dataset.planBloqueado = permitePerfil ? "false" : "true";
   card.className =
-    `block bg-white rounded-xl mb-1 overflow-hidden shadow w-[160px] sm:w-[180px] ${permitePerfil ? '' : 'cursor-default'}`;
+    `block bg-white rounded-xl mb-1 overflow-hidden shadow w-[160px] sm:w-[180px] relative ${permitePerfil ? '' : 'cursor-default'}`;
 
   // 🔹 Estructura visual idéntica al estilo de Playas
   card.innerHTML = `
@@ -83,12 +82,33 @@ export function cardComercioSlide(comercio) {
   `;
 
   if (!permitePerfil) {
+    card.setAttribute('aria-disabled', 'true');
+    card.setAttribute('tabindex', '-1');
+
+    const showBubble = (message) => {
+      let bubble = card.querySelector('.basic-plan-bubble');
+      if (!bubble) {
+        bubble = document.createElement('div');
+        bubble.className =
+          'basic-plan-bubble absolute left-1/2 -translate-x-1/2 top-3 bg-black/80 text-white text-[10px] px-3 py-1.5 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-200 z-20';
+        bubble.textContent = message;
+        card.appendChild(bubble);
+      } else {
+        bubble.textContent = message;
+      }
+      bubble.classList.remove('opacity-0');
+      bubble.classList.add('opacity-100');
+      if (bubble._hideTimer) clearTimeout(bubble._hideTimer);
+      bubble._hideTimer = setTimeout(() => {
+        bubble.classList.remove('opacity-100');
+        bubble.classList.add('opacity-0');
+      }, 2200);
+    };
+
     card.addEventListener("click", (event) => {
       event.preventDefault();
-      showPopup(`
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">Perfil en construcción</h3>
-        <p class="text-sm text-gray-600">Este comercio aún está en el plan básico de Findixi.</p>
-      `);
+      event.stopPropagation();
+      showBubble('Perfil básico. Llama al comercio para más info.');
     });
   }
 

@@ -1,24 +1,69 @@
 // ✅ public/js/cardComercio.js
+import { supabase } from '../shared/supabaseClient.js';
 import { getPublicBase, calcularTiempoEnVehiculo, formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
 import { t, interpolate } from './i18n.js';
-import { showPopup } from './popups.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 function resolveAppBase() {
   const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
   return isLocal ? '/public/' : '/';
 }
 
+function hasPlanData(comercio = {}) {
+  const rawNivel =
+    comercio.plan_nivel ??
+    comercio.planNivel ??
+    comercio.plan_level ??
+    comercio.nivel_plan ??
+    comercio.plan ??
+    comercio.plan_slug ??
+    comercio.plan_nombre;
+
+  const tieneFlags = [
+    comercio.permite_perfil,
+    comercio.aparece_en_cercanos,
+    comercio.permite_menu,
+    comercio.permite_especiales,
+    comercio.permite_ordenes,
+  ].some((v) => typeof v === 'boolean');
+
+  const tienePlan =
+    rawNivel !== undefined &&
+    rawNivel !== null &&
+    rawNivel !== '' ||
+    Boolean(comercio.plan_id || comercio.planId || comercio.plan_nombre);
+
+  return Boolean(tieneFlags || tienePlan);
+}
+
+async function fetchPlanInfo(idComercio) {
+  if (!idComercio || !supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select('id, plan_id, plan_nivel, plan_nombre, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes')
+      .eq('id', idComercio)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return resolverPlanComercio(data);
+  } catch (err) {
+    console.warn('No se pudo validar plan del comercio:', err?.message || err);
+    return null;
+  }
+}
+
 export function cardComercio(comercio) {
   const div = document.createElement('div');
   div.className = `
-    bg-white rounded-2xl shadow-md overflow-hidden 
+    bg-white rounded-2xl shadow-md overflow-hidden relative
     text-center transition-transform duration-300 hover:scale-[1.02]
     w-full max-w-[180px] sm:max-w-[200px] mx-auto
   `;
 
   const planInfo = resolverPlanComercio(comercio || {});
   const permitePerfil = planInfo.permite_perfil !== false;
+  const planExplicito = hasPlanData(comercio || {});
 
   // 🕒 Calcular tiempo estimado de llegada con i18n
   let minutosEstimados = null;
@@ -146,15 +191,54 @@ export function cardComercio(comercio) {
   if (!permitePerfil) {
     const link = div.querySelector('[data-plan-bloqueado=\"true\"]');
     if (link) {
-      link.addEventListener('click', (event) => {
-        event.preventDefault();
-        showPopup(`
-          <h3 class=\"text-lg font-semibold text-gray-900 mb-2\">Perfil en construcción</h3>
-          <p class=\"text-sm text-gray-600\">Este comercio aún está en el plan básico de Findixi. Muy pronto podrás ver su perfil completo y más detalles.</p>
-        `);
-      });
+      link.setAttribute('aria-disabled', 'true');
+      link.setAttribute('tabindex', '-1');
+      link.classList.add('pointer-events-none');
     }
+
+    // bubble handled in shared click handler below
   }
+
+  const showBubble = (message) => {
+    let bubble = div.querySelector('.basic-plan-bubble');
+    if (!bubble) {
+      bubble = document.createElement('div');
+      bubble.className =
+        'basic-plan-bubble absolute left-1/2 -translate-x-1/2 top-2 bg-black/85 text-white text-[11px] px-3 py-1.5 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-200 z-50';
+      bubble.textContent = message;
+      div.appendChild(bubble);
+    } else {
+      bubble.textContent = message;
+    }
+    bubble.classList.remove('opacity-0');
+    bubble.classList.add('opacity-100');
+    if (bubble._hideTimer) clearTimeout(bubble._hideTimer);
+    bubble._hideTimer = setTimeout(() => {
+      bubble.classList.remove('opacity-100');
+      bubble.classList.add('opacity-0');
+    }, 2200);
+  };
+
+  // Controlar navegación para evitar saltar al perfil en plan básico
+  div.addEventListener('click', async (event) => {
+    const telLink = event.target.closest('a[href^="tel:"]');
+    if (telLink) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    let info = planExplicito ? planInfo : await fetchPlanInfo(comercio?.id);
+    if (!info) {
+      info = planInfo;
+    }
+
+    if (info?.permite_perfil) {
+      window.location.href = `${resolveAppBase()}perfilComercio.html?id=${comercio.id}`;
+      return;
+    }
+
+    showBubble('Este comercio está en plan básico. Puedes llamarlo por teléfono.');
+  });
 
   return div;
 }

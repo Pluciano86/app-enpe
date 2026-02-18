@@ -4,7 +4,7 @@ import { supabase } from '../shared/supabaseClient.js';
 import { getPublicBase, calcularTiempoEnVehiculo } from '../shared/utils.js';
 import { getDrivingDistance, formatTiempo } from '../shared/osrmClient.js';
 import { calcularDistancia } from './distanciaLugar.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 let ultimoCercanos = null;
 

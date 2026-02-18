@@ -1,5 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { resolverPlanComercio } from '/shared/planes.js';
+import { resolverPlanComercio } from '../shared/planes.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
