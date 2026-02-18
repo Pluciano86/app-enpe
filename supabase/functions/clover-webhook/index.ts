@@ -261,11 +261,6 @@ async function handler(req: Request): Promise<Response> {
     if (Array.isArray(body.merchants) && body.merchants.length) merchantSample = body.merchants[0];
     else if (!Array.isArray(body.merchants) && merchantKeys.length) merchantSample = body.merchants[merchantKeys[0]];
   }
-  const merchantCount = Array.isArray(body?.merchants)
-    ? body.merchants.length
-    : body?.merchants && typeof body.merchants === "object"
-    ? Object.keys(body.merchants).length
-    : 0;
   console.log("[clover-webhook] incoming", {
     merchantId: body?.merchant_id ?? body?.merchantId ?? body?.merchant?.id ?? null,
     objectId: body?.object_id ?? body?.objectId ?? body?.id ?? body?.data?.id ?? null,
