@@ -24,7 +24,9 @@ async function tieneMenuActivo(id) {
 async function obtenerPlanComercio(id) {
   const { data, error } = await supabase
     .from('Comercios')
-    .select('plan_id, plan_nivel, plan_nombre, permite_menu')
+    .select(
+      'plan_id, plan_nivel, plan_nombre, permite_menu, estado_propiedad, estado_verificacion, propietario_verificado'
+    )
     .eq('id', id)
     .maybeSingle();
   if (error) {

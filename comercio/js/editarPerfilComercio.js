@@ -86,7 +86,9 @@ async function cargarDatos() {
   if (!idComercio) return;
   const { data, error } = await supabase
     .from('Comercios')
-    .select('telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos')
+    .select(
+      'telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos,estado_propiedad,estado_verificacion,propietario_verificado'
+    )
     .eq('id', idComercio)
     .maybeSingle();
   if (!error && data) {

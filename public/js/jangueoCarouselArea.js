@@ -68,6 +68,9 @@ export async function renderJangueoCarouselArea(containerId) {
         permite_menu,
         permite_especiales,
         permite_ordenes,
+        estado_propiedad,
+        estado_verificacion,
+        propietario_verificado,
         ComercioCategorias ( idCategoria )
       `)
       .eq("activo", true)

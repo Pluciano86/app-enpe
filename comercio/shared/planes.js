@@ -109,6 +109,32 @@ function boolOr(value, fallback) {
   return typeof value === 'boolean' ? value : fallback;
 }
 
+function propiedadVerificadaDesdeEstado(comercio = {}) {
+  const estadoPropiedad = toText(comercio.estado_propiedad).toLowerCase();
+  const estadoVerificacion = toText(comercio.estado_verificacion).toLowerCase();
+  const propietarioVerificado = typeof comercio.propietario_verificado === 'boolean'
+    ? comercio.propietario_verificado
+    : null;
+
+  const hasOwnershipSignals =
+    Boolean(estadoPropiedad) ||
+    Boolean(estadoVerificacion) ||
+    typeof propietarioVerificado === 'boolean';
+
+  if (!hasOwnershipSignals) {
+    return { hasOwnershipSignals: false, verificado: true };
+  }
+
+  const verificacionOk = ['otp_verificado', 'sms_verificado', 'messenger_verificado', 'manual_aprobado'].includes(
+    estadoVerificacion
+  );
+  const verificado =
+    estadoPropiedad === 'verificado' &&
+    (verificacionOk || propietarioVerificado === true);
+
+  return { hasOwnershipSignals: true, verificado };
+}
+
 export function resolverPlanComercio(comercio = {}) {
   const rawNivel =
     comercio.plan_nivel ??
@@ -137,6 +163,14 @@ export function resolverPlanComercio(comercio = {}) {
   const nivel = tienePlanExpl || tieneFlagsExpl ? obtenerNivelPlan(rawNivel) : 1;
   const planBase = obtenerPlanPorNivel(nivel);
   const flags = derivarFlagsPorNivel(nivel);
+  const ownership = propiedadVerificadaDesdeEstado(comercio);
+  const bloquearPorPropiedad = ownership.hasOwnershipSignals && !ownership.verificado;
+
+  const permitePerfilBase = boolOr(comercio.permite_perfil, flags.permite_perfil);
+  const apareceEnCercanosBase = boolOr(comercio.aparece_en_cercanos, flags.aparece_en_cercanos);
+  const permiteMenuBase = boolOr(comercio.permite_menu, flags.permite_menu);
+  const permiteEspecialesBase = boolOr(comercio.permite_especiales, flags.permite_especiales);
+  const permiteOrdenesBase = boolOr(comercio.permite_ordenes, flags.permite_ordenes);
 
   return {
     nivel,
@@ -145,11 +179,11 @@ export function resolverPlanComercio(comercio = {}) {
     plan_id: comercio.plan_id ?? comercio.planId ?? null,
     status: comercio.plan_status ?? comercio.planStatus ?? null,
     precio: toNumber(comercio.plan_precio ?? comercio.planPrecio ?? planBase.precio) ?? planBase.precio,
-    permite_perfil: boolOr(comercio.permite_perfil, flags.permite_perfil),
-    aparece_en_cercanos: boolOr(comercio.aparece_en_cercanos, flags.aparece_en_cercanos),
-    permite_menu: boolOr(comercio.permite_menu, flags.permite_menu),
-    permite_especiales: boolOr(comercio.permite_especiales, flags.permite_especiales),
-    permite_ordenes: boolOr(comercio.permite_ordenes, flags.permite_ordenes),
+    permite_perfil: bloquearPorPropiedad ? false : permitePerfilBase,
+    aparece_en_cercanos: bloquearPorPropiedad ? false : apareceEnCercanosBase,
+    permite_menu: bloquearPorPropiedad ? false : permiteMenuBase,
+    permite_especiales: bloquearPorPropiedad ? false : permiteEspecialesBase,
+    permite_ordenes: bloquearPorPropiedad ? false : permiteOrdenesBase,
   };
 }
 

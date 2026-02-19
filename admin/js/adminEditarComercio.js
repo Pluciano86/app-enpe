@@ -348,7 +348,7 @@ async function cargarDatosGenerales() {
   const { data: comercio, error: errorComercio } = await supabase
     .from('Comercios')
     .select(
-      'id, nombre, telefono, direccion, latitud, longitud, idMunicipio, municipio, idArea, area, whatsapp, facebook, instagram, tiktok, webpage, descripcion, colorPrimario, colorSecundario, categoria, subCategorias, plan_id, plan_nivel, plan_nombre, plan_status, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes'
+      'id, nombre, telefono, direccion, latitud, longitud, idMunicipio, municipio, idArea, area, whatsapp, facebook, instagram, tiktok, webpage, descripcion, colorPrimario, colorSecundario, categoria, subCategorias, plan_id, plan_nivel, plan_nombre, plan_status, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado'
     )
     .eq('id', idComercio)
     .maybeSingle();

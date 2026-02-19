@@ -3,6 +3,13 @@
 # =======================
 
 [build]
-  base = "public"
-  publish = "."
+  publish = "public"
   command = ""
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[dev]
+  publish = "public"
+  functions = "netlify/functions"

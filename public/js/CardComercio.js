@@ -41,7 +41,9 @@ async function fetchPlanInfo(idComercio) {
   try {
     const { data, error } = await supabase
       .from('Comercios')
-      .select('id, plan_id, plan_nivel, plan_nombre, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes')
+      .select(
+        'id, plan_id, plan_nivel, plan_nombre, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado'
+      )
       .eq('id', idComercio)
       .maybeSingle();
     if (error) throw error;

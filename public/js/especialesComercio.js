@@ -34,7 +34,9 @@ async function obtenerImagenDeEspecial(idEspecial) {
 async function obtenerPlanComercio() {
   const { data, error } = await supabase
     .from('Comercios')
-    .select('plan_id, plan_nivel, plan_nombre, permite_especiales')
+    .select(
+      'plan_id, plan_nivel, plan_nombre, permite_especiales, estado_propiedad, estado_verificacion, propietario_verificado'
+    )
     .eq('id', idComercio)
     .maybeSingle();
   if (error) {

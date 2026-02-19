@@ -11,38 +11,116 @@ const formModalClose = document.getElementById('formModalClose');
 const planSeleccionadoLabel = document.getElementById('planSeleccionadoLabel');
 const form = document.getElementById('comercioForm');
 const submitRegistroBtn = document.getElementById('submitRegistroBtn');
-const contactoNombre = document.getElementById('contactoNombre');
-const contactoEmail = document.getElementById('contactoEmail');
-const contactoTelefono = document.getElementById('contactoTelefono');
-const logoInput = document.getElementById('logoInput');
-const logoPreview = document.getElementById('logoPreview');
-const logoPlaceholder = document.getElementById('logoPlaceholder');
-const logoZoom = document.getElementById('logoZoom');
-const selectCategoria = document.getElementById('selectCategoria');
 const inputNombreComercio = document.getElementById('inputNombreComercio');
-const inputMunicipio = document.getElementById('inputMunicipio');
-const inputDireccion = document.getElementById('inputDireccion');
+const selectMunicipio = document.getElementById('selectMunicipio');
 const inputLatitud = document.getElementById('inputLatitud');
 const inputLongitud = document.getElementById('inputLongitud');
-const matchResultsBox = document.getElementById('matchResultsBox');
-const matchResultsList = document.getElementById('matchResultsList');
+const btnToggleMapPicker = document.getElementById('btnToggleMapPicker');
+const mapPickerPanel = document.getElementById('mapPickerPanel');
+const mapAddressSearch = document.getElementById('mapAddressSearch');
+const btnMapSearchAddress = document.getElementById('btnMapSearchAddress');
+const btnMapUseMyLocation = document.getElementById('btnMapUseMyLocation');
+const mapPickerHint = document.getElementById('mapPickerHint');
 const formFeedback = document.getElementById('formFeedback');
+const googleMatchConfirmBox = document.getElementById('googleMatchConfirmBox');
+const googleMatchCard = document.getElementById('googleMatchCard');
+const btnMatchConfirmYes = document.getElementById('btnMatchConfirmYes');
+const btnMatchConfirmNo = document.getElementById('btnMatchConfirmNo');
+const btnVerOtrosMatches = document.getElementById('btnVerOtrosMatches');
+const googleOtherMatches = document.getElementById('googleOtherMatches');
+const noEsMiComercioBox = document.getElementById('noEsMiComercioBox');
+const noEsMiComercioHint = document.getElementById('noEsMiComercioHint');
+const btnNoFlowVerOtros = document.getElementById('btnNoFlowVerOtros');
+const btnNoFlowAjustarPin = document.getElementById('btnNoFlowAjustarPin');
+const btnNoFlowBuscarDeNuevo = document.getElementById('btnNoFlowBuscarDeNuevo');
+const btnNoFlowNoAparece = document.getElementById('btnNoFlowNoAparece');
+const nuevoComercioFlowBox = document.getElementById('nuevoComercioFlowBox');
+const inputNuevoComercioPhone = document.getElementById('inputNuevoComercioPhone');
+const btnNoFlowCrearNuevo = document.getElementById('btnNoFlowCrearNuevo');
+const modoProteccionBox = document.getElementById('modoProteccionBox');
+const btnProteccionVerificarTelefono = document.getElementById('btnProteccionVerificarTelefono');
+const btnProteccionManual = document.getElementById('btnProteccionManual');
+const btnProteccionVolver = document.getElementById('btnProteccionVolver');
+const disputaActivoBox = document.getElementById('disputaActivoBox');
+const otpVerificationBox = document.getElementById('otpVerificationBox');
+const otpIntroText = document.getElementById('otpIntroText');
+const otpMetaText = document.getElementById('otpMetaText');
+const otpCodeInput = document.getElementById('otpCodeInput');
+const btnOtpVerify = document.getElementById('btnOtpVerify');
+const otpActionsRow = document.getElementById('otpActionsRow');
+const btnOtpResend = document.getElementById('btnOtpResend');
+const btnOtpVoice = document.getElementById('btnOtpVoice');
+const btnOtpNoRecibi = document.getElementById('btnOtpNoRecibi');
+const otpFeedback = document.getElementById('otpFeedback');
+const otpVerifiedSummary = document.getElementById('otpVerifiedSummary');
+const otpVerifiedMessage = document.getElementById('otpVerifiedMessage');
+const btnOtpContinue = document.getElementById('btnOtpContinue');
+const planNextModal = document.getElementById('planNextModal');
+const planNextModalClose = document.getElementById('planNextModalClose');
+const planNextModalTitle = document.getElementById('planNextModalTitle');
+const planNextModalText = document.getElementById('planNextModalText');
+const planNextModalContinue = document.getElementById('planNextModalContinue');
+const comercioActivoModal = document.getElementById('comercioActivoModal');
+const comercioActivoModalClose = document.getElementById('comercioActivoModalClose');
+const comercioActivoCard = document.getElementById('comercioActivoCard');
+const comercioActivoTitulo = document.getElementById('comercioActivoTitulo');
+const btnAbrirDisputaDesdeActivo = document.getElementById('btnAbrirDisputaDesdeActivo');
+const disputaModal = document.getElementById('disputaModal');
+const disputaModalClose = document.getElementById('disputaModalClose');
+const disputaForm = document.getElementById('disputaForm');
+const disputaComercioInfo = document.getElementById('disputaComercioInfo');
+const disputaNombre = document.getElementById('disputaNombre');
+const disputaEmail = document.getElementById('disputaEmail');
+const disputaTelefono = document.getElementById('disputaTelefono');
+const disputaMensaje = document.getElementById('disputaMensaje');
+const disputaFeedback = document.getElementById('disputaFeedback');
+const disputaSubmitBtn = document.getElementById('disputaSubmitBtn');
 
 const authState = {
   user: null,
-  profile: null,
   loggedIn: false,
 };
 
-const CLAIMABLE_ESTADOS = new Set(['no_reclamado', 'reclamacion_pendiente']);
+const DEFAULT_MAP_CENTER = { lat: 18.2208, lng: -66.5901 };
+const DEFAULT_MAP_ZOOM = 9;
+const ACTIVE_MAP_ZOOM = 17;
+const GOOGLE_MATCH_RADII_METERS = [200, 500, 800];
+const MATCH_STRONG_DISTANCE_M = 150;
+const MATCH_MEDIUM_DISTANCE_M = 400;
+const PIN_MOVE_ALLOW_NEW_M = 250;
+const DUPLICATE_DISTANCE_M = 200;
 
 let selectedNivel = null;
-let pendingMatches = [];
-let isSubmitting = false;
-let liveSearchTimer = null;
-let liveSearchToken = 0;
-let lastMatchCacheKey = '';
-let lastMatchCacheResults = [];
+let mapPickerInstance = null;
+let mapPickerMarker = null;
+let mapAutocomplete = null;
+let googleMapsScriptPromise = null;
+let googleMapsApiKeyCache = '';
+let municipiosLoaded = false;
+let googleMatchState = {
+  matches: [],
+  selectedPlaceId: null,
+  searchCenter: null,
+};
+let lastGoogleSearchResult = null;
+let disputaContext = null;
+let otpState = {
+  idComercio: null,
+  challengeId: null,
+  cooldownSeconds: 0,
+  expiresIn: 0,
+  channelUsed: null,
+  maskedDestination: null,
+  comercioNombre: null,
+  timerId: null,
+  verified: false,
+};
+
+function toFiniteNumber(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
 
 function normalizeText(value) {
   return String(value || '')
@@ -54,42 +132,135 @@ function normalizeText(value) {
     .trim();
 }
 
-function tokenize(value) {
-  return normalizeText(value).split(' ').filter(Boolean);
+function tokenize(text) {
+  return normalizeText(text).split(' ').filter(Boolean);
 }
 
 function overlapRatio(aTokens, bTokens) {
   if (!aTokens.length || !bTokens.length) return 0;
   const bSet = new Set(bTokens);
-  let matches = 0;
+  let hits = 0;
   aTokens.forEach((token) => {
-    if (bSet.has(token)) matches += 1;
+    if (bSet.has(token)) hits += 1;
   });
-  return matches / Math.max(aTokens.length, bTokens.length);
+  return hits / Math.max(aTokens.length, bTokens.length);
 }
 
-function toFiniteNumber(value) {
-  if (value === '' || value === null || value === undefined) return null;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
+function isValidCoordinatePair(lat, lon) {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lon >= -180 &&
+    lon <= 180
+  );
 }
 
-function computeDistanceKm(lat1, lon1, lat2, lon2) {
-  const la1 = toFiniteNumber(lat1);
-  const lo1 = toFiniteNumber(lon1);
-  const la2 = toFiniteNumber(lat2);
-  const lo2 = toFiniteNumber(lon2);
-  if ([la1, lo1, la2, lo2].some((value) => value === null)) return null;
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const aLat = Number(lat1);
+  const aLon = Number(lon1);
+  const bLat = Number(lat2);
+  const bLon = Number(lon2);
+  if (!isValidCoordinatePair(aLat, aLon) || !isValidCoordinatePair(bLat, bLon)) return null;
 
-  const rad = (degrees) => (degrees * Math.PI) / 180;
-  const R = 6371;
-  const dLat = rad(la2 - la1);
-  const dLon = rad(lo2 - lo1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  const toRad = (degrees) => (degrees * Math.PI) / 180;
+  const earthRadius = 6371000;
+  const dLat = toRad(bLat - aLat);
+  const dLon = toRad(bLon - aLon);
+  const aa =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+  return earthRadius * c;
+}
+
+function computeNameSimilarityScore(inputName, candidateName) {
+  const inputNorm = normalizeText(inputName);
+  const candidateNorm = normalizeText(candidateName);
+  if (!inputNorm || !candidateNorm) return 0;
+  if (inputNorm === candidateNorm) return 100;
+
+  let score = 0;
+  if (candidateNorm.includes(inputNorm) || inputNorm.includes(candidateNorm)) {
+    score += 50;
+  }
+  const ratio = overlapRatio(tokenize(inputNorm), tokenize(candidateNorm));
+  score += Math.round(ratio * 50);
+  return Math.max(0, Math.min(100, score));
+}
+
+function computeDistanceScore(meters) {
+  if (!Number.isFinite(meters)) return 0;
+  if (meters <= 60) return 100;
+  if (meters <= 120) return 95;
+  if (meters <= 200) return 90;
+  if (meters <= 350) return 80;
+  if (meters <= 500) return 70;
+  if (meters <= 800) return 55;
+  if (meters <= 1200) return 35;
+  return 10;
+}
+
+function classifyMatchStrength({ distanceM, nameScore, municipioMatch }) {
+  const distanceBand = Number.isFinite(distanceM)
+    ? distanceM <= MATCH_STRONG_DISTANCE_M
+      ? 'fuerte'
+      : distanceM <= MATCH_MEDIUM_DISTANCE_M
+        ? 'medio'
+        : 'debil'
+    : 'debil';
+  const nameStrong = Number(nameScore || 0) >= 70;
+  const isStrong = distanceBand === 'fuerte' && nameStrong && Boolean(municipioMatch);
+
+  if (isStrong) {
+    return { match_strength: 'fuerte', is_match_fuerte: true, distance_band: distanceBand };
+  }
+  if (distanceBand === 'debil' || Number(nameScore || 0) < 55) {
+    return { match_strength: 'debil', is_match_fuerte: false, distance_band: distanceBand };
+  }
+  return { match_strength: 'medio', is_match_fuerte: false, distance_band: distanceBand };
+}
+
+function getTopMatch() {
+  return Array.isArray(googleMatchState.matches) && googleMatchState.matches.length
+    ? googleMatchState.matches[0]
+    : null;
+}
+
+function getCurrentPinMovementFromSearchCenterMeters() {
+  const center = lastGoogleSearchResult?.center || googleMatchState.searchCenter;
+  if (!center) return 0;
+
+  const current = getStep1Payload();
+  const moved = distanceMeters(current.latitud, current.longitud, center.latitud, center.longitud);
+  return Number.isFinite(moved) ? Math.round(moved) : 0;
+}
+
+function getAuthUserPhone() {
+  const metadata = authState.user?.user_metadata || {};
+  return (
+    authState.user?.phone ||
+    metadata.phone ||
+    metadata.telefono ||
+    metadata.phone_number ||
+    ''
+  );
+}
+
+function normalizePhoneDigits(phoneRaw) {
+  const digits = String(phoneRaw || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1);
+  if (digits.length > 10) return digits.slice(-10);
+  return digits;
+}
+
+function phonesLikelyMatch(a, b) {
+  const x = normalizePhoneDigits(a);
+  const y = normalizePhoneDigits(b);
+  if (!x || !y) return false;
+  return x === y;
 }
 
 function parseMissingColumn(error) {
@@ -106,20 +277,17 @@ function parseMissingColumn(error) {
     const match = source.match(pattern);
     if (match?.[1]) return match[1];
   }
-
   return null;
 }
 
 async function insertComercioWithFallback(payload) {
   let body = { ...payload };
-
-  for (let i = 0; i < 12; i += 1) {
+  for (let i = 0; i < 18; i += 1) {
     const { data, error } = await supabase
       .from('Comercios')
       .insert(body)
-      .select('id, nombre')
+      .select('id, nombre, owner_user_id, estado_propiedad, estado_verificacion')
       .single();
-
     if (!error) return { data, usedPayload: body };
 
     const missingColumn = parseMissingColumn(error);
@@ -127,22 +295,15 @@ async function insertComercioWithFallback(payload) {
       delete body[missingColumn];
       continue;
     }
-
     return { error };
   }
-
   return { error: new Error('No se pudo insertar el comercio con el esquema actual.') };
 }
 
 async function updateComercioWithFallback(idComercio, payload) {
   let body = { ...payload };
-
-  for (let i = 0; i < 12; i += 1) {
-    const { error } = await supabase
-      .from('Comercios')
-      .update(body)
-      .eq('id', idComercio);
-
+  for (let i = 0; i < 18; i += 1) {
+    const { error } = await supabase.from('Comercios').update(body).eq('id', idComercio);
     if (!error) return { usedPayload: body };
 
     const missingColumn = parseMissingColumn(error);
@@ -150,18 +311,21 @@ async function updateComercioWithFallback(idComercio, payload) {
       delete body[missingColumn];
       continue;
     }
-
     return { error };
   }
-
   return { error: new Error('No se pudo actualizar el comercio con el esquema actual.') };
 }
 
-function setSubmitState(loading, label) {
-  isSubmitting = loading;
-  if (!submitRegistroBtn) return;
-  submitRegistroBtn.disabled = loading;
-  submitRegistroBtn.textContent = label || (loading ? 'Procesando...' : 'Enviar solicitud');
+function setMapHint(message, type = 'info') {
+  if (!mapPickerHint) return;
+  const tone = {
+    info: 'text-gray-500',
+    success: 'text-emerald-700',
+    warning: 'text-amber-700',
+    error: 'text-red-600',
+  };
+  mapPickerHint.className = `text-[11px] mt-2 ${tone[type] || tone.info}`;
+  mapPickerHint.textContent = message;
 }
 
 function showFeedback(type, message) {
@@ -183,15 +347,1036 @@ function hideFeedback() {
   formFeedback.textContent = '';
 }
 
-function hideMatchResults() {
-  if (liveSearchTimer) {
-    clearTimeout(liveSearchTimer);
-    liveSearchTimer = null;
+function setOtpFeedback(type, message) {
+  if (!otpFeedback) return;
+  const classesByType = {
+    success: 'bg-sky-100 border border-sky-300 text-sky-800',
+    warning: 'bg-amber-100 border border-amber-300 text-amber-900',
+    error: 'bg-red-100 border border-red-300 text-red-700',
+    info: 'bg-sky-100 border border-sky-300 text-sky-800',
+  };
+  otpFeedback.className = `text-xs rounded-lg px-2 py-2 mt-2 ${classesByType[type] || classesByType.info}`;
+  otpFeedback.textContent = message;
+  otpFeedback.classList.remove('hidden');
+}
+
+function clearOtpFeedback() {
+  if (!otpFeedback) return;
+  otpFeedback.classList.add('hidden');
+  otpFeedback.textContent = '';
+}
+
+function setDisputaFeedback(type, message) {
+  if (!disputaFeedback) return;
+  const classesByType = {
+    success: 'bg-emerald-100 border border-emerald-300 text-emerald-800',
+    warning: 'bg-amber-100 border border-amber-300 text-amber-900',
+    error: 'bg-red-100 border border-red-300 text-red-700',
+    info: 'bg-sky-100 border border-sky-300 text-sky-800',
+  };
+  disputaFeedback.className = `text-xs rounded-lg px-2 py-2 ${classesByType[type] || classesByType.info}`;
+  disputaFeedback.textContent = message;
+  disputaFeedback.classList.remove('hidden');
+}
+
+function clearDisputaFeedback() {
+  if (!disputaFeedback) return;
+  disputaFeedback.classList.add('hidden');
+  disputaFeedback.textContent = '';
+}
+
+function hideDisputaActivoBox() {
+  disputaActivoBox?.classList.add('hidden');
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatCreatedAtLabel(value) {
+  if (!value) return 'Fecha no disponible';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return 'Fecha no disponible';
+  return date.toLocaleDateString('es-PR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function buildComercioAddressText(snapshot = {}) {
+  if (snapshot.direccion && snapshot.municipio) return `${snapshot.direccion}, ${snapshot.municipio}`;
+  if (snapshot.direccion) return snapshot.direccion;
+  if (snapshot.direccion_google) return snapshot.direccion_google;
+  if (snapshot.municipio) return snapshot.municipio;
+  return 'Dirección no disponible';
+}
+
+async function fetchComercioActivoSnapshot(comercioId) {
+  if (!comercioId) return null;
+  let columns = [
+    'id',
+    'nombre',
+    'direccion',
+    'direccion_google',
+    'telefono',
+    'whatsapp',
+    'logo',
+    'portada',
+    'municipio',
+    'created_at',
+  ];
+
+  for (let i = 0; i < 8; i += 1) {
+    const selectClause = columns.join(', ');
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select(selectClause)
+      .eq('id', comercioId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!error) return data || null;
+
+    const missingColumn = parseMissingColumn(error);
+    if (!missingColumn || !columns.includes(missingColumn)) {
+      throw error;
+    }
+    columns = columns.filter((col) => col !== missingColumn);
+    if (!columns.length) return null;
   }
-  liveSearchToken += 1;
-  pendingMatches = [];
-  if (matchResultsList) matchResultsList.innerHTML = '';
-  if (matchResultsBox) matchResultsBox.classList.add('hidden');
+
+  return null;
+}
+
+function renderComercioActivoCard(snapshot = {}) {
+  if (!comercioActivoCard) return;
+  const nombre = snapshot.nombre || disputaContext?.comercioNombre || 'Comercio';
+  const telefono = formatPhone(snapshot.telefono || snapshot.whatsapp || snapshot.telefono_referencia_google);
+  const direccion = buildComercioAddressText(snapshot);
+  const creado = formatCreatedAtLabel(snapshot.created_at);
+  const logo = String(snapshot.logo || '').trim();
+  const portada = String(snapshot.portada || '').trim();
+  const inicial = escapeHtml(nombre.charAt(0).toUpperCase() || 'C');
+
+  const portadaHtml = portada
+    ? `<img src="${escapeHtml(portada)}" alt="Portada ${escapeHtml(nombre)}" class="h-full w-full object-cover">`
+    : '<div class="h-full w-full bg-gradient-to-r from-sky-100 to-slate-100"></div>';
+  const logoHtml = logo
+    ? `<img src="${escapeHtml(logo)}" alt="Logo ${escapeHtml(nombre)}" class="h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm bg-white">`
+    : `<div class="h-14 w-14 rounded-full border-2 border-white bg-sky-100 text-sky-700 flex items-center justify-center text-lg font-bold shadow-sm">${inicial}</div>`;
+
+  comercioActivoCard.innerHTML = `
+    <div class="relative h-28 overflow-hidden bg-gray-100">${portadaHtml}</div>
+    <div class="px-4 pb-4 pt-0">
+      <div class="-mt-7">${logoHtml}</div>
+      <p class="mt-2 text-base font-semibold text-gray-900">${escapeHtml(nombre)}</p>
+      <p class="mt-1 text-sm text-gray-700"><i class="fa-solid fa-phone mr-1 text-gray-500"></i>${escapeHtml(telefono)}</p>
+      <p class="mt-1 text-sm text-gray-700"><i class="fa-solid fa-location-dot mr-1 text-gray-500"></i>${escapeHtml(direccion)}</p>
+      <p class="mt-1 text-xs text-gray-500"><i class="fa-regular fa-calendar mr-1"></i>Creado: ${escapeHtml(creado)}</p>
+    </div>
+  `;
+}
+
+async function openComercioActivoModal({ comercioId, comercioNombre, placeId, selectedMatch = null }) {
+  disputaContext = {
+    comercioId: Number(comercioId || 0) || null,
+    comercioNombre: comercioNombre || getComercioNombreActual(),
+    placeId: placeId || getSelectedGoogleMatch()?.place_id || null,
+  };
+
+  let snapshot = null;
+  try {
+    snapshot = await fetchComercioActivoSnapshot(disputaContext.comercioId);
+  } catch (error) {
+    console.error('No se pudo cargar el detalle del comercio activo:', error);
+  }
+
+  const merged = {
+    ...(snapshot || {}),
+    nombre: snapshot?.nombre || disputaContext.comercioNombre,
+    telefono:
+      snapshot?.telefono ||
+      snapshot?.whatsapp ||
+      selectedMatch?.telefono_google ||
+      null,
+    direccion_google: snapshot?.direccion_google || selectedMatch?.direccion_google || null,
+  };
+
+  renderComercioActivoCard(merged);
+  if (comercioActivoTitulo) {
+    comercioActivoTitulo.textContent = `${merged.nombre || 'Este comercio'} ya está activo en Findixi.`;
+  }
+  hideFeedback();
+  closeDisputaModal();
+  hideDisputaActivoBox();
+  comercioActivoModal?.classList.remove('hidden');
+  comercioActivoModal?.classList.add('flex');
+}
+
+function closeComercioActivoModal() {
+  comercioActivoModal?.classList.add('hidden');
+  comercioActivoModal?.classList.remove('flex');
+}
+
+function openDisputaModal() {
+  if (!disputaModal) return;
+  closeComercioActivoModal();
+  const comercioNombre = disputaContext?.comercioNombre || getComercioNombreActual();
+  if (disputaComercioInfo) {
+    disputaComercioInfo.value = disputaContext?.comercioId
+      ? `${comercioNombre} (ID ${disputaContext.comercioId})`
+      : comercioNombre;
+  }
+  if (disputaNombre && !disputaNombre.value.trim()) {
+    disputaNombre.value =
+      authState.user?.user_metadata?.full_name ||
+      authState.user?.user_metadata?.nombre ||
+      '';
+  }
+  if (disputaEmail && !disputaEmail.value.trim()) {
+    disputaEmail.value = authState.user?.email || '';
+  }
+  if (disputaTelefono && !disputaTelefono.value.trim()) {
+    disputaTelefono.value = getAuthUserPhone();
+  }
+
+  clearDisputaFeedback();
+  disputaModal.classList.remove('hidden');
+  disputaModal.classList.add('flex');
+}
+
+function closeDisputaModal() {
+  if (!disputaModal) return;
+  disputaModal.classList.add('hidden');
+  disputaModal.classList.remove('flex');
+}
+
+function clearOtpSessionState() {
+  sessionStorage.removeItem('findixiRegistroOtpState');
+}
+
+function setSubmitButtonVisibility(isVisible) {
+  if (!submitRegistroBtn) return;
+  submitRegistroBtn.classList.toggle('hidden', !isVisible);
+}
+
+function setOtpAssistanceVisibility(isVisible) {
+  otpActionsRow?.classList.toggle('hidden', !isVisible);
+  btnOtpNoRecibi?.classList.toggle('hidden', !isVisible);
+}
+
+function setOtpFocusedMode(isEnabled) {
+  if (!form) return;
+  const keepVisible = new Set(['otpVerificationBox', 'formFeedback', 'planSeleccionado']);
+  const blocks = Array.from(form.children || []);
+
+  blocks.forEach((block) => {
+    if (!(block instanceof HTMLElement)) return;
+    if (keepVisible.has(block.id)) return;
+    if (isEnabled) {
+      if (!block.classList.contains('hidden')) {
+        block.dataset.otpCollapsed = 'true';
+      }
+      block.classList.add('hidden');
+    } else if (block.dataset.otpCollapsed === 'true') {
+      block.classList.remove('hidden');
+      delete block.dataset.otpCollapsed;
+    }
+  });
+}
+
+function getComercioNombreActual() {
+  const selected = getSelectedGoogleMatch();
+  if (selected?.nombre_google) return selected.nombre_google;
+  return getStep1Payload().nombre || 'Comercio';
+}
+
+function openPlanNextModal(detail = {}) {
+  if (!planNextModal) return;
+  const nivel = Number(detail.planNivel ?? selectedNivel ?? 0);
+  const plan = obtenerPlanPorNivel(nivel);
+  const nombreComercio = detail.nombreComercio || getComercioNombreActual();
+
+  const byPlan = {
+    0: 'Vamos a continuar con los datos esenciales para tu perfil Basic.',
+    1: 'Vamos a continuar con tu perfil completo para activar tu plan Regular.',
+    2: 'Vamos a continuar con tu configuración Plus para menú y especiales.',
+    3: 'Vamos a continuar con tu configuración Premium para órdenes y pickup.',
+  };
+
+  if (planNextModalTitle) {
+    planNextModalTitle.textContent = `${plan.nombre} activado`;
+  }
+  if (planNextModalText) {
+    planNextModalText.textContent = `¡Listo! ${nombreComercio} ya está verificado. ${byPlan[nivel] || byPlan[0]}`;
+  }
+
+  planNextModal.classList.remove('hidden');
+  planNextModal.classList.add('flex');
+}
+
+function closePlanNextModal() {
+  if (!planNextModal) return;
+  planNextModal.classList.add('hidden');
+  planNextModal.classList.remove('flex');
+}
+
+function showOtpVerifiedSummary(nombreComercio) {
+  if (!otpVerifiedSummary) return;
+  otpVerifiedSummary.classList.remove('hidden');
+  if (otpVerifiedMessage) {
+    otpVerifiedMessage.textContent = `¡Listo! ${nombreComercio} verificado correctamente.`;
+  }
+}
+
+function resetOtpState({ clearSession = true } = {}) {
+  if (otpState.timerId) {
+    clearInterval(otpState.timerId);
+  }
+  otpState = {
+    idComercio: null,
+    challengeId: null,
+    cooldownSeconds: 0,
+    expiresIn: 0,
+    channelUsed: null,
+    maskedDestination: null,
+    comercioNombre: null,
+    timerId: null,
+    verified: false,
+  };
+  if (clearSession) clearOtpSessionState();
+  if (btnOtpResend) {
+    btnOtpResend.disabled = true;
+    btnOtpResend.textContent = 'Reenviar';
+  }
+}
+
+function persistOtpState() {
+  const payload = {
+    idComercio: otpState.idComercio,
+    challengeId: otpState.challengeId,
+    cooldownSeconds: otpState.cooldownSeconds,
+    expiresIn: otpState.expiresIn,
+    channelUsed: otpState.channelUsed,
+    maskedDestination: otpState.maskedDestination,
+    comercioNombre: otpState.comercioNombre,
+    verified: otpState.verified,
+    savedAt: new Date().toISOString(),
+  };
+  sessionStorage.setItem('findixiRegistroOtpState', JSON.stringify(payload));
+}
+
+function restoreOtpStateFromSession() {
+  const raw = sessionStorage.getItem('findixiRegistroOtpState');
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.idComercio || !parsed.challengeId) return;
+    otpState = {
+      ...otpState,
+      idComercio: Number(parsed.idComercio) || null,
+      challengeId: parsed.challengeId || null,
+      cooldownSeconds: Number(parsed.cooldownSeconds || 0),
+      expiresIn: Number(parsed.expiresIn || 0),
+      channelUsed: parsed.channelUsed || null,
+      maskedDestination: parsed.maskedDestination || null,
+      comercioNombre: parsed.comercioNombre || null,
+      verified: Boolean(parsed.verified),
+      timerId: null,
+    };
+
+    showOtpVerificationBox();
+    if (otpIntroText) {
+      otpIntroText.textContent = `Código enviado por ${
+        otpState.channelUsed === 'voice' ? 'llamada' : 'SMS'
+      } al teléfono ${otpState.maskedDestination || 'registrado'}.`;
+    }
+    if (otpMetaText) {
+      otpMetaText.textContent = otpState.verified
+        ? `Verificado por ${otpState.channelUsed || 'otp'}.`
+        : `Código expira en ${Math.max(1, Math.round((otpState.expiresIn || 600) / 60))} minutos.`;
+    }
+    if (otpState.verified) {
+      if (otpCodeInput) otpCodeInput.disabled = true;
+      if (btnOtpVerify) {
+        btnOtpVerify.disabled = true;
+        btnOtpVerify.textContent = 'Verificado';
+      }
+      if (btnOtpResend) btnOtpResend.disabled = true;
+      if (btnOtpVoice) btnOtpVoice.disabled = true;
+      setOtpAssistanceVisibility(false);
+      showOtpVerifiedSummary(otpState.comercioNombre || getComercioNombreActual());
+      setOtpFeedback('success', 'OTP ya verificado en esta sesión.');
+    } else if (otpState.cooldownSeconds > 0) {
+      startOtpCooldown(otpState.cooldownSeconds);
+    } else if (btnOtpResend) {
+      btnOtpResend.disabled = false;
+    }
+  } catch (_error) {
+    clearOtpSessionState();
+  }
+}
+
+function hideOtpVerificationBox({ clearSession = true } = {}) {
+  resetOtpState({ clearSession });
+  setOtpFocusedMode(false);
+  if (otpVerificationBox) otpVerificationBox.classList.add('hidden');
+  if (otpCodeInput) {
+    otpCodeInput.value = '';
+    otpCodeInput.disabled = false;
+  }
+  if (btnOtpVerify) {
+    btnOtpVerify.disabled = false;
+    btnOtpVerify.textContent = 'Verificar';
+  }
+  if (btnOtpVoice) btnOtpVoice.disabled = false;
+  setOtpAssistanceVisibility(true);
+  otpVerifiedSummary?.classList.add('hidden');
+  if (otpMetaText) otpMetaText.textContent = 'Código expira en 10 minutos.';
+  if (otpIntroText) otpIntroText.textContent = 'Enviamos un código al teléfono verificado de este negocio.';
+  clearOtpFeedback();
+}
+
+function showOtpVerificationBox() {
+  if (!otpVerificationBox) return;
+  otpVerificationBox.classList.remove('hidden');
+  otpVerificationBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function startOtpCooldown(seconds) {
+  if (!btnOtpResend) return;
+  otpState.cooldownSeconds = Math.max(0, Number(seconds || 0));
+  if (otpState.timerId) clearInterval(otpState.timerId);
+
+  const update = () => {
+    if (!btnOtpResend) return;
+    if (otpState.cooldownSeconds <= 0) {
+      btnOtpResend.disabled = false;
+      btnOtpResend.textContent = 'Reenviar';
+      if (otpState.timerId) {
+        clearInterval(otpState.timerId);
+        otpState.timerId = null;
+      }
+      persistOtpState();
+      return;
+    }
+    btnOtpResend.disabled = true;
+    btnOtpResend.textContent = `Reenviar (${otpState.cooldownSeconds}s)`;
+    otpState.cooldownSeconds -= 1;
+    persistOtpState();
+  };
+
+  update();
+  otpState.timerId = setInterval(update, 1000);
+}
+
+function applyOtpSendResult(data) {
+  otpState.challengeId = data.challenge_id || null;
+  otpState.expiresIn = Number(data.expires_in || 0);
+  otpState.channelUsed = data.channel_used || null;
+  otpState.maskedDestination = data.destination_masked || null;
+  otpState.verified = false;
+  otpState.comercioNombre = otpState.comercioNombre || getComercioNombreActual();
+  if (otpCodeInput) otpCodeInput.value = '';
+  otpVerifiedSummary?.classList.add('hidden');
+  setOtpAssistanceVisibility(true);
+  setOtpFocusedMode(true);
+  setSubmitButtonVisibility(false);
+
+  const channelText = otpState.channelUsed === 'voice' ? 'llamada de voz' : 'SMS';
+  if (otpIntroText) {
+    otpIntroText.textContent = `Enviamos un código por ${channelText} al teléfono ${otpState.maskedDestination || 'registrado'}.`;
+  }
+  if (otpMetaText) {
+    otpMetaText.textContent = `Código expira en ${Math.max(1, Math.round((otpState.expiresIn || 600) / 60))} minutos.`;
+  }
+  startOtpCooldown(Number(data.cooldown_seconds || 0));
+  persistOtpState();
+  showOtpVerificationBox();
+}
+
+function formatPhone(value) {
+  const text = String(value || '').trim();
+  return text || 'No disponible';
+}
+
+function hideNoEsMiComercioFlow() {
+  noEsMiComercioBox?.classList.add('hidden');
+  nuevoComercioFlowBox?.classList.add('hidden');
+  if (inputNuevoComercioPhone) {
+    inputNuevoComercioPhone.value = '';
+  }
+}
+
+function hideProtectionModeBox() {
+  modoProteccionBox?.classList.add('hidden');
+}
+
+function showNoEsMiComercioFlow() {
+  const selected = getSelectedGoogleMatch() || getTopMatch();
+  const movedMeters = getCurrentPinMovementFromSearchCenterMeters();
+  const strength = selected?.match_strength || 'debil';
+  const othersCount = Math.max(0, (googleMatchState.matches || []).length - 1);
+
+  let hint = 'Puedes ver otros resultados o ajustar el pin para mejorar la coincidencia.';
+  if (strength === 'fuerte' && movedMeters <= PIN_MOVE_ALLOW_NEW_M) {
+    hint =
+      'Encontramos una coincidencia fuerte. Si no es tu comercio, te pediremos una verificación adicional.';
+  } else if (strength === 'medio') {
+    hint = 'La coincidencia es intermedia. Recomendamos ajustar el pin y volver a buscar.';
+  }
+
+  if (noEsMiComercioHint) {
+    noEsMiComercioHint.textContent = hint;
+  }
+  if (btnNoFlowVerOtros) {
+    btnNoFlowVerOtros.disabled = othersCount === 0;
+    btnNoFlowVerOtros.classList.toggle('opacity-60', othersCount === 0);
+    btnNoFlowVerOtros.classList.toggle('cursor-not-allowed', othersCount === 0);
+  }
+  noEsMiComercioBox?.classList.remove('hidden');
+  hideProtectionModeBox();
+}
+
+function showProtectionModeBox() {
+  hideNoEsMiComercioFlow();
+  modoProteccionBox?.classList.remove('hidden');
+  scrollToGoogleMatchConfirmation();
+}
+
+function hideGoogleMatchConfirmation() {
+  googleMatchState = { matches: [], selectedPlaceId: null, searchCenter: null };
+  lastGoogleSearchResult = null;
+  disputaContext = null;
+  if (googleMatchConfirmBox) googleMatchConfirmBox.classList.add('hidden');
+  if (googleMatchCard) googleMatchCard.innerHTML = '';
+  if (googleOtherMatches) {
+    googleOtherMatches.classList.add('hidden');
+    googleOtherMatches.innerHTML = '';
+  }
+  if (btnVerOtrosMatches) {
+    btnVerOtrosMatches.classList.add('hidden');
+    btnVerOtrosMatches.textContent = 'Ver otros resultados';
+  }
+  btnMatchConfirmYes?.classList.remove('hidden');
+  btnMatchConfirmNo?.classList.remove('hidden');
+  if (btnMatchConfirmNo) btnMatchConfirmNo.textContent = 'No es mi comercio';
+  hideNoEsMiComercioFlow();
+  hideProtectionModeBox();
+  hideDisputaActivoBox();
+  hideOtpVerificationBox();
+  closeComercioActivoModal();
+}
+
+function scrollToGoogleMatchConfirmation() {
+  if (!googleMatchConfirmBox) return;
+  window.setTimeout(() => {
+    googleMatchConfirmBox.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'nearest',
+    });
+  }, 80);
+}
+
+function getSelectedGoogleMatch() {
+  const { matches, selectedPlaceId } = googleMatchState;
+  if (!Array.isArray(matches) || !matches.length) return null;
+  return matches.find((item) => item.place_id === selectedPlaceId) || matches[0] || null;
+}
+
+function renderSelectedGoogleMatchCard() {
+  if (!googleMatchCard) return;
+  const selected = getSelectedGoogleMatch();
+  if (!selected) {
+    googleMatchCard.innerHTML = '<p class="text-sm text-gray-500">Sin resultados para mostrar.</p>';
+    return;
+  }
+
+  const photoHtml = selected.photo_url
+    ? `<img src="${selected.photo_url}" alt="${selected.nombre_google || 'Comercio'}" class="w-full h-28 object-cover rounded-lg border border-gray-100">`
+    : '<div class="w-full h-28 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center text-gray-400 text-xs">Sin foto disponible</div>';
+
+  googleMatchCard.innerHTML = `
+    ${photoHtml}
+    <div class="mt-2 space-y-1">
+      <p class="text-sm font-semibold text-gray-900">${selected.nombre_google || 'Comercio'}</p>
+      <p class="text-xs text-gray-600">${selected.direccion_google || 'Dirección no disponible'}</p>
+      <p class="text-xs text-gray-600"><i class="fa-solid fa-phone mr-1"></i>${formatPhone(selected.telefono_google)}</p>
+      ${
+        Number.isFinite(selected.distance_m)
+          ? `<p class="text-[11px] text-sky-700">A ${selected.distance_m}m del pin</p>`
+          : ''
+      }
+      ${
+        selected?.match_strength
+          ? `<p class="text-[11px] ${
+              selected.match_strength === 'fuerte'
+                ? 'text-emerald-700'
+                : selected.match_strength === 'medio'
+                  ? 'text-amber-700'
+                  : 'text-gray-600'
+            }">Coincidencia ${selected.match_strength}</p>`
+          : ''
+      }
+    </div>
+  `;
+}
+
+function renderOtherGoogleMatches() {
+  if (!googleOtherMatches || !btnVerOtrosMatches) return;
+  const selected = getSelectedGoogleMatch();
+  const others = (googleMatchState.matches || []).filter((item) => item.place_id !== selected?.place_id);
+
+  if (!others.length) {
+    btnVerOtrosMatches.classList.add('hidden');
+    btnVerOtrosMatches.textContent = 'Ver otros resultados';
+    googleOtherMatches.classList.add('hidden');
+    googleOtherMatches.innerHTML = '';
+    return;
+  }
+
+  btnVerOtrosMatches.classList.remove('hidden');
+  btnVerOtrosMatches.textContent = 'Ver otros resultados';
+  googleOtherMatches.classList.add('hidden');
+  googleOtherMatches.innerHTML = others
+    .map(
+      (item) => `
+        <article class="rounded-xl border border-gray-200 bg-white p-2">
+          <p class="text-sm font-semibold text-gray-900">${item.nombre_google || 'Comercio'}</p>
+          <p class="text-xs text-gray-600 mt-1">${item.direccion_google || 'Dirección no disponible'}</p>
+          <button type="button" data-select-place-id="${item.place_id}" class="mt-2 w-full rounded-lg border border-sky-200 bg-sky-50 text-sky-700 py-1.5 text-xs font-semibold">
+            Seleccionar este resultado
+          </button>
+        </article>
+      `
+    )
+    .join('');
+}
+
+function renderGoogleMatchConfirmation(matches = []) {
+  if (!googleMatchConfirmBox) return;
+  if (!Array.isArray(matches) || !matches.length) {
+    hideGoogleMatchConfirmation();
+    return;
+  }
+
+  googleMatchState = {
+    matches,
+    selectedPlaceId: matches[0]?.place_id || null,
+    searchCenter: lastGoogleSearchResult?.center || null,
+  };
+  googleMatchConfirmBox.classList.remove('hidden');
+  btnMatchConfirmYes?.classList.remove('hidden');
+  btnMatchConfirmNo?.classList.remove('hidden');
+  if (btnMatchConfirmNo) btnMatchConfirmNo.textContent = 'No es mi comercio';
+  hideNoEsMiComercioFlow();
+  hideProtectionModeBox();
+  hideDisputaActivoBox();
+  renderSelectedGoogleMatchCard();
+  renderOtherGoogleMatches();
+  scrollToGoogleMatchConfirmation();
+}
+
+function selectGoogleMatch(placeId) {
+  if (!placeId) return;
+  googleMatchState.selectedPlaceId = placeId;
+  hideProtectionModeBox();
+  renderSelectedGoogleMatchCard();
+  renderOtherGoogleMatches();
+}
+
+function persistGoogleMatchSelection({ confirmed }) {
+  const selected = getSelectedGoogleMatch();
+  const basePayload = getStep1Payload();
+  const payload = {
+    ...basePayload,
+    google_match: selected || null,
+    google_match_confirmed: Boolean(confirmed),
+    google_match_decision_at: new Date().toISOString(),
+  };
+
+  window.findixiRegistroPaso1 = payload;
+  sessionStorage.setItem('findixiRegistroPaso1', JSON.stringify(payload));
+  return payload;
+}
+
+async function buscarComercioPorGooglePlaceId(placeId) {
+  if (!placeId) return null;
+  let columns = [
+    'id',
+    'nombre',
+    'activo',
+    'owner_user_id',
+    'estado_propiedad',
+    'estado_verificacion',
+    'google_place_id',
+  ];
+
+  for (let i = 0; i < 6; i += 1) {
+    const selectClause = columns.join(', ');
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select(selectClause)
+      .eq('google_place_id', placeId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!error) return data || null;
+
+    const missingColumn = parseMissingColumn(error);
+    if (!missingColumn) throw error;
+
+    if (missingColumn === 'google_place_id') {
+      return null;
+    }
+    columns = columns.filter((col) => col !== missingColumn);
+    if (!columns.length) return null;
+  }
+
+  return null;
+}
+
+async function buscarComercioActivoSimilar(stepPayload, selectedMatch = null) {
+  if (!stepPayload?.municipio) return null;
+
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('id, nombre, telefono, whatsapp, municipio, latitud, longitud, activo')
+    .eq('municipio', stepPayload.municipio)
+    .eq('activo', true)
+    .limit(150);
+  if (error) throw error;
+
+  const inputName = stepPayload.nombre || '';
+  const googleName = selectedMatch?.nombre_google || '';
+  const refPhone = selectedMatch?.telefono_google || selectedMatch?.telefono || '';
+
+  const candidatos = (data || [])
+    .map((item) => {
+      const distancia = distanceMeters(stepPayload.latitud, stepPayload.longitud, item.latitud, item.longitud);
+      const nameScoreInput = computeNameSimilarityScore(inputName, item.nombre || '');
+      const nameScoreGoogle = googleName
+        ? computeNameSimilarityScore(googleName, item.nombre || '')
+        : 0;
+      const nameScore = Math.max(nameScoreInput, nameScoreGoogle);
+      const phoneMatch =
+        phonesLikelyMatch(refPhone, item.telefono) ||
+        phonesLikelyMatch(refPhone, item.whatsapp) ||
+        phonesLikelyMatch(stepPayload?.telefono, item.telefono);
+
+      const strongByNameDistance = Number.isFinite(distancia) && distancia <= 220 && nameScore >= 65;
+      const strongByPhoneDistance = Number.isFinite(distancia) && distancia <= 450 && phoneMatch;
+      const isLikelySame = strongByNameDistance || strongByPhoneDistance;
+
+      return {
+        ...item,
+        distancia_m: Number.isFinite(distancia) ? Math.round(distancia) : null,
+        name_score: nameScore,
+        phone_match: phoneMatch,
+        is_likely_same: isLikelySame,
+      };
+    })
+    .filter((item) => item.is_likely_same)
+    .sort((a, b) => {
+      if (Number(b.phone_match) !== Number(a.phone_match)) {
+        return Number(b.phone_match) - Number(a.phone_match);
+      }
+      if ((a.distancia_m ?? Infinity) !== (b.distancia_m ?? Infinity)) {
+        return (a.distancia_m ?? Infinity) - (b.distancia_m ?? Infinity);
+      }
+      return (b.name_score ?? 0) - (a.name_score ?? 0);
+    });
+
+  return candidatos[0] || null;
+}
+
+function buildGoogleReferencePayload(stepPayload, selectedMatch, options = {}) {
+  const protectionMode = Boolean(options.protectionMode);
+  const manualReview = Boolean(options.manualReview);
+
+  return {
+    nombre: selectedMatch?.nombre_google || stepPayload.nombre || null,
+    nombre_normalizado: normalizeText(selectedMatch?.nombre_google || stepPayload.nombre || ''),
+    idMunicipio: stepPayload.idMunicipio || null,
+    municipio: stepPayload.municipio || null,
+    latitud: stepPayload.latitud ?? null,
+    longitud: stepPayload.longitud ?? null,
+    telefono: selectedMatch?.telefono_google || null,
+    telefono_publico: options.telefonoPublico || selectedMatch?.telefono_google || null,
+    owner_user_id: stepPayload.user_id || null,
+    plan_nivel: stepPayload.plan_nivel ?? null,
+    plan_nombre: stepPayload.plan_nombre ?? null,
+    google_place_id: selectedMatch?.place_id || null,
+    telefono_referencia_google: selectedMatch?.telefono_google || null,
+    direccion_google: selectedMatch?.direccion_google || null,
+    latitud_google: selectedMatch?.latitud_google ?? null,
+    longitud_google: selectedMatch?.longitud_google ?? null,
+    google_match_score: selectedMatch?.match_score ?? null,
+    google_matched_at: new Date().toISOString(),
+    estado_propiedad: 'reclamacion_pendiente',
+    estado_verificacion: manualReview ? 'manual_pendiente' : 'otp_pendiente',
+    propietario_verificado: false,
+    metodo_verificacion: manualReview ? 'manual' : null,
+    telefono_verificado: false,
+    bloqueo_datos_criticos: true,
+    bandera_posible_duplicado: protectionMode,
+    google_place_id_posible_match: protectionMode ? selectedMatch?.place_id || null : null,
+    posible_match_strength: protectionMode ? selectedMatch?.match_strength || null : null,
+    posible_match_distancia_m: protectionMode ? selectedMatch?.distance_m ?? null : null,
+    posible_match_metadata: protectionMode
+      ? {
+          selected_place_id: selectedMatch?.place_id || null,
+          match_score: selectedMatch?.match_score ?? null,
+          name_score: selectedMatch?.name_score ?? null,
+          distance_m: selectedMatch?.distance_m ?? null,
+          municipio_match: selectedMatch?.municipio_match ?? null,
+        }
+      : {},
+    activo: false,
+    permite_perfil: false,
+    aparece_en_cercanos: false,
+    permite_menu: false,
+    permite_especiales: false,
+    permite_ordenes: false,
+  };
+}
+
+async function guardarReferenciaGoogleConfirmada(options = {}) {
+  const selected = getSelectedGoogleMatch();
+  const stepPayload = getStep1Payload();
+
+  if (!selected || !selected.place_id) {
+    throw new Error('No hay un match de Google seleccionado.');
+  }
+  if (!stepPayload.user_id) {
+    throw new Error('Necesitas sesión activa para continuar.');
+  }
+
+  const payload = buildGoogleReferencePayload(stepPayload, selected, options);
+  const existente = await buscarComercioPorGooglePlaceId(selected.place_id);
+  const similarActivo = await buscarComercioActivoSimilar(stepPayload, selected);
+
+  if (existente?.id) {
+    if (existente.activo === true) {
+      return {
+        mode: 'activo_no_reclamable',
+        id: existente.id,
+        nombre: existente.nombre || selected?.nombre_google || stepPayload.nombre || null,
+        place_id: selected.place_id,
+      };
+    }
+
+    if (similarActivo?.id && Number(similarActivo.id) !== Number(existente.id)) {
+      return {
+        mode: 'activo_no_reclamable',
+        id: similarActivo.id,
+        nombre: similarActivo.nombre || selected?.nombre_google || stepPayload.nombre || null,
+        place_id: selected.place_id,
+        match_evidence: {
+          distance_m: similarActivo.distancia_m,
+          phone_match: similarActivo.phone_match,
+          name_score: similarActivo.name_score,
+        },
+      };
+    }
+
+    if (existente.owner_user_id && existente.owner_user_id !== stepPayload.user_id) {
+      const { error } = await updateComercioWithFallback(existente.id, {
+        estado_propiedad: 'en_disputa',
+        estado_verificacion: 'manual_pendiente',
+        bloqueo_datos_criticos: true,
+      });
+      if (error) throw error;
+      return { mode: 'disputa', id: existente.id };
+    }
+
+    const { error, usedPayload } = await updateComercioWithFallback(existente.id, payload);
+    if (error) throw error;
+    return { mode: 'updated', id: existente.id, payload: usedPayload };
+  }
+
+  if (similarActivo?.id) {
+    return {
+      mode: 'activo_no_reclamable',
+      id: similarActivo.id,
+      nombre: similarActivo.nombre || stepPayload.nombre || null,
+      place_id: selected.place_id || null,
+      match_evidence: {
+        distance_m: similarActivo.distancia_m,
+        phone_match: similarActivo.phone_match,
+        name_score: similarActivo.name_score,
+      },
+    };
+  }
+
+  const { data, error, usedPayload } = await insertComercioWithFallback(payload);
+  if (error) throw error;
+  return { mode: 'inserted', id: data?.id || null, payload: usedPayload };
+}
+
+async function buscarPosibleDuplicadoPorNombreYCercania(stepPayload) {
+  const nombreNormalizado = normalizeText(stepPayload.nombre || '');
+  if (!nombreNormalizado || !stepPayload.municipio) return null;
+
+  const { data, error } = await supabase
+    .from('Comercios')
+    .select('id, nombre, municipio, latitud, longitud, owner_user_id, estado_propiedad')
+    .eq('municipio', stepPayload.municipio)
+    .limit(80);
+  if (error) throw error;
+
+  const candidatos = (data || []).filter((item) => normalizeText(item.nombre) === nombreNormalizado);
+  if (!candidatos.length) return null;
+
+  return (
+    candidatos.find((item) => {
+      const d = distanceMeters(stepPayload.latitud, stepPayload.longitud, item.latitud, item.longitud);
+      return Number.isFinite(d) && d <= DUPLICATE_DISTANCE_M;
+    }) || null
+  );
+}
+
+async function crearComercioNuevoPendienteOtp({ telefonoOtp }) {
+  const stepPayload = getStep1Payload();
+  if (!stepPayload.user_id) throw new Error('Necesitas sesión activa para continuar.');
+
+  const selected = getSelectedGoogleMatch();
+  if (selected?.place_id) {
+    const existenteGoogle = await buscarComercioPorGooglePlaceId(selected.place_id);
+    if (existenteGoogle?.id) {
+      throw new Error('Encontramos este comercio en Findixi. Debes reclamarlo en lugar de crear uno nuevo.');
+    }
+  }
+
+  const posibleDuplicado = await buscarPosibleDuplicadoPorNombreYCercania(stepPayload);
+  if (posibleDuplicado?.id) {
+    throw new Error(
+      `Ya existe un comercio muy similar cerca (${posibleDuplicado.nombre}). Te recomendamos reclamar ese comercio.`
+    );
+  }
+
+  const telefonoNormalizado = String(telefonoOtp || '').trim();
+  if (!telefonoNormalizado) {
+    throw new Error('Ingresa un teléfono para continuar con la verificación.');
+  }
+
+  const similarActivo = await buscarComercioActivoSimilar(stepPayload, {
+    nombre_google: stepPayload.nombre,
+    telefono_google: telefonoNormalizado,
+  });
+  if (similarActivo?.id) {
+    const distanciaLabel = Number.isFinite(similarActivo.distancia_m) ? ` a ${similarActivo.distancia_m}m` : '';
+    const error = new Error(
+      `Encontramos un comercio activo muy similar (${similarActivo.nombre}${distanciaLabel}). No podemos crear uno nuevo; abre una disputa en Findixi.`
+    );
+    error.similarActivo = similarActivo;
+    throw error;
+  }
+
+  const payload = {
+    nombre: stepPayload.nombre,
+    nombre_normalizado: normalizeText(stepPayload.nombre),
+    idMunicipio: stepPayload.idMunicipio || null,
+    municipio: stepPayload.municipio || null,
+    latitud: stepPayload.latitud ?? null,
+    longitud: stepPayload.longitud ?? null,
+    telefono: telefonoNormalizado,
+    telefono_publico: telefonoNormalizado,
+    owner_user_id: stepPayload.user_id,
+    plan_nivel: stepPayload.plan_nivel ?? null,
+    plan_nombre: stepPayload.plan_nombre ?? null,
+    estado_propiedad: 'reclamacion_pendiente',
+    estado_verificacion: 'otp_pendiente',
+    propietario_verificado: false,
+    metodo_verificacion: null,
+    telefono_verificado: false,
+    telefono_publico_verificado: false,
+    bloqueo_datos_criticos: true,
+    bandera_posible_duplicado: false,
+    activo: false,
+    permite_perfil: false,
+    aparece_en_cercanos: false,
+    permite_menu: false,
+    permite_especiales: false,
+    permite_ordenes: false,
+  };
+
+  const { data, error, usedPayload } = await insertComercioWithFallback(payload);
+  if (error) throw error;
+  return { id: data?.id || null, payload: usedPayload };
+}
+
+function canContinueAsNewBusinessWithoutProtection() {
+  const selected = getSelectedGoogleMatch() || getTopMatch();
+  if (!selected) return true;
+  if (selected.match_strength !== 'fuerte') return true;
+  const movedMeters = getCurrentPinMovementFromSearchCenterMeters();
+  return movedMeters > PIN_MOVE_ALLOW_NEW_M;
+}
+
+async function iniciarOtpParaComercio({
+  idComercio,
+  comercioNombre,
+  channelPreference = 'auto',
+  destinationPhone = null,
+}) {
+  const commerceId = Number(idComercio || 0);
+  if (!Number.isFinite(commerceId) || commerceId <= 0) {
+    throw new Error('No se recibió el ID del comercio para iniciar OTP.');
+  }
+
+  otpState.idComercio = commerceId;
+  otpState.comercioNombre = comercioNombre || getComercioNombreActual();
+  hideNoEsMiComercioFlow();
+  hideProtectionModeBox();
+  const otpResponse = await sendOtp({
+    channelPreference,
+    resend: false,
+    destinationPhone,
+  });
+  applyOtpSendResult(otpResponse);
+  googleMatchConfirmBox?.classList.add('hidden');
+  setOtpFeedback('info', `Código enviado por ${otpResponse.channel_used === 'voice' ? 'llamada' : 'SMS'}.`);
+}
+
+function getMunicipioLabel() {
+  return selectMunicipio?.selectedOptions?.[0]?.textContent?.trim() || '';
+}
+
+function getStep1Payload() {
+  const nombre = (inputNombreComercio?.value || '').trim();
+  const latitud = toFiniteNumber(inputLatitud?.value);
+  const longitud = toFiniteNumber(inputLongitud?.value);
+  const idMunicipio = toFiniteNumber(selectMunicipio?.value);
+  const municipio = getMunicipioLabel();
+
+  return {
+    nombre,
+    idMunicipio,
+    municipio,
+    latitud,
+    longitud,
+    plan_nivel: selectedNivel,
+    plan_nombre: selectedNivel !== null ? obtenerPlanPorNivel(selectedNivel).nombre : null,
+    user_id: authState.user?.id || null,
+  };
+}
+
+function isStep1Valid() {
+  const payload = getStep1Payload();
+  return Boolean(payload.nombre) && Boolean(payload.idMunicipio) && isValidCoordinatePair(payload.latitud, payload.longitud);
+}
+
+function updateStepButtonState() {
+  if (!submitRegistroBtn) return;
+  submitRegistroBtn.disabled = !isStep1Valid();
 }
 
 function buildFeaturesList(features) {
@@ -310,6 +1495,10 @@ function closeFormModal() {
   if (!formModal) return;
   formModal.classList.add('hidden');
   formModal.classList.remove('flex');
+  closeDisputaModal();
+  mapPickerPanel?.classList.add('hidden');
+  hideGoogleMatchConfirmation();
+  setSubmitButtonVisibility(true);
 }
 
 function selectPlan(plan) {
@@ -337,445 +1526,741 @@ function selectPlan(plan) {
   }
 
   hideFeedback();
-  hideMatchResults();
+  hideGoogleMatchConfirmation();
+  closePlanNextModal();
   openFormModal();
   renderPlanes(nivel);
-}
-
-function updateLogoPreview() {
-  if (!logoPreview) return;
-  const scale = Number(logoZoom?.value || 1);
-  logoPreview.style.transform = `scale(${scale})`;
-}
-
-async function cargarCategorias() {
-  if (!selectCategoria) return;
-
-  try {
-    const { data, error } = await supabase
-      .from('Categorias')
-      .select('id, nombre')
-      .order('nombre', { ascending: true });
-
-    if (error) throw error;
-
-    selectCategoria.innerHTML = '<option value="">Selecciona una categoría</option>';
-    (data || []).forEach((cat) => {
-      const opt = document.createElement('option');
-      opt.value = cat.id;
-      opt.textContent = cat.nombre || '';
-      selectCategoria.appendChild(opt);
-    });
-  } catch (error) {
-    console.warn('No se pudieron cargar categorías:', error?.message || error);
-  }
+  updateStepButtonState();
 }
 
 async function cargarUsuario() {
   try {
-    const { data: { session } = {} } = await supabase.auth.getSession();
-    if (!session?.user) {
-      authState.loggedIn = false;
-      authState.user = null;
-      authState.profile = null;
+    const {
+      data: { session } = {},
+    } = await supabase.auth.getSession();
+    authState.user = session?.user || null;
+    authState.loggedIn = Boolean(session?.user);
+  } catch (error) {
+    console.warn('No se pudo cargar la sesión:', error?.message || error);
+    authState.user = null;
+    authState.loggedIn = false;
+  }
+}
+
+async function cargarMunicipios() {
+  if (municipiosLoaded || !selectMunicipio) return;
+
+  try {
+    const { data, error } = await supabase
+      .from('Municipios')
+      .select('id, nombre')
+      .order('nombre', { ascending: true });
+    if (error) throw error;
+
+    selectMunicipio.innerHTML = '<option value="">Selecciona un municipio</option>';
+    (data || []).forEach((municipio) => {
+      const option = document.createElement('option');
+      option.value = String(municipio.id);
+      option.textContent = municipio.nombre || '';
+      selectMunicipio.appendChild(option);
+    });
+    municipiosLoaded = true;
+  } catch (error) {
+    console.warn('No se pudieron cargar municipios:', error?.message || error);
+    showFeedback('error', 'No se pudieron cargar los municipios. Intenta recargar.');
+  }
+}
+
+function getGoogleMapsKeyFromWindow() {
+  const browserEnv = typeof window !== 'undefined' ? window.__ENV__ || window.ENV || {} : {};
+  const fromWindow =
+    browserEnv.GOOGLE_MAPS_BROWSER_KEY ||
+    browserEnv.GOOGLE_MAPS_API_KEY ||
+    browserEnv.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    browserEnv.VITE_GOOGLE_MAPS_API_KEY;
+  return typeof fromWindow === 'string' ? fromWindow.trim() : '';
+}
+
+function isLocalHostRuntime() {
+  const host = String(window.location.hostname || '').toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1';
+}
+
+function isLikelyNetlifyDevRuntime() {
+  const port = String(window.location.port || '');
+  return port === '8888' || port === '8889';
+}
+
+async function tryLoadLocalMapsConfig() {
+  const keyFromStorage = String(localStorage.getItem('GOOGLE_MAPS_BROWSER_KEY') || '').trim();
+  if (keyFromStorage) {
+    window.__ENV__ = window.__ENV__ || {};
+    window.__ENV__.GOOGLE_MAPS_BROWSER_KEY = keyFromStorage;
+    return keyFromStorage;
+  }
+
+  try {
+    await import('../shared/localMapsConfig.js');
+  } catch (error) {
+    return '';
+  }
+
+  return getGoogleMapsKeyFromWindow();
+}
+
+async function getGoogleMapsApiKey() {
+  if (googleMapsApiKeyCache) return googleMapsApiKeyCache;
+
+  const keyFromWindow = getGoogleMapsKeyFromWindow();
+  if (keyFromWindow) {
+    googleMapsApiKeyCache = keyFromWindow;
+    return googleMapsApiKeyCache;
+  }
+
+  if (isLocalHostRuntime()) {
+    const localKey = await tryLoadLocalMapsConfig();
+    if (localKey) {
+      googleMapsApiKeyCache = localKey;
+      return googleMapsApiKeyCache;
+    }
+  }
+
+  if (isLocalHostRuntime() && !isLikelyNetlifyDevRuntime()) return '';
+
+  try {
+    const response = await fetch('/.netlify/functions/maps-browser-config', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (response.ok) {
+      const payload = await response.json();
+      if (payload?.googleMapsKey && typeof payload.googleMapsKey === 'string') {
+        googleMapsApiKeyCache = payload.googleMapsKey.trim();
+        return googleMapsApiKeyCache;
+      }
+    }
+  } catch (error) {
+    console.warn('No se pudo leer configuración de Google Maps:', error?.message || error);
+  }
+
+  return '';
+}
+
+async function ensureGoogleMapsLoaded() {
+  if (window.google?.maps?.Map && window.google?.maps?.places) return true;
+
+  if (googleMapsScriptPromise) return googleMapsScriptPromise;
+
+  googleMapsScriptPromise = (async () => {
+    const apiKey = await getGoogleMapsApiKey();
+    if (!apiKey) {
+      throw new Error(
+        'Falta GOOGLE_MAPS_BROWSER_KEY. Usa Netlify Function o crea public/shared/localMapsConfig.js para local.'
+      );
+    }
+
+    await new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-google-maps="registro-comercio"]');
+      if (existing) {
+        existing.addEventListener('load', resolve, { once: true });
+        existing.addEventListener('error', () => reject(new Error('No se pudo cargar Google Maps.')), {
+          once: true,
+        });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&v=weekly`;
+      script.async = true;
+      script.defer = true;
+      script.dataset.googleMaps = 'registro-comercio';
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('No se pudo cargar Google Maps.'));
+      document.head.appendChild(script);
+    });
+
+    if (!window.google?.maps?.Map) throw new Error('Google Maps no está disponible después de cargar el script.');
+    return true;
+  })();
+
+  try {
+    return await googleMapsScriptPromise;
+  } catch (error) {
+    googleMapsScriptPromise = null;
+    throw error;
+  }
+}
+
+function getPlacesServiceHost() {
+  return mapPickerInstance || document.createElement('div');
+}
+
+function nearbySearchPromise(service, request) {
+  return new Promise((resolve, reject) => {
+    service.nearbySearch(request, (results, status) => {
+      if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+        resolve(results || []);
+        return;
+      }
+      if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+        resolve([]);
+        return;
+      }
+      reject(new Error(`nearbySearch status: ${status}`));
+    });
+  });
+}
+
+function textSearchPromise(service, request) {
+  return new Promise((resolve, reject) => {
+    service.textSearch(request, (results, status) => {
+      if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+        resolve(results || []);
+        return;
+      }
+      if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+        resolve([]);
+        return;
+      }
+      reject(new Error(`textSearch status: ${status}`));
+    });
+  });
+}
+
+function placeDetailsPromise(service, placeId) {
+  return new Promise((resolve, reject) => {
+    service.getDetails(
+      {
+        placeId,
+        fields: ['name', 'formatted_address', 'formatted_phone_number', 'geometry', 'photos', 'place_id'],
+      },
+      (result, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+          resolve(result || null);
+          return;
+        }
+        if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+          resolve(null);
+          return;
+        }
+        reject(new Error(`placeDetails status: ${status}`));
+      }
+    );
+  });
+}
+
+function mapCandidateWithScore(place, payload) {
+  const point = place?.geometry?.location;
+  const placeLat = point?.lat?.();
+  const placeLng = point?.lng?.();
+  const meters = distanceMeters(payload.latitud, payload.longitud, placeLat, placeLng);
+  const nameScore = computeNameSimilarityScore(payload.nombre, place?.name || '');
+  const distanceScore = computeDistanceScore(meters);
+
+  const municipioNorm = normalizeText(payload.municipio);
+  const addressNorm = normalizeText(place?.vicinity || place?.formatted_address || '');
+  const municipioMatch = Boolean(municipioNorm && addressNorm.includes(municipioNorm));
+  const municipioBoost = municipioMatch ? 8 : 0;
+
+  const matchScore = Math.round(nameScore * 0.75 + distanceScore * 0.25 + municipioBoost);
+  const strength = classifyMatchStrength({
+    distanceM: meters,
+    nameScore,
+    municipioMatch,
+  });
+
+  return {
+    place_id: place.place_id || '',
+    nombre_google: place.name || '',
+    direccion_google: place.vicinity || place.formatted_address || '',
+    telefono_google: place.formatted_phone_number || null,
+    latitud_google: Number.isFinite(placeLat) ? placeLat : null,
+    longitud_google: Number.isFinite(placeLng) ? placeLng : null,
+    photo_url: null,
+    distance_m: Number.isFinite(meters) ? Math.round(meters) : null,
+    rating: Number.isFinite(place.rating) ? Number(place.rating) : null,
+    user_ratings_total: Number.isFinite(place.user_ratings_total) ? Number(place.user_ratings_total) : null,
+    types: Array.isArray(place.types) ? place.types : [],
+    business_status: place.business_status || null,
+    name_score: nameScore,
+    distance_score: distanceScore,
+    municipio_match: municipioMatch,
+    match_score: matchScore,
+    match_strength: strength.match_strength,
+    is_match_fuerte: strength.is_match_fuerte,
+    distance_band: strength.distance_band,
+  };
+}
+
+async function enrichTopMatchesWithDetails(candidates, service) {
+  const top = Array.isArray(candidates) ? candidates.slice(0, 3) : [];
+  const enriched = [];
+
+  for (const candidate of top) {
+    let details = null;
+    try {
+      details = await placeDetailsPromise(service, candidate.place_id);
+    } catch (error) {
+      console.warn('No se pudo cargar place details:', candidate.place_id, error?.message || error);
+    }
+
+    const detailLocation = details?.geometry?.location;
+    const detailLat = detailLocation?.lat?.();
+    const detailLng = detailLocation?.lng?.();
+    const detailPhoto = details?.photos?.[0];
+    const photoUrl = detailPhoto?.getUrl
+      ? detailPhoto.getUrl({ maxWidth: 720, maxHeight: 360 })
+      : null;
+
+    enriched.push({
+      ...candidate,
+      nombre_google: details?.name || candidate.nombre_google,
+      direccion_google: details?.formatted_address || candidate.direccion_google,
+      telefono_google: details?.formatted_phone_number || candidate.telefono_google || null,
+      latitud_google: Number.isFinite(detailLat) ? detailLat : candidate.latitud_google,
+      longitud_google: Number.isFinite(detailLng) ? detailLng : candidate.longitud_google,
+      photo_url: photoUrl || candidate.photo_url || null,
+    });
+  }
+
+  return enriched;
+}
+
+async function buscarCoincidenciasGoogleNombreCoords(payload) {
+  await ensureGoogleMapsLoaded();
+
+  const service = new window.google.maps.places.PlacesService(getPlacesServiceHost());
+  const location = new window.google.maps.LatLng(payload.latitud, payload.longitud);
+  const resultsById = new Map();
+
+  for (const radius of GOOGLE_MATCH_RADII_METERS) {
+    const nearby = await nearbySearchPromise(service, {
+      location,
+      radius,
+      keyword: payload.nombre,
+    });
+    nearby.forEach((place) => {
+      if (!place?.place_id) return;
+      resultsById.set(place.place_id, place);
+    });
+  }
+
+  const textQuery = `${payload.nombre} ${payload.municipio || ''} Puerto Rico`.trim();
+  const textResults = await textSearchPromise(service, {
+    location,
+    radius: GOOGLE_MATCH_RADII_METERS[GOOGLE_MATCH_RADII_METERS.length - 1],
+    query: textQuery,
+  });
+  textResults.forEach((place) => {
+    if (!place?.place_id) return;
+    resultsById.set(place.place_id, place);
+  });
+
+  const scoredMatches = Array.from(resultsById.values())
+    .map((place) => mapCandidateWithScore(place, payload))
+    .filter((candidate) => candidate.name_score >= 35)
+    .filter((candidate) => !Number.isFinite(candidate.distance_m) || candidate.distance_m <= 1500)
+    .sort((a, b) => {
+      if (b.match_score !== a.match_score) return b.match_score - a.match_score;
+      return (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+    });
+
+  const topMatchesRaw = await enrichTopMatchesWithDetails(scoredMatches, service);
+  const topMatches = topMatchesRaw.map((candidate) => {
+    const meters = distanceMeters(
+      payload.latitud,
+      payload.longitud,
+      candidate.latitud_google,
+      candidate.longitud_google
+    );
+    const municipioNorm = normalizeText(payload.municipio);
+    const addressNorm = normalizeText(candidate?.direccion_google || '');
+    const municipioMatch = Boolean(municipioNorm && addressNorm.includes(municipioNorm));
+    const strength = classifyMatchStrength({
+      distanceM: meters,
+      nameScore: candidate.name_score,
+      municipioMatch,
+    });
+    return {
+      ...candidate,
+      distance_m: Number.isFinite(meters) ? Math.round(meters) : candidate.distance_m,
+      municipio_match: municipioMatch,
+      match_strength: strength.match_strength,
+      is_match_fuerte: strength.is_match_fuerte,
+      distance_band: strength.distance_band,
+    };
+  });
+
+  return {
+    searched_at: new Date().toISOString(),
+    center: {
+      latitud: payload.latitud,
+      longitud: payload.longitud,
+    },
+    radii: GOOGLE_MATCH_RADII_METERS,
+    query_nombre: payload.nombre,
+    total_raw: resultsById.size,
+    total_scored: scoredMatches.length,
+    best_match: topMatches[0] || null,
+    matches: topMatches,
+  };
+}
+
+function setCoordinatesFromPicker(lat, lon, { centerMap = true, zoom = ACTIVE_MAP_ZOOM } = {}) {
+  if (!isValidCoordinatePair(lat, lon)) {
+    setMapHint('Coordenadas inválidas. Verifica el formato.', 'error');
+    return;
+  }
+
+  if (inputLatitud) inputLatitud.value = lat.toFixed(6);
+  if (inputLongitud) inputLongitud.value = lon.toFixed(6);
+  syncMapMarkerFromInputs({ centerMap, zoom });
+  hideFeedback();
+  updateStepButtonState();
+}
+
+function bindMarkerDragEvents() {
+  if (!mapPickerMarker) return;
+  mapPickerMarker.addListener('dragend', () => {
+    const point = mapPickerMarker.getPosition();
+    if (!point) return;
+    setCoordinatesFromPicker(point.lat(), point.lng(), { centerMap: false });
+    setMapHint('Pin ajustado manualmente. Coordenadas actualizadas.', 'success');
+  });
+}
+
+function syncMapMarkerFromInputs({ centerMap = false, zoom = ACTIVE_MAP_ZOOM } = {}) {
+  if (!mapPickerInstance) return;
+  const lat = toFiniteNumber(inputLatitud?.value);
+  const lon = toFiniteNumber(inputLongitud?.value);
+  if (!isValidCoordinatePair(lat, lon)) return;
+
+  if (!mapPickerMarker) {
+    mapPickerMarker = new window.google.maps.Marker({
+      map: mapPickerInstance,
+      position: { lat, lng: lon },
+      draggable: true,
+    });
+    bindMarkerDragEvents();
+  } else {
+    mapPickerMarker.setPosition({ lat, lng: lon });
+  }
+
+  if (centerMap) {
+    mapPickerInstance.setCenter({ lat, lng: lon });
+    mapPickerInstance.setZoom(zoom);
+  }
+}
+
+function initAddressAutocomplete() {
+  if (!window.google?.maps?.places || !mapAddressSearch || mapAutocomplete) return;
+
+  mapAutocomplete = new window.google.maps.places.Autocomplete(mapAddressSearch, {
+    componentRestrictions: { country: 'pr' },
+    fields: ['formatted_address', 'geometry', 'name'],
+  });
+
+  mapAutocomplete.addListener('place_changed', () => {
+    const place = mapAutocomplete.getPlace();
+    if (!place?.geometry?.location) {
+      setMapHint('Esa dirección no tiene ubicación exacta. Intenta con más detalle.', 'warning');
+      return;
+    }
+    const lat = place.geometry.location.lat();
+    const lon = place.geometry.location.lng();
+    setCoordinatesFromPicker(lat, lon, { centerMap: true, zoom: ACTIVE_MAP_ZOOM });
+    setMapHint('Dirección aplicada. Ajusta el pin si necesitas más precisión.', 'success');
+  });
+}
+
+async function initMapPickerIfNeeded() {
+  await ensureGoogleMapsLoaded();
+
+  if (mapPickerInstance) {
+    window.google.maps.event.trigger(mapPickerInstance, 'resize');
+    syncMapMarkerFromInputs({ centerMap: true, zoom: ACTIVE_MAP_ZOOM });
+    initAddressAutocomplete();
+    return true;
+  }
+
+  mapPickerInstance = new window.google.maps.Map(document.getElementById('mapPicker'), {
+    center: DEFAULT_MAP_CENTER,
+    zoom: DEFAULT_MAP_ZOOM,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    clickableIcons: false,
+  });
+
+  mapPickerInstance.addListener('click', (event) => {
+    const point = event?.latLng;
+    if (!point) return;
+    setCoordinatesFromPicker(point.lat(), point.lng(), { centerMap: false });
+    setMapHint('Ubicación marcada en el mapa.', 'success');
+  });
+
+  initAddressAutocomplete();
+  syncMapMarkerFromInputs({ centerMap: true, zoom: ACTIVE_MAP_ZOOM });
+  setTimeout(() => {
+    if (mapPickerInstance) window.google.maps.event.trigger(mapPickerInstance, 'resize');
+  }, 80);
+
+  return true;
+}
+
+async function searchAddressOnMap() {
+  if (!mapAddressSearch) return;
+
+  try {
+    await initMapPickerIfNeeded();
+    const manualQuery = String(mapAddressSearch.value || '').trim();
+    const municipio = getMunicipioLabel();
+    const fallbackQuery = [inputNombreComercio?.value || '', municipio || '', 'Puerto Rico']
+      .filter(Boolean)
+      .join(', ');
+    const query = manualQuery || fallbackQuery;
+
+    if (!query) {
+      setMapHint('Escribe una dirección para buscar en el mapa.', 'warning');
       return;
     }
 
-    authState.loggedIn = true;
-    authState.user = session.user;
+    setMapHint('Buscando dirección...', 'info');
 
-    const { data: perfil, error } = await supabase
-      .from('usuarios')
-      .select('nombre, apellido, email, telefono')
-      .eq('id', session.user.id)
-      .maybeSingle();
+    const service = new window.google.maps.places.AutocompleteService();
+    const predictions = await new Promise((resolve, reject) => {
+      service.getPlacePredictions(
+        {
+          input: query,
+          componentRestrictions: { country: 'pr' },
+        },
+        (results, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK) return resolve(results || []);
+          if (status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) return resolve([]);
+          return reject(new Error(`Autocomplete status: ${status}`));
+        }
+      );
+    });
 
-    authState.profile = !error && perfil ? perfil : null;
+    if (!predictions.length) {
+      setMapHint('No encontramos resultados para esa dirección.', 'warning');
+      return;
+    }
+
+    const placesService = new window.google.maps.places.PlacesService(mapPickerInstance);
+    const details = await new Promise((resolve, reject) => {
+      placesService.getDetails(
+        {
+          placeId: predictions[0].place_id,
+          fields: ['formatted_address', 'geometry'],
+        },
+        (result, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK) return resolve(result);
+          return reject(new Error(`Place details status: ${status}`));
+        }
+      );
+    });
+
+    const location = details?.geometry?.location;
+    const lat = location?.lat?.();
+    const lon = location?.lng?.();
+    if (!isValidCoordinatePair(lat, lon)) {
+      setMapHint('La dirección encontrada no devolvió coordenadas válidas.', 'warning');
+      return;
+    }
+
+    setCoordinatesFromPicker(lat, lon, { centerMap: true, zoom: ACTIVE_MAP_ZOOM });
+    setMapHint('Dirección encontrada. Ajusta el pin si es necesario.', 'success');
   } catch (error) {
-    console.warn('No se pudo cargar la sesión:', error?.message || error);
-    authState.loggedIn = false;
-    authState.user = null;
-    authState.profile = null;
+    console.warn('Error buscando dirección:', error);
+    setMapHint('No pudimos buscar la dirección en este momento.', 'error');
   }
 }
 
-function renderContacto() {
-  if (!contactoNombre || !contactoEmail || !contactoTelefono) return;
-
-  if (!authState.loggedIn) {
-    contactoNombre.textContent = '-';
-    contactoEmail.textContent = '-';
-    contactoTelefono.textContent = '-';
+function useCurrentLocationOnMap({ onFailToAddressSearch = false } = {}) {
+  if (!navigator.geolocation) {
+    setMapHint('Tu navegador no soporta geolocalización.', 'error');
     return;
   }
 
-  const perfil = authState.profile || {};
-  const nombreCompleto = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ').trim();
-
-  contactoNombre.textContent = nombreCompleto || authState.user?.user_metadata?.full_name || '—';
-  contactoEmail.textContent = perfil.email || authState.user?.email || '—';
-  contactoTelefono.textContent = perfil.telefono || '—';
-}
-
-function computeMatchScore(comercio, formValues) {
-  const nombreInput = normalizeText(formValues.nombre);
-  const municipioInput = normalizeText(formValues.municipio);
-  const direccionInput = normalizeText(formValues.direccion);
-
-  const nombreComercioNorm = normalizeText(comercio.nombre_normalizado || comercio.nombre);
-  const municipioComercioNorm = normalizeText(comercio.municipio);
-  const direccionComercioNorm = normalizeText(comercio.direccion);
-
-  let score = 0;
-  let distanceKm = null;
-
-  if (!nombreComercioNorm || !nombreInput) return { score: 0, distanceKm: null };
-  if (nombreComercioNorm === nombreInput) score += 70;
-  if (nombreComercioNorm.includes(nombreInput) || nombreInput.includes(nombreComercioNorm)) score += 35;
-
-  const nombreOverlap = overlapRatio(tokenize(nombreInput), tokenize(nombreComercioNorm));
-  score += Math.round(nombreOverlap * 30);
-
-  if (municipioInput && municipioComercioNorm) {
-    if (municipioComercioNorm === municipioInput) score += 18;
-    else if (
-      municipioComercioNorm.includes(municipioInput) ||
-      municipioInput.includes(municipioComercioNorm)
-    ) {
-      score += 10;
-    }
-  }
-
-  if (direccionInput && direccionComercioNorm) {
-    const direccionOverlap = overlapRatio(tokenize(direccionInput), tokenize(direccionComercioNorm));
-    score += Math.round(direccionOverlap * 14);
-  }
-
-  const hasInputCoords =
-    Number.isFinite(formValues.latitud) &&
-    Number.isFinite(formValues.longitud);
-  const comercioLat = toFiniteNumber(comercio.latitud);
-  const comercioLon = toFiniteNumber(comercio.longitud);
-
-  if (hasInputCoords && comercioLat !== null && comercioLon !== null) {
-    distanceKm = computeDistanceKm(formValues.latitud, formValues.longitud, comercioLat, comercioLon);
-    if (distanceKm !== null) {
-      if (distanceKm <= 0.15) score += 22;
-      else if (distanceKm <= 0.5) score += 18;
-      else if (distanceKm <= 1) score += 14;
-      else if (distanceKm <= 3) score += 8;
-      else if (distanceKm <= 8) score += 3;
-    }
-  }
-
-  return { score, distanceKm };
-}
-
-function canCurrentUserClaim(match) {
-  const sameOwner = match.owner_user_id && authState.user?.id && match.owner_user_id === authState.user.id;
-  const hasDifferentOwner = match.owner_user_id && authState.user?.id && match.owner_user_id !== authState.user.id;
-
-  if (sameOwner) return true;
-  if (hasDifferentOwner) return false;
-
-  const estado = String(match.estado_propiedad || 'no_reclamado').toLowerCase();
-  return CLAIMABLE_ESTADOS.has(estado);
-}
-
-function renderMatchResults(matches, formValues, options = {}) {
-  const { showFeedbackWarning = true } = options;
-  pendingMatches = matches;
-
-  if (!matchResultsBox || !matchResultsList) return;
-  matchResultsList.innerHTML = '';
-
-  if (!Array.isArray(matches) || !matches.length) {
-    matchResultsBox.classList.add('hidden');
-    return;
-  }
-
-  matches.forEach((match) => {
-    const estado = String(match.estado_propiedad || 'no_reclamado').toLowerCase();
-    const claimable = canCurrentUserClaim(match);
-    const row = document.createElement('article');
-    row.className = 'rounded-xl border border-amber-200 bg-white p-3';
-
-    row.innerHTML = `
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <p class="font-semibold text-sm text-gray-900 truncate">${match.nombre || 'Comercio sin nombre'}</p>
-          <p class="text-xs text-gray-600 mt-1">${match.municipio || 'Municipio no definido'}${match.direccion ? ` · ${match.direccion}` : ''}</p>
-          ${
-            match.telefono
-              ? `<p class="text-xs text-gray-500 mt-1"><i class="fa-solid fa-phone mr-1"></i>${match.telefono}</p>`
-              : ''
-          }
-          ${
-            Number.isFinite(match._distanceKm)
-              ? `<p class="text-[11px] text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>~${match._distanceKm.toFixed(2)} km de la ubicación indicada</p>`
-              : ''
-          }
-          <p class="text-[11px] uppercase tracking-[0.12em] mt-2 ${
-            claimable ? 'text-amber-700' : 'text-red-600'
-          }">Estado: ${estado.replaceAll('_', ' ')}</p>
-        </div>
-        <button
-          type="button"
-          data-claim-id="${match.id}"
-          class="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold ${
-            claimable ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-          }"
-          ${claimable ? '' : 'disabled'}
-        >
-          ${claimable ? 'Reclamar este comercio' : 'No disponible'}
-        </button>
-      </div>
-    `;
-
-    matchResultsList.appendChild(row);
-  });
-
-  matchResultsBox.classList.remove('hidden');
-
-  if (showFeedbackWarning && formValues?.nombre) {
-    showFeedback(
-      'warning',
-      `Encontramos ${matches.length} posible(s) coincidencia(s) para "${formValues.nombre}". Debes reclamar una antes de continuar.`
-    );
-  }
-}
-
-async function buscarPosiblesMatches(formValues) {
-  const nombre = String(formValues.nombre || '').trim();
-  const municipio = String(formValues.municipio || '').trim();
-
-  if (!nombre || !municipio) return [];
-
-  const municipioQuery = municipio.replace(/[%_]/g, '').slice(0, 60);
-
-  const { data, error } = await supabase
-    .from('Comercios')
-    .select('id, nombre, municipio, direccion, telefono, latitud, longitud, nombre_normalizado, owner_user_id, estado_propiedad, estado_verificacion')
-    .ilike('municipio', `%${municipioQuery}%`)
-    .limit(200);
-
-  if (error) throw error;
-
-  const scored = (data || [])
-    .map((comercio) => {
-      const result = computeMatchScore(comercio, formValues);
-      return {
-        ...comercio,
-        _score: result.score,
-        _distanceKm: result.distanceKm,
-      };
-    })
-    .filter((c) => c._score >= 42)
-    .sort((a, b) => b._score - a._score)
-    .slice(0, 5);
-
-  return scored;
-}
-
-function buildMatchCacheKey(formValues) {
-  const lat = Number.isFinite(formValues.latitud) ? formValues.latitud.toFixed(5) : '';
-  const lon = Number.isFinite(formValues.longitud) ? formValues.longitud.toFixed(5) : '';
-  return [
-    normalizeText(formValues.nombre),
-    normalizeText(formValues.municipio),
-    normalizeText(formValues.direccion),
-    lat,
-    lon,
-  ].join('|');
-}
-
-function shouldRunLiveMatchSearch(formValues) {
-  return (
-    normalizeText(formValues.nombre).length >= 3 &&
-    normalizeText(formValues.municipio).length >= 2
+  setMapHint('Obteniendo tu ubicación...', 'info');
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      setCoordinatesFromPicker(lat, lon, { centerMap: true, zoom: ACTIVE_MAP_ZOOM });
+      setMapHint('Ubicación detectada. Ajusta el pin si es necesario.', 'success');
+    },
+    (error) => {
+      console.warn('Error geolocation:', error);
+      setMapHint('No pude acceder a tu ubicación. Usa Buscar dirección o mueve el pin.', 'warning');
+      if (onFailToAddressSearch && mapAddressSearch && !mapAddressSearch.value.trim()) {
+        searchAddressOnMap();
+      }
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
   );
 }
 
-async function getMatchesWithCache(formValues, options = {}) {
-  const { force = false } = options;
-  const key = buildMatchCacheKey(formValues);
-  if (!force && key && key === lastMatchCacheKey) {
-    return lastMatchCacheResults;
-  }
-
-  const matches = await buscarPosiblesMatches(formValues);
-  lastMatchCacheKey = key;
-  lastMatchCacheResults = matches;
-  return matches;
-}
-
-async function runLiveMatchSearch() {
-  const formValues = getFormValues();
-
-  if (!shouldRunLiveMatchSearch(formValues)) {
-    hideMatchResults();
+function validateCoordinateInputsAndSync() {
+  const rawLat = String(inputLatitud?.value || '').trim();
+  const rawLon = String(inputLongitud?.value || '').trim();
+  if (!rawLat && !rawLon) {
+    updateStepButtonState();
     return;
   }
 
-  const currentToken = ++liveSearchToken;
+  const lat = toFiniteNumber(rawLat);
+  const lon = toFiniteNumber(rawLon);
+  if (!isValidCoordinatePair(lat, lon)) {
+    setMapHint('Latitud o longitud inválida. Verifica los valores.', 'error');
+    updateStepButtonState();
+    return;
+  }
 
-  try {
-    const matches = await getMatchesWithCache(formValues);
-    if (currentToken !== liveSearchToken) return;
+  syncMapMarkerFromInputs({ centerMap: true, zoom: ACTIVE_MAP_ZOOM });
+  setMapHint('Coordenadas actualizadas manualmente.', 'success');
+  updateStepButtonState();
+}
 
-    if (matches.length) {
-      renderMatchResults(matches, formValues, { showFeedbackWarning: false });
-      return;
+function toggleMapPickerPanel(forceOpen = null) {
+  if (!mapPickerPanel) return;
+
+  const isOpen = !mapPickerPanel.classList.contains('hidden');
+  const shouldOpen = forceOpen === null ? !isOpen : Boolean(forceOpen);
+  if (!shouldOpen) {
+    mapPickerPanel.classList.add('hidden');
+    return;
+  }
+
+  mapPickerPanel.classList.remove('hidden');
+  btnToggleMapPicker?.setAttribute('disabled', 'true');
+  const prevLabel = btnToggleMapPicker?.textContent || 'Marcar ubicación en el mapa';
+  if (btnToggleMapPicker) btnToggleMapPicker.textContent = 'Cargando mapa...';
+
+  initMapPickerIfNeeded()
+    .then(() => {
+      const lat = toFiniteNumber(inputLatitud?.value);
+      const lon = toFiniteNumber(inputLongitud?.value);
+      if (isValidCoordinatePair(lat, lon)) {
+        syncMapMarkerFromInputs({ centerMap: true, zoom: ACTIVE_MAP_ZOOM });
+        return;
+      }
+      useCurrentLocationOnMap({ onFailToAddressSearch: true });
+    })
+    .catch((error) => {
+      console.warn('Error inicializando mapa:', error);
+      setMapHint('No pudimos iniciar Google Maps. Intenta nuevamente.', 'error');
+    })
+    .finally(() => {
+      btnToggleMapPicker?.removeAttribute('disabled');
+      if (btnToggleMapPicker) btnToggleMapPicker.textContent = prevLabel;
+    });
+}
+
+async function getAccessToken() {
+  const {
+    data: { session } = {},
+  } = await supabase.auth.getSession();
+  return session?.access_token || '';
+}
+
+async function callOtpEndpoint(pathOrPaths, payload) {
+  const token = await getAccessToken();
+  if (!token) {
+    throw new Error('Sesión expirada. Inicia sesión nuevamente.');
+  }
+
+  const paths = Array.isArray(pathOrPaths) ? pathOrPaths : [pathOrPaths];
+  let lastError = null;
+
+  for (const path of paths) {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) return data;
+
+    const msg = data?.error || `OTP endpoint error ${response.status}`;
+    const error = new Error(msg);
+    error.payload = data;
+    error.status = response.status;
+    lastError = error;
+
+    if (response.status !== 404) {
+      throw error;
     }
-
-    hideMatchResults();
-  } catch (error) {
-    if (currentToken !== liveSearchToken) return;
-    console.warn('No se pudo ejecutar búsqueda en vivo:', error?.message || error);
   }
+
+  throw lastError || new Error('No se pudo contactar endpoint OTP.');
 }
 
-function scheduleLiveMatchSearch() {
-  if (liveSearchTimer) {
-    clearTimeout(liveSearchTimer);
+function humanizeOtpError(error) {
+  const status = Number(error?.status || 0);
+  const code = error?.payload?.code || '';
+  const attemptsLeft = error?.payload?.attempts_left;
+  if (status === 400 && Number.isFinite(Number(attemptsLeft))) {
+    return `Código incorrecto. Intentos restantes: ${attemptsLeft}.`;
   }
-  liveSearchTimer = window.setTimeout(() => {
-    runLiveMatchSearch();
-  }, 420);
-}
-
-function getFormValues() {
-  const latitud = toFiniteNumber(inputLatitud?.value);
-  const longitud = toFiniteNumber(inputLongitud?.value);
-  return {
-    nombre: inputNombreComercio?.value?.trim() || '',
-    municipio: inputMunicipio?.value?.trim() || '',
-    direccion: inputDireccion?.value?.trim() || '',
-    latitud,
-    longitud,
-    categoriaId: selectCategoria?.value ? Number(selectCategoria.value) : null,
-    categoriaNombre: selectCategoria?.selectedOptions?.[0]?.textContent?.trim() || null,
-  };
-}
-
-async function insertarCategoriaPrincipal(idComercio, categoriaId) {
-  if (!idComercio || !categoriaId) return;
-
-  try {
-    const { error } = await supabase
-      .from('ComercioCategorias')
-      .insert([{ idComercio, idCategoria: categoriaId }]);
-    if (error) {
-      console.warn('No se pudo registrar categoría principal:', error.message);
-    }
-  } catch (error) {
-    console.warn('Error insertando categoría principal:', error?.message || error);
+  if (status === 410) return 'Código expirado. Solicita uno nuevo.';
+  if (status === 429 && error?.payload?.blocked) return 'Demasiados intentos. Challenge bloqueado temporalmente.';
+  if (status === 404) {
+    return 'No encontramos el endpoint OTP. En local usa `netlify dev` para habilitar funciones.';
   }
+  if (status === 401) return 'Tu sesión expiró. Inicia sesión nuevamente.';
+  if (code === 'cooldown_active') {
+    const secs = error?.payload?.cooldown_seconds || 0;
+    return `Debes esperar ${secs}s antes de reenviar el código.`;
+  }
+  if (code?.startsWith('rate_limit_')) {
+    return 'Llegaste al límite de intentos OTP. Espera antes de intentar otra vez.';
+  }
+  return error?.message || 'No se pudo completar la operación OTP.';
 }
 
-async function crearComercioPendiente(formValues) {
-  const nivelSolicitado = Number(selectedNivel ?? 0);
-  const plan = obtenerPlanPorNivel(nivelSolicitado);
+async function sendOtp({ channelPreference = 'auto', resend = false, destinationPhone = null }) {
+  if (!otpState.idComercio) {
+    throw new Error('No hay comercio vinculado para OTP.');
+  }
 
+  const endpoint = resend
+    ? ['/.netlify/functions/resend_otp', '/.netlify/functions/otp-resend']
+    : ['/.netlify/functions/send_otp', '/.netlify/functions/otp-send'];
   const payload = {
-    nombre: formValues.nombre,
-    municipio: formValues.municipio,
-    direccion: formValues.direccion,
-    latitud: Number.isFinite(formValues.latitud) ? formValues.latitud : null,
-    longitud: Number.isFinite(formValues.longitud) ? formValues.longitud : null,
-    telefono: authState.profile?.telefono || null,
-    categoria: formValues.categoriaNombre || null,
-    owner_user_id: authState.user?.id || null,
-    estado_listing: 'borrador',
-    estado_propiedad: 'no_reclamado',
-    estado_verificacion: 'none',
-    propietario_verificado: false,
-    metodo_verificacion: null,
-    telefono_verificado: false,
-    bloqueo_datos_criticos: true,
-    plan_nivel: nivelSolicitado,
-    plan_nombre: plan.nombre,
-    activo: false,
-    permite_perfil: false,
-    aparece_en_cercanos: false,
-    permite_menu: false,
-    permite_especiales: false,
-    permite_ordenes: false,
+    idComercio: otpState.idComercio,
+    purpose: 'owner_verification',
+    channel_preference: channelPreference,
+    destination_phone: destinationPhone || undefined,
   };
 
-  const { data, error } = await insertComercioWithFallback(payload);
-  if (error) throw error;
-
-  if (data?.id && formValues.categoriaId) {
-    await insertarCategoriaPrincipal(data.id, formValues.categoriaId);
-  }
-
-  return data;
+  return callOtpEndpoint(endpoint, payload);
 }
 
-async function reclamarComercioExistente(idComercio) {
-  if (!authState.loggedIn) {
-    loginModal?.classList.remove('hidden');
-    loginModal?.classList.add('flex');
-    return;
+async function verifyOtp() {
+  if (!otpState.challengeId) {
+    throw new Error('No hay challenge OTP activo.');
   }
 
-  const match = pendingMatches.find((item) => String(item.id) === String(idComercio));
-  if (!match) return;
-
-  if (!canCurrentUserClaim(match)) {
-    showFeedback(
-      'error',
-      'Este comercio ya tiene un administrador validado. Te recomendamos contactar soporte para iniciar disputa.'
-    );
-    return;
+  const code = String(otpCodeInput?.value || '').replace(/\D/g, '').slice(0, 6);
+  if (code.length !== 6) {
+    throw new Error('Ingresa un código de 6 dígitos.');
   }
 
-  setSubmitState(true, 'Procesando reclamo...');
-  hideFeedback();
-
-  try {
-    const nivelSolicitado = Number(selectedNivel ?? 0);
-    const plan = obtenerPlanPorNivel(nivelSolicitado);
-
-    const payload = {
-      owner_user_id: authState.user?.id || null,
-      estado_propiedad: 'reclamacion_pendiente',
-      estado_verificacion: 'none',
-      propietario_verificado: false,
-      verificado_en: null,
-      metodo_verificacion: null,
-      telefono_verificado: false,
-      bloqueo_datos_criticos: true,
-      plan_nivel: nivelSolicitado,
-      plan_nombre: plan.nombre,
-      activo: false,
-      permite_perfil: false,
-      aparece_en_cercanos: false,
-      permite_menu: false,
-      permite_especiales: false,
-      permite_ordenes: false,
-    };
-
-    const { error } = await updateComercioWithFallback(idComercio, payload);
-    if (error) throw error;
-
-    showFeedback(
-      'success',
-      'Reclamo enviado. Tu comercio quedó en estado "reclamación pendiente" hasta completar verificación.'
-    );
-    hideMatchResults();
-  } catch (error) {
-    console.error('Error reclamando comercio:', error);
-    showFeedback('error', `No se pudo reclamar el comercio: ${error?.message || 'error desconocido'}`);
-  } finally {
-    setSubmitState(false);
-  }
+  return callOtpEndpoint(['/.netlify/functions/verify_otp', '/.netlify/functions/otp-verify'], {
+    challenge_id: otpState.challengeId,
+    code,
+  });
 }
 
-async function onSubmitRegistro(event) {
+async function handleStep1Submit(event) {
   event.preventDefault();
-  if (isSubmitting) return;
+  hideFeedback();
 
   if (!authState.loggedIn) {
     loginModal?.classList.remove('hidden');
@@ -784,110 +2269,532 @@ async function onSubmitRegistro(event) {
   }
 
   if (selectedNivel === null) {
-    showFeedback('warning', 'Selecciona un paquete antes de enviar.');
+    showFeedback('warning', 'Selecciona un paquete antes de continuar.');
     return;
   }
 
-  const formValues = getFormValues();
-
-  if (!formValues.nombre || !formValues.municipio || !formValues.direccion || !formValues.categoriaId) {
-    showFeedback('warning', 'Completa nombre, municipio, dirección y categoría para continuar.');
+  if (!isStep1Valid()) {
+    showFeedback('warning', 'Completa nombre, municipio y ubicación válida para continuar.');
+    updateStepButtonState();
     return;
   }
 
-  if (!logoInput?.files?.[0]) {
-    showFeedback('warning', 'Debes subir un logo para continuar.');
-    return;
-  }
+  const payload = {
+    ...getStep1Payload(),
+    captured_at: new Date().toISOString(),
+  };
 
-  setSubmitState(true, 'Buscando coincidencias...');
-  hideFeedback();
+  const previousLabel = submitRegistroBtn?.textContent || 'Siguiente';
+  if (submitRegistroBtn) {
+    submitRegistroBtn.disabled = true;
+    submitRegistroBtn.textContent = 'Buscando coincidencias...';
+  }
 
   try {
-    const matches = await getMatchesWithCache(formValues, { force: true });
+    const googleMatches = await buscarCoincidenciasGoogleNombreCoords(payload);
+    lastGoogleSearchResult = googleMatches;
+    const enrichedPayload = {
+      ...payload,
+      google_match: googleMatches?.best_match || null,
+      google_match_count: googleMatches?.total_scored || 0,
+    };
 
-    if (matches.length) {
-      renderMatchResults(matches, formValues);
-      return;
+    window.findixiRegistroPaso1 = enrichedPayload;
+    window.findixiRegistroGoogleMatches = googleMatches;
+    sessionStorage.setItem('findixiRegistroPaso1', JSON.stringify(enrichedPayload));
+    sessionStorage.setItem('findixiRegistroGoogleMatches', JSON.stringify(googleMatches));
+
+    if (googleMatches.best_match) {
+      renderGoogleMatchConfirmation(googleMatches.matches || []);
+      showFeedback(
+        'success',
+        `Encontramos un posible comercio. Confirma si es correcto.`
+      );
+    } else {
+      googleMatchState = {
+        matches: [],
+        selectedPlaceId: null,
+        searchCenter: googleMatches?.center || null,
+      };
+      googleMatchConfirmBox?.classList.remove('hidden');
+      if (googleMatchCard) {
+        googleMatchCard.innerHTML =
+          '<p class="text-sm text-gray-600 text-center">No encontramos coincidencias claras en Google para este nombre y ubicación.</p>';
+      }
+      btnMatchConfirmYes?.classList.add('hidden');
+      btnMatchConfirmNo?.classList.remove('hidden');
+      if (btnMatchConfirmNo) btnMatchConfirmNo.textContent = 'Continuar';
+      showNoEsMiComercioFlow();
+      showFeedback('info', 'No encontramos coincidencias cercanas. Puedes continuar como comercio nuevo.');
     }
 
-    hideMatchResults();
-    setSubmitState(true, 'Creando solicitud...');
-    const created = await crearComercioPendiente(formValues);
+    console.log('F2.2 resultado:', { payload: enrichedPayload, googleMatches });
+  } catch (error) {
+    console.error('Error en F2.2:', error);
+    showFeedback('error', `No se pudo completar la búsqueda de coincidencias: ${error?.message || 'error desconocido'}`);
+  } finally {
+    if (submitRegistroBtn) submitRegistroBtn.textContent = previousLabel;
+    updateStepButtonState();
+  }
+}
 
+async function enviarDisputa(event) {
+  event.preventDefault();
+  clearDisputaFeedback();
+
+  const nombre = String(disputaNombre?.value || '').trim();
+  const email = String(disputaEmail?.value || '').trim();
+  const telefono = String(disputaTelefono?.value || '').trim();
+  const mensaje = String(disputaMensaje?.value || '').trim();
+
+  if (!disputaContext?.comercioId) {
+    setDisputaFeedback('error', 'No hay comercio seleccionado para disputar.');
+    return;
+  }
+  if (!nombre || !email || !telefono) {
+    setDisputaFeedback('warning', 'Completa nombre, email y teléfono.');
+    return;
+  }
+
+  const prevText = disputaSubmitBtn?.textContent || 'Enviar disputa';
+  if (disputaSubmitBtn) {
+    disputaSubmitBtn.disabled = true;
+    disputaSubmitBtn.textContent = 'Enviando...';
+  }
+
+  try {
+    const payload = {
+      idComercio: disputaContext.comercioId,
+      google_place_id: disputaContext.placeId || null,
+      nombre_comercio: disputaContext.comercioNombre || null,
+      user_id: authState.user?.id || null,
+      contacto_nombre: nombre,
+      contacto_email: email,
+      contacto_telefono: telefono,
+      mensaje,
+      estado: 'pendiente',
+      metadata: {
+        source: 'registroComercio',
+        selected_plan_nivel: selectedNivel,
+        submitted_at: new Date().toISOString(),
+      },
+    };
+
+    const { error } = await supabase.from('disputas_comercio').insert(payload);
+    if (error) throw error;
+
+    setDisputaFeedback('success', 'Disputa enviada. El equipo Findixi te contactará pronto.');
     showFeedback(
       'success',
-      `Solicitud enviada para "${created?.nombre || formValues.nombre}". Próximo paso: verificación de propiedad.`
+      'Recibimos tu disputa de propiedad. Nuestro equipo te contactará para validar evidencias.'
     );
-
-    form?.reset();
-    lastMatchCacheKey = '';
-    lastMatchCacheResults = [];
-    liveSearchToken += 1;
-    if (planInput) planInput.value = String(selectedNivel);
-    if (logoPreview) {
-      logoPreview.src = '';
-      logoPreview.classList.add('hidden');
-      logoPreview.style.transform = 'scale(1)';
-    }
-    logoPlaceholder?.classList.remove('hidden');
-    if (logoZoom) logoZoom.value = '1';
+    setTimeout(() => closeDisputaModal(), 900);
   } catch (error) {
-    console.error('Error en registro de comercio:', error);
-    showFeedback('error', `No se pudo completar la solicitud: ${error?.message || 'error desconocido'}`);
+    console.error('Error enviando disputa:', error);
+    setDisputaFeedback(
+      'error',
+      'No pudimos enviar la disputa ahora mismo. Intenta nuevamente o contáctanos directamente.'
+    );
   } finally {
-    setSubmitState(false);
+    if (disputaSubmitBtn) {
+      disputaSubmitBtn.disabled = false;
+      disputaSubmitBtn.textContent = prevText;
+    }
   }
 }
 
 function wireEvents() {
-  logoZoom?.addEventListener('input', updateLogoPreview);
+  form?.addEventListener('submit', handleStep1Submit);
 
-  logoInput?.addEventListener('change', () => {
-    const file = logoInput.files?.[0];
-    if (!file) {
-      logoPreview?.classList.add('hidden');
-      logoPlaceholder?.classList.remove('hidden');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (logoPreview) {
-        logoPreview.src = String(reader.result || '');
-        logoPreview.classList.remove('hidden');
-        logoPreview.style.transform = `scale(${logoZoom?.value || 1})`;
-      }
-      logoPlaceholder?.classList.add('hidden');
-    };
-    reader.readAsDataURL(file);
-  });
-
-  const liveSearchInputs = [
-    inputNombreComercio,
-    inputMunicipio,
-    inputDireccion,
-    inputLatitud,
-    inputLongitud,
-  ];
-
-  liveSearchInputs.forEach((el) => {
+  [inputNombreComercio, selectMunicipio].forEach((el) => {
     el?.addEventListener('input', () => {
       hideFeedback();
-      scheduleLiveMatchSearch();
+      hideGoogleMatchConfirmation();
+      updateStepButtonState();
+    });
+    el?.addEventListener('change', () => {
+      hideFeedback();
+      hideGoogleMatchConfirmation();
+      updateStepButtonState();
     });
   });
 
-  selectCategoria?.addEventListener('change', hideFeedback);
+  [inputLatitud, inputLongitud].forEach((el) => {
+    el?.addEventListener('input', () => {
+      hideFeedback();
+      hideGoogleMatchConfirmation();
+      updateStepButtonState();
+    });
+    el?.addEventListener('change', validateCoordinateInputsAndSync);
+  });
 
-  form?.addEventListener('submit', onSubmitRegistro);
+  btnToggleMapPicker?.addEventListener('click', () => toggleMapPickerPanel());
+  btnMapUseMyLocation?.addEventListener('click', () => {
+    toggleMapPickerPanel(true);
+    useCurrentLocationOnMap();
+  });
+  btnMapSearchAddress?.addEventListener('click', () => {
+    toggleMapPickerPanel(true);
+    searchAddressOnMap();
+  });
+  mapAddressSearch?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      toggleMapPickerPanel(true);
+      searchAddressOnMap();
+    }
+  });
 
-  matchResultsList?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-claim-id]');
+  btnMatchConfirmYes?.addEventListener('click', async () => {
+    const selected = getSelectedGoogleMatch();
+    if (!selected) {
+      showFeedback('warning', 'No hay comercio seleccionado para confirmar.');
+      return;
+    }
+
+    const prevYesText = btnMatchConfirmYes.textContent;
+    const prevNoText = btnMatchConfirmNo?.textContent || 'No es mi comercio';
+    btnMatchConfirmYes.disabled = true;
+    if (btnMatchConfirmNo) btnMatchConfirmNo.disabled = true;
+    btnMatchConfirmYes.textContent = 'Guardando referencia...';
+    if (btnMatchConfirmNo) btnMatchConfirmNo.textContent = 'Espera...';
+
+    try {
+      const persisted = persistGoogleMatchSelection({ confirmed: true });
+      const resultado = await guardarReferenciaGoogleConfirmada();
+
+      const claimPayload = {
+        ...persisted,
+        claim_result: resultado,
+      };
+      window.findixiRegistroPaso1 = claimPayload;
+      sessionStorage.setItem('findixiRegistroPaso1', JSON.stringify(claimPayload));
+      window.findixiRegistroClaimRecord = resultado;
+
+      if (resultado.mode === 'activo_no_reclamable') {
+        hideOtpVerificationBox();
+        hideNoEsMiComercioFlow();
+        hideProtectionModeBox();
+        await openComercioActivoModal({
+          comercioId: resultado.id,
+          comercioNombre: resultado.nombre || selected?.nombre_google || getStep1Payload().nombre || 'Comercio',
+          placeId: resultado.place_id || selected?.place_id,
+          selectedMatch: selected,
+        });
+      } else if (resultado.mode === 'disputa') {
+        showFeedback(
+          'warning',
+          'Este comercio ya tiene otro propietario. Se marcó en disputa para revisión manual.'
+        );
+        hideOtpVerificationBox();
+      } else {
+        showFeedback(
+          'success',
+          'Referencia Google guardada. Estado actualizado a reclamación pendiente y OTP pendiente.'
+        );
+        hideNoEsMiComercioFlow();
+        hideProtectionModeBox();
+        await iniciarOtpParaComercio({
+          idComercio: resultado.id,
+          comercioNombre: selected?.nombre_google || getStep1Payload().nombre || 'Comercio',
+        });
+      }
+    } catch (error) {
+      console.error('Error guardando referencia Google:', error);
+      const msg = humanizeOtpError(error);
+      showFeedback('error', `No se pudo completar la confirmación: ${msg}`);
+      setOtpFeedback('error', msg);
+    } finally {
+      btnMatchConfirmYes.disabled = false;
+      if (btnMatchConfirmNo) btnMatchConfirmNo.disabled = false;
+      btnMatchConfirmYes.textContent = prevYesText;
+      if (btnMatchConfirmNo) btnMatchConfirmNo.textContent = prevNoText;
+    }
+  });
+
+  btnMatchConfirmNo?.addEventListener('click', () => {
+    persistGoogleMatchSelection({ confirmed: false });
+    showNoEsMiComercioFlow();
+    showFeedback('info', 'Selecciona una opción para continuar sin crear duplicados.');
+  });
+
+  btnVerOtrosMatches?.addEventListener('click', () => {
+    if (!googleOtherMatches) return;
+    const hidden = googleOtherMatches.classList.contains('hidden');
+    googleOtherMatches.classList.toggle('hidden', !hidden);
+    btnVerOtrosMatches.textContent = hidden ? 'Ocultar otros resultados' : 'Ver otros resultados';
+  });
+
+  googleOtherMatches?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-select-place-id]');
     if (!button) return;
-    const { claimId } = button.dataset;
-    if (!claimId) return;
-    reclamarComercioExistente(claimId);
+    const placeId = button.getAttribute('data-select-place-id');
+    if (!placeId) return;
+    selectGoogleMatch(placeId);
+    hideNoEsMiComercioFlow();
+    hideProtectionModeBox();
+    showFeedback('info', 'Resultado alterno seleccionado. Confirma si corresponde a tu comercio.');
+  });
+
+  btnNoFlowVerOtros?.addEventListener('click', () => {
+    const othersCount = Math.max(0, (googleMatchState.matches || []).length - 1);
+    if (!othersCount) {
+      showFeedback('warning', 'No hay otros resultados por mostrar. Ajusta el pin y vuelve a buscar.');
+      return;
+    }
+    googleOtherMatches?.classList.remove('hidden');
+    btnVerOtrosMatches?.classList.remove('hidden');
+    showFeedback('info', 'Selecciona otro resultado y confirma con “Correcto, es mi comercio”.');
+  });
+
+  btnNoFlowAjustarPin?.addEventListener('click', async () => {
+    toggleMapPickerPanel(true);
+    setMapHint('Mueve el pin a la entrada del negocio y luego pulsa “Buscar de nuevo”.', 'info');
+    hideProtectionModeBox();
+    showFeedback('info', 'Ajusta el pin y usa “Buscar de nuevo” para re-ejecutar la búsqueda.');
+  });
+
+  btnNoFlowBuscarDeNuevo?.addEventListener('click', async () => {
+    await handleStep1Submit({
+      preventDefault() {},
+    });
+  });
+
+  btnNoFlowNoAparece?.addEventListener('click', () => {
+    if (canContinueAsNewBusinessWithoutProtection()) {
+      hideProtectionModeBox();
+      noEsMiComercioBox?.classList.remove('hidden');
+      nuevoComercioFlowBox?.classList.remove('hidden');
+      const suggestedPhone = getAuthUserPhone();
+      if (inputNuevoComercioPhone && !inputNuevoComercioPhone.value.trim() && suggestedPhone) {
+        inputNuevoComercioPhone.value = suggestedPhone;
+      }
+      showFeedback('info', 'Continuaremos como comercio nuevo con OTP a tu teléfono.');
+      return;
+    }
+    showProtectionModeBox();
+    showFeedback(
+      'warning',
+      'Detectamos una coincidencia fuerte. Necesitamos una verificación adicional para evitar duplicados.'
+    );
+  });
+
+  btnNoFlowCrearNuevo?.addEventListener('click', async () => {
+    const telefonoOtp = String(inputNuevoComercioPhone?.value || getAuthUserPhone() || '').trim();
+    if (!telefonoOtp) {
+      showFeedback('warning', 'Ingresa un teléfono válido para continuar como comercio nuevo.');
+      return;
+    }
+
+    const prevText = btnNoFlowCrearNuevo.textContent;
+    btnNoFlowCrearNuevo.disabled = true;
+    btnNoFlowCrearNuevo.textContent = 'Creando...';
+    try {
+      const created = await crearComercioNuevoPendienteOtp({ telefonoOtp });
+      await iniciarOtpParaComercio({
+        idComercio: created.id,
+        comercioNombre: getStep1Payload().nombre || 'Comercio',
+        destinationPhone: telefonoOtp,
+      });
+      showFeedback('success', 'Comercio nuevo creado. Completa la verificación por código.');
+    } catch (error) {
+      if (error?.similarActivo?.id) {
+        await openComercioActivoModal({
+          comercioId: error.similarActivo.id,
+          comercioNombre: error.similarActivo.nombre || getStep1Payload().nombre || 'Comercio',
+          placeId: getSelectedGoogleMatch()?.place_id || null,
+          selectedMatch: getSelectedGoogleMatch(),
+        });
+        showFeedback('info', 'Este comercio ya aparece activo. Puedes abrir una disputa para revisión.');
+        return;
+      }
+      showFeedback('error', error?.message || 'No se pudo crear el comercio nuevo.');
+      setOtpFeedback('error', error?.message || 'No se pudo iniciar OTP para comercio nuevo.');
+    } finally {
+      btnNoFlowCrearNuevo.disabled = false;
+      btnNoFlowCrearNuevo.textContent = prevText;
+    }
+  });
+
+  btnProteccionVerificarTelefono?.addEventListener('click', async () => {
+    const selected = getSelectedGoogleMatch() || getTopMatch();
+    if (!selected) {
+      showFeedback('warning', 'No hay coincidencia seleccionada para verificar.');
+      return;
+    }
+
+    const prevText = btnProteccionVerificarTelefono.textContent;
+    btnProteccionVerificarTelefono.disabled = true;
+    btnProteccionVerificarTelefono.textContent = 'Preparando verificación...';
+    try {
+      const persisted = persistGoogleMatchSelection({ confirmed: false });
+      const resultado = await guardarReferenciaGoogleConfirmada({ protectionMode: true });
+      window.findixiRegistroPaso1 = { ...persisted, claim_result: resultado, protection_mode: true };
+      sessionStorage.setItem('findixiRegistroPaso1', JSON.stringify(window.findixiRegistroPaso1));
+
+      if (resultado.mode === 'activo_no_reclamable') {
+        hideOtpVerificationBox();
+        await openComercioActivoModal({
+          comercioId: resultado.id,
+          comercioNombre: resultado.nombre || selected?.nombre_google || getStep1Payload().nombre || 'Comercio',
+          placeId: resultado.place_id || selected?.place_id,
+          selectedMatch: selected,
+        });
+        return;
+      }
+
+      if (resultado.mode === 'disputa') {
+        showFeedback('warning', 'Este comercio ya tiene propietario. Se envió a disputa para revisión manual.');
+        return;
+      }
+
+      await iniciarOtpParaComercio({
+        idComercio: resultado.id,
+        comercioNombre: selected?.nombre_google || getStep1Payload().nombre || 'Comercio',
+      });
+      showFeedback('success', 'Modo protección activo. Verifica con el teléfono del negocio para continuar.');
+    } catch (error) {
+      showFeedback('error', error?.message || 'No se pudo activar modo protección.');
+      setOtpFeedback('error', error?.message || 'No se pudo iniciar verificación.');
+    } finally {
+      btnProteccionVerificarTelefono.disabled = false;
+      btnProteccionVerificarTelefono.textContent = prevText;
+    }
+  });
+
+  btnProteccionManual?.addEventListener('click', async () => {
+    const selected = getSelectedGoogleMatch() || getTopMatch();
+    if (!selected) {
+      showFeedback('warning', 'No hay coincidencia seleccionada para enviar a revisión.');
+      return;
+    }
+
+    const prevText = btnProteccionManual.textContent;
+    btnProteccionManual.disabled = true;
+    btnProteccionManual.textContent = 'Enviando...';
+    try {
+      const resultado = await guardarReferenciaGoogleConfirmada({ protectionMode: true, manualReview: true });
+      if (resultado?.mode === 'activo_no_reclamable') {
+        await openComercioActivoModal({
+          comercioId: resultado.id,
+          comercioNombre: resultado.nombre || selected?.nombre_google || getStep1Payload().nombre || 'Comercio',
+          placeId: resultado.place_id || selected?.place_id,
+          selectedMatch: selected,
+        });
+        return;
+      }
+      showFeedback(
+        'success',
+        'Solicitud enviada a revisión manual. Mantendremos el comercio en modo protegido hasta verificar propiedad.'
+      );
+      hideOtpVerificationBox();
+      hideProtectionModeBox();
+    } catch (error) {
+      showFeedback('error', error?.message || 'No se pudo solicitar revisión manual.');
+    } finally {
+      btnProteccionManual.disabled = false;
+      btnProteccionManual.textContent = prevText;
+    }
+  });
+
+  btnProteccionVolver?.addEventListener('click', () => {
+    hideProtectionModeBox();
+    showNoEsMiComercioFlow();
+    toggleMapPickerPanel(true);
+    setMapHint('Ajusta el pin y vuelve a buscar para mejorar coincidencias.', 'info');
+  });
+
+  otpCodeInput?.addEventListener('input', () => {
+    const digits = String(otpCodeInput.value || '').replace(/\D/g, '').slice(0, 6);
+    otpCodeInput.value = digits;
+    clearOtpFeedback();
+  });
+
+  btnOtpVerify?.addEventListener('click', async () => {
+    clearOtpFeedback();
+    btnOtpVerify.disabled = true;
+    const prevText = btnOtpVerify.textContent;
+    btnOtpVerify.textContent = 'Verificando...';
+    try {
+      const result = await verifyOtp();
+      otpState.verified = true;
+      persistOtpState();
+      setOtpFeedback('success', 'Código verificado correctamente. La propiedad del comercio quedó verificada.');
+      showFeedback('success', 'Verificación completada. El comercio está listo para continuar.');
+      setOtpAssistanceVisibility(false);
+      showOtpVerifiedSummary(otpState.comercioNombre || getComercioNombreActual());
+      if (otpMetaText) {
+        otpMetaText.textContent = `Verificado por ${result?.metodo_verificacion || otpState.channelUsed || 'otp'}.`;
+      }
+      if (btnOtpResend) btnOtpResend.disabled = true;
+      if (btnOtpVoice) btnOtpVoice.disabled = true;
+      if (otpCodeInput) otpCodeInput.disabled = true;
+    } catch (error) {
+      setOtpFeedback('error', humanizeOtpError(error));
+    } finally {
+      if (otpState.verified) {
+        btnOtpVerify.disabled = true;
+        btnOtpVerify.textContent = 'Verificado';
+      } else {
+        btnOtpVerify.disabled = false;
+        btnOtpVerify.textContent = prevText;
+      }
+    }
+  });
+
+  btnOtpResend?.addEventListener('click', async () => {
+    clearOtpFeedback();
+    btnOtpResend.disabled = true;
+    const prevText = btnOtpResend.textContent;
+    btnOtpResend.textContent = 'Reenviando...';
+    let success = false;
+    try {
+      const result = await sendOtp({ channelPreference: 'auto', resend: true });
+      applyOtpSendResult(result);
+      setOtpFeedback('info', 'Código reenviado.');
+      success = true;
+    } catch (error) {
+      setOtpFeedback('error', humanizeOtpError(error));
+    } finally {
+      if (!success) {
+        btnOtpResend.disabled = false;
+        btnOtpResend.textContent = prevText;
+      }
+    }
+  });
+
+  btnOtpVoice?.addEventListener('click', async () => {
+    clearOtpFeedback();
+    btnOtpVoice.disabled = true;
+    const prevText = btnOtpVoice.textContent;
+    btnOtpVoice.textContent = 'Llamando...';
+    let success = false;
+    try {
+      const result = await sendOtp({ channelPreference: 'voice', resend: true });
+      applyOtpSendResult(result);
+      setOtpFeedback('info', 'Se envió OTP por llamada de voz.');
+      success = true;
+    } catch (error) {
+      setOtpFeedback('error', humanizeOtpError(error));
+    } finally {
+      btnOtpVoice.disabled = false;
+      btnOtpVoice.textContent = success ? 'Probar llamada' : prevText;
+    }
+  });
+
+  btnOtpNoRecibi?.addEventListener('click', () => {
+    setOtpFeedback('warning', 'Si no te llega por SMS, usa "Probar llamada" o vuelve a reenviar al terminar el cooldown.');
+  });
+
+  btnOtpContinue?.addEventListener('click', () => {
+    const detail = {
+      idComercio: otpState.idComercio,
+      planNivel: selectedNivel,
+      nombreComercio: otpState.comercioNombre || getComercioNombreActual(),
+    };
+    closeFormModal();
+    openPlanNextModal(detail);
+    window.dispatchEvent(new CustomEvent('findixi:registro-verificado', { detail }));
   });
 
   loginModal?.addEventListener('click', (event) => {
@@ -896,7 +2803,6 @@ function wireEvents() {
       loginModal.classList.remove('flex');
     }
   });
-
   loginModalClose?.addEventListener('click', () => {
     loginModal?.classList.add('hidden');
     loginModal?.classList.remove('flex');
@@ -905,16 +2811,34 @@ function wireEvents() {
   formModal?.addEventListener('click', (event) => {
     if (event.target === formModal) closeFormModal();
   });
-
   formModalClose?.addEventListener('click', closeFormModal);
+
+  planNextModal?.addEventListener('click', (event) => {
+    if (event.target === planNextModal) closePlanNextModal();
+  });
+  planNextModalClose?.addEventListener('click', closePlanNextModal);
+  planNextModalContinue?.addEventListener('click', closePlanNextModal);
+
+  btnAbrirDisputaDesdeActivo?.addEventListener('click', openDisputaModal);
+  comercioActivoModal?.addEventListener('click', (event) => {
+    if (event.target === comercioActivoModal) closeComercioActivoModal();
+  });
+  comercioActivoModalClose?.addEventListener('click', closeComercioActivoModal);
+  disputaModal?.addEventListener('click', (event) => {
+    if (event.target === disputaModal) closeDisputaModal();
+  });
+  disputaModalClose?.addEventListener('click', closeDisputaModal);
+  disputaForm?.addEventListener('submit', enviarDisputa);
 }
 
 async function init() {
   wireEvents();
   await cargarUsuario();
-  renderContacto();
-  await cargarCategorias();
+  await cargarMunicipios();
   renderPlanes(selectedNivel);
+  hideOtpVerificationBox({ clearSession: false });
+  restoreOtpStateFromSession();
+  updateStepButtonState();
 }
 
 init();

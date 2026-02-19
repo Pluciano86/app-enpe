@@ -92,7 +92,9 @@ async function cargarComercios(user) {
 
   const { data: comercios, error: errCom } = await supabase
     .from('Comercios')
-    .select('id, nombre, logo, plan_id, plan_nivel, plan_nombre, permite_menu, permite_especiales, permite_ordenes')
+    .select(
+      'id, nombre, logo, plan_id, plan_nivel, plan_nombre, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado'
+    )
     .in('id', ids);
 
   if (errCom || !comercios?.length) {

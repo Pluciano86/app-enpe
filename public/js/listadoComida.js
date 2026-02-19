@@ -15,7 +15,9 @@ export async function mostrarListadoComida() {
     // 🔸 Buscar comercios activos
     const { data: comercios, error } = await supabase
       .from("Comercios")
-      .select("id, nombre, municipio, activo, idCategoria, logo, categoria, plan_id, plan_nivel, plan_nombre, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes")
+      .select(
+        "id, nombre, municipio, activo, idCategoria, logo, categoria, plan_id, plan_nivel, plan_nombre, permite_perfil, aparece_en_cercanos, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado"
+      )
       .eq("activo", true);
 
     if (error) throw error;
