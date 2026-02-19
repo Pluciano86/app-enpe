@@ -1,15 +1,3 @@
-# =======================
-# 🔹 Configuración base (publish en raíz para servir /public y /comercio)
-# =======================
-
 [build]
-  publish = "public"
-  command = ""
-
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
-
-[dev]
   publish = "public"
   functions = "netlify/functions"
