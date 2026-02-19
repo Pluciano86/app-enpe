@@ -6,7 +6,21 @@ const isLocal = window.location.hostname === '127.0.0.1' || window.location.host
 const basePath = isLocal ? '/public' : '';
 const origin = window.location.origin;
 const resetRedirectTo = `${origin}${basePath}/nuevaPassword.html`;
-const socialRedirectUrl = `${origin}${basePath}/usuarios/cuentaUsuario.html`;
+const urlParams = new URLSearchParams(window.location.search);
+const rawRedirect = urlParams.get('redirect') || '';
+
+function buildRedirectPath(raw) {
+  if (!raw) return `${basePath}/usuarios/cuentaUsuario.html`;
+  if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('//')) {
+    return `${basePath}/usuarios/cuentaUsuario.html`;
+  }
+  if (raw.startsWith('/')) return raw;
+  const cleaned = raw.replace(/^\.?\//, '');
+  return `${basePath}/${cleaned}`;
+}
+
+const redirectPath = buildRedirectPath(rawRedirect);
+const socialRedirectUrl = `${origin}${redirectPath}`;
 
 window.__supabaseResetRedirect = resetRedirectTo;
 
@@ -90,7 +104,7 @@ async function init() {
   // Redirigir si ya hay sesión activa
   const { data: sessionData } = await supabase.auth.getSession();
   if (sessionData?.session) {
-    window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
+    window.location.href = redirectPath;
     return;
   }
 
@@ -340,7 +354,7 @@ async function init() {
         errorMensaje.textContent = t('login.loginErrorInvalid');
         errorMensaje.classList.remove('hidden');
       } else {
-        window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
+        window.location.href = redirectPath;
       }
     } catch (err) {
       console.error("Error al iniciar sesión:", err);
@@ -510,7 +524,7 @@ async function init() {
       if (!loginError) {
         ocultarLoader();
         setTimeout(() => {
-          window.location.href = `${basePath}/usuarios/cuentaUsuario.html`;
+          window.location.href = redirectPath;
         }, 200);
       } else {
         ocultarLoader();
