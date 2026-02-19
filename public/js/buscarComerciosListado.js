@@ -696,6 +696,65 @@ async function ejecutarRPC(payload, referenciaDistancia = obtenerReferenciaUsuar
   return (data || []).map((record) => normalizarComercio(record, referenciaDistancia));
 }
 
+async function enriquecerSucursales(lista = []) {
+  const ids = Array.from(
+    new Set(
+      (lista || [])
+        .map((c) => c?.id)
+        .filter((id) => id !== null && id !== undefined && id !== '')
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id))
+    )
+  );
+  if (ids.length === 0) return lista;
+
+  let data = null;
+  try {
+    const { data: rows, error } = await supabase
+      .from('Comercios')
+      .select('id, nombreSucursal, sucursal, esSucursal, es_sucursal')
+      .in('id', ids);
+    if (error) throw error;
+    data = rows;
+  } catch (err) {
+    const { data: fallback, error: fallbackError } = await supabase
+      .from('Comercios')
+      .select('id, nombreSucursal')
+      .in('id', ids);
+    if (fallbackError) {
+      console.warn('⚠️ No se pudo enriquecer sucursales:', fallbackError);
+      return lista;
+    }
+    data = fallback;
+  }
+
+  if (!Array.isArray(data) || data.length === 0) return lista;
+
+  const map = new Map(data.map((row) => [String(row.id), row]));
+  return (lista || []).map((comercio) => {
+    const extra = map.get(String(comercio?.id));
+    if (!extra) return comercio;
+
+    const merged = { ...comercio };
+    if (typeof extra.nombreSucursal === 'string' && extra.nombreSucursal.trim() !== '') {
+      merged.nombreSucursal = extra.nombreSucursal.trim();
+    }
+    if (extra.sucursal !== undefined) merged.sucursal = extra.sucursal;
+    if (extra.esSucursal !== undefined) merged.esSucursal = extra.esSucursal;
+    if (extra.es_sucursal !== undefined) merged.es_sucursal = extra.es_sucursal;
+
+    const tieneFlag =
+      merged.sucursal !== undefined ||
+      merged.esSucursal !== undefined ||
+      merged.es_sucursal !== undefined;
+    if (!tieneFlag && merged.nombreSucursal) {
+      merged.sucursal = true;
+    }
+
+    return merged;
+  });
+}
+
 function ordenarLocalmente(lista) {
   let resultado = Array.isArray(lista) ? [...lista] : [];
   const { orden, favoritos, destacadosPrimero, abiertoAhora } = estado.filtros;
@@ -1258,6 +1317,7 @@ async function cargarComercios({ append = false, mostrarLoader = true } = {}) {
       if (!baseMap.has(c.id)) baseMap.set(c.id, c);
     });
     let base = Array.from(baseMap.values());
+    base = await enriquecerSucursales(base);
 
     const datosConFavoritos = base.map((comercio) => {
       const esFavorito =

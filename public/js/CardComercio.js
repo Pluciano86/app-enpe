@@ -54,6 +54,20 @@ async function fetchPlanInfo(idComercio) {
 }
 
 export function cardComercio(comercio) {
+  const nombreSucursalRaw =
+    comercio?.nombreSucursal ??
+    comercio?.nombre_sucursal ??
+    comercio?.sucursalNombre ??
+    comercio?.sucursal_nombre;
+  const nombreSucursal = typeof nombreSucursalRaw === 'string'
+    ? nombreSucursalRaw.trim()
+    : String(nombreSucursalRaw ?? '').trim();
+  const esSucursal =
+    comercio?.sucursal === true ||
+    comercio?.esSucursal === true ||
+    comercio?.es_sucursal === true;
+  const mostrarSucursal = esSucursal && Boolean(nombreSucursal);
+
   const div = document.createElement('div');
   div.className = `
     bg-white rounded-2xl shadow-md overflow-hidden relative
@@ -134,10 +148,17 @@ export function cardComercio(comercio) {
       <div class="relative h-12 w-full">
         <div class="absolute inset-0 flex items-center justify-center px-2 text-center">
           <h3 class="${comercio.nombre.length > 25 ? 'text-lg' : 'text-xl'} 
-                     font-medium text-[#424242] z-30 mt-2 leading-[0.9] text-center">
+                     font-medium text-[#424242] z-30 ${mostrarSucursal ? '-mt-2' : 'mt-2'} leading-[0.9] text-center">
             ${comercio.nombre}
           </h3>
         </div>
+        ${
+          mostrarSucursal
+            ? `<p class="absolute bottom-0 left-0 right-0 px-2 text-base text-gray-500 leading-none truncate">
+                 ${nombreSucursal}
+               </p>`
+            : ''
+        }
       </div>
     </a>
 
