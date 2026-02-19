@@ -33,8 +33,8 @@ export function mountLangSelector(containerSelector = "#langSwitcherMenu") {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className =
-    "flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur shadow text-sm font-semibold";
-  btn.innerHTML = `<span class="text-base">${current.flag}</span><span>${current.label}</span>`;
+    "flex items-center gap-1.5 px-2 py-1 bg-white/90 backdrop-blur border border-black/10 shadow-sm text-[11px] font-semibold text-gray-800 hover:bg-white transition";
+  btn.innerHTML = `<span class="text-sm">${current.flag}</span><span>${current.label}</span>`;
 
   const menu = document.createElement("div");
   menu.className =

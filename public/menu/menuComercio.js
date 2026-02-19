@@ -365,6 +365,7 @@ async function cargarDatos() {
     mostrarBloqueoMenu();
     return;
   }
+  initOrderUi();
 
   if (heroNombre) {
     const colorComercioVal = temaActual.colorComercio || temaActual.colortitulo;
@@ -740,7 +741,6 @@ if (btnVolver) {
 
 document.addEventListener('DOMContentLoaded', () => {
   mountLangSelector('#langSwitcherMenu');
-  initOrderUi();
   cargarDatos();
 });
 
