@@ -79,11 +79,21 @@ function mostrarOverlayPlan() {
   document.body.appendChild(overlay);
 }
 
+function comercioVerificado(comercio = {}) {
+  const estadoPropiedad = String(comercio?.estado_propiedad || '').toLowerCase();
+  const estadoVerificacion = String(comercio?.estado_verificacion || '').toLowerCase();
+  const propietarioVerificado = comercio?.propietario_verificado === true;
+  const verificacionOk = ['otp_verificado', 'sms_verificado', 'messenger_verificado', 'manual_aprobado'].includes(
+    estadoVerificacion
+  );
+  return estadoPropiedad === 'verificado' && (propietarioVerificado || verificacionOk);
+}
+
 async function cargarPlan() {
   if (!idComercio) return true;
   const { data, error } = await supabase
     .from('Comercios')
-    .select('plan_id, plan_nivel, plan_nombre, permite_especiales')
+    .select('plan_id, plan_nivel, plan_nombre, permite_especiales, estado_propiedad, estado_verificacion, propietario_verificado')
     .eq('id', idComercio)
     .maybeSingle();
 
@@ -93,10 +103,30 @@ async function cargarPlan() {
   }
 
   const planInfo = resolverPlanComercio(data || {});
+  const verificado = comercioVerificado(data || {});
   if (planBadge) planBadge.textContent = `${planInfo.nombre} (Nivel ${planInfo.nivel})`;
   if (btnCambiarPlan) btnCambiarPlan.href = `../paquetes.html?id=${idComercio}`;
 
   if (!planInfo.permite_especiales) {
+    if (!verificado) {
+      const existente = document.getElementById('planOverlay');
+      if (!existente) {
+        const overlay = document.createElement('div');
+        overlay.id = 'planOverlay';
+        overlay.className = 'fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4';
+        overlay.innerHTML = `
+          <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-3">
+            <h2 class="text-xl font-semibold text-gray-900">Propiedad pendiente de verificación</h2>
+            <p class="text-sm text-gray-600">Los especiales se habilitan cuando el comercio completa su verificación.</p>
+            <a href="../paquetes.html?id=${idComercio}" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
+              Ver estado del comercio
+            </a>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      }
+      return false;
+    }
     mostrarOverlayPlan();
     return false;
   }

@@ -468,17 +468,17 @@ function renderComercioActivoCard(snapshot = {}) {
     ? `<img src="${escapeHtml(portada)}" alt="Portada ${escapeHtml(nombre)}" class="h-full w-full object-cover">`
     : '<div class="h-full w-full bg-gradient-to-r from-sky-100 to-slate-100"></div>';
   const logoHtml = logo
-    ? `<img src="${escapeHtml(logo)}" alt="Logo ${escapeHtml(nombre)}" class="h-14 w-14 rounded-full border-2 border-white object-cover shadow-sm bg-white">`
-    : `<div class="h-14 w-14 rounded-full border-2 border-white bg-sky-100 text-sky-700 flex items-center justify-center text-lg font-bold shadow-sm">${inicial}</div>`;
+    ? `<img src="${escapeHtml(logo)}" alt="Logo ${escapeHtml(nombre)}" class="h-20 w-20 rounded-full border-2 border-white bg-white object-cover shadow-lg p-0.5">`
+    : `<div class="h-20 w-20 rounded-full border-2 border-white bg-white text-sky-700 flex items-center justify-center text-xl font-bold shadow-lg">${inicial}</div>`;
 
   comercioActivoCard.innerHTML = `
     <div class="relative h-28 overflow-hidden bg-gray-100">${portadaHtml}</div>
-    <div class="px-4 pb-4 pt-0">
-      <div class="-mt-7">${logoHtml}</div>
-      <p class="mt-2 text-base font-semibold text-gray-900">${escapeHtml(nombre)}</p>
-      <p class="mt-1 text-sm text-gray-700"><i class="fa-solid fa-phone mr-1 text-gray-500"></i>${escapeHtml(telefono)}</p>
-      <p class="mt-1 text-sm text-gray-700"><i class="fa-solid fa-location-dot mr-1 text-gray-500"></i>${escapeHtml(direccion)}</p>
-      <p class="mt-1 text-xs text-gray-500"><i class="fa-regular fa-calendar mr-1"></i>Creado: ${escapeHtml(creado)}</p>
+    <div class="relative px-4 pb-4 pt-12 text-center">
+      <div class="absolute left-1/2 -top-10 z-10 -translate-x-1/2">${logoHtml}</div>
+      <p class="mt-1 text-xl font-extrabold text-gray-900">${escapeHtml(nombre)}</p>
+      <p class="mt-2 text-sm text-gray-700 inline-flex items-center justify-center gap-1 w-full"><i class="fa-solid fa-phone text-gray-500"></i>${escapeHtml(telefono)}</p>
+      <p class="mt-1 text-sm text-gray-700 inline-flex items-center justify-center gap-1 w-full"><i class="fa-solid fa-location-dot text-gray-500"></i>${escapeHtml(direccion)}</p>
+      <p class="mt-1 text-xs text-gray-500 inline-flex items-center justify-center gap-1 w-full"><i class="fa-regular fa-calendar"></i>Creado: ${escapeHtml(creado)}</p>
     </div>
   `;
 }

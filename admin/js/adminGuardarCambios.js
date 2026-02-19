@@ -123,7 +123,14 @@ document.getElementById('btn-guardar')?.addEventListener('click', async (e) => {
 
     await sincronizarRelacionesComercio(idComercio, categoriasSeleccionadas, subcategoriasSeleccionadas);
   } catch (error) {
-    alert('❌ Error al actualizar la información básica');
+    const errorText = String(error?.message || '');
+    if (errorText.toLowerCase().includes('propiedad pendiente de verificacion')) {
+      alert('❌ Propiedad pendiente de verificación: no puedes cambiar nombre, teléfono, dirección ni coordenadas.');
+    } else if (errorText.toLowerCase().includes('cambios bloqueados')) {
+      alert('❌ Nombre, coordenadas y logo requieren solicitud manual de aprobación Findixi.');
+    } else {
+      alert('❌ Error al actualizar la información básica');
+    }
     console.error('🚫 Error actualizando comercio:', error);
     return;
   }

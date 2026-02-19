@@ -77,7 +77,10 @@ function rememberOrder(orderId, comercioId) {
   saveOrderHistory(history.slice(0, 50));
 }
 
-function mostrarBloqueoMenu() {
+function mostrarBloqueoMenu({
+  titulo = 'Menú disponible en Findixi Plus',
+  mensaje = 'Este comercio aún no tiene habilitado su menú en Findixi.',
+} = {}) {
   const existente = document.getElementById('menuPlanOverlay');
   if (existente) return;
   const overlay = document.createElement('div');
@@ -85,14 +88,24 @@ function mostrarBloqueoMenu() {
   overlay.className = 'fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4';
   overlay.innerHTML = `
     <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center space-y-3">
-      <h2 class="text-xl font-semibold text-gray-900">Menú disponible en Findixi Plus</h2>
-      <p class="text-sm text-gray-600">Este comercio aún no tiene habilitado su menú en Findixi.</p>
+      <h2 class="text-xl font-semibold text-gray-900">${titulo}</h2>
+      <p class="text-sm text-gray-600">${mensaje}</p>
       <a href="../listadoComercios.html" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
         Volver al listado
       </a>
     </div>
   `;
   document.body.appendChild(overlay);
+}
+
+function comercioVerificado(comercio = {}) {
+  const estadoPropiedad = String(comercio?.estado_propiedad || '').toLowerCase();
+  const estadoVerificacion = String(comercio?.estado_verificacion || '').toLowerCase();
+  const propietarioVerificado = comercio?.propietario_verificado === true;
+  const verificacionOk = ['otp_verificado', 'sms_verificado', 'messenger_verificado', 'manual_aprobado'].includes(
+    estadoVerificacion
+  );
+  return estadoPropiedad === 'verificado' && (propietarioVerificado || verificacionOk);
 }
 
 const DEFAULT_TEMA = {
@@ -352,7 +365,7 @@ async function cargarDatos() {
 
   const { data: comercio, error: errorComercio } = await supabase
     .from('Comercios')
-    .select('id, nombre, colorPrimario, colorSecundario, logo, telefono, facebook, instagram, plan_id, plan_nivel, plan_nombre, permite_menu, permite_ordenes')
+    .select('id, nombre, colorPrimario, colorSecundario, logo, telefono, facebook, instagram, plan_id, plan_nivel, plan_nombre, permite_menu, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado')
     .eq('id', idComercio)
     .single();
 
@@ -361,8 +374,16 @@ async function cargarDatos() {
   const planInfo = resolverPlanComercio(comercio || {});
   planPermiteMenu = planInfo.permite_menu;
   planPermiteOrdenes = planInfo.permite_ordenes;
+  const verificado = comercioVerificado(comercio || {});
   if (!planPermiteMenu) {
-    mostrarBloqueoMenu();
+    if (verificado) {
+      mostrarBloqueoMenu();
+    } else {
+      mostrarBloqueoMenu({
+        titulo: 'Perfil pendiente de verificación',
+        mensaje: 'Este comercio aún no ha completado la verificación de propiedad. Su menú estará disponible cuando se valide.',
+      });
+    }
     return;
   }
   initOrderUi();

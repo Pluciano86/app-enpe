@@ -218,11 +218,30 @@ function bloquearCloverPorPlan() {
   `;
 }
 
+function bloquearCloverPorVerificacion() {
+  if (!cloverBar) return;
+  cloverBar.innerHTML = `
+    <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 text-amber-700 text-sm border border-amber-200">
+      Propiedad pendiente de verificación: Clover/órdenes bloqueados temporalmente.
+    </div>
+  `;
+}
+
+function comercioVerificado(comercio = {}) {
+  const estadoPropiedad = String(comercio?.estado_propiedad || '').toLowerCase();
+  const estadoVerificacion = String(comercio?.estado_verificacion || '').toLowerCase();
+  const propietarioVerificado = comercio?.propietario_verificado === true;
+  const verificacionOk = ['otp_verificado', 'sms_verificado', 'messenger_verificado', 'manual_aprobado'].includes(
+    estadoVerificacion
+  );
+  return estadoPropiedad === 'verificado' && (propietarioVerificado || verificacionOk);
+}
+
 async function cargarPlanComercio() {
   if (!idComercio) return null;
   const { data, error } = await supabase
     .from('Comercios')
-    .select('plan_id, plan_nivel, plan_nombre, permite_menu, permite_ordenes')
+    .select('plan_id, plan_nivel, plan_nombre, permite_menu, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado')
     .eq('id', idComercio)
     .maybeSingle();
 
@@ -235,12 +254,24 @@ async function cargarPlanComercio() {
   planPermiteMenu = planInfo.permite_menu;
   planPermiteOrdenes = planInfo.permite_ordenes;
   renderPlanBadge(planInfo);
+  const verificado = comercioVerificado(data || {});
 
   if (!planPermiteMenu) {
-    bloquearMenuPorPlan();
+    if (verificado) {
+      bloquearMenuPorPlan();
+    } else {
+      mostrarOverlayPlan({
+        titulo: 'Propiedad pendiente de verificación',
+        mensaje: 'Completa la verificación del comercio para habilitar menú, especiales y visibilidad completa.',
+      });
+    }
   }
   if (!planPermiteOrdenes) {
-    bloquearCloverPorPlan();
+    if (verificado) {
+      bloquearCloverPorPlan();
+    } else {
+      bloquearCloverPorVerificacion();
+    }
   }
   return planInfo;
 }
