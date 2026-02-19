@@ -1608,6 +1608,37 @@ async function tryLoadLocalMapsConfig() {
   return getGoogleMapsKeyFromWindow();
 }
 
+async function fetchMapsKeyFromEndpoint(url) {
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) {
+    return '';
+  }
+
+  const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+  if (contentType.includes('application/json')) {
+    const payload = await response.json();
+    return typeof payload?.googleMapsKey === 'string' ? payload.googleMapsKey.trim() : '';
+  }
+
+  const raw = await response.text();
+  const maybeJson = String(raw || '').trim();
+  if (maybeJson.startsWith('{') && maybeJson.endsWith('}')) {
+    try {
+      const payload = JSON.parse(maybeJson);
+      return typeof payload?.googleMapsKey === 'string' ? payload.googleMapsKey.trim() : '';
+    } catch {
+      return '';
+    }
+  }
+
+  console.warn(`[Maps] Endpoint ${url} devolvió HTML/no JSON. Revisa función y redirects.`);
+  return '';
+}
+
 async function getGoogleMapsApiKey() {
   if (googleMapsApiKeyCache) return googleMapsApiKeyCache;
 
@@ -1627,20 +1658,17 @@ async function getGoogleMapsApiKey() {
 
   if (isLocalHostRuntime() && !isLikelyNetlifyDevRuntime()) return '';
 
-  try {
-    const response = await fetch('/.netlify/functions/maps-browser-config', {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    });
-    if (response.ok) {
-      const payload = await response.json();
-      if (payload?.googleMapsKey && typeof payload.googleMapsKey === 'string') {
-        googleMapsApiKeyCache = payload.googleMapsKey.trim();
+  const endpoints = ['/.netlify/functions/maps-browser-config', '/api/maps-browser-config'];
+  for (const endpoint of endpoints) {
+    try {
+      const key = await fetchMapsKeyFromEndpoint(endpoint);
+      if (key) {
+        googleMapsApiKeyCache = key;
         return googleMapsApiKeyCache;
       }
+    } catch (error) {
+      console.warn(`No se pudo leer configuración de Google Maps desde ${endpoint}:`, error?.message || error);
     }
-  } catch (error) {
-    console.warn('No se pudo leer configuración de Google Maps:', error?.message || error);
   }
 
   return '';
@@ -1655,7 +1683,7 @@ async function ensureGoogleMapsLoaded() {
     const apiKey = await getGoogleMapsApiKey();
     if (!apiKey) {
       throw new Error(
-        'Falta GOOGLE_MAPS_BROWSER_KEY. Usa Netlify Function o crea public/shared/localMapsConfig.js para local.'
+        'Falta GOOGLE_MAPS_BROWSER_KEY. Configura maps-browser-config (Netlify Function) o window.__ENV__.GOOGLE_MAPS_BROWSER_KEY.'
       );
     }
 
