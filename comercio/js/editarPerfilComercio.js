@@ -20,6 +20,7 @@ const btnAgregarFeriado = document.getElementById('agregarFeriado');
 const planBadge = document.getElementById('planBadge');
 const planCta = document.getElementById('planCta');
 const verificationCta = document.getElementById('verificationCta');
+const imageValidationCta = document.getElementById('imageValidationCta');
 const btnCambiarPlan = document.getElementById('btnCambiarPlan');
 const protectedLockState = document.getElementById('protectedLockState');
 const protectedNombre = document.getElementById('protectedNombre');
@@ -46,6 +47,10 @@ const firstLogoUpgradeBox = document.getElementById('firstLogoUpgradeBox');
 const firstLogoUpgradeText = document.getElementById('firstLogoUpgradeText');
 const firstLogoRetryBtn = document.getElementById('firstLogoRetryBtn');
 const firstLogoUpgradeBtn = document.getElementById('firstLogoUpgradeBtn');
+const firstPortadaUploadSection = document.getElementById('firstPortadaUploadSection');
+const firstPortadaInput = document.getElementById('firstPortadaInput');
+const firstPortadaProcessBtn = document.getElementById('firstPortadaProcessBtn');
+const firstPortadaFeedback = document.getElementById('firstPortadaFeedback');
 
 const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const SOLICITUD_CAMPO_TITULO = {
@@ -81,6 +86,48 @@ function isComercioVerificado(comercio = {}) {
     estadoVerificacion
   );
   return estadoPropiedad === 'verificado' && (propietarioVerificado || verificacionOk);
+}
+
+function normalizeImageEstado(value) {
+  const estado = String(value || '').trim().toLowerCase();
+  if (['aprobado', 'upgrade_listo'].includes(estado)) return 'aprobado';
+  if (estado === 'requiere_accion') return 'requiere_accion';
+  if (estado === 'en_upgrade') return 'en_upgrade';
+  return 'pendiente';
+}
+
+function getImageEstadoLabel(value) {
+  const estado = normalizeImageEstado(value);
+  if (estado === 'aprobado') return 'Aprobado';
+  if (estado === 'requiere_accion') return 'Requiere acción';
+  if (estado === 'en_upgrade') return 'En optimización';
+  return 'Pendiente';
+}
+
+function renderImageValidationCta(comercio = {}) {
+  if (!imageValidationCta) return;
+
+  const logoEstado = normalizeImageEstado(comercio.logo_estado);
+  const portadaEstado = normalizeImageEstado(comercio.portada_estado);
+  const logoAprobado = comercio.logo_aprobado === true || logoEstado === 'aprobado';
+  const portadaAprobada = comercio.portada_aprobada === true || portadaEstado === 'aprobado';
+
+  if (logoAprobado && portadaAprobada) {
+    imageValidationCta.classList.add('hidden');
+    imageValidationCta.innerHTML = '';
+    return;
+  }
+
+  const bullets = [];
+  if (!logoAprobado) bullets.push(`Logo: ${getImageEstadoLabel(comercio.logo_estado)}`);
+  if (!portadaAprobada) bullets.push(`Portada: ${getImageEstadoLabel(comercio.portada_estado)}`);
+
+  imageValidationCta.classList.remove('hidden');
+  imageValidationCta.innerHTML = `
+    <div class="font-semibold">Pendiente validación de imagen</div>
+    <p class="mt-1">Para publicar el comercio en Findixi, logo y portada deben estar aprobados.</p>
+    <p class="mt-2 text-xs">${bullets.join(' · ')}</p>
+  `;
 }
 
 function setFieldsLocked(fields = [], locked = false) {
@@ -128,6 +175,25 @@ function clearFirstLogoFeedback() {
   if (!firstLogoFeedback) return;
   firstLogoFeedback.classList.add('hidden');
   firstLogoFeedback.textContent = '';
+}
+
+function setFirstPortadaFeedback(type, message) {
+  if (!firstPortadaFeedback) return;
+  const tone = {
+    success: 'bg-emerald-50 border border-emerald-200 text-emerald-800',
+    warning: 'bg-amber-50 border border-amber-200 text-amber-800',
+    error: 'bg-red-50 border border-red-200 text-red-700',
+    info: 'bg-sky-50 border border-sky-200 text-sky-800',
+  };
+  firstPortadaFeedback.className = `text-xs rounded-lg px-3 py-2 ${tone[type] || tone.info}`;
+  firstPortadaFeedback.textContent = message;
+  firstPortadaFeedback.classList.remove('hidden');
+}
+
+function clearFirstPortadaFeedback() {
+  if (!firstPortadaFeedback) return;
+  firstPortadaFeedback.classList.add('hidden');
+  firstPortadaFeedback.textContent = '';
 }
 
 function hideLogoUpgradeBox() {
@@ -192,6 +258,16 @@ function renderProtectedFields(comercio = {}) {
     clearFirstLogoFeedback();
     if (firstLogoInput) firstLogoInput.value = '';
     hideLogoUpgradeBox();
+  }
+
+  const sinPortada = !comercio.portada;
+  const puedeSubirPrimeraPortada = locked && sinPortada;
+  if (firstPortadaUploadSection) {
+    firstPortadaUploadSection.classList.toggle('hidden', !puedeSubirPrimeraPortada);
+  }
+  if (!puedeSubirPrimeraPortada) {
+    clearFirstPortadaFeedback();
+    if (firstPortadaInput) firstPortadaInput.value = '';
   }
 }
 
@@ -356,7 +432,7 @@ async function cargarDatos() {
   const { data, error } = await supabase
     .from('Comercios')
     .select(
-      'nombre,logo,latitud,longitud,telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos,estado_propiedad,estado_verificacion,propietario_verificado'
+      'nombre,logo,portada,latitud,longitud,telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos,estado_propiedad,estado_verificacion,propietario_verificado,logo_estado,logo_aprobado,portada_estado,portada_aprobada'
     )
     .eq('id', idComercio)
     .maybeSingle();
@@ -364,6 +440,7 @@ async function cargarDatos() {
     comercioActual = data;
     renderProtectedFields(data);
     const comercioVerificado = isComercioVerificado(data);
+    renderImageValidationCta(data);
     setFieldsLocked([telefono, direccion], !comercioVerificado);
 
     if (verificationCta) {
@@ -564,6 +641,86 @@ async function subirPrimerLogoConValidacion({ mode = 'validate' } = {}) {
   }
 }
 
+async function subirPrimeraPortadaConValidacion() {
+  if (!idComercio) return;
+  clearFirstPortadaFeedback();
+
+  if (!comercioActual || !isComercioVerificado(comercioActual) || comercioActual.portada) {
+    setFirstPortadaFeedback('warning', 'Este flujo solo aplica para comercios verificados sin portada.');
+    return;
+  }
+
+  const file = firstPortadaInput?.files?.[0] || null;
+  if (!file) {
+    setFirstPortadaFeedback('warning', 'Selecciona un archivo PNG/JPG/WEBP.');
+    return;
+  }
+
+  const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!allowed.includes(String(file.type || '').toLowerCase())) {
+    setFirstPortadaFeedback('warning', 'Formato no permitido. Usa PNG, JPG o WEBP.');
+    return;
+  }
+
+  const previousText = firstPortadaProcessBtn?.textContent || 'Validar y subir portada';
+  if (firstPortadaProcessBtn) {
+    firstPortadaProcessBtn.disabled = true;
+    firstPortadaProcessBtn.textContent = 'Procesando...';
+  }
+
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    const {
+      data: { session } = {},
+    } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    if (!token) {
+      setFirstPortadaFeedback('error', 'Tu sesión expiró. Vuelve a iniciar sesión.');
+      return;
+    }
+
+    const response = await fetch('/.netlify/functions/image-validate-process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        idComercio: Number(idComercio),
+        type: 'portada',
+        mode: 'validate',
+        file_base64: dataUrl,
+        file_name: file.name || 'portada',
+        mime_type: file.type || 'image/png',
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || 'No se pudo validar la portada.');
+    }
+
+    if (payload?.aprobado) {
+      setFirstPortadaFeedback('success', payload?.nota || 'Portada aprobada y guardada.');
+      await cargarDatos();
+      return;
+    }
+
+    setFirstPortadaFeedback(
+      'warning',
+      payload?.nota || 'La portada requiere ajustes. Sube otra imagen con mejor resolución.'
+    );
+  } catch (error) {
+    console.error('Error procesando primera portada:', error);
+    setFirstPortadaFeedback('error', error?.message || 'No se pudo procesar la portada en este momento.');
+  } finally {
+    if (firstPortadaProcessBtn) {
+      firstPortadaProcessBtn.disabled = false;
+      firstPortadaProcessBtn.textContent = previousText;
+    }
+  }
+}
+
 async function enviarSolicitudCambio(event) {
   event.preventDefault();
   clearSolicitudFeedback();
@@ -721,6 +878,13 @@ firstLogoUpgradeBtn?.addEventListener('click', async (e) => {
   const ok = confirm(`Logo Upgrade: ${priceLabel}\n\nEn esta etapa correrá en modo demo (sin cobro real). ¿Continuar?`);
   if (!ok) return;
   await subirPrimerLogoConValidacion({ mode: 'upgrade_demo' });
+});
+firstPortadaProcessBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  subirPrimeraPortadaConValidacion();
+});
+firstPortadaInput?.addEventListener('change', () => {
+  clearFirstPortadaFeedback();
 });
 
 solicitudModal?.addEventListener('click', (event) => {

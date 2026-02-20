@@ -111,7 +111,7 @@ async function cargarComercios(user) {
   const { data: comercios, error: errCom } = await supabase
     .from('Comercios')
     .select(
-      'id, nombre, logo, plan_id, plan_nivel, plan_nombre, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado'
+      'id, nombre, logo, plan_id, plan_nivel, plan_nombre, permite_menu, permite_especiales, permite_ordenes, estado_propiedad, estado_verificacion, propietario_verificado, logo_aprobado, portada_aprobada'
     )
     .in('id', ids);
 
@@ -150,6 +150,7 @@ async function cargarComercios(user) {
   comercios.forEach((c) => {
     const card = document.createElement('div');
     const planInfo = resolverPlanComercio(c);
+    const brandingReady = c.logo_aprobado === true && c.portada_aprobada === true;
     const counts = colaboradoresMap[c.id] || { admin: 0, editor: 0 };
     card.className = 'bg-white border border-gray-200 rounded-2xl shadow p-4 sm:p-5 flex flex-col gap-4 sm:gap-5';
 
@@ -197,6 +198,16 @@ async function cargarComercios(user) {
       <p class="text-xs text-gray-600 mt-0.5">Últimos 7 días: ${metrica.total7d}</p>
     `;
     bloqueInfo.appendChild(interesBox);
+
+    if (!brandingReady) {
+      const brandingBox = document.createElement('div');
+      brandingBox.className = 'w-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center';
+      brandingBox.innerHTML = `
+        <p class="text-xs font-semibold text-amber-800 uppercase tracking-wide">Branding pendiente</p>
+        <p class="text-xs text-amber-800 mt-1">Logo y portada deben estar aprobados para publicar.</p>
+      `;
+      bloqueInfo.appendChild(brandingBox);
+    }
 
     if (!planInfo.permite_perfil) {
       const ctaInteres = document.createElement('a');

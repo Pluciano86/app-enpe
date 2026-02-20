@@ -20,6 +20,25 @@
       height: 220px;
       border-radius: 14px;
     }
+    /* Evita zoom automático en iOS y mejora legibilidad móvil en esta vista */
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+    #formModal .text-xs,
+    #formModal .text-sm,
+    #formModal .text-base,
+    #brandingSetupModal .text-xs,
+    #brandingSetupModal .text-sm,
+    #brandingSetupModal .text-base,
+    #loginModal .text-xs,
+    #loginModal .text-sm,
+    #planNextModal .text-xs,
+    #planNextModal .text-sm {
+      font-size: 16px !important;
+      line-height: 1.45 !important;
+    }
   </style>
 </head>
 <body class="bg-[#121212] text-gray-800 pb-24">
@@ -286,6 +305,61 @@
               <p id="planNextModalText" class="text-sm text-gray-600 mt-2 text-center"></p>
               <button id="planNextModalContinue" type="button" class="mt-4 w-full rounded-xl bg-gray-900 text-white py-2 text-sm font-semibold">
                 Continuar
+              </button>
+            </div>
+          </div>
+
+          <div id="brandingSetupModal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/50 px-4">
+            <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl border border-gray-100 relative">
+              <button id="brandingSetupClose" type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+              <p class="text-base font-semibold text-gray-900 text-center">Branding inicial del comercio</p>
+              <p class="text-xs text-gray-600 mt-1 text-center">
+                Para publicar en Findixi, logo y portada deben estar aprobados.
+              </p>
+
+              <p id="brandingSetupStatus" class="hidden text-xs rounded-lg px-3 py-2 mt-3"></p>
+
+              <section class="mt-3 rounded-xl border border-cyan-200 bg-cyan-50 p-3">
+                <p class="text-sm font-semibold text-cyan-800">Logo</p>
+                <p class="text-xs text-cyan-700 mt-1">Formato PNG/JPG/WEBP, mínimo 512x512.</p>
+                <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input id="brandingLogoInput" type="file" accept="image/png,image/jpeg,image/webp" class="w-full text-sm" />
+                  <button id="brandingLogoValidateBtn" type="button" class="rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 text-sm font-semibold whitespace-nowrap">
+                    Validar logo
+                  </button>
+                </div>
+                <div id="brandingLogoUpgradeBox" class="hidden rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 mt-2">
+                  <p id="brandingLogoUpgradeText" class="text-xs text-amber-700">
+                    Puedes subir otro archivo o usar Logo Upgrade.
+                  </p>
+                  <div class="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <button id="brandingLogoRetryBtn" type="button" class="rounded-lg border border-amber-300 bg-white text-amber-800 px-3 py-2 text-xs font-semibold">
+                      Subir otro archivo
+                    </button>
+                    <button id="brandingLogoUpgradeBtn" type="button" class="rounded-lg bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 text-xs font-semibold">
+                      Logo Upgrade
+                    </button>
+                  </div>
+                </div>
+                <p id="brandingLogoFeedback" class="hidden text-xs rounded-lg px-3 py-2 mt-2"></p>
+              </section>
+
+              <section class="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3">
+                <p class="text-sm font-semibold text-indigo-800">Portada</p>
+                <p class="text-xs text-indigo-700 mt-1">Formato PNG/JPG/WEBP, mínimo 1200x630.</p>
+                <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input id="brandingPortadaInput" type="file" accept="image/png,image/jpeg,image/webp" class="w-full text-sm" />
+                  <button id="brandingPortadaValidateBtn" type="button" class="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 text-sm font-semibold whitespace-nowrap">
+                    Validar portada
+                  </button>
+                </div>
+                <p id="brandingPortadaFeedback" class="hidden text-xs rounded-lg px-3 py-2 mt-2"></p>
+              </section>
+
+              <button id="brandingContinueBtn" type="button" class="mt-4 w-full rounded-xl bg-gray-900 text-white py-2 text-sm font-semibold">
+                Continuar al panel comercio
               </button>
             </div>
           </div>

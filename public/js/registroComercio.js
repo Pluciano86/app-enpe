@@ -60,6 +60,20 @@ const planNextModalClose = document.getElementById('planNextModalClose');
 const planNextModalTitle = document.getElementById('planNextModalTitle');
 const planNextModalText = document.getElementById('planNextModalText');
 const planNextModalContinue = document.getElementById('planNextModalContinue');
+const brandingSetupModal = document.getElementById('brandingSetupModal');
+const brandingSetupClose = document.getElementById('brandingSetupClose');
+const brandingSetupStatus = document.getElementById('brandingSetupStatus');
+const brandingLogoInput = document.getElementById('brandingLogoInput');
+const brandingLogoValidateBtn = document.getElementById('brandingLogoValidateBtn');
+const brandingLogoUpgradeBox = document.getElementById('brandingLogoUpgradeBox');
+const brandingLogoUpgradeText = document.getElementById('brandingLogoUpgradeText');
+const brandingLogoRetryBtn = document.getElementById('brandingLogoRetryBtn');
+const brandingLogoUpgradeBtn = document.getElementById('brandingLogoUpgradeBtn');
+const brandingLogoFeedback = document.getElementById('brandingLogoFeedback');
+const brandingPortadaInput = document.getElementById('brandingPortadaInput');
+const brandingPortadaValidateBtn = document.getElementById('brandingPortadaValidateBtn');
+const brandingPortadaFeedback = document.getElementById('brandingPortadaFeedback');
+const brandingContinueBtn = document.getElementById('brandingContinueBtn');
 const comercioActivoModal = document.getElementById('comercioActivoModal');
 const comercioActivoModalClose = document.getElementById('comercioActivoModalClose');
 const comercioActivoCard = document.getElementById('comercioActivoCard');
@@ -114,6 +128,12 @@ let otpState = {
   comercioNombre: null,
   timerId: null,
   verified: false,
+};
+let brandingState = {
+  logoAprobado: false,
+  portadaAprobada: false,
+  logoOffer: null,
+  idComercio: null,
 };
 
 function toFiniteNumber(value) {
@@ -385,6 +405,25 @@ function clearDisputaFeedback() {
   disputaFeedback.textContent = '';
 }
 
+function setInlineFeedback(element, type, message) {
+  if (!element) return;
+  const classesByType = {
+    success: 'bg-emerald-50 border border-emerald-200 text-emerald-800',
+    warning: 'bg-amber-50 border border-amber-200 text-amber-900',
+    error: 'bg-red-50 border border-red-200 text-red-700',
+    info: 'bg-sky-50 border border-sky-200 text-sky-800',
+  };
+  element.className = `text-xs rounded-lg px-3 py-2 ${classesByType[type] || classesByType.info}`;
+  element.textContent = message;
+  element.classList.remove('hidden');
+}
+
+function clearInlineFeedback(element) {
+  if (!element) return;
+  element.classList.add('hidden');
+  element.textContent = '';
+}
+
 function hideDisputaActivoBox() {
   disputaActivoBox?.classList.add('hidden');
 }
@@ -625,6 +664,247 @@ function closePlanNextModal() {
   if (!planNextModal) return;
   planNextModal.classList.add('hidden');
   planNextModal.classList.remove('flex');
+}
+
+function resetBrandingState() {
+  brandingState = {
+    logoAprobado: false,
+    portadaAprobada: false,
+    logoOffer: null,
+    idComercio: Number(otpState.idComercio || 0) || null,
+  };
+}
+
+function updateBrandingStatusBadge() {
+  if (!brandingSetupStatus) return;
+  if (brandingState.logoAprobado && brandingState.portadaAprobada) {
+    setInlineFeedback(
+      brandingSetupStatus,
+      'success',
+      'Logo y portada aprobados. Ya puedes continuar al panel de comercio.'
+    );
+    return;
+  }
+
+  const pending = [];
+  if (!brandingState.logoAprobado) pending.push('logo');
+  if (!brandingState.portadaAprobado) pending.push('portada');
+  setInlineFeedback(
+    brandingSetupStatus,
+    'warning',
+    `Aún faltan imágenes por aprobar: ${pending.join(' y ')}.`
+  );
+}
+
+function hideBrandingLogoUpgradeBox() {
+  brandingLogoUpgradeBox?.classList.add('hidden');
+  brandingState.logoOffer = null;
+}
+
+function showBrandingLogoUpgradeBox(offer, nota = '') {
+  if (!brandingLogoUpgradeBox) return;
+  brandingState.logoOffer = offer || null;
+  const label = offer?.label || 'Incluido en tu plan';
+  if (brandingLogoUpgradeText) {
+    brandingLogoUpgradeText.textContent = nota
+      ? `${nota} Puedes subir otro archivo o usar Logo Upgrade (${label}).`
+      : `Puedes subir otro archivo o usar Logo Upgrade (${label}).`;
+  }
+  brandingLogoUpgradeBox.classList.remove('hidden');
+}
+
+function openBrandingSetupModal() {
+  if (!brandingSetupModal) return;
+  resetBrandingState();
+  clearInlineFeedback(brandingLogoFeedback);
+  clearInlineFeedback(brandingPortadaFeedback);
+  clearInlineFeedback(brandingSetupStatus);
+  hideBrandingLogoUpgradeBox();
+  if (brandingLogoInput) brandingLogoInput.value = '';
+  if (brandingPortadaInput) brandingPortadaInput.value = '';
+  brandingSetupModal.classList.remove('hidden');
+  brandingSetupModal.classList.add('flex');
+}
+
+function closeBrandingSetupModal() {
+  if (!brandingSetupModal) return;
+  brandingSetupModal.classList.add('hidden');
+  brandingSetupModal.classList.remove('flex');
+}
+
+async function fetchComercioBrandingSnapshot(comercioId) {
+  if (!comercioId) return null;
+  let columns = [
+    'id',
+    'logo',
+    'portada',
+    'logo_aprobado',
+    'portada_aprobada',
+    'logo_estado',
+    'portada_estado',
+  ];
+
+  for (let i = 0; i < 8; i += 1) {
+    const { data, error } = await supabase
+      .from('Comercios')
+      .select(columns.join(', '))
+      .eq('id', comercioId)
+      .maybeSingle();
+    if (!error) return data || null;
+
+    const missingColumn = parseMissingColumn(error);
+    if (!missingColumn || !columns.includes(missingColumn)) throw error;
+    columns = columns.filter((column) => column !== missingColumn);
+    if (!columns.length) return null;
+  }
+  return null;
+}
+
+async function syncBrandingStateFromComercio() {
+  const idComercio = Number(brandingState.idComercio || otpState.idComercio || 0);
+  if (!Number.isFinite(idComercio) || idComercio <= 0) {
+    updateBrandingStatusBadge();
+    return;
+  }
+
+  try {
+    const snapshot = await fetchComercioBrandingSnapshot(idComercio);
+    brandingState.logoAprobado = Boolean(
+      snapshot?.logo_aprobado === true || String(snapshot?.logo_estado || '').toLowerCase() === 'aprobado'
+    );
+    brandingState.portadaAprobado = Boolean(
+      snapshot?.portada_aprobada === true || String(snapshot?.portada_estado || '').toLowerCase() === 'aprobado'
+    );
+
+    if (brandingState.logoAprobado) {
+      setInlineFeedback(brandingLogoFeedback, 'success', 'Logo aprobado.');
+      hideBrandingLogoUpgradeBox();
+    }
+    if (brandingState.portadaAprobado) {
+      setInlineFeedback(brandingPortadaFeedback, 'success', 'Portada aprobada.');
+    }
+  } catch (error) {
+    console.warn('No se pudo sincronizar estado de branding:', error?.message || error);
+  }
+
+  updateBrandingStatusBadge();
+}
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function processBrandingImage({ type, mode = 'validate' }) {
+  const isLogo = type === 'logo';
+  const fileInput = isLogo ? brandingLogoInput : brandingPortadaInput;
+  const feedbackEl = isLogo ? brandingLogoFeedback : brandingPortadaFeedback;
+  const actionBtn = isLogo
+    ? mode === 'upgrade_demo'
+      ? brandingLogoUpgradeBtn
+      : brandingLogoValidateBtn
+    : brandingPortadaValidateBtn;
+  const actionLabel = isLogo
+    ? mode === 'upgrade_demo'
+      ? 'Aplicando...'
+      : 'Validando...'
+    : 'Validando...';
+
+  clearInlineFeedback(feedbackEl);
+  if (!isLogo) hideBrandingLogoUpgradeBox();
+
+  const idComercio = Number(brandingState.idComercio || otpState.idComercio || 0);
+  if (!Number.isFinite(idComercio) || idComercio <= 0) {
+    setInlineFeedback(feedbackEl, 'error', 'No encontramos el comercio para procesar la imagen.');
+    return;
+  }
+
+  const file = fileInput?.files?.[0] || null;
+  if (!file) {
+    setInlineFeedback(feedbackEl, 'warning', `Selecciona un archivo de ${type}.`);
+    return;
+  }
+
+  const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!allowed.includes(String(file.type || '').toLowerCase())) {
+    setInlineFeedback(feedbackEl, 'warning', 'Formato no permitido. Usa PNG, JPG o WEBP.');
+    return;
+  }
+
+  const prevText = actionBtn?.textContent || '';
+  if (actionBtn) {
+    actionBtn.disabled = true;
+    actionBtn.textContent = actionLabel;
+  }
+
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    const token = await getAccessToken();
+    if (!token) throw new Error('Tu sesión expiró. Inicia sesión nuevamente.');
+
+    const response = await fetch('/.netlify/functions/image-validate-process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        idComercio,
+        type,
+        mode,
+        file_base64: dataUrl,
+        file_name: file.name || type,
+        mime_type: file.type || 'image/png',
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || `No se pudo validar ${type}.`);
+    }
+
+    if (payload?.aprobado) {
+      if (isLogo) {
+        brandingState.logoAprobado = true;
+        hideBrandingLogoUpgradeBox();
+      } else {
+        brandingState.portadaAprobado = true;
+      }
+      setInlineFeedback(
+        feedbackEl,
+        'success',
+        `${payload?.nota || `${type === 'logo' ? 'Logo' : 'Portada'} aprobado`}.${
+          payload?.demo_mode ? ' (modo demo)' : ''
+        }`
+      );
+    } else {
+      if (isLogo) {
+        brandingState.logoAprobado = false;
+        showBrandingLogoUpgradeBox(payload?.logo_upgrade_offer, payload?.nota || '');
+      } else {
+        brandingState.portadaAprobado = false;
+      }
+      setInlineFeedback(
+        feedbackEl,
+        'warning',
+        payload?.nota || `${type === 'logo' ? 'El logo' : 'La portada'} requiere ajustes.`
+      );
+    }
+
+    updateBrandingStatusBadge();
+  } catch (error) {
+    console.error(`Error procesando ${type}:`, error);
+    setInlineFeedback(feedbackEl, 'error', error?.message || `No se pudo procesar ${type}.`);
+  } finally {
+    if (actionBtn) {
+      actionBtn.disabled = false;
+      actionBtn.textContent = prevText;
+    }
+  }
 }
 
 function showOtpVerifiedSummary(nombreComercio) {
@@ -1522,6 +1802,7 @@ function closeFormModal() {
   formModal.classList.add('hidden');
   formModal.classList.remove('flex');
   closeDisputaModal();
+  closeBrandingSetupModal();
   mapPickerPanel?.classList.add('hidden');
   hideGoogleMatchConfirmation();
   setSubmitButtonVisibility(true);
@@ -2847,7 +3128,8 @@ function wireEvents() {
       nombreComercio: otpState.comercioNombre || getComercioNombreActual(),
     };
     window.dispatchEvent(new CustomEvent('findixi:registro-verificado', { detail }));
-    await irAlPanelComercioPostRegistro();
+    openBrandingSetupModal();
+    await syncBrandingStateFromComercio();
   });
 
   loginModal?.addEventListener('click', (event) => {
@@ -2871,6 +3153,52 @@ function wireEvents() {
   });
   planNextModalClose?.addEventListener('click', closePlanNextModal);
   planNextModalContinue?.addEventListener('click', closePlanNextModal);
+
+  brandingSetupModal?.addEventListener('click', (event) => {
+    if (event.target === brandingSetupModal) closeBrandingSetupModal();
+  });
+  brandingSetupClose?.addEventListener('click', closeBrandingSetupModal);
+  brandingLogoInput?.addEventListener('change', () => {
+    clearInlineFeedback(brandingLogoFeedback);
+    hideBrandingLogoUpgradeBox();
+  });
+  brandingPortadaInput?.addEventListener('change', () => {
+    clearInlineFeedback(brandingPortadaFeedback);
+  });
+  brandingLogoValidateBtn?.addEventListener('click', async () => {
+    await processBrandingImage({ type: 'logo', mode: 'validate' });
+  });
+  brandingPortadaValidateBtn?.addEventListener('click', async () => {
+    await processBrandingImage({ type: 'portada', mode: 'validate' });
+  });
+  brandingLogoRetryBtn?.addEventListener('click', () => {
+    hideBrandingLogoUpgradeBox();
+    clearInlineFeedback(brandingLogoFeedback);
+    brandingLogoInput?.focus();
+  });
+  brandingLogoUpgradeBtn?.addEventListener('click', async () => {
+    const label = brandingState.logoOffer?.label || 'modo demo';
+    const ok = confirm(`Logo Upgrade: ${label}\n\nEn esta etapa correrá en modo demo (sin cobro real). ¿Continuar?`);
+    if (!ok) return;
+    await processBrandingImage({ type: 'logo', mode: 'upgrade_demo' });
+  });
+  brandingContinueBtn?.addEventListener('click', async () => {
+    const pending = [];
+    if (!brandingState.logoAprobado) pending.push('logo');
+    if (!brandingState.portadaAprobado) pending.push('portada');
+
+    if (pending.length) {
+      const ok = confirm(
+        `Aún faltan imágenes por aprobar (${pending.join(
+          ' y '
+        )}). Podrás subirlas luego en tu panel, pero no podrás publicar hasta aprobarlas.\n\n¿Continuar al panel comercio?`
+      );
+      if (!ok) return;
+    }
+
+    closeBrandingSetupModal();
+    await irAlPanelComercioPostRegistro();
+  });
 
   btnAbrirDisputaDesdeActivo?.addEventListener('click', openDisputaModal);
   comercioActivoModal?.addEventListener('click', (event) => {
