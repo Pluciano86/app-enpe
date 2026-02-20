@@ -113,21 +113,57 @@ async function cargarPlanes() {
 
 async function seleccionarPlan(plan) {
   if (!idComercio) return;
-  const confirmar = confirm(`¿Cambiar al plan ${plan.nombre || plan.slug || 'seleccionado'}?`);
+  const nivel = Number(plan?.nivel ?? plan?.plan_nivel ?? 0);
+  const precio = Number(plan?.precio ?? plan?.plan_precio ?? 0) || 0;
+  const planNombre = plan?.nombre || plan?.slug || 'seleccionado';
+  const isPaidPlan = nivel > 0;
+
+  const confirmar = confirm(
+    isPaidPlan
+      ? `¿Cambiar al plan ${planNombre}?\n\nEste paso usa modo demo si PAYMENTS_MODE=demo (sin cobro real).`
+      : `¿Cambiar al plan ${planNombre}?`
+  );
   if (!confirmar) return;
 
-  const payload = buildComercioPlanPayload(plan);
   try {
-    const { error } = await supabase
-      .from('Comercios')
-      .update(payload)
-      .eq('id', idComercio);
-    if (error) throw error;
-    alert('Plan actualizado.');
+    const { data: authData } = await supabase.auth.getSession();
+    const token = authData?.session?.access_token;
+    if (!token) {
+      alert('Tu sesión expiró. Inicia sesión nuevamente.');
+      return;
+    }
+
+    const payload = buildComercioPlanPayload(plan);
+    const response = await fetch('/.netlify/functions/comercio-select-plan', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        idComercio: Number(idComercio),
+        plan_id: payload.plan_id ?? null,
+        plan_nivel: Number(payload.plan_nivel ?? 0),
+        plan_nombre: payload.plan_nombre ?? null,
+      }),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const serverMessage = String(result?.error || 'No se pudo actualizar el plan.');
+      if (result?.code === 'payments_required') {
+        alert(`${serverMessage}\n\nPor ahora usa PAYMENTS_MODE=demo para pruebas.`);
+        return;
+      }
+      throw new Error(serverMessage);
+    }
+
+    const demoHint = isPaidPlan && result?.demo_mode && precio > 0 ? `\n\n(Monto demo: ${formatoPrecio(precio)})` : '';
+    alert(`${result?.message || 'Plan actualizado.'}${demoHint}`);
     await iniciar();
   } catch (error) {
     console.error('Error actualizando plan:', error);
-    alert('No se pudo actualizar el plan.');
+    alert(error?.message || 'No se pudo actualizar el plan.');
   }
 }
 

@@ -43,6 +43,10 @@ const firstLogoUploadSection = document.getElementById('firstLogoUploadSection')
 const firstLogoInput = document.getElementById('firstLogoInput');
 const firstLogoProcessBtn = document.getElementById('firstLogoProcessBtn');
 const firstLogoFeedback = document.getElementById('firstLogoFeedback');
+const firstLogoEditor = document.getElementById('firstLogoEditor');
+const firstLogoPreviewCanvas = document.getElementById('firstLogoPreviewCanvas');
+const firstLogoZoom = document.getElementById('firstLogoZoom');
+const firstLogoCenterBtn = document.getElementById('firstLogoCenterBtn');
 const firstLogoUpgradeBox = document.getElementById('firstLogoUpgradeBox');
 const firstLogoUpgradeText = document.getElementById('firstLogoUpgradeText');
 const firstLogoRetryBtn = document.getElementById('firstLogoRetryBtn');
@@ -63,6 +67,7 @@ let comercioActual = null;
 let currentUserId = null;
 let solicitudCampoActual = null;
 let firstLogoOffer = null;
+let firstLogoEditorState = null;
 
 if (!idComercio) {
   alert('ID de comercio no encontrado');
@@ -196,6 +201,241 @@ function clearFirstPortadaFeedback() {
   firstPortadaFeedback.textContent = '';
 }
 
+function clearFirstLogoEditor() {
+  if (firstLogoEditorState?.objectUrl) {
+    URL.revokeObjectURL(firstLogoEditorState.objectUrl);
+  }
+  firstLogoEditorState = null;
+  if (firstLogoEditor) firstLogoEditor.classList.add('hidden');
+  if (firstLogoZoom) firstLogoZoom.value = '100';
+
+  const canvas = firstLogoPreviewCanvas;
+  const ctx = canvas?.getContext('2d');
+  if (ctx && canvas) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+function getCircleLayout(side) {
+  const radius = Math.round(side * 0.43);
+  const center = side / 2;
+  return { center, radius, diameter: radius * 2 };
+}
+
+function pickBackgroundColorFromImage(image) {
+  const sampleSize = 28;
+  const canvas = document.createElement('canvas');
+  canvas.width = sampleSize;
+  canvas.height = sampleSize;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return '#111111';
+
+  ctx.drawImage(image, 0, 0, sampleSize, sampleSize);
+  const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+
+  const points = [
+    [2, 2],
+    [sampleSize - 3, 2],
+    [2, sampleSize - 3],
+    [sampleSize - 3, sampleSize - 3],
+    [sampleSize / 2, 2],
+    [sampleSize / 2, sampleSize - 3],
+  ];
+
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let count = 0;
+  points.forEach(([x, y]) => {
+    const idx = ((Math.round(y) * sampleSize) + Math.round(x)) * 4;
+    r += data[idx] || 0;
+    g += data[idx + 1] || 0;
+    b += data[idx + 2] || 0;
+    count += 1;
+  });
+
+  if (!count) return '#111111';
+  return `rgb(${Math.round(r / count)}, ${Math.round(g / count)}, ${Math.round(b / count)})`;
+}
+
+function detectClientTextHeavyLogo(image) {
+  const size = 96;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return { blocked: false };
+
+  ctx.drawImage(image, 0, 0, size, size);
+  const { data } = ctx.getImageData(0, 0, size, size);
+  const total = size * size;
+  const dark = new Uint8Array(total);
+
+  let darkCount = 0;
+  let transitions = 0;
+  for (let y = 0; y < size; y += 1) {
+    let prev = 0;
+    for (let x = 0; x < size; x += 1) {
+      const idxPx = y * size + x;
+      const idx = idxPx * 4;
+      const lum = 0.2126 * (data[idx] || 0) + 0.7152 * (data[idx + 1] || 0) + 0.0722 * (data[idx + 2] || 0);
+      const v = lum < 165 ? 1 : 0;
+      dark[idxPx] = v;
+      darkCount += v;
+      if (x > 0 && v !== prev) transitions += 1;
+      prev = v;
+    }
+  }
+
+  const darkRatio = darkCount / Math.max(1, total);
+  const transitionDensity = transitions / Math.max(1, size * (size - 1));
+  const blocked = darkRatio > 0.54 && transitionDensity > 0.33;
+
+  return {
+    blocked,
+    darkRatio,
+    transitionDensity,
+    reason: blocked
+      ? 'Detectamos demasiado texto distribuido en toda la imagen. Sube un logo más simple (símbolo o texto breve).'
+      : '',
+  };
+}
+
+function renderFirstLogoPreview(showGuide = true) {
+  if (!firstLogoEditorState || !firstLogoPreviewCanvas) return;
+  const canvas = firstLogoPreviewCanvas;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const { image, scale, offsetX, offsetY, backgroundColor } = firstLogoEditorState;
+  const { center, radius } = getCircleLayout(canvas.width);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(center, center, radius, 0, Math.PI * 2);
+  ctx.clip();
+
+  ctx.fillStyle = backgroundColor || '#111111';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const drawW = image.width * scale;
+  const drawH = image.height * scale;
+  const drawX = center - drawW / 2 + offsetX;
+  const drawY = center - drawH / 2 + offsetY;
+  ctx.drawImage(image, drawX, drawY, drawW, drawH);
+  ctx.restore();
+
+  if (showGuide) {
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.22)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+}
+
+function updateFirstLogoScaleBySlider() {
+  if (!firstLogoEditorState || !firstLogoZoom) return;
+  const raw = Number(firstLogoZoom.value || 100);
+  const normalized = Math.max(0, Math.min(1, (raw - 60) / 220));
+  const nextScale =
+    firstLogoEditorState.minScale +
+    (firstLogoEditorState.maxScale - firstLogoEditorState.minScale) * normalized;
+  firstLogoEditorState.scale = nextScale;
+  renderFirstLogoPreview(true);
+}
+
+async function prepareFirstLogoEditor(file) {
+  clearFirstLogoEditor();
+  if (!file) return false;
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('No se pudo cargar la vista previa del logo.'));
+      img.src = objectUrl;
+    });
+
+    const textCheck = detectClientTextHeavyLogo(image);
+    if (textCheck.blocked) {
+      setFirstLogoFeedback('warning', textCheck.reason);
+      URL.revokeObjectURL(objectUrl);
+      return false;
+    }
+
+    const canvasSide = firstLogoPreviewCanvas?.width || 480;
+    const { diameter } = getCircleLayout(canvasSide);
+    const initialScale = (diameter * 0.88) / Math.max(1, Math.max(image.width, image.height));
+
+    firstLogoEditorState = {
+      image,
+      objectUrl,
+      backgroundColor: pickBackgroundColorFromImage(image),
+      scale: initialScale,
+      minScale: initialScale * 0.6,
+      maxScale: initialScale * 3.2,
+      offsetX: 0,
+      offsetY: 0,
+      dragging: false,
+      dragStartX: 0,
+      dragStartY: 0,
+      startOffsetX: 0,
+      startOffsetY: 0,
+    };
+
+    if (firstLogoZoom) firstLogoZoom.value = '100';
+    if (firstLogoEditor) firstLogoEditor.classList.remove('hidden');
+    renderFirstLogoPreview(true);
+    return true;
+  } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
+  }
+}
+
+async function getPreparedLogoDataUrl(file) {
+  if (!firstLogoEditorState?.image) {
+    const ok = await prepareFirstLogoEditor(file);
+    if (!ok) return '';
+  }
+  if (!firstLogoEditorState?.image) return '';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  const { image, scale, offsetX, offsetY, backgroundColor } = firstLogoEditorState;
+  const { center, radius } = getCircleLayout(canvas.width);
+  const scaleFactor = canvas.width / Math.max(1, firstLogoPreviewCanvas?.width || 480);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(center, center, radius, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = backgroundColor || '#111111';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const drawW = image.width * scale * scaleFactor;
+  const drawH = image.height * scale * scaleFactor;
+  const drawX = center - drawW / 2 + offsetX * scaleFactor;
+  const drawY = center - drawH / 2 + offsetY * scaleFactor;
+  ctx.drawImage(image, drawX, drawY, drawW, drawH);
+  ctx.restore();
+
+  return canvas.toDataURL('image/png', 0.95);
+}
+
 function hideLogoUpgradeBox() {
   firstLogoUpgradeBox?.classList.add('hidden');
   firstLogoOffer = null;
@@ -258,6 +498,7 @@ function renderProtectedFields(comercio = {}) {
     clearFirstLogoFeedback();
     if (firstLogoInput) firstLogoInput.value = '';
     hideLogoUpgradeBox();
+    clearFirstLogoEditor();
   }
 
   const sinPortada = !comercio.portada;
@@ -579,7 +820,14 @@ async function subirPrimerLogoConValidacion({ mode = 'validate' } = {}) {
   }
 
   try {
-    const dataUrl = await fileToDataUrl(file);
+    const dataUrl = await getPreparedLogoDataUrl(file);
+    if (!dataUrl) {
+      setFirstLogoFeedback(
+        'warning',
+        'No se pudo preparar el logo. Ajusta el encuadre o sube otro archivo.'
+      );
+      return;
+    }
     const {
       data: { session } = {},
     } = await supabase.auth.getSession();
@@ -601,7 +849,7 @@ async function subirPrimerLogoConValidacion({ mode = 'validate' } = {}) {
         mode,
         file_base64: dataUrl,
         file_name: file.name || 'logo',
-        mime_type: file.type || 'image/png',
+        mime_type: 'image/png',
       }),
     });
 
@@ -616,6 +864,7 @@ async function subirPrimerLogoConValidacion({ mode = 'validate' } = {}) {
         : '.';
       setFirstLogoFeedback('success', `${payload?.nota || 'Logo aprobado y guardado'}${suffix}`);
       hideLogoUpgradeBox();
+      clearFirstLogoEditor();
       await cargarDatos();
       return;
     }
@@ -862,15 +1111,30 @@ firstLogoProcessBtn?.addEventListener('click', (e) => {
   e.preventDefault();
   subirPrimerLogoConValidacion({ mode: 'validate' });
 });
-firstLogoInput?.addEventListener('change', () => {
+firstLogoInput?.addEventListener('change', async () => {
   clearFirstLogoFeedback();
   hideLogoUpgradeBox();
+  const file = firstLogoInput?.files?.[0] || null;
+  if (!file) {
+    clearFirstLogoEditor();
+    return;
+  }
+  try {
+    await prepareFirstLogoEditor(file);
+  } catch (error) {
+    console.error('Error preparando editor de logo:', error);
+    setFirstLogoFeedback('error', error?.message || 'No se pudo preparar la vista previa del logo.');
+  }
 });
 firstLogoRetryBtn?.addEventListener('click', (e) => {
   e.preventDefault();
   clearFirstLogoFeedback();
   hideLogoUpgradeBox();
-  firstLogoInput?.focus();
+  clearFirstLogoEditor();
+  if (firstLogoInput) {
+    firstLogoInput.value = '';
+    firstLogoInput.focus();
+  }
 });
 firstLogoUpgradeBtn?.addEventListener('click', async (e) => {
   e.preventDefault();
@@ -879,6 +1143,47 @@ firstLogoUpgradeBtn?.addEventListener('click', async (e) => {
   if (!ok) return;
   await subirPrimerLogoConValidacion({ mode: 'upgrade_demo' });
 });
+firstLogoZoom?.addEventListener('input', () => {
+  updateFirstLogoScaleBySlider();
+});
+firstLogoCenterBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (!firstLogoEditorState) return;
+  firstLogoEditorState.offsetX = 0;
+  firstLogoEditorState.offsetY = 0;
+  renderFirstLogoPreview(true);
+});
+firstLogoPreviewCanvas?.addEventListener('pointerdown', (event) => {
+  if (!firstLogoEditorState || !firstLogoPreviewCanvas) return;
+  const rect = firstLogoPreviewCanvas.getBoundingClientRect();
+  firstLogoEditorState.dragging = true;
+  firstLogoEditorState.dragStartX = event.clientX - rect.left;
+  firstLogoEditorState.dragStartY = event.clientY - rect.top;
+  firstLogoEditorState.startOffsetX = firstLogoEditorState.offsetX;
+  firstLogoEditorState.startOffsetY = firstLogoEditorState.offsetY;
+  firstLogoPreviewCanvas.setPointerCapture(event.pointerId);
+});
+firstLogoPreviewCanvas?.addEventListener('pointermove', (event) => {
+  if (!firstLogoEditorState?.dragging || !firstLogoPreviewCanvas) return;
+  const rect = firstLogoPreviewCanvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+  const dx = x - firstLogoEditorState.dragStartX;
+  const dy = y - firstLogoEditorState.dragStartY;
+  firstLogoEditorState.offsetX = firstLogoEditorState.startOffsetX + dx;
+  firstLogoEditorState.offsetY = firstLogoEditorState.startOffsetY + dy;
+  renderFirstLogoPreview(true);
+});
+function stopLogoDrag(event) {
+  if (!firstLogoEditorState || !firstLogoPreviewCanvas) return;
+  firstLogoEditorState.dragging = false;
+  if (event?.pointerId !== undefined && firstLogoPreviewCanvas.hasPointerCapture(event.pointerId)) {
+    firstLogoPreviewCanvas.releasePointerCapture(event.pointerId);
+  }
+}
+firstLogoPreviewCanvas?.addEventListener('pointerup', stopLogoDrag);
+firstLogoPreviewCanvas?.addEventListener('pointercancel', stopLogoDrag);
+firstLogoPreviewCanvas?.addEventListener('pointerleave', stopLogoDrag);
 firstPortadaProcessBtn?.addEventListener('click', (e) => {
   e.preventDefault();
   subirPrimeraPortadaConValidacion();

@@ -1,5 +1,6 @@
 import { APP_CONFIG, isDemoPaymentsMode } from './appConfig.js';
 import { buildHeaders, createSupabaseAdmin, jsonResponse, parseBody, requireAuthUser } from './otpShared.js';
+import { createImageUpgradeProvider } from './imageUpgradeProvider.js';
 
 const BUCKET = 'galeriacomercios';
 const LOGO_ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']);
@@ -164,10 +165,18 @@ async function analyzeBackgroundHeuristic({ sharp, buffer }) {
 
   let highDiff = 0;
   let totalDiffPairs = 0;
+  let darkPixels = 0;
+  let binaryTransitions = 0;
   for (let y = 0; y < height; y += 1) {
+    let prevBinary = 0;
     for (let x = 0; x < width; x += 1) {
       const idx = (y * width + x) * channels;
       const currentLum = luminanceAt(idx);
+      const binary = currentLum < 165 ? 1 : 0;
+      if (binary) darkPixels += 1;
+      if (x > 0 && binary !== prevBinary) binaryTransitions += 1;
+      prevBinary = binary;
+
       if (x + 1 < width) {
         const rightIdx = (y * width + (x + 1)) * channels;
         const rightLum = luminanceAt(rightIdx);
@@ -188,6 +197,14 @@ async function analyzeBackgroundHeuristic({ sharp, buffer }) {
     !whiteDominant &&
     contentAreaRatio > 0.52 &&
     edgeRatio > 0.28;
+  const darkRatio = darkPixels / Math.max(1, width * height);
+  const transitionDensity = binaryTransitions / Math.max(1, height * (width - 1));
+  const textHeavyLikely =
+    !hasTransparency &&
+    contentAreaRatio > 0.58 &&
+    darkRatio > 0.5 &&
+    transitionDensity > 0.3 &&
+    edgeRatio > 0.27;
 
   return {
     hasTransparency,
@@ -197,6 +214,9 @@ async function analyzeBackgroundHeuristic({ sharp, buffer }) {
     minMarginRatio: Number(minMarginRatio.toFixed(3)),
     contentAreaRatio: Number(contentAreaRatio.toFixed(3)),
     edgeRatio: Number(edgeRatio.toFixed(3)),
+    darkRatio: Number(darkRatio.toFixed(3)),
+    transitionDensity: Number(transitionDensity.toFixed(3)),
+    textHeavyLikely,
     likelyFlyer,
   };
 }
@@ -217,6 +237,16 @@ async function optimizeLogo({ sharp, inputBuffer, allowComplexBackground = false
   }
 
   const bg = await analyzeBackgroundHeuristic({ sharp, buffer: inputBuffer });
+  if (bg.textHeavyLikely) {
+    return {
+      ok: false,
+      estado: 'requiere_accion',
+      code: 'logo_text_excessive',
+      nota:
+        'Detectamos demasiado texto en el logo. Usa una versión más limpia (símbolo o texto breve) para aprobarlo.',
+      diagnostico: bg,
+    };
+  }
   if (!bg.hasTransparency && !bg.whiteDominant && !allowComplexBackground) {
     return {
       ok: false,
@@ -335,6 +365,43 @@ async function optimizePortada({ sharp, inputBuffer }) {
     outputMime: 'image/webp',
     outputExt: 'webp',
   };
+}
+
+async function optimizeLogoWithUpgradeAdapter({ sharp, inputBuffer }) {
+  try {
+    const bg = await analyzeBackgroundHeuristic({ sharp, buffer: inputBuffer });
+    if (bg.textHeavyLikely) {
+      return {
+        ok: false,
+        estado: 'requiere_accion',
+        code: 'logo_text_excessive',
+        nota:
+          'Detectamos demasiado texto en el logo. Usa una versión más limpia (símbolo o texto breve) para aprobarlo.',
+      };
+    }
+    const provider = createImageUpgradeProvider({ sharp });
+    const result = await provider.optimizeLogo({
+      inputBuffer,
+      rules: RULES.logo,
+      demoMode: isDemoPaymentsMode,
+    });
+    if (result?.ok) return result;
+
+    return {
+      ok: false,
+      estado: 'requiere_accion',
+      code: result?.code || 'logo_upgrade_failed',
+      nota: result?.nota || 'No pudimos optimizar este archivo. Sube otra versión del logo.',
+    };
+  } catch (error) {
+    console.warn('[image-validate-process] Logo Upgrade adapter error', error?.message || error);
+    return {
+      ok: false,
+      estado: 'requiere_accion',
+      code: 'logo_upgrade_failed',
+      nota: 'No pudimos optimizar este archivo. Sube otra versión del logo.',
+    };
+  }
 }
 
 async function canUserManageComercio(supabaseAdmin, { idComercio, userId }) {
@@ -481,12 +548,14 @@ export const handler = async (event) => {
 
     const optimizeResult =
       type === 'logo'
-        ? await optimizeLogo({
-            sharp,
-            inputBuffer: parsed.buffer,
-            allowComplexBackground: isUpgradeDemoLogo,
-            upgradeMode: isUpgradeDemoLogo,
-          })
+        ? isUpgradeDemoLogo
+          ? await optimizeLogoWithUpgradeAdapter({ sharp, inputBuffer: parsed.buffer })
+          : await optimizeLogo({
+              sharp,
+              inputBuffer: parsed.buffer,
+              allowComplexBackground: false,
+              upgradeMode: false,
+            })
         : await optimizePortada({ sharp, inputBuffer: parsed.buffer });
 
     const originalExt = inferExtByMime(declaredMime || parsed.mimeType || '');
