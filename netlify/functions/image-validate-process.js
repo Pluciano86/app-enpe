@@ -226,6 +226,8 @@ async function optimizeLogo({ sharp, inputBuffer, allowComplexBackground = false
   const meta = await sharp(inputBuffer, { failOn: 'none' }).metadata();
   const width = Number(meta?.width || 0);
   const height = Number(meta?.height || 0);
+  const inputFormat = String(meta?.format || '').toLowerCase();
+  const isPngInput = inputFormat === 'png';
 
   if (width < rule.minWidth || height < rule.minHeight) {
     return {
@@ -237,6 +239,16 @@ async function optimizeLogo({ sharp, inputBuffer, allowComplexBackground = false
   }
 
   const bg = await analyzeBackgroundHeuristic({ sharp, buffer: inputBuffer });
+  if (isPngInput && !bg.whiteDominant) {
+    return {
+      ok: false,
+      estado: 'requiere_accion',
+      code: 'logo_png_background_must_be_white',
+      nota:
+        'Si subes el logo en PNG, el fondo debe ser blanco. Sube una versión con fondo blanco o usa otro formato.',
+      diagnostico: bg,
+    };
+  }
   if (bg.textHeavyLikely) {
     return {
       ok: false,
@@ -369,7 +381,19 @@ async function optimizePortada({ sharp, inputBuffer }) {
 
 async function optimizeLogoWithUpgradeAdapter({ sharp, inputBuffer }) {
   try {
+    const meta = await sharp(inputBuffer, { failOn: 'none' }).metadata();
+    const inputFormat = String(meta?.format || '').toLowerCase();
+    const isPngInput = inputFormat === 'png';
     const bg = await analyzeBackgroundHeuristic({ sharp, buffer: inputBuffer });
+    if (isPngInput && !bg.whiteDominant) {
+      return {
+        ok: false,
+        estado: 'requiere_accion',
+        code: 'logo_png_background_must_be_white',
+        nota:
+          'Si subes el logo en PNG, el fondo debe ser blanco. Sube una versión con fondo blanco o usa otro formato.',
+      };
+    }
     if (bg.textHeavyLikely) {
       return {
         ok: false,

@@ -223,7 +223,7 @@ function getCircleLayout(side) {
 }
 
 function pickBackgroundColorFromImage(image) {
-  const sampleSize = 28;
+  const sampleSize = 64;
   const canvas = document.createElement('canvas');
   canvas.width = sampleSize;
   canvas.height = sampleSize;
@@ -232,30 +232,48 @@ function pickBackgroundColorFromImage(image) {
 
   ctx.drawImage(image, 0, 0, sampleSize, sampleSize);
   const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+  const bins = new Map();
+  let whiteLike = 0;
+  let total = 0;
 
-  const points = [
-    [2, 2],
-    [sampleSize - 3, 2],
-    [2, sampleSize - 3],
-    [sampleSize - 3, sampleSize - 3],
-    [sampleSize / 2, 2],
-    [sampleSize / 2, sampleSize - 3],
-  ];
+  for (let y = 0; y < sampleSize; y += 1) {
+    for (let x = 0; x < sampleSize; x += 1) {
+      const isBorder = x === 0 || y === 0 || x === sampleSize - 1 || y === sampleSize - 1;
+      if (!isBorder) continue;
 
-  let r = 0;
-  let g = 0;
-  let b = 0;
-  let count = 0;
-  points.forEach(([x, y]) => {
-    const idx = ((Math.round(y) * sampleSize) + Math.round(x)) * 4;
-    r += data[idx] || 0;
-    g += data[idx + 1] || 0;
-    b += data[idx + 2] || 0;
-    count += 1;
-  });
+      const idx = (y * sampleSize + x) * 4;
+      const r = data[idx] ?? 255;
+      const g = data[idx + 1] ?? 255;
+      const b = data[idx + 2] ?? 255;
+      const a = data[idx + 3] ?? 255;
+      if (a < 20) continue;
 
-  if (!count) return '#111111';
-  return `rgb(${Math.round(r / count)}, ${Math.round(g / count)}, ${Math.round(b / count)})`;
+      total += 1;
+      if (r >= 230 && g >= 230 && b >= 230) whiteLike += 1;
+
+      const qr = Math.round(r / 24) * 24;
+      const qg = Math.round(g / 24) * 24;
+      const qb = Math.round(b / 24) * 24;
+      const key = `${qr}|${qg}|${qb}`;
+      const prev = bins.get(key) || { count: 0, r: 0, g: 0, b: 0 };
+      prev.count += 1;
+      prev.r += r;
+      prev.g += g;
+      prev.b += b;
+      bins.set(key, prev);
+    }
+  }
+
+  if (!total) return '#111111';
+  if (whiteLike / total >= 0.55) return '#ffffff';
+
+  let selected = null;
+  for (const bucket of bins.values()) {
+    if (!selected || bucket.count > selected.count) selected = bucket;
+  }
+  if (!selected || !selected.count) return '#111111';
+
+  return `rgb(${Math.round(selected.r / selected.count)}, ${Math.round(selected.g / selected.count)}, ${Math.round(selected.b / selected.count)})`;
 }
 
 function detectClientTextHeavyLogo(image) {
@@ -372,11 +390,12 @@ async function prepareFirstLogoEditor(file) {
     const canvasSide = firstLogoPreviewCanvas?.width || 480;
     const { diameter } = getCircleLayout(canvasSide);
     const initialScale = (diameter * 0.88) / Math.max(1, Math.max(image.width, image.height));
+    const isPngInput = String(file.type || '').toLowerCase() === 'image/png';
 
     firstLogoEditorState = {
       image,
       objectUrl,
-      backgroundColor: pickBackgroundColorFromImage(image),
+      backgroundColor: isPngInput ? '#ffffff' : pickBackgroundColorFromImage(image),
       scale: initialScale,
       minScale: initialScale * 0.6,
       maxScale: initialScale * 3.2,
