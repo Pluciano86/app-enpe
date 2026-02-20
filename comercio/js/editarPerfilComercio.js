@@ -38,6 +38,14 @@ const solicitudInputs = document.getElementById('solicitudInputs');
 const solicitudMotivo = document.getElementById('solicitudMotivo');
 const solicitudFeedback = document.getElementById('solicitudFeedback');
 const solicitudSubmit = document.getElementById('solicitudSubmit');
+const firstLogoUploadSection = document.getElementById('firstLogoUploadSection');
+const firstLogoInput = document.getElementById('firstLogoInput');
+const firstLogoProcessBtn = document.getElementById('firstLogoProcessBtn');
+const firstLogoFeedback = document.getElementById('firstLogoFeedback');
+const firstLogoUpgradeBox = document.getElementById('firstLogoUpgradeBox');
+const firstLogoUpgradeText = document.getElementById('firstLogoUpgradeText');
+const firstLogoRetryBtn = document.getElementById('firstLogoRetryBtn');
+const firstLogoUpgradeBtn = document.getElementById('firstLogoUpgradeBtn');
 
 const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const SOLICITUD_CAMPO_TITULO = {
@@ -49,6 +57,7 @@ const SOLICITUD_CAMPO_TITULO = {
 let comercioActual = null;
 let currentUserId = null;
 let solicitudCampoActual = null;
+let firstLogoOffer = null;
 
 if (!idComercio) {
   alert('ID de comercio no encontrado');
@@ -102,6 +111,51 @@ function clearSolicitudFeedback() {
   solicitudFeedback.textContent = '';
 }
 
+function setFirstLogoFeedback(type, message) {
+  if (!firstLogoFeedback) return;
+  const tone = {
+    success: 'bg-emerald-50 border border-emerald-200 text-emerald-800',
+    warning: 'bg-amber-50 border border-amber-200 text-amber-800',
+    error: 'bg-red-50 border border-red-200 text-red-700',
+    info: 'bg-sky-50 border border-sky-200 text-sky-800',
+  };
+  firstLogoFeedback.className = `text-xs rounded-lg px-3 py-2 ${tone[type] || tone.info}`;
+  firstLogoFeedback.textContent = message;
+  firstLogoFeedback.classList.remove('hidden');
+}
+
+function clearFirstLogoFeedback() {
+  if (!firstLogoFeedback) return;
+  firstLogoFeedback.classList.add('hidden');
+  firstLogoFeedback.textContent = '';
+}
+
+function hideLogoUpgradeBox() {
+  firstLogoUpgradeBox?.classList.add('hidden');
+  firstLogoOffer = null;
+}
+
+function showLogoUpgradeBox(offer, nota = '') {
+  if (!firstLogoUpgradeBox) return;
+  firstLogoOffer = offer || null;
+  const label = offer?.label || 'Incluido en tu plan';
+  if (firstLogoUpgradeText) {
+    firstLogoUpgradeText.textContent = nota
+      ? `${nota} Puedes subir otro archivo o usar Logo Upgrade (${label}).`
+      : `Puedes subir otro archivo o usar Logo Upgrade (${label}).`;
+  }
+  firstLogoUpgradeBox.classList.remove('hidden');
+}
+
+async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 function renderProtectedFields(comercio = {}) {
   if (protectedNombre) protectedNombre.textContent = comercio.nombre || 'Sin nombre';
   if (protectedCoords) {
@@ -124,6 +178,20 @@ function renderProtectedFields(comercio = {}) {
     protectedLockState.className = locked
       ? 'text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-700'
       : 'text-xs font-semibold px-2 py-1 rounded-full bg-slate-200 text-slate-700';
+  }
+
+  const sinLogo = !comercio.logo;
+  const puedeSubirPrimerLogo = locked && sinLogo;
+  if (firstLogoUploadSection) {
+    firstLogoUploadSection.classList.toggle('hidden', !puedeSubirPrimerLogo);
+  }
+  if (btnSolicitarLogo) {
+    btnSolicitarLogo.classList.toggle('hidden', puedeSubirPrimerLogo);
+  }
+  if (!puedeSubirPrimerLogo) {
+    clearFirstLogoFeedback();
+    if (firstLogoInput) firstLogoInput.value = '';
+    hideLogoUpgradeBox();
   }
 }
 
@@ -398,6 +466,104 @@ async function guardarPerfil() {
   alert('Perfil actualizado');
 }
 
+async function subirPrimerLogoConValidacion({ mode = 'validate' } = {}) {
+  if (!idComercio) return;
+  clearFirstLogoFeedback();
+
+  if (!comercioActual || !isComercioVerificado(comercioActual) || comercioActual.logo) {
+    setFirstLogoFeedback('warning', 'Este flujo solo aplica para comercios verificados sin logo.');
+    return;
+  }
+
+  const file = firstLogoInput?.files?.[0] || null;
+  if (!file) {
+    setFirstLogoFeedback('warning', 'Selecciona un archivo PNG/JPG/WEBP.');
+    return;
+  }
+
+  const allowed = ['image/png', 'image/jpeg', 'image/webp'];
+  if (!allowed.includes(String(file.type || '').toLowerCase())) {
+    setFirstLogoFeedback('warning', 'Formato no permitido. Usa PNG, JPG o WEBP.');
+    return;
+  }
+
+  const isUpgradeMode = mode === 'upgrade_demo';
+  const previousText = isUpgradeMode
+    ? firstLogoUpgradeBtn?.textContent || 'Optimizar automáticamente'
+    : firstLogoProcessBtn?.textContent || 'Validar y subir logo';
+  if (isUpgradeMode) {
+    if (firstLogoUpgradeBtn) {
+      firstLogoUpgradeBtn.disabled = true;
+      firstLogoUpgradeBtn.textContent = 'Optimizando...';
+    }
+  } else if (firstLogoProcessBtn) {
+    firstLogoProcessBtn.disabled = true;
+    firstLogoProcessBtn.textContent = 'Procesando...';
+  }
+
+  try {
+    const dataUrl = await fileToDataUrl(file);
+    const {
+      data: { session } = {},
+    } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+    if (!token) {
+      setFirstLogoFeedback('error', 'Tu sesión expiró. Vuelve a iniciar sesión.');
+      return;
+    }
+
+    const response = await fetch('/.netlify/functions/image-validate-process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        idComercio: Number(idComercio),
+        type: 'logo',
+        mode,
+        file_base64: dataUrl,
+        file_name: file.name || 'logo',
+        mime_type: file.type || 'image/png',
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || 'No se pudo validar el logo.');
+    }
+
+    if (payload?.aprobado) {
+      const suffix = isUpgradeMode
+        ? (payload?.demo_mode ? ' (modo demo sin cobro real).' : '.')
+        : '.';
+      setFirstLogoFeedback('success', `${payload?.nota || 'Logo aprobado y guardado'}${suffix}`);
+      hideLogoUpgradeBox();
+      await cargarDatos();
+      return;
+    }
+
+    setFirstLogoFeedback(
+      'warning',
+      payload?.nota || 'Tu logo requiere ajustes. Sube otra imagen con fondo blanco o transparente.'
+    );
+    showLogoUpgradeBox(payload?.logo_upgrade_offer, payload?.nota || '');
+  } catch (error) {
+    console.error('Error procesando primer logo:', error);
+    setFirstLogoFeedback('error', error?.message || 'No se pudo procesar el logo en este momento.');
+  } finally {
+    if (isUpgradeMode) {
+      if (firstLogoUpgradeBtn) {
+        firstLogoUpgradeBtn.disabled = false;
+        firstLogoUpgradeBtn.textContent = previousText;
+      }
+    } else if (firstLogoProcessBtn) {
+      firstLogoProcessBtn.disabled = false;
+      firstLogoProcessBtn.textContent = previousText;
+    }
+  }
+}
+
 async function enviarSolicitudCambio(event) {
   event.preventDefault();
   clearSolicitudFeedback();
@@ -534,6 +700,27 @@ btnSolicitarCoords?.addEventListener('click', (e) => {
 btnSolicitarLogo?.addEventListener('click', (e) => {
   e.preventDefault();
   openSolicitudModal('logo');
+});
+firstLogoProcessBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  subirPrimerLogoConValidacion({ mode: 'validate' });
+});
+firstLogoInput?.addEventListener('change', () => {
+  clearFirstLogoFeedback();
+  hideLogoUpgradeBox();
+});
+firstLogoRetryBtn?.addEventListener('click', (e) => {
+  e.preventDefault();
+  clearFirstLogoFeedback();
+  hideLogoUpgradeBox();
+  firstLogoInput?.focus();
+});
+firstLogoUpgradeBtn?.addEventListener('click', async (e) => {
+  e.preventDefault();
+  const priceLabel = firstLogoOffer?.label || 'modo demo';
+  const ok = confirm(`Logo Upgrade: ${priceLabel}\n\nEn esta etapa correrá en modo demo (sin cobro real). ¿Continuar?`);
+  if (!ok) return;
+  await subirPrimerLogoConValidacion({ mode: 'upgrade_demo' });
 });
 
 solicitudModal?.addEventListener('click', (event) => {

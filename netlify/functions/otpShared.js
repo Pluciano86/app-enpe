@@ -310,6 +310,58 @@ async function safeUpdateComercio(supabaseAdmin, idComercio, payload) {
   return { payload: body };
 }
 
+async function ensureUsuarioComercioLink(supabaseAdmin, { userId, idComercio, rol = 'comercio_admin' }) {
+  const comercioId = Number(idComercio || 0);
+  if (!userId || !Number.isFinite(comercioId) || comercioId <= 0) return;
+
+  const payload = {
+    idUsuario: userId,
+    idComercio: comercioId,
+    rol,
+  };
+
+  const { error: upsertError } = await supabaseAdmin
+    .from('UsuarioComercios')
+    .upsert(payload, { onConflict: 'idUsuario,idComercio' });
+
+  if (!upsertError) return;
+
+  const msg = String(upsertError?.message || '');
+  const maybeConflict =
+    upsertError?.code === '23505' ||
+    msg.toLowerCase().includes('duplicate key') ||
+    msg.toLowerCase().includes('already exists');
+  if (maybeConflict) return;
+
+  const conflictTargetMissing =
+    upsertError?.code === '42P10' ||
+    msg.toLowerCase().includes('there is no unique') ||
+    msg.toLowerCase().includes('on conflict specification');
+  if (conflictTargetMissing) {
+    const { error: insertError } = await supabaseAdmin.from('UsuarioComercios').insert(payload);
+    if (!insertError) return;
+    const insertMsg = String(insertError?.message || '');
+    const duplicateInsert =
+      insertError?.code === '23505' ||
+      insertMsg.toLowerCase().includes('duplicate key') ||
+      insertMsg.toLowerCase().includes('already exists');
+    if (duplicateInsert) return;
+    throw insertError;
+  }
+
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from('UsuarioComercios')
+    .select('idUsuario, idComercio')
+    .eq('idUsuario', userId)
+    .eq('idComercio', comercioId)
+    .maybeSingle();
+
+  if (!existingError && existing) return;
+  if (existingError) throw existingError;
+
+  throw upsertError;
+}
+
 export async function issueOtpChallenge({
   supabaseAdmin,
   user,
@@ -641,6 +693,12 @@ export async function verifyOtpCode({ supabaseAdmin, user, challengeId, code }) 
     };
     await safeUpdateComercio(supabaseAdmin, challenge.idComercio, comercioUpdatePayload);
   }
+
+  await ensureUsuarioComercioLink(supabaseAdmin, {
+    userId: user.id,
+    idComercio: challenge.idComercio,
+    rol: 'comercio_admin',
+  });
 
   await supabaseAdmin
     .from('otp_challenges')

@@ -59,12 +59,30 @@ async function cargarComercios(user) {
 
   if (errRel) {
     console.error('Error cargando asignaciones', errRel);
-    comerciosVacio?.classList.remove('hidden');
-    return;
   }
 
-  const ids = [...new Set((relaciones || []).map((r) => r.idComercio).filter(Boolean))];
-  if (ids.length === 0) {
+  const relacionesLista = Array.isArray(relaciones) ? relaciones : [];
+  const idsRelacionados = new Set(relacionesLista.map((r) => r.idComercio).filter(Boolean));
+
+  const { data: comerciosOwner, error: errOwner } = await supabase
+    .from('Comercios')
+    .select('id')
+    .eq('owner_user_id', user.id);
+
+  if (errOwner) {
+    console.warn('No se pudieron cargar comercios por owner_user_id:', errOwner.message || errOwner);
+  }
+
+  (Array.isArray(comerciosOwner) ? comerciosOwner : []).forEach((c) => {
+    if (!c?.id) return;
+    if (!idsRelacionados.has(c.id)) {
+      idsRelacionados.add(c.id);
+      relacionesLista.push({ idComercio: c.id, rol: 'comercio_admin' });
+    }
+  });
+
+  const ids = [...idsRelacionados];
+  if (!ids.length) {
     comerciosVacio?.classList.remove('hidden');
     return;
   }
@@ -87,7 +105,7 @@ async function cargarComercios(user) {
   }
 
   // Asignar rol principal (primera asignación)
-  const rolPrincipal = relaciones?.[0]?.rol;
+  const rolPrincipal = relacionesLista?.[0]?.rol;
   if (userRol) userRol.textContent = rolPrincipal ? rolPrincipal.replace('comercio_', '').replace('_', ' ').toUpperCase() : 'USUARIO';
 
   const { data: comercios, error: errCom } = await supabase
@@ -100,6 +118,33 @@ async function cargarComercios(user) {
   if (errCom || !comercios?.length) {
     comerciosVacio?.classList.remove('hidden');
     return;
+  }
+
+  const metricasIntentoMap = {};
+  const fecha30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const fecha7Dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const { data: intentosData, error: errIntentos } = await supabase
+    .from('basic_click_intents')
+    .select('idComercio, created_at')
+    .in('idComercio', ids)
+    .gte('created_at', fecha30Dias.toISOString());
+
+  if (errIntentos && errIntentos.code !== '42P01') {
+    console.warn('No se pudieron cargar métricas de interés:', errIntentos.message || errIntentos);
+  }
+
+  if (!errIntentos && Array.isArray(intentosData)) {
+    intentosData.forEach((evento) => {
+      const comercioId = Number(evento.idComercio);
+      if (!Number.isFinite(comercioId)) return;
+      if (!metricasIntentoMap[comercioId]) {
+        metricasIntentoMap[comercioId] = { total30d: 0, total7d: 0 };
+      }
+      metricasIntentoMap[comercioId].total30d += 1;
+      if (evento.created_at && new Date(evento.created_at) >= fecha7Dias) {
+        metricasIntentoMap[comercioId].total7d += 1;
+      }
+    });
   }
 
   comercios.forEach((c) => {
@@ -140,6 +185,27 @@ async function cargarComercios(user) {
     planChip.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700';
     planChip.textContent = `Plan: ${planInfo.nombre}`;
     bloqueInfo.appendChild(planChip);
+
+    const metrica = metricasIntentoMap[c.id] || { total30d: 0, total7d: 0 };
+    const interesBox = document.createElement('div');
+    interesBox.className = 'w-full rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-2 text-center';
+    interesBox.innerHTML = `
+      <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Interés en Findixi</p>
+      <p class="text-sm text-gray-800 mt-1">
+        Intentaron ver tu perfil <span class="font-bold">${metrica.total30d}</span> veces en 30 días.
+      </p>
+      <p class="text-xs text-gray-600 mt-0.5">Últimos 7 días: ${metrica.total7d}</p>
+    `;
+    bloqueInfo.appendChild(interesBox);
+
+    if (!planInfo.permite_perfil) {
+      const ctaInteres = document.createElement('a');
+      ctaInteres.href = `./paquetes.html?id=${c.id}`;
+      ctaInteres.className =
+        'inline-flex items-center justify-center px-3 py-1.5 rounded-lg bg-[#0f172a] text-white text-xs font-semibold hover:bg-[#1e293b]';
+      ctaInteres.textContent = 'Activa/completa tu perfil';
+      bloqueInfo.appendChild(ctaInteres);
+    }
 
     filaTop.appendChild(bloqueInfo);
 

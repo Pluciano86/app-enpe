@@ -3,6 +3,7 @@ import { supabase } from '../shared/supabaseClient.js';
 import { getPublicBase, calcularTiempoEnVehiculo, formatearTelefonoDisplay, formatearTelefonoHref } from '../shared/utils.js';
 import { t, interpolate } from './i18n.js';
 import { resolverPlanComercio } from '../shared/planes.js';
+import { registrarBasicClickIntent } from '../shared/basicClickIntentTracker.js';
 
 function resolveAppBase() {
   const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
@@ -355,6 +356,13 @@ export function cardComercio(comercio) {
       window.location.href = `${resolveAppBase()}perfilComercio.html?id=${comercio.id}`;
       return;
     }
+
+    registrarBasicClickIntent({
+      idComercio: comercio?.id,
+      metadata: {
+        componente: 'card_comercio',
+      },
+    }).catch(() => {});
 
     showBubble();
   });

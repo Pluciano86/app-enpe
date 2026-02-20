@@ -2,6 +2,7 @@
 import { supabase } from "../shared/supabaseClient.js";
 import { t } from "./i18n.js";
 import { resolverPlanComercio } from "../shared/planes.js";
+import { registrarBasicClickIntent } from "../shared/basicClickIntentTracker.js";
 
 const CATEGORIA_KEY_BY_ES = {
   "Restaurantes": "categoria.restaurantes",
@@ -203,6 +204,14 @@ export function cardComercioSlide(comercio) {
         hideBubble();
         return;
       }
+
+      registrarBasicClickIntent({
+        idComercio: comercio?.id,
+        metadata: {
+          componente: "card_comercio_slide",
+        },
+      }).catch(() => {});
+
       showBubble();
     });
   }

@@ -635,6 +635,32 @@ function showOtpVerifiedSummary(nombreComercio) {
   }
 }
 
+async function irAlPanelComercioPostRegistro() {
+  const idComercio = Number(otpState.idComercio || 0);
+  if (!Number.isFinite(idComercio) || idComercio <= 0) {
+    showFeedback('error', 'No encontramos el comercio recién validado para continuar.');
+    return;
+  }
+
+  const targetUrl = new URL('/comercio/index.html', window.location.origin);
+  targetUrl.searchParams.set('id', String(idComercio));
+  targetUrl.searchParams.set('onboarding', '1');
+  targetUrl.searchParams.set('nuevo', '1');
+
+  const {
+    data: { session } = {},
+  } = await supabase.auth.getSession();
+
+  if (session?.user?.id) {
+    window.location.href = targetUrl.toString();
+    return;
+  }
+
+  const loginUrl = new URL('/comercio/login.html', window.location.origin);
+  loginUrl.searchParams.set('returnTo', `${targetUrl.pathname}${targetUrl.search}`);
+  window.location.href = loginUrl.toString();
+}
+
 function resetOtpState({ clearSession = true } = {}) {
   if (otpState.timerId) {
     clearInterval(otpState.timerId);
@@ -2814,15 +2840,14 @@ function wireEvents() {
     setOtpFeedback('warning', 'Si no te llega por SMS, usa "Probar llamada" o vuelve a reenviar al terminar el cooldown.');
   });
 
-  btnOtpContinue?.addEventListener('click', () => {
+  btnOtpContinue?.addEventListener('click', async () => {
     const detail = {
       idComercio: otpState.idComercio,
       planNivel: selectedNivel,
       nombreComercio: otpState.comercioNombre || getComercioNombreActual(),
     };
-    closeFormModal();
-    openPlanNextModal(detail);
     window.dispatchEvent(new CustomEvent('findixi:registro-verificado', { detail }));
+    await irAlPanelComercioPostRegistro();
   });
 
   loginModal?.addEventListener('click', (event) => {

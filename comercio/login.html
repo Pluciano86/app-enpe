@@ -89,6 +89,14 @@
       setTimeout(() => loader.classList.add('hidden'), 300);
     };
 
+    function sanitizeReturnTo(raw) {
+      const value = String(raw || '').trim();
+      if (!value) return '';
+      if (value.startsWith('/comercio/')) return value;
+      if (value.startsWith('./')) return value;
+      return '';
+    }
+
     async function obtenerAsignaciones(userId) {
       console.log('AUTH user.id', userId);
       const { data, error } = await supabase
@@ -96,11 +104,43 @@
         .select('"idComercio", rol')
         .eq('idUsuario', userId);
 
-      console.log('UsuarioComercios data', data, 'error', error);
-
       if (error) return { error };
       const asignaciones = Array.isArray(data) ? data : [];
-      return { asignaciones };
+      if (asignaciones.length) {
+        return { asignaciones };
+      }
+
+      const { data: ownerComercios, error: ownerError } = await supabase
+        .from('Comercios')
+        .select('id')
+        .eq('owner_user_id', userId);
+
+      if (ownerError) return { error: ownerError };
+
+      const ownerAsignaciones = (ownerComercios || [])
+        .map((row) => ({ idComercio: row.id, rol: 'comercio_admin' }))
+        .filter((row) => row.idComercio);
+
+      if (!ownerAsignaciones.length) {
+        return { asignaciones: [] };
+      }
+
+      const { error: upsertError } = await supabase
+        .from('UsuarioComercios')
+        .upsert(
+          ownerAsignaciones.map((row) => ({
+            idUsuario: userId,
+            idComercio: row.idComercio,
+            rol: row.rol,
+          })),
+          { onConflict: 'idUsuario,idComercio' }
+        );
+
+      if (upsertError) {
+        console.warn('No se pudieron sincronizar asignaciones owner -> UsuarioComercios:', upsertError);
+      }
+
+      return { asignaciones: ownerAsignaciones };
     }
 
     async function handleLogin() {
@@ -163,7 +203,8 @@
 
       setMsg('Acceso concedido', 'ok');
       const idRedirect = asignaciones[0]?.idComercio || '';
-      window.location.href = `./index.html?id=${idRedirect}`;
+      const returnTo = sanitizeReturnTo(new URLSearchParams(window.location.search).get('returnTo'));
+      window.location.href = returnTo || `./index.html?id=${idRedirect}`;
     }
 
   btnLogin.addEventListener('click', handleLogin);
