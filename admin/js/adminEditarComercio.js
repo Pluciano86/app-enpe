@@ -249,10 +249,12 @@ async function actualizarPlanAdmin() {
 
   const payload = buildComercioPlanPayload(plan);
   try {
-    const { error } = await supabase
-      .from('Comercios')
-      .update(payload)
-      .eq('id', idComercio);
+    const { error } = await supabase.rpc('fn_admin_actualizar_plan_comercio', {
+      p_id_comercio: Number(idComercio),
+      p_plan_id: payload.plan_id ?? null,
+      p_plan_nivel: Number(payload.plan_nivel ?? 0),
+      p_plan_nombre: payload.plan_nombre ?? null,
+    });
     if (error) throw error;
     comercioPlanCache = { ...(comercioPlanCache || {}), ...payload };
     const planInfo = resolverPlanComercio(comercioPlanCache);
@@ -261,7 +263,14 @@ async function actualizarPlanAdmin() {
     alert('Plan actualizado.');
   } catch (err) {
     console.error('Error actualizando plan:', err);
-    alert('No se pudo actualizar el plan.');
+    const missingRpc =
+      String(err?.code || '') === '42883' ||
+      String(err?.message || '').toLowerCase().includes('fn_admin_actualizar_plan_comercio');
+    alert(
+      missingRpc
+        ? 'No se pudo actualizar: falta aplicar la migracion f33 (fn_admin_actualizar_plan_comercio).'
+        : 'No se pudo actualizar el plan.'
+    );
   }
 }
 

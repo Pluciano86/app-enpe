@@ -175,10 +175,12 @@ function buildPlanControl(comercio, { compact = false } = {}) {
     button.textContent = 'Actualizando...';
 
     try {
-      const { error } = await supabase
-        .from('Comercios')
-        .update(payload)
-        .eq('id', comercio.id);
+      const { error } = await supabase.rpc('fn_admin_actualizar_plan_comercio', {
+        p_id_comercio: Number(comercio.id),
+        p_plan_id: payload.plan_id ?? null,
+        p_plan_nivel: Number(payload.plan_nivel ?? 0),
+        p_plan_nombre: payload.plan_nombre ?? null,
+      });
       if (error) throw error;
 
       currentKey = selected;
@@ -190,7 +192,14 @@ function buildPlanControl(comercio, { compact = false } = {}) {
       alert('Plan actualizado.');
     } catch (error) {
       console.error('Error actualizando plan:', error);
-      alert('No se pudo actualizar el plan.');
+      const missingRpc =
+        String(error?.code || '') === '42883' ||
+        String(error?.message || '').toLowerCase().includes('fn_admin_actualizar_plan_comercio');
+      alert(
+        missingRpc
+          ? 'No se pudo actualizar: falta aplicar la migracion f33 (fn_admin_actualizar_plan_comercio).'
+          : 'No se pudo actualizar el plan.'
+      );
       if (prevKey) select.value = prevKey;
     } finally {
       button.disabled = false;
