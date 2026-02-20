@@ -36,16 +36,16 @@ BEGIN
         MESSAGE = 'Sesion requerida.';
     END IF;
 
-    SELECT lower(coalesce(u.rol_app, ''))
+    SELECT lower(trim(coalesce(u.rol_app, '')))
     INTO v_rol_app
     FROM public.usuarios u
     WHERE u.id = v_uid
     LIMIT 1;
 
-    IF v_rol_app NOT IN ('admin', 'superadmin') THEN
+    IF v_rol_app NOT IN ('admin', 'superadmin', 'app_admin', 'app_superadmin') THEN
       RAISE EXCEPTION USING
         ERRCODE = 'P0001',
-        MESSAGE = 'Solo admin/superadmin puede cambiar planes.';
+        MESSAGE = 'Solo admin puede cambiar planes.';
     END IF;
   END IF;
 
