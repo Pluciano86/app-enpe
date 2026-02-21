@@ -10,6 +10,7 @@ import {
 
 const baseImageUrl = getPublicBase('galeriacomercios');
 const UNKNOWN_CATEGORY_LABEL = 'Sin categoría';
+const COMERCIOS_PAGE_SIZE = 1000;
 
 let todosLosComercios = [];
 let logos = [];
@@ -339,6 +340,69 @@ function normalizeCommerceRecord(comercio, categoriaMap, subcategoriaMap) {
   };
 }
 
+function isComercioActivo(comercio) {
+  const rawActivo = comercio?.activo;
+  const activoFlag =
+    rawActivo === true ||
+    rawActivo === 1 ||
+    rawActivo === '1' ||
+    rawActivo === 'true' ||
+    rawActivo === 't';
+  const estadoListing = toNonEmptyString(comercio?.estado_listing).toLowerCase();
+  return activoFlag || estadoListing === 'publicado';
+}
+
+function buildComerciosSelect() {
+  return `
+    *,
+    ComercioCategorias (
+      idCategoria,
+      categoria:Categorias (
+        id,
+        nombre
+      )
+    ),
+    ComercioSubcategorias (
+      idSubcategoria,
+      subcategoria:subCategoria (
+        id,
+        nombre
+      )
+    )
+  `;
+}
+
+async function fetchComerciosPage({ from, to, onlyActivos }) {
+  let query = supabase
+    .from('Comercios')
+    .select(buildComerciosSelect())
+    .range(from, to);
+
+  if (onlyActivos) {
+    query = query.or('activo.eq.true,estado_listing.eq.publicado');
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchAllComercios({ onlyActivos }) {
+  const rows = [];
+  let from = 0;
+
+  // PostgREST suele limitar respuestas a 1000 filas.
+  while (true) {
+    const to = from + COMERCIOS_PAGE_SIZE - 1;
+    const chunk = await fetchComerciosPage({ from, to, onlyActivos });
+    rows.push(...chunk);
+    if (chunk.length < COMERCIOS_PAGE_SIZE) break;
+    from += COMERCIOS_PAGE_SIZE;
+  }
+
+  return rows;
+}
+
 export async function cargarDatosComercio() {
   if (!idComercio) return;
   const { data, error } = await supabase
@@ -447,36 +511,13 @@ export async function cargarComercios({ showLoader = false } = {}) {
 
   try {
     await ensurePlanesCatalogo();
-    let comerciosQuery = supabase
-      .from('Comercios')
-      .select(
-        `
-          *,
-          ComercioCategorias (
-            idCategoria,
-            categoria:Categorias (
-              id,
-              nombre
-            )
-          ),
-          ComercioSubcategorias (
-            idSubcategoria,
-            subcategoria:subCategoria (
-              id,
-              nombre
-            )
-          )
-        `
-      );
-    if (soloActivos) {
-      comerciosQuery = comerciosQuery.eq('activo', true);
-    }
+    const comerciosPromise = fetchAllComercios({ onlyActivos: soloActivos });
 
     const [categoriasData, subcategoriasData, comerciosResponse, imagenesResponse, municipiosResponse] =
       await Promise.all([
         getCategoriasCache(),
         getSubcategoriasCache(),
-        comerciosQuery,
+        comerciosPromise,
         supabase
           .from('imagenesComercios')
           .select('idComercio, imagen, logo')
@@ -487,7 +528,8 @@ export async function cargarComercios({ showLoader = false } = {}) {
     const categoriaMap = categoriasData?.map ?? new Map();
     const subcategoriaMap = subcategoriasData?.map ?? new Map();
 
-    const { data: comercios, error: errorComercios } = comerciosResponse;
+    const comercios = comerciosResponse;
+    const errorComercios = null;
     const { data: imagenes, error: errorImagenes } = imagenesResponse;
     const { data: muniData, error: errorMunicipios } = municipiosResponse;
 
@@ -527,6 +569,7 @@ export function filtrarYMostrarComercios() {
   const filtroOrden = document.getElementById('search-orden')?.value || '';
 
   let lista = todosLosComercios.filter(c => {
+    if (soloActivos && !isComercioActivo(c)) return false;
     if (filtroNombre && !normalizar(c.nombre).includes(filtroNombre)) return false;
     if (
       filtroCategoria !== null &&
@@ -568,6 +611,7 @@ export function filtrarYMostrarComercios() {
   }
 
   lista.forEach(c => {
+    const activoVisual = isComercioActivo(c);
     const logo = logos.find(img => img.idComercio === c.id);
     const logoUrl = logo ? `${baseImageUrl}/${logo.imagen}` : '';
     const nombreCategoria = c.categoriaDisplay || UNKNOWN_CATEGORY_LABEL;
@@ -584,7 +628,7 @@ export function filtrarYMostrarComercios() {
       <td class="px-4 py-2">-</td>
       <td class="px-4 py-2 plan-cell" data-id="${c.id}"></td>
       <td class="px-4 py-2 text-center">
-        <input type="checkbox" class="toggle-activo" data-id="${c.id}" ${c.activo ? 'checked' : ''}>
+        <input type="checkbox" class="toggle-activo" data-id="${c.id}" ${activoVisual ? 'checked' : ''}>
       </td>
       <td class="px-4 py-2 text-xs">${new Date(c.created_at).toLocaleDateString()}</td>
       <td class="px-4 py-2 text-center">
@@ -616,7 +660,7 @@ export function filtrarYMostrarComercios() {
         <div class="flex flex-col items-center gap-3 text-xl">
           <button class="text-orange-500 btn-editar" data-id="${c.id}"><i class="fas fa-edit"></i></button>
           <label class="flex flex-col items-center text-xs text-gray-600">
-            <input type="checkbox" class="toggle-activo" data-id="${c.id}" ${c.activo ? 'checked' : ''}>
+            <input type="checkbox" class="toggle-activo" data-id="${c.id}" ${activoVisual ? 'checked' : ''}>
             <span class="mt-1">Activo</span>
           </label>
           <button class="text-red-500 btn-eliminar" data-id="${c.id}"><i class="fas fa-times-circle"></i></button>

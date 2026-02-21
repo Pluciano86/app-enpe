@@ -4,6 +4,48 @@ import { t } from "./i18n.js";
 
 let eventoOriginal = null;
 
+function ajustarImagenModalSegunProporcion(imagen) {
+  if (!imagen) return;
+
+  const aplicarTamanoNormal = () => {
+    imagen.style.width = "100%";
+    imagen.style.maxWidth = "100%";
+    imagen.style.height = "100%";
+    imagen.style.margin = "0 auto";
+    imagen.style.display = "block";
+  };
+
+  const aplicarTamanoVertical = () => {
+    imagen.style.width = "65%";
+    imagen.style.maxWidth = "65%";
+    imagen.style.height = "100%";
+    imagen.style.margin = "0 auto";
+    imagen.style.display = "block";
+  };
+
+  const evaluar = () => {
+    const w = Number(imagen.naturalWidth || 0);
+    const h = Number(imagen.naturalHeight || 0);
+    if (!w || !h) {
+      aplicarTamanoNormal();
+      return;
+    }
+
+    const ratio = w / h;
+    const esVerticalAprox45 = h > w && ratio >= 0.72 && ratio <= 0.9;
+    if (esVerticalAprox45) {
+      aplicarTamanoVertical();
+    } else {
+      aplicarTamanoNormal();
+    }
+  };
+
+  aplicarTamanoNormal();
+  imagen.onload = evaluar;
+  imagen.onerror = aplicarTamanoNormal;
+  if (imagen.complete) evaluar();
+}
+
 async function renderModal(evento) {
   const modal = document.getElementById("modalEvento");
   if (!modal) return;
@@ -26,6 +68,7 @@ async function renderModal(evento) {
   titulo.textContent = ev.nombre || fallback("modal.sinTitulo", "Evento sin título");
   imagen.src = ev.imagen || ev.img_principal || "https://placehold.co/560x400?text=Evento";
   imagen.alt = ev.nombre || fallback("modal.sinTitulo", "Evento sin título");
+  ajustarImagenModalSegunProporcion(imagen);
 
   // 🟢 Descripción
   const descripcion = document.getElementById("modalDescripcion");

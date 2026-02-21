@@ -90,7 +90,7 @@ export function cardEventoSlide(evento) {
   const fechaDetalle = obtenerPartesFecha(fecha);
   const horaBase = horainicio || hora || "";
   const horaFormateada = formatearHora(horaBase);
-  const urlImagen = imagen || "https://placehold.co/560x400?text=Evento";
+  const urlImagen = imagen || "https://placehold.co/200x120?text=Evento";
   const municipioLabel =
     municipioNombre ||
     (Array.isArray(evento.municipioIds) && evento.municipioIds.length > 1 ? t("evento.variosMunicipios") : "") ||
@@ -106,7 +106,7 @@ export function cardEventoSlide(evento) {
   card.className = "block w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative";
 
   card.innerHTML = `
-    <div class="w-full relative bg-gray-200 aspect-[7/5]">
+    <div class="w-full h-24 relative bg-gray-200">
       <img src="${urlImagen}" alt="Imagen de ${nombre}" class="w-full h-full object-cover" />
     </div>
     <div class="pt-2 px-2 pb-3 text-center flex flex-col gap-2">

@@ -218,8 +218,8 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
             .map(
               (evento) => `
             <div class="swiper-slide cursor-pointer" data-id="${evento.id}">
-              <div class="w-full aspect-[7/5] overflow-hidden rounded-lg bg-gray-100 shadow">
-                <img src="${evento.imagen || "https://placehold.co/560x400?text=Sin+Imagen"}"
+              <div class="w-full aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 shadow">
+                <img src="${evento.imagen || "https://placehold.co/400x500?text=Sin+Imagen"}"
                      alt="${evento.nombre || "Evento"}"
                      class="w-full h-full object-cover" />
               </div>

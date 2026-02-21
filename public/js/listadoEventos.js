@@ -291,7 +291,7 @@ async function renderizarEventos() {
     const div = document.createElement('div');
     div.className = 'bg-white rounded shadow hover:shadow-lg transition overflow-hidden cursor-pointer flex flex-col';
     div.innerHTML = `
-      <div class="aspect-[7/5] w-full overflow-hidden bg-gray-200 relative">
+      <div class="aspect-[4/5] w-full overflow-hidden bg-gray-200 relative">
         <img src="${evento.imagen}?v=${evento.id}" class="absolute inset-0 w-full h-full object-cover blur-md scale-110" alt="" />
         <img src="${evento.imagen}?v=${evento.id}" class="relative z-10 w-full h-full object-contain" alt="${evento.nombre}" />
       </div>
