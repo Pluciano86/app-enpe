@@ -728,7 +728,6 @@ function renderOnboardingGate(comercio = {}, planInfo = resolverPlanComercio(com
 }
 
 async function aplicarEstadoActivacionAutomatica(comercio = {}, planInfo = resolverPlanComercio(comercio), horarios = []) {
-  if (!onboardingFlow) return;
   if (!isComercioVerificado(comercio)) return;
   if (!isBrandingGateReady(comercio, planInfo)) return;
 
@@ -754,6 +753,10 @@ async function aplicarEstadoActivacionAutomatica(comercio = {}, planInfo = resol
     .eq('id', idComercio);
   if (error) {
     console.error('No se pudo actualizar estado de activación automática:', error);
+    if (verificationCta) {
+      verificationCta.classList.remove('hidden');
+      verificationCta.innerHTML = `<div class="font-semibold">No se pudo activar automáticamente</div><p class="mt-1">${error?.message || 'Revisa requisitos de validación y horario.'}</p>`;
+    }
     return;
   }
 
