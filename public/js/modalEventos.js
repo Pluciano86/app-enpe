@@ -24,7 +24,7 @@ async function renderModal(evento) {
   const titulo = document.getElementById("modalTitulo");
   const imagen = document.getElementById("modalImagen");
   titulo.textContent = ev.nombre || fallback("modal.sinTitulo", "Evento sin título");
-  imagen.src = ev.imagen || ev.img_principal || "https://placehold.co/400x500?text=Evento";
+  imagen.src = ev.imagen || ev.img_principal || "https://placehold.co/560x400?text=Evento";
   imagen.alt = ev.nombre || fallback("modal.sinTitulo", "Evento sin título");
 
   // 🟢 Descripción
