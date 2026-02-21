@@ -788,19 +788,34 @@ async function guardarPerfil() {
     webpage: webpage.value.trim() || null,
     descripcion: descripcion.value.trim() || null,
   };
+  let perfilError = null;
   const { error } = await supabase.from('Comercios').update(payload).eq('id', idComercio);
   if (error) {
+    perfilError = error;
     const errorText = String(error?.message || '').toLowerCase();
     if (errorText.includes('propiedad pendiente de verificacion')) {
       alert('No puedes cambiar teléfono o dirección hasta completar la verificación de propiedad.');
+    } else if (errorText.includes('cambios bloqueados')) {
+      alert('Este comercio tiene candados activos para nombre/coordenadas/logo. Dirección y horarios sí deben poder guardarse después de aplicar la migración f34.');
     } else {
       alert('No se pudo guardar el perfil');
     }
     console.error(error);
-    return;
   }
-  await guardarHorarios();
-  alert('Perfil actualizado');
+
+  const horarioError = await guardarHorarios({ silent: true });
+  if (horarioError) {
+    console.error('Error guardando horarios', horarioError);
+    alert('No se pudieron guardar los horarios');
+  }
+
+  if (!perfilError && !horarioError) {
+    alert('Perfil actualizado');
+  } else if (!perfilError && horarioError) {
+    alert('Perfil actualizado, pero no se pudieron guardar los horarios.');
+  } else if (perfilError && !horarioError) {
+    alert('Horarios guardados, pero no se pudo actualizar el perfil.');
+  }
 }
 
 async function subirPrimerLogoConValidacion({ mode = 'validate' } = {}) {
@@ -1054,7 +1069,7 @@ async function enviarSolicitudCambio(event) {
   }
 }
 
-async function guardarHorarios() {
+async function guardarHorarios({ silent = false } = {}) {
   if (!idComercio || !horariosContainer) return;
   const rows = Array.from(horariosContainer.children).map((div, idx) => {
     const apertura = div.querySelector('.apertura').value || null;
@@ -1070,9 +1085,13 @@ async function guardarHorarios() {
   });
   const { error } = await supabase.from('Horarios').upsert(rows, { onConflict: 'idComercio,diaSemana' });
   if (error) {
-    console.error('Error guardando horarios', error);
-    alert('No se pudieron guardar los horarios');
+    if (!silent) {
+      console.error('Error guardando horarios', error);
+      alert('No se pudieron guardar los horarios');
+    }
+    return error;
   }
+  return null;
 }
 
 async function agregarFeriado() {
