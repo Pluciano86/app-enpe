@@ -23,6 +23,7 @@ DECLARE
   changed_direccion boolean := (TG_OP = 'UPDATE') AND NEW.direccion IS DISTINCT FROM OLD.direccion;
   changed_lat boolean := (TG_OP = 'UPDATE') AND NEW.latitud IS DISTINCT FROM OLD.latitud;
   changed_lon boolean := (TG_OP = 'UPDATE') AND NEW.longitud IS DISTINCT FROM OLD.longitud;
+  horarios_configurados integer := 0;
   plan_nivel_sanitizado integer := greatest(0, least(3, coalesce(NEW.plan_nivel, 0)));
 BEGIN
   IF is_service OR bypass_flag = 'on' THEN
@@ -64,6 +65,19 @@ BEGIN
       MESSAGE = 'No se puede publicar: logo y portada deben estar aprobados por validacion.';
   END IF;
 
+  IF lower(coalesce(NEW.estado_listing::text, '')) = 'publicado' THEN
+    SELECT count(DISTINCT h."diaSemana")
+    INTO horarios_configurados
+    FROM public."Horarios" h
+    WHERE h."idComercio" = NEW.id;
+
+    IF coalesce(horarios_configurados, 0) < 7 THEN
+      RAISE EXCEPTION USING
+        ERRCODE = 'P0001',
+        MESSAGE = 'No se puede publicar: el horario es obligatorio (7 dias configurados), incluyendo plan Basic.';
+    END IF;
+  END IF;
+
   IF plan_nivel_sanitizado < 1 THEN
     NEW.permite_perfil := false;
     NEW.aparece_en_cercanos := false;
@@ -95,4 +109,3 @@ END;
 $$;
 
 COMMIT;
-

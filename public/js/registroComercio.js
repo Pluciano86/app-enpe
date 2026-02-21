@@ -54,6 +54,7 @@ const btnOtpNoRecibi = document.getElementById('btnOtpNoRecibi');
 const otpFeedback = document.getElementById('otpFeedback');
 const otpVerifiedSummary = document.getElementById('otpVerifiedSummary');
 const otpVerifiedMessage = document.getElementById('otpVerifiedMessage');
+const otpVerifiedHint = document.getElementById('otpVerifiedHint');
 const btnOtpContinue = document.getElementById('btnOtpContinue');
 const planNextModal = document.getElementById('planNextModal');
 const planNextModalClose = document.getElementById('planNextModalClose');
@@ -103,6 +104,9 @@ const MATCH_STRONG_DISTANCE_M = 150;
 const MATCH_MEDIUM_DISTANCE_M = 400;
 const PIN_MOVE_ALLOW_NEW_M = 250;
 const DUPLICATE_DISTANCE_M = 200;
+const COMERCIO_LOGIN_BASE_URL =
+  String(window.FINDIXI_COMERCIO_LOGIN_BASE_URL || 'https://comercio.enpe-erre.com').trim() ||
+  'https://comercio.enpe-erre.com';
 
 let selectedNivel = null;
 let mapPickerInstance = null;
@@ -913,32 +917,60 @@ function showOtpVerifiedSummary(nombreComercio) {
   if (otpVerifiedMessage) {
     otpVerifiedMessage.textContent = `¡Listo! ${nombreComercio} verificado correctamente.`;
   }
+  if (otpVerifiedHint) {
+    const loginHost = getComercioLoginHostLabel();
+    otpVerifiedHint.textContent = `Para completar la información del comercio, pulsa Siguiente e inicia sesión en ${loginHost} con el mismo usuario y contraseña de tu cuenta Findixi.`;
+  }
 }
 
-async function irAlPanelComercioPostRegistro() {
+function getComercioLoginHostLabel() {
+  const hostname = String(window.location.hostname || '').toLowerCase();
+  if (['localhost', '127.0.0.1', '::1'].includes(hostname)) {
+    return `${window.location.host}/comercio/login.html`;
+  }
+  try {
+    const configured = new URL(COMERCIO_LOGIN_BASE_URL);
+    return configured.host || 'comercio.enpe-erre.com';
+  } catch (_error) {
+    return 'comercio.enpe-erre.com';
+  }
+}
+
+function buildComercioLoginUrl(idComercio) {
+  const id = Number(idComercio || 0);
+  const query = new URLSearchParams({
+    id: String(id),
+    onboarding: '1',
+    nuevo: '1',
+  });
+  const hostname = String(window.location.hostname || '').toLowerCase();
+
+  if (['localhost', '127.0.0.1', '::1'].includes(hostname)) {
+    const returnTo = `/comercio/editarPerfilComercio.html?${query.toString()}`;
+    const loginUrl = new URL('/comercio/login.html', window.location.origin);
+    loginUrl.searchParams.set('returnTo', returnTo);
+    return loginUrl.toString();
+  }
+
+  let baseUrl;
+  try {
+    baseUrl = new URL(COMERCIO_LOGIN_BASE_URL);
+  } catch (_error) {
+    baseUrl = new URL('https://comercio.enpe-erre.com');
+  }
+  const loginUrl = new URL('/login.html', baseUrl.origin);
+  loginUrl.searchParams.set('returnTo', `./editarPerfilComercio.html?${query.toString()}`);
+  return loginUrl.toString();
+}
+
+function irAlPanelComercioPostRegistro() {
   const idComercio = Number(otpState.idComercio || 0);
   if (!Number.isFinite(idComercio) || idComercio <= 0) {
     showFeedback('error', 'No encontramos el comercio recién validado para continuar.');
     return;
   }
 
-  const targetUrl = new URL('/comercio/index.html', window.location.origin);
-  targetUrl.searchParams.set('id', String(idComercio));
-  targetUrl.searchParams.set('onboarding', '1');
-  targetUrl.searchParams.set('nuevo', '1');
-
-  const {
-    data: { session } = {},
-  } = await supabase.auth.getSession();
-
-  if (session?.user?.id) {
-    window.location.href = targetUrl.toString();
-    return;
-  }
-
-  const loginUrl = new URL('/comercio/login.html', window.location.origin);
-  loginUrl.searchParams.set('returnTo', `${targetUrl.pathname}${targetUrl.search}`);
-  window.location.href = loginUrl.toString();
+  window.location.href = buildComercioLoginUrl(idComercio);
 }
 
 function resetOtpState({ clearSession = true } = {}) {
@@ -3121,15 +3153,20 @@ function wireEvents() {
     setOtpFeedback('warning', 'Si no te llega por SMS, usa "Probar llamada" o vuelve a reenviar al terminar el cooldown.');
   });
 
-  btnOtpContinue?.addEventListener('click', async () => {
-    const detail = {
-      idComercio: otpState.idComercio,
-      planNivel: selectedNivel,
-      nombreComercio: otpState.comercioNombre || getComercioNombreActual(),
-    };
-    window.dispatchEvent(new CustomEvent('findixi:registro-verificado', { detail }));
-    openBrandingSetupModal();
-    await syncBrandingStateFromComercio();
+  btnOtpContinue?.addEventListener('click', () => {
+    if (!otpState.verified) {
+      setOtpFeedback('warning', 'Primero verifica el código del comercio.');
+      return;
+    }
+    const prevText = btnOtpContinue.textContent;
+    btnOtpContinue.disabled = true;
+    btnOtpContinue.textContent = 'Abriendo panel...';
+    try {
+      irAlPanelComercioPostRegistro();
+    } finally {
+      btnOtpContinue.disabled = false;
+      btnOtpContinue.textContent = prevText || 'Siguiente';
+    }
   });
 
   loginModal?.addEventListener('click', (event) => {

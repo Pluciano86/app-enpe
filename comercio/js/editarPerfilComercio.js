@@ -1,5 +1,5 @@
 import { supabase } from '../shared/supabaseClient.js';
-import { resolverPlanComercio } from '../shared/planes.js';
+import { formatoPrecio, obtenerPlanPorNivel, resolverPlanComercio } from '../shared/planes.js';
 
 const idComercio = new URLSearchParams(window.location.search).get('id');
 
@@ -22,23 +22,22 @@ const planCta = document.getElementById('planCta');
 const verificationCta = document.getElementById('verificationCta');
 const imageValidationCta = document.getElementById('imageValidationCta');
 const btnCambiarPlan = document.getElementById('btnCambiarPlan');
+const planDetails = document.getElementById('planDetails');
+const comercioNombreHeading = document.getElementById('comercioNombreHeading');
+const panelActionLinks = document.getElementById('panelActionLinks');
 const protectedLockState = document.getElementById('protectedLockState');
 const protectedNombre = document.getElementById('protectedNombre');
 const protectedCoords = document.getElementById('protectedCoords');
+const protectedTelefono = document.getElementById('protectedTelefono');
 const protectedLogo = document.getElementById('protectedLogo');
 const protectedLogoPlaceholder = document.getElementById('protectedLogoPlaceholder');
-const btnSolicitarNombre = document.getElementById('btnSolicitarNombre');
-const btnSolicitarCoords = document.getElementById('btnSolicitarCoords');
-const btnSolicitarLogo = document.getElementById('btnSolicitarLogo');
-const solicitudModal = document.getElementById('solicitudModal');
-const solicitudModalClose = document.getElementById('solicitudModalClose');
-const solicitudForm = document.getElementById('solicitudForm');
-const solicitudCampoLabel = document.getElementById('solicitudCampoLabel');
-const solicitudValorActual = document.getElementById('solicitudValorActual');
-const solicitudInputs = document.getElementById('solicitudInputs');
-const solicitudMotivo = document.getElementById('solicitudMotivo');
-const solicitudFeedback = document.getElementById('solicitudFeedback');
-const solicitudSubmit = document.getElementById('solicitudSubmit');
+const protectedPortada = document.getElementById('protectedPortada');
+const protectedPortadaPlaceholder = document.getElementById('protectedPortadaPlaceholder');
+const fullProfileSections = document.getElementById('fullProfileSections');
+const gateStatusCta = document.getElementById('gateStatusCta');
+const gateChecklist = document.getElementById('gateChecklist');
+const btnCompletarPagoPlan = document.getElementById('btnCompletarPagoPlan');
+const btnContinuarFormulario = document.getElementById('btnContinuarFormulario');
 const firstLogoUploadSection = document.getElementById('firstLogoUploadSection');
 const firstLogoInput = document.getElementById('firstLogoInput');
 const firstLogoProcessBtn = document.getElementById('firstLogoProcessBtn');
@@ -57,20 +56,73 @@ const firstPortadaProcessBtn = document.getElementById('firstPortadaProcessBtn')
 const firstPortadaFeedback = document.getElementById('firstPortadaFeedback');
 
 const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-const SOLICITUD_CAMPO_TITULO = {
-  nombre: 'Cambio de nombre',
-  coordenadas: 'Cambio de coordenadas',
-  logo: 'Cambio de logo',
-};
-
 let comercioActual = null;
-let currentUserId = null;
-let solicitudCampoActual = null;
 let firstLogoOffer = null;
 let firstLogoEditorState = null;
+let horariosActuales = [];
+const urlParams = new URLSearchParams(window.location.search);
+const onboardingFlow = ['1', 'true', 'yes'].includes(String(urlParams.get('onboarding') || '').toLowerCase()) ||
+  ['1', 'true', 'yes'].includes(String(urlParams.get('nuevo') || '').toLowerCase());
+let fullFormUnlocked = !onboardingFlow;
 
 if (!idComercio) {
   alert('ID de comercio no encontrado');
+}
+
+function buildImageFunctionEndpoints() {
+  const endpoints = [];
+  const customBase = String(window.FINDIXI_FUNCTIONS_BASE_URL || '').trim().replace(/\/+$/, '');
+  if (customBase) {
+    endpoints.push(`${customBase}/.netlify/functions/image-validate-process`);
+  }
+  endpoints.push('/.netlify/functions/image-validate-process');
+
+  const hostname = String(window.location.hostname || '').toLowerCase();
+  const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(hostname);
+  if (isLocalHost && String(window.location.port || '') !== '8888') {
+    endpoints.push('http://localhost:8888/.netlify/functions/image-validate-process');
+  }
+
+  return [...new Set(endpoints)];
+}
+
+async function callImageProcessEndpoint(payload, token) {
+  const endpoints = buildImageFunctionEndpoints();
+  let lastError = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) return data;
+
+      if (response.status === 405) {
+        lastError = new Error(
+          'No se pudo validar imagen en Live Server (405). Usa Netlify Dev (`netlify dev`) o prueba en test.enpe-erre.com.'
+        );
+        continue;
+      }
+
+      const message = data?.error || data?.detalle || `No se pudo validar imagen (HTTP ${response.status}).`;
+      lastError = new Error(message);
+
+      if (response.status >= 400 && response.status < 500 && response.status !== 404) {
+        throw lastError;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('No se pudo validar imagen.');
 }
 
 function toFiniteNumber(value) {
@@ -109,6 +161,62 @@ function getImageEstadoLabel(value) {
   return 'Pendiente';
 }
 
+function isImageApproved(comercio = {}, type = 'logo') {
+  const estado = normalizeImageEstado(type === 'logo' ? comercio.logo_estado : comercio.portada_estado);
+  const aprobadoFlag = type === 'logo' ? comercio.logo_aprobado === true : comercio.portada_aprobada === true;
+  return aprobadoFlag || estado === 'aprobado';
+}
+
+function isPlanPaymentReady(comercio = {}, planInfo = resolverPlanComercio(comercio)) {
+  if (Number(planInfo?.nivel || 0) <= 0) return true;
+  const demoState = String(comercio?.pago_estado_demo || '').toLowerCase();
+  const planStatus = String(comercio?.plan_status || '').toLowerCase();
+  return ['demo_aprobado', 'aprobado', 'paid', 'activo', 'active'].includes(demoState) ||
+    ['demo_aprobado', 'aprobado', 'paid', 'activo', 'active'].includes(planStatus);
+}
+
+function getPaymentStatusLabel(comercio = {}, planInfo = resolverPlanComercio(comercio)) {
+  if (Number(planInfo?.nivel || 0) <= 0) return 'Plan Basic seleccionado';
+  const demoState = String(comercio?.pago_estado_demo || '').toLowerCase();
+  if (demoState === 'demo_aprobado') return `Pago del plan ${planInfo.nombre} confirmado (demo)`;
+  const planStatus = String(comercio?.plan_status || '').toLowerCase();
+  if (['aprobado', 'paid', 'activo', 'active'].includes(planStatus)) {
+    return `Pago del plan ${planInfo.nombre} confirmado`;
+  }
+  return `Pago del plan ${planInfo.nombre} pendiente`;
+}
+
+function getHorariosConfiguradosCount(horarios = []) {
+  return new Set((horarios || []).map((row) => Number(row?.diaSemana)).filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)).size;
+}
+
+function isBrandingGateReady(comercio = {}, planInfo = resolverPlanComercio(comercio)) {
+  return isImageApproved(comercio, 'logo') && isImageApproved(comercio, 'portada') && isPlanPaymentReady(comercio, planInfo);
+}
+
+function onboardingUnlockStorageKey() {
+  return `findixi_onboarding_full_form_unlocked_${idComercio || 'unknown'}`;
+}
+
+function loadOnboardingUnlockState() {
+  if (!onboardingFlow) return true;
+  try {
+    return sessionStorage.getItem(onboardingUnlockStorageKey()) === '1';
+  } catch (_error) {
+    return false;
+  }
+}
+
+function persistOnboardingUnlockState(unlocked) {
+  if (!onboardingFlow) return;
+  try {
+    if (unlocked) sessionStorage.setItem(onboardingUnlockStorageKey(), '1');
+    else sessionStorage.removeItem(onboardingUnlockStorageKey());
+  } catch (_error) {
+    // ignore storage errors
+  }
+}
+
 function renderImageValidationCta(comercio = {}) {
   if (!imageValidationCta) return;
 
@@ -142,25 +250,6 @@ function setFieldsLocked(fields = [], locked = false) {
     el.classList.toggle('bg-gray-100', locked);
     el.classList.toggle('cursor-not-allowed', locked);
   });
-}
-
-function setSolicitudFeedback(type, message) {
-  if (!solicitudFeedback) return;
-  const tone = {
-    success: 'bg-emerald-50 border border-emerald-200 text-emerald-800',
-    warning: 'bg-amber-50 border border-amber-200 text-amber-800',
-    error: 'bg-red-50 border border-red-200 text-red-700',
-    info: 'bg-sky-50 border border-sky-200 text-sky-800',
-  };
-  solicitudFeedback.className = `text-xs rounded-lg px-3 py-2 ${tone[type] || tone.info}`;
-  solicitudFeedback.textContent = message;
-  solicitudFeedback.classList.remove('hidden');
-}
-
-function clearSolicitudFeedback() {
-  if (!solicitudFeedback) return;
-  solicitudFeedback.classList.add('hidden');
-  solicitudFeedback.textContent = '';
 }
 
 function setFirstLogoFeedback(type, message) {
@@ -486,6 +575,12 @@ function renderProtectedFields(comercio = {}) {
   if (protectedCoords) {
     protectedCoords.textContent = `${formatCoord(comercio.latitud)}, ${formatCoord(comercio.longitud)}`;
   }
+  if (protectedTelefono) {
+    protectedTelefono.textContent = comercio.telefono || '—';
+  }
+  if (comercioNombreHeading) {
+    comercioNombreHeading.textContent = comercio.nombre || 'Comercio';
+  }
   if (protectedLogo) {
     if (comercio.logo) {
       protectedLogo.src = comercio.logo;
@@ -496,22 +591,29 @@ function renderProtectedFields(comercio = {}) {
       protectedLogoPlaceholder?.classList.remove('hidden');
     }
   }
+  if (protectedPortada) {
+    if (comercio.portada) {
+      protectedPortada.src = comercio.portada;
+      protectedPortada.classList.remove('hidden');
+      protectedPortadaPlaceholder?.classList.add('hidden');
+    } else {
+      protectedPortada.classList.add('hidden');
+      protectedPortadaPlaceholder?.classList.remove('hidden');
+    }
+  }
 
   const locked = isComercioVerificado(comercio);
   if (protectedLockState) {
-    protectedLockState.textContent = locked ? 'Bloqueado por verificación' : 'No verificado';
+    protectedLockState.textContent = locked ? 'Verificado' : 'Pendiente de verificación';
     protectedLockState.className = locked
-      ? 'text-xs font-semibold px-2 py-1 rounded-full bg-amber-100 text-amber-700'
-      : 'text-xs font-semibold px-2 py-1 rounded-full bg-slate-200 text-slate-700';
+      ? 'mt-2 inline-flex text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700'
+      : 'mt-2 inline-flex text-xs font-semibold px-2 py-1 rounded-full bg-slate-200 text-slate-700';
   }
 
   const sinLogo = !comercio.logo;
-  const puedeSubirPrimerLogo = locked && sinLogo;
+  const puedeSubirPrimerLogo = sinLogo;
   if (firstLogoUploadSection) {
     firstLogoUploadSection.classList.toggle('hidden', !puedeSubirPrimerLogo);
-  }
-  if (btnSolicitarLogo) {
-    btnSolicitarLogo.classList.toggle('hidden', puedeSubirPrimerLogo);
   }
   if (!puedeSubirPrimerLogo) {
     clearFirstLogoFeedback();
@@ -521,7 +623,7 @@ function renderProtectedFields(comercio = {}) {
   }
 
   const sinPortada = !comercio.portada;
-  const puedeSubirPrimeraPortada = locked && sinPortada;
+  const puedeSubirPrimeraPortada = sinPortada;
   if (firstPortadaUploadSection) {
     firstPortadaUploadSection.classList.toggle('hidden', !puedeSubirPrimeraPortada);
   }
@@ -531,104 +633,132 @@ function renderProtectedFields(comercio = {}) {
   }
 }
 
-function buildSolicitudActual(campo) {
-  if (!comercioActual) return {};
-  if (campo === 'nombre') return { nombre: comercioActual.nombre || null };
-  if (campo === 'coordenadas') {
-    return {
-      latitud: toFiniteNumber(comercioActual.latitud),
-      longitud: toFiniteNumber(comercioActual.longitud),
-    };
-  }
-  if (campo === 'logo') return { logo: comercioActual.logo || null };
-  return {};
+function setFullProfileVisibility(visible) {
+  fullProfileSections?.classList.toggle('hidden', !visible);
+  panelActionLinks?.classList.toggle('hidden', !visible);
 }
 
-function renderSolicitudInputs(campo) {
-  if (!solicitudInputs) return;
+function renderOnboardingGate(comercio = {}, planInfo = resolverPlanComercio(comercio), horarios = []) {
+  if (!gateStatusCta || !gateChecklist || !btnContinuarFormulario) return;
 
-  if (campo === 'nombre') {
-    solicitudInputs.innerHTML = `
-      <label class="block text-xs font-semibold text-gray-600 mb-1">Nuevo nombre *</label>
-      <input id="solicitudNuevoNombre" type="text" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200" placeholder="Nombre solicitado" />
-    `;
+  if (!onboardingFlow) {
+    gateStatusCta.classList.add('hidden');
+    setFullProfileVisibility(true);
     return;
   }
 
-  if (campo === 'coordenadas') {
-    solicitudInputs.innerHTML = `
-      <label class="block text-xs font-semibold text-gray-600 mb-1">Nuevas coordenadas *</label>
-      <div class="grid grid-cols-2 gap-2">
-        <input id="solicitudNuevaLatitud" type="number" step="any" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200" placeholder="Latitud" />
-        <input id="solicitudNuevaLongitud" type="number" step="any" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200" placeholder="Longitud" />
-      </div>
-    `;
+  const logoOk = isImageApproved(comercio, 'logo');
+  const portadaOk = isImageApproved(comercio, 'portada');
+  const paymentOk = isPlanPaymentReady(comercio, planInfo);
+  const gateReady = logoOk && portadaOk && paymentOk;
+
+  const checks = [
+    { ok: logoOk, label: 'Logo aprobado' },
+    { ok: portadaOk, label: 'Portada aprobada' },
+    { ok: paymentOk, label: getPaymentStatusLabel(comercio, planInfo) },
+  ];
+  gateChecklist.innerHTML = checks
+    .map((item) => `<li>${item.ok ? '✅' : '⏳'} ${item.label}</li>`)
+    .join('');
+
+  if (btnCompletarPagoPlan) {
+    btnCompletarPagoPlan.href = `./paquetes.html?id=${idComercio}`;
+    btnCompletarPagoPlan.classList.toggle('hidden', paymentOk);
+  }
+
+  const horariosCount = getHorariosConfiguradosCount(horarios);
+  const direccionCompleta = Boolean(String(direccion?.value || comercio?.direccion || '').trim());
+  const direccionRequerida = Number(planInfo.nivel || 0) > 0;
+  const requisitosActivos = [
+    `Horario configurado: ${horariosCount}/7 días`,
+    direccionRequerida
+      ? `Dirección escrita: ${direccionCompleta ? 'completa' : 'pendiente'}`
+      : 'Dirección escrita: opcional para Basic',
+  ];
+
+  if (gateReady) {
+    gateStatusCta.classList.remove('hidden');
+    gateStatusCta.classList.remove('border-amber-200', 'bg-amber-50', 'text-amber-900');
+    gateStatusCta.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-900');
+    const detailHtml = requisitosActivos.map((line) => `<li>${line}</li>`).join('');
+    const unlocked = fullFormUnlocked === true;
+    const alreadyActive = comercio?.activo === true || String(comercio?.estado_listing || '').toLowerCase() === 'publicado';
+    const gateTitle = gateStatusCta.querySelector('p');
+    if (gateTitle) {
+      gateTitle.textContent = unlocked
+        ? 'Ya puedes completar tu perfil y activar el comercio automáticamente.'
+        : 'Paso 1 completado. Ahora pulsa "Continuar al formulario completo".';
+    }
+    gateChecklist.insertAdjacentHTML(
+      'beforeend',
+      `<li class="mt-1">📋 Siguiente paso: completa el formulario (${requisitosActivos.join(' · ')})</li>`
+    );
+    btnContinuarFormulario.disabled = false;
+    btnContinuarFormulario.textContent = unlocked ? 'Formulario habilitado' : 'Continuar al formulario completo';
+    if (unlocked) {
+      setFullProfileVisibility(true);
+    } else {
+      setFullProfileVisibility(false);
+    }
+    if (verificationCta && unlocked && alreadyActive) {
+      verificationCta.classList.remove('hidden');
+      verificationCta.innerHTML = '<div class="font-semibold">Comercio activo</div><p class="mt-1">Tu comercio ya está activo y visible según las reglas de tu plan.</p>';
+    } else if (detailHtml && unlocked && verificationCta) {
+      verificationCta.classList.remove('hidden');
+      verificationCta.innerHTML = `<div class="font-semibold">Activación automática pendiente</div><ul class="mt-1 list-disc list-inside">${detailHtml}</ul>`;
+    } else if (verificationCta) {
+      verificationCta.classList.add('hidden');
+      verificationCta.innerHTML = '';
+    }
     return;
   }
 
-  solicitudInputs.innerHTML = `
-    <label class="block text-xs font-semibold text-gray-600 mb-1">URL o referencia del nuevo logo *</label>
-    <input id="solicitudNuevoLogo" type="text" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-200" placeholder="https://..." />
-  `;
+  gateStatusCta.classList.remove('hidden');
+  gateStatusCta.classList.remove('border-emerald-200', 'bg-emerald-50', 'text-emerald-900');
+  gateStatusCta.classList.add('border-amber-200', 'bg-amber-50', 'text-amber-900');
+  const gateTitle = gateStatusCta.querySelector('p');
+  if (gateTitle) gateTitle.textContent = 'Antes de continuar al formulario completo:';
+  btnContinuarFormulario.disabled = true;
+  btnContinuarFormulario.textContent = 'Completa logo, portada y pago primero';
+  setFullProfileVisibility(false);
+  if (verificationCta) {
+    verificationCta.classList.add('hidden');
+    verificationCta.innerHTML = '';
+  }
 }
 
-function openSolicitudModal(campo) {
-  if (!idComercio || !comercioActual) return;
-  solicitudCampoActual = campo;
-  clearSolicitudFeedback();
+async function aplicarEstadoActivacionAutomatica(comercio = {}, planInfo = resolverPlanComercio(comercio), horarios = []) {
+  if (!onboardingFlow) return;
+  if (!isComercioVerificado(comercio)) return;
+  if (!isBrandingGateReady(comercio, planInfo)) return;
 
-  if (solicitudCampoLabel) {
-    solicitudCampoLabel.textContent = SOLICITUD_CAMPO_TITULO[campo] || 'Cambio';
-  }
-  if (solicitudValorActual) {
-    solicitudValorActual.value = JSON.stringify(buildSolicitudActual(campo), null, 2);
-  }
-  if (solicitudMotivo) solicitudMotivo.value = '';
-  renderSolicitudInputs(campo);
+  const horariosCount = getHorariosConfiguradosCount(horarios);
+  const horarioOk = horariosCount >= 7;
+  const direccionValor = String(direccion?.value || comercio?.direccion || '').trim();
+  const direccionOk = Number(planInfo.nivel || 0) <= 0 ? true : Boolean(direccionValor);
+  const readyToActivate = horarioOk && direccionOk;
 
-  solicitudModal?.classList.remove('hidden');
-  solicitudModal?.classList.add('flex');
-}
+  const nextListing = readyToActivate ? 'publicado' : 'borrador';
+  const nextActivo = readyToActivate;
+  const currentListing = String(comercio.estado_listing || '').toLowerCase();
+  const currentActivo = comercio.activo === true;
 
-function closeSolicitudModal() {
-  solicitudModal?.classList.add('hidden');
-  solicitudModal?.classList.remove('flex');
-  solicitudCampoActual = null;
-}
+  if (currentListing === nextListing && currentActivo === nextActivo) return;
 
-function getSolicitudValorSolicitado(campo) {
-  if (campo === 'nombre') {
-    const nuevoNombre = String(document.getElementById('solicitudNuevoNombre')?.value || '').trim();
-    if (!nuevoNombre) return { error: 'Ingresa el nuevo nombre.' };
-    return { value: { nombre: nuevoNombre } };
-  }
-
-  if (campo === 'coordenadas') {
-    const latitud = toFiniteNumber(document.getElementById('solicitudNuevaLatitud')?.value);
-    const longitud = toFiniteNumber(document.getElementById('solicitudNuevaLongitud')?.value);
-    if (latitud === null || longitud === null) {
-      return { error: 'Ingresa latitud y longitud válidas.' };
-    }
-    if (latitud < -90 || latitud > 90 || longitud < -180 || longitud > 180) {
-      return { error: 'Las coordenadas están fuera de rango.' };
-    }
-    return { value: { latitud, longitud } };
+  const { error } = await supabase
+    .from('Comercios')
+    .update({
+      estado_listing: nextListing,
+      activo: nextActivo,
+    })
+    .eq('id', idComercio);
+  if (error) {
+    console.error('No se pudo actualizar estado de activación automática:', error);
+    return;
   }
 
-  const nuevoLogo = String(document.getElementById('solicitudNuevoLogo')?.value || '').trim();
-  if (!nuevoLogo) return { error: 'Ingresa la referencia del nuevo logo.' };
-  return { value: { logo: nuevoLogo } };
-}
-
-async function cargarUsuarioActual() {
-  try {
-    const {
-      data: { user } = {},
-    } = await supabase.auth.getUser();
-    currentUserId = user?.id || null;
-  } catch (error) {
-    currentUserId = null;
-    console.warn('No se pudo obtener usuario autenticado:', error?.message || error);
+  if (readyToActivate) {
+    alert('Comercio activado automáticamente. Ya aparece activo en Findixi.');
   }
 }
 
@@ -689,10 +819,11 @@ function renderFeriados(list = []) {
 
 async function cargarDatos() {
   if (!idComercio) return;
+  fullFormUnlocked = onboardingFlow ? loadOnboardingUnlockState() : true;
   const { data, error } = await supabase
     .from('Comercios')
     .select(
-      'nombre,logo,portada,latitud,longitud,telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos,estado_propiedad,estado_verificacion,propietario_verificado,logo_estado,logo_aprobado,portada_estado,portada_aprobada'
+      'nombre,logo,portada,latitud,longitud,telefono,direccion,whatsapp,facebook,instagram,tiktok,webpage,descripcion,plan_id,plan_nivel,plan_nombre,plan_status,pago_estado_demo,permite_menu,permite_especiales,permite_ordenes,permite_perfil,aparece_en_cercanos,estado_propiedad,estado_verificacion,propietario_verificado,logo_estado,logo_aprobado,portada_estado,portada_aprobada,estado_listing,activo'
     )
     .eq('id', idComercio)
     .maybeSingle();
@@ -726,7 +857,12 @@ async function cargarDatos() {
     descripcion.value = data.descripcion || '';
 
     const planInfo = resolverPlanComercio(data);
-    if (planBadge) planBadge.textContent = `${planInfo.nombre} (Nivel ${planInfo.nivel})`;
+    if (planBadge) planBadge.textContent = planInfo.nombre;
+    if (planDetails) {
+      const basePlan = obtenerPlanPorNivel(planInfo.nivel);
+      const resumen = Array.isArray(basePlan.features) ? basePlan.features.slice(0, 3).join(' · ') : '';
+      planDetails.textContent = `${formatoPrecio(planInfo.precio)}${resumen ? ` · Incluye: ${resumen}` : ''}`;
+    }
     if (btnCambiarPlan) btnCambiarPlan.href = `./paquetes.html?id=${idComercio}`;
 
     const puedeRedes = planInfo.nivel >= 1;
@@ -744,10 +880,13 @@ async function cargarDatos() {
       if (planCta) {
         planCta.classList.remove('hidden');
         planCta.innerHTML = `
-          <div class="font-semibold">Estas opciones requieren Findixi Regular o superior.</div>
-          <p class="text-sm">Mejora tu plan para activar redes sociales y descripción.</p>
+          <div class="font-semibold">Tu plan actual no incluye redes ni descripción avanzada.</div>
+          <p class="text-sm">Si necesitas estas opciones, puedes cambiar de plan aquí mismo.</p>
         `;
       }
+    } else if (planCta) {
+      planCta.classList.add('hidden');
+      planCta.innerHTML = '';
     }
 
     if (!puedeMenu && btnAdminMenu) {
@@ -766,10 +905,12 @@ async function cargarDatos() {
     .select('*')
     .eq('idComercio', idComercio);
   if (!errHor) {
-    renderHorarios(horarios || []);
-    const feriados = (horarios || []).filter((h) => h.feriado);
+    horariosActuales = horarios || [];
+    renderHorarios(horariosActuales);
+    const feriados = horariosActuales.filter((h) => h.feriado);
     renderFeriados(feriados);
   }
+  renderOnboardingGate(comercioActual || {}, resolverPlanComercio(comercioActual || {}), horariosActuales);
 
   // links
   if (btnAdminMenu) btnAdminMenu.href = `./adminMenuComercio.html?id=${idComercio}`;
@@ -778,6 +919,10 @@ async function cargarDatos() {
 
 async function guardarPerfil() {
   if (!idComercio) return;
+  if (onboardingFlow && !fullFormUnlocked) {
+    alert('Primero completa logo, portada y pago del plan. Luego pulsa "Continuar al formulario completo".');
+    return;
+  }
   const payload = {
     telefono: telefono.value.trim() || null,
     direccion: direccion.value.trim() || null,
@@ -810,6 +955,13 @@ async function guardarPerfil() {
   }
 
   if (!perfilError && !horarioError) {
+    await cargarDatos();
+    await aplicarEstadoActivacionAutomatica(
+      comercioActual || {},
+      resolverPlanComercio(comercioActual || {}),
+      horariosActuales
+    );
+    await cargarDatos();
     alert('Perfil actualizado');
   } else if (!perfilError && horarioError) {
     alert('Perfil actualizado, pero no se pudieron guardar los horarios.');
@@ -822,8 +974,8 @@ async function subirPrimerLogoConValidacion({ mode = 'validate' } = {}) {
   if (!idComercio) return;
   clearFirstLogoFeedback();
 
-  if (!comercioActual || !isComercioVerificado(comercioActual) || comercioActual.logo) {
-    setFirstLogoFeedback('warning', 'Este flujo solo aplica para comercios verificados sin logo.');
+  if (!comercioActual || comercioActual.logo) {
+    setFirstLogoFeedback('warning', 'Este flujo aplica cuando el comercio aún no tiene logo.');
     return;
   }
 
@@ -871,26 +1023,17 @@ async function subirPrimerLogoConValidacion({ mode = 'validate' } = {}) {
       return;
     }
 
-    const response = await fetch('/.netlify/functions/image-validate-process', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
+    const payload = await callImageProcessEndpoint(
+      {
         idComercio: Number(idComercio),
         type: 'logo',
         mode,
         file_base64: dataUrl,
         file_name: file.name || 'logo',
         mime_type: 'image/png',
-      }),
-    });
-
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload?.error || 'No se pudo validar el logo.');
-    }
+      },
+      token
+    );
 
     if (payload?.aprobado) {
       const suffix = isUpgradeMode
@@ -928,8 +1071,8 @@ async function subirPrimeraPortadaConValidacion() {
   if (!idComercio) return;
   clearFirstPortadaFeedback();
 
-  if (!comercioActual || !isComercioVerificado(comercioActual) || comercioActual.portada) {
-    setFirstPortadaFeedback('warning', 'Este flujo solo aplica para comercios verificados sin portada.');
+  if (!comercioActual || comercioActual.portada) {
+    setFirstPortadaFeedback('warning', 'Este flujo aplica cuando el comercio aún no tiene portada.');
     return;
   }
 
@@ -962,26 +1105,17 @@ async function subirPrimeraPortadaConValidacion() {
       return;
     }
 
-    const response = await fetch('/.netlify/functions/image-validate-process', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
+    const payload = await callImageProcessEndpoint(
+      {
         idComercio: Number(idComercio),
         type: 'portada',
         mode: 'validate',
         file_base64: dataUrl,
         file_name: file.name || 'portada',
         mime_type: file.type || 'image/png',
-      }),
-    });
-
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload?.error || 'No se pudo validar la portada.');
-    }
+      },
+      token
+    );
 
     if (payload?.aprobado) {
       setFirstPortadaFeedback('success', payload?.nota || 'Portada aprobada y guardada.');
@@ -1000,71 +1134,6 @@ async function subirPrimeraPortadaConValidacion() {
     if (firstPortadaProcessBtn) {
       firstPortadaProcessBtn.disabled = false;
       firstPortadaProcessBtn.textContent = previousText;
-    }
-  }
-}
-
-async function enviarSolicitudCambio(event) {
-  event.preventDefault();
-  clearSolicitudFeedback();
-
-  if (!idComercio || !solicitudCampoActual) {
-    setSolicitudFeedback('error', 'No hay un campo seleccionado para solicitar cambio.');
-    return;
-  }
-
-  const motivo = String(solicitudMotivo?.value || '').trim();
-  if (!motivo || motivo.length < 8) {
-    setSolicitudFeedback('warning', 'Describe el motivo (mínimo 8 caracteres).');
-    return;
-  }
-
-  const parsed = getSolicitudValorSolicitado(solicitudCampoActual);
-  if (parsed.error) {
-    setSolicitudFeedback('warning', parsed.error);
-    return;
-  }
-
-  const prevText = solicitudSubmit?.textContent || 'Enviar solicitud';
-  if (solicitudSubmit) {
-    solicitudSubmit.disabled = true;
-    solicitudSubmit.textContent = 'Enviando...';
-  }
-
-  try {
-    if (!currentUserId) {
-      await cargarUsuarioActual();
-    }
-
-    const payload = {
-      idComercio: Number(idComercio),
-      user_id: currentUserId || null,
-      campo: solicitudCampoActual,
-      valor_actual: buildSolicitudActual(solicitudCampoActual),
-      valor_solicitado: parsed.value,
-      motivo,
-      estado: 'pendiente',
-      metadata: {
-        source: 'comercio/editarPerfilComercio',
-        submitted_at: new Date().toISOString(),
-      },
-    };
-
-    const { error } = await supabase.from('solicitudes_cambio_comercio').insert(payload);
-    if (error) throw error;
-
-    setSolicitudFeedback('success', 'Solicitud enviada. Findixi la revisará manualmente.');
-    setTimeout(() => {
-      closeSolicitudModal();
-      alert('Solicitud enviada. Te contactaremos cuando sea revisada.');
-    }, 650);
-  } catch (error) {
-    console.error('Error enviando solicitud de cambio:', error);
-    setSolicitudFeedback('error', 'No se pudo enviar la solicitud ahora mismo. Intenta nuevamente.');
-  } finally {
-    if (solicitudSubmit) {
-      solicitudSubmit.disabled = false;
-      solicitudSubmit.textContent = prevText;
     }
   }
 }
@@ -1091,6 +1160,7 @@ async function guardarHorarios({ silent = false } = {}) {
     }
     return error;
   }
+  horariosActuales = rows;
   return null;
 }
 
@@ -1131,19 +1201,17 @@ btnAgregarFeriado?.addEventListener('click', (e) => {
   agregarFeriado();
 });
 
-btnSolicitarNombre?.addEventListener('click', (e) => {
+btnContinuarFormulario?.addEventListener('click', async (e) => {
   e.preventDefault();
-  openSolicitudModal('nombre');
-});
-
-btnSolicitarCoords?.addEventListener('click', (e) => {
-  e.preventDefault();
-  openSolicitudModal('coordenadas');
-});
-
-btnSolicitarLogo?.addEventListener('click', (e) => {
-  e.preventDefault();
-  openSolicitudModal('logo');
+  if (!comercioActual) return;
+  const planInfo = resolverPlanComercio(comercioActual);
+  if (!isBrandingGateReady(comercioActual, planInfo)) {
+    alert('Para continuar debes tener logo y portada aprobados, y el pago del plan confirmado.');
+    return;
+  }
+  fullFormUnlocked = true;
+  persistOnboardingUnlockState(true);
+  renderOnboardingGate(comercioActual, planInfo, horariosActuales);
 });
 firstLogoProcessBtn?.addEventListener('click', (e) => {
   e.preventDefault();
@@ -1230,13 +1298,6 @@ firstPortadaInput?.addEventListener('change', () => {
   clearFirstPortadaFeedback();
 });
 
-solicitudModal?.addEventListener('click', (event) => {
-  if (event.target === solicitudModal) closeSolicitudModal();
-});
-solicitudModalClose?.addEventListener('click', closeSolicitudModal);
-solicitudForm?.addEventListener('submit', enviarSolicitudCambio);
-
 document.addEventListener('DOMContentLoaded', async () => {
-  await cargarUsuarioActual();
   await cargarDatos();
 });
