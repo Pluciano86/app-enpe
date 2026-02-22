@@ -1387,7 +1387,7 @@ async function listarComerciosSimilares(stepPayload, selectedMatch = null, optio
 
   let query = supabase
     .from('Comercios')
-    .select('id, nombre, telefono, whatsapp, municipio, latitud, longitud, activo, owner_user_id')
+    .select('id, nombre, nombre_normalizado, telefono, telefono_publico, whatsapp, municipio, latitud, longitud, activo, owner_user_id')
     .eq('municipio', stepPayload.municipio)
     .limit(220);
   if (onlyActive) query = query.eq('activo', true);
@@ -1398,29 +1398,53 @@ async function listarComerciosSimilares(stepPayload, selectedMatch = null, optio
   const inputName = stepPayload.nombre || '';
   const googleName = selectedMatch?.nombre_google || '';
   const refPhone = selectedMatch?.telefono_google || selectedMatch?.telefono || '';
+  const normalizedInputName = normalizeText(inputName || '');
+  const normalizedGoogleName = normalizeText(googleName || '');
+  const hasGoogleCoords =
+    Number.isFinite(Number(selectedMatch?.latitud_google)) &&
+    Number.isFinite(Number(selectedMatch?.longitud_google));
 
   const candidatos = (data || [])
     .map((item) => {
       const distancia = distanceMeters(stepPayload.latitud, stepPayload.longitud, item.latitud, item.longitud);
+      const distanciaGoogle = hasGoogleCoords
+        ? distanceMeters(selectedMatch?.latitud_google, selectedMatch?.longitud_google, item.latitud, item.longitud)
+        : null;
       const nameScoreInput = computeNameSimilarityScore(inputName, item.nombre || '');
       const nameScoreGoogle = googleName
         ? computeNameSimilarityScore(googleName, item.nombre || '')
         : 0;
       const nameScore = Math.max(nameScoreInput, nameScoreGoogle);
+      const normalizedItemName = normalizeText(item.nombre_normalizado || item.nombre || '');
       const phoneMatch =
         phonesLikelyMatch(refPhone, item.telefono) ||
+        phonesLikelyMatch(refPhone, item.telefono_publico) ||
         phonesLikelyMatch(refPhone, item.whatsapp) ||
         phonesLikelyMatch(stepPayload?.telefono, item.telefono);
+      const exactNameMatch =
+        (normalizedInputName && normalizedItemName === normalizedInputName) ||
+        (normalizedGoogleName && normalizedItemName === normalizedGoogleName);
 
       const strongByNameDistance = Number.isFinite(distancia) && distancia <= 220 && nameScore >= 65;
       const strongByPhoneDistance = Number.isFinite(distancia) && distancia <= 450 && phoneMatch;
-      const isLikelySame = strongByNameDistance || strongByPhoneDistance;
+      const strongByGoogleCoords =
+        Number.isFinite(distanciaGoogle) &&
+        distanciaGoogle <= 220 &&
+        (phoneMatch || nameScore >= 60);
+      const strongByExactSignals = phoneMatch && exactNameMatch;
+      const isLikelySame =
+        strongByNameDistance ||
+        strongByPhoneDistance ||
+        strongByGoogleCoords ||
+        strongByExactSignals;
 
       return {
         ...item,
         distancia_m: Number.isFinite(distancia) ? Math.round(distancia) : null,
+        distancia_google_m: Number.isFinite(distanciaGoogle) ? Math.round(distanciaGoogle) : null,
         name_score: nameScore,
         phone_match: phoneMatch,
+        exact_name_match: exactNameMatch,
         is_likely_same: isLikelySame,
       };
     })
