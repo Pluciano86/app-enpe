@@ -268,6 +268,7 @@ async function renderizarEventos() {
     const fechaDetalle = proxima ? obtenerPartesFecha(proxima.fecha) : null;
     const horaTexto = proxima?.horainicio ? formatearHora(proxima.horainicio) : '';
     const iconoCategoria = evento.categoriaIcono ? `<i class="fas ${evento.categoriaIcono}"></i>` : '';
+    const nombreClass = (evento.nombre || '').length > 25 ? 'text-base' : 'text-lg';
     const costoRaw = evento.costo != null ? String(evento.costo).trim() : '';
     const costoConSimbolo = /^[\d,.]+$/.test(costoRaw) && !costoRaw.startsWith('$')
       ? `$${costoRaw}`
@@ -297,7 +298,7 @@ async function renderizarEventos() {
       </div>
       <div class="p-3 flex flex-col flex-1">
         <div class="flex flex-col gap-2 flex-1">
-          <h3 class="flex items-center justify-center text-center leading-tight text-lg font-bold line-clamp-2 h-12">${evento.nombre}</h3>
+          <h3 class="flex items-center justify-center text-center leading-tight ${nombreClass} font-bold line-clamp-2 h-12">${evento.nombre}</h3>
           <div class="flex items-center justify-center gap-1 text-sm text-orange-500">
             ${iconoCategoria}
             <span>${evento.categoriaNombre || ''}</span>

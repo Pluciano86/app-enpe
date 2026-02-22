@@ -101,6 +101,7 @@ export function cardEventoSlide(evento) {
     ? (/^[\d,.]+$/.test(costo) && !String(costo).startsWith("$") ? `$${costo}` : costo)
     : t("area.noDisponible");
   const iconoHTML = categoriaIcono ? `<i class="fas ${categoriaIcono}"></i>` : "";
+  const nombreClass = (nombre || "").length > 25 ? "text-xs" : "text-sm";
 
   const card = document.createElement("div");
   card.className = "block w-40 shrink-0 rounded-xl overflow-hidden shadow bg-white relative";
@@ -110,7 +111,7 @@ export function cardEventoSlide(evento) {
       <img src="${urlImagen}" alt="Imagen de ${nombre}" class="w-full h-full object-cover" />
     </div>
     <div class="pt-2 px-2 pb-3 text-center flex flex-col gap-2">
-      <h3 class="flex items-center justify-center text-center text-sm font-bold line-clamp-2 h-12">${nombre}</h3>
+      <h3 class="flex items-center justify-center text-center ${nombreClass} font-bold line-clamp-2 h-12">${nombre}</h3>
       <div class="flex items-center justify-center gap-1 text-[12px] text-orange-500">
         ${iconoHTML}
         <span>${categoriaNombre}</span>

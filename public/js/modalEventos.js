@@ -4,8 +4,64 @@ import { t } from "./i18n.js";
 
 let eventoOriginal = null;
 
+function obtenerLightboxImagenEvento() {
+  let lightbox = document.getElementById("eventoImagenLightbox");
+  if (lightbox) return lightbox;
+
+  lightbox = document.createElement("div");
+  lightbox.id = "eventoImagenLightbox";
+  lightbox.className = "fixed inset-0 z-[12000] hidden items-center justify-center bg-black/90 p-4";
+  lightbox.innerHTML = `
+    <button type="button"
+            class="absolute right-4 top-2 text-white text-5xl font-extralight leading-none hover:text-gray-300"
+            aria-label="Cerrar imagen">&times;</button>
+    <img id="eventoImagenLightboxImg"
+         src=""
+         alt="Imagen ampliada del evento"
+         class="max-h-[92vh] max-w-[95vw] object-contain rounded-lg shadow-2xl" />
+  `;
+
+  lightbox.addEventListener("click", (e) => {
+    if (e.target === lightbox || e.target.tagName === "BUTTON") {
+      cerrarLightboxImagenEvento();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      cerrarLightboxImagenEvento();
+    }
+  });
+
+  document.body.appendChild(lightbox);
+  return lightbox;
+}
+
+function abrirLightboxImagenEvento(src = "", alt = "") {
+  if (!src) return;
+  const lightbox = obtenerLightboxImagenEvento();
+  const img = lightbox.querySelector("#eventoImagenLightboxImg");
+  if (!img) return;
+
+  img.src = src;
+  img.alt = alt || "Imagen ampliada del evento";
+  lightbox.classList.remove("hidden");
+  lightbox.classList.add("flex");
+}
+
+function cerrarLightboxImagenEvento() {
+  const lightbox = document.getElementById("eventoImagenLightbox");
+  if (!lightbox || lightbox.classList.contains("hidden")) return;
+
+  lightbox.classList.add("hidden");
+  lightbox.classList.remove("flex");
+  const img = lightbox.querySelector("#eventoImagenLightboxImg");
+  if (img) img.src = "";
+}
+
 function ajustarImagenModalSegunProporcion(imagen) {
   if (!imagen) return;
+  const contenedor = imagen.parentElement;
 
   const aplicarTamanoNormal = () => {
     imagen.style.width = "100%";
@@ -13,14 +69,16 @@ function ajustarImagenModalSegunProporcion(imagen) {
     imagen.style.height = "100%";
     imagen.style.margin = "0 auto";
     imagen.style.display = "block";
+    if (contenedor) contenedor.style.backgroundColor = "";
   };
 
   const aplicarTamanoVertical = () => {
-    imagen.style.width = "65%";
-    imagen.style.maxWidth = "65%";
+    imagen.style.width = "72%";
+    imagen.style.maxWidth = "72%";
     imagen.style.height = "100%";
     imagen.style.margin = "0 auto";
     imagen.style.display = "block";
+    if (contenedor) contenedor.style.backgroundColor = "transparent";
   };
 
   const evaluar = () => {
@@ -69,6 +127,8 @@ async function renderModal(evento) {
   imagen.src = ev.imagen || ev.img_principal || "https://placehold.co/560x400?text=Evento";
   imagen.alt = ev.nombre || fallback("modal.sinTitulo", "Evento sin título");
   ajustarImagenModalSegunProporcion(imagen);
+  imagen.style.cursor = "zoom-in";
+  imagen.onclick = () => abrirLightboxImagenEvento(imagen.src, imagen.alt);
 
   // 🟢 Descripción
   const descripcion = document.getElementById("modalDescripcion");
@@ -288,6 +348,7 @@ if (fechasDisponibles.length > 0) {
 
 // 🔹 Función para cerrar el modal con animación y scroll restore
 function cerrarModalEvento() {
+  cerrarLightboxImagenEvento();
   const modal = document.getElementById("modalEvento");
   if (modal) modal.classList.add("hidden");
   document.body.style.overflow = "auto";
