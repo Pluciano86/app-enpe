@@ -1381,15 +1381,18 @@ async function buscarComercioPorGooglePlaceId(placeId) {
   return null;
 }
 
-async function buscarComercioActivoSimilar(stepPayload, selectedMatch = null) {
+async function listarComerciosSimilares(stepPayload, selectedMatch = null, options = {}) {
   if (!stepPayload?.municipio) return null;
+  const onlyActive = Boolean(options?.onlyActive);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('Comercios')
-    .select('id, nombre, telefono, whatsapp, municipio, latitud, longitud, activo')
+    .select('id, nombre, telefono, whatsapp, municipio, latitud, longitud, activo, owner_user_id')
     .eq('municipio', stepPayload.municipio)
-    .eq('activo', true)
-    .limit(150);
+    .limit(220);
+  if (onlyActive) query = query.eq('activo', true);
+
+  const { data, error } = await query;
   if (error) throw error;
 
   const inputName = stepPayload.nombre || '';
@@ -1432,7 +1435,12 @@ async function buscarComercioActivoSimilar(stepPayload, selectedMatch = null) {
       return (b.name_score ?? 0) - (a.name_score ?? 0);
     });
 
-  return candidatos[0] || null;
+  return candidatos;
+}
+
+async function buscarComercioActivoSimilar(stepPayload, selectedMatch = null) {
+  const candidatos = await listarComerciosSimilares(stepPayload, selectedMatch, { onlyActive: true });
+  return candidatos?.[0] || null;
 }
 
 function buildGoogleReferencePayload(stepPayload, selectedMatch, options = {}) {
@@ -1499,7 +1507,9 @@ async function guardarReferenciaGoogleConfirmada(options = {}) {
 
   const payload = buildGoogleReferencePayload(stepPayload, selected, options);
   const existente = await buscarComercioPorGooglePlaceId(selected.place_id);
-  const similarActivo = await buscarComercioActivoSimilar(stepPayload, selected);
+  const similares = await listarComerciosSimilares(stepPayload, selected, { onlyActive: false });
+  const similarActivo = (similares || []).find((item) => item.activo === true) || null;
+  const similarInactivo = (similares || []).find((item) => item.activo !== true) || null;
 
   if (existente?.id) {
     if (existente.activo === true) {
@@ -1522,6 +1532,27 @@ async function guardarReferenciaGoogleConfirmada(options = {}) {
           phone_match: similarActivo.phone_match,
           name_score: similarActivo.name_score,
         },
+      };
+    }
+
+    if (similarInactivo?.id && Number(similarInactivo.id) !== Number(existente.id)) {
+      if (similarInactivo.owner_user_id && similarInactivo.owner_user_id !== stepPayload.user_id) {
+        const { error } = await updateComercioWithFallback(similarInactivo.id, {
+          estado_propiedad: 'en_disputa',
+          estado_verificacion: 'manual_pendiente',
+          bloqueo_datos_criticos: true,
+        });
+        if (error) throw error;
+        return { mode: 'disputa', id: similarInactivo.id };
+      }
+
+      const { error, usedPayload } = await updateComercioWithFallback(similarInactivo.id, payload);
+      if (error) throw error;
+      return {
+        mode: 'updated',
+        id: similarInactivo.id,
+        payload: usedPayload,
+        duplicate_reused: true,
       };
     }
 
@@ -1551,6 +1582,27 @@ async function guardarReferenciaGoogleConfirmada(options = {}) {
         phone_match: similarActivo.phone_match,
         name_score: similarActivo.name_score,
       },
+    };
+  }
+
+  if (similarInactivo?.id) {
+    if (similarInactivo.owner_user_id && similarInactivo.owner_user_id !== stepPayload.user_id) {
+      const { error } = await updateComercioWithFallback(similarInactivo.id, {
+        estado_propiedad: 'en_disputa',
+        estado_verificacion: 'manual_pendiente',
+        bloqueo_datos_criticos: true,
+      });
+      if (error) throw error;
+      return { mode: 'disputa', id: similarInactivo.id };
+    }
+
+    const { error, usedPayload } = await updateComercioWithFallback(similarInactivo.id, payload);
+    if (error) throw error;
+    return {
+      mode: 'updated',
+      id: similarInactivo.id,
+      payload: usedPayload,
+      duplicate_reused: true,
     };
   }
 
@@ -1605,19 +1657,6 @@ async function crearComercioNuevoPendienteOtp({ telefonoOtp }) {
     throw new Error('Ingresa un teléfono para continuar con la verificación.');
   }
 
-  const similarActivo = await buscarComercioActivoSimilar(stepPayload, {
-    nombre_google: stepPayload.nombre,
-    telefono_google: telefonoNormalizado,
-  });
-  if (similarActivo?.id) {
-    const distanciaLabel = Number.isFinite(similarActivo.distancia_m) ? ` a ${similarActivo.distancia_m}m` : '';
-    const error = new Error(
-      `Encontramos un comercio activo muy similar (${similarActivo.nombre}${distanciaLabel}). No podemos crear uno nuevo; abre una disputa en Findixi.`
-    );
-    error.similarActivo = similarActivo;
-    throw error;
-  }
-
   const payload = {
     nombre: stepPayload.nombre,
     nombre_normalizado: normalizeText(stepPayload.nombre),
@@ -1645,6 +1684,35 @@ async function crearComercioNuevoPendienteOtp({ telefonoOtp }) {
     permite_especiales: false,
     permite_ordenes: false,
   };
+
+  const similares = await listarComerciosSimilares(stepPayload, {
+    nombre_google: stepPayload.nombre,
+    telefono_google: telefonoNormalizado,
+  }, { onlyActive: false });
+  const similarActivo = (similares || []).find((item) => item.activo === true) || null;
+  const similarInactivo = (similares || []).find((item) => item.activo !== true) || null;
+  if (similarActivo?.id) {
+    const distanciaLabel = Number.isFinite(similarActivo.distancia_m) ? ` a ${similarActivo.distancia_m}m` : '';
+    const error = new Error(
+      `Encontramos un comercio activo muy similar (${similarActivo.nombre}${distanciaLabel}). No podemos crear uno nuevo; abre una disputa en Findixi.`
+    );
+    error.similarActivo = similarActivo;
+    throw error;
+  }
+
+  if (similarInactivo?.id) {
+    if (similarInactivo.owner_user_id && similarInactivo.owner_user_id !== stepPayload.user_id) {
+      const error = new Error(
+        `Encontramos un comercio similar ya registrado (${similarInactivo.nombre}). Debes abrir una disputa para revisión.`
+      );
+      error.similarInactivo = similarInactivo;
+      throw error;
+    }
+
+    const { error, usedPayload } = await updateComercioWithFallback(similarInactivo.id, payload);
+    if (error) throw error;
+    return { id: similarInactivo.id, payload: usedPayload, duplicate_reused: true };
+  }
 
   const { data, error, usedPayload } = await insertComercioWithFallback(payload);
   if (error) throw error;
