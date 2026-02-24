@@ -307,21 +307,58 @@ async function validateAccessOrRedirect() {
 }
 
 async function fetchOrdersForComercio() {
-  const selectCols = 'id,idcomercio,clover_order_id,total,status,created_at,order_type,mesa,source,customer_name,customer_email,customer_phone';
-  const base = supabase.from('ordenes').select(selectCols).order('created_at', { ascending: true });
-  let resp = await base.eq('idcomercio', idComercio);
+  const fullSelect = 'id,idcomercio,clover_order_id,total,status,created_at,order_type,mesa,source,customer_name,customer_email,customer_phone';
+  const baseSelect = 'id,idcomercio,clover_order_id,total,status,created_at,order_type,mesa,source';
+
+  let resp = await supabase
+    .from('ordenes')
+    .select(fullSelect)
+    .eq('idcomercio', idComercio)
+    .order('created_at', { ascending: true });
   if (!resp.error) return resp.data || [];
 
   const msg = String(resp.error?.message || '').toLowerCase();
-  if (!(msg.includes('column') && msg.includes('idcomercio') && msg.includes('does not exist'))) {
+  const missingIdComercio = msg.includes('column') && msg.includes('idcomercio') && msg.includes('does not exist');
+  const missingCustomerCols =
+    msg.includes('column') &&
+    (msg.includes('customer_name') || msg.includes('customer_email') || msg.includes('customer_phone')) &&
+    msg.includes('does not exist');
+
+  if (missingCustomerCols) {
+    resp = await supabase
+      .from('ordenes')
+      .select(baseSelect)
+      .eq('idcomercio', idComercio)
+      .order('created_at', { ascending: true });
+    if (!resp.error) return resp.data || [];
+  }
+
+  if (!missingIdComercio) {
     throw resp.error;
   }
+
   resp = await supabase
     .from('ordenes')
-    .select('id,idComercio,clover_order_id,total,status,created_at,order_type,mesa,source,customer_name,customer_email,customer_phone')
+    .select(fullSelect.replaceAll('idcomercio', 'idComercio'))
     .eq('idComercio', idComercio)
     .order('created_at', { ascending: true });
-  if (resp.error) throw resp.error;
+
+  if (resp.error) {
+    const msg2 = String(resp.error?.message || '').toLowerCase();
+    const missingCustomerCols2 =
+      msg2.includes('column') &&
+      (msg2.includes('customer_name') || msg2.includes('customer_email') || msg2.includes('customer_phone')) &&
+      msg2.includes('does not exist');
+    if (!missingCustomerCols2) throw resp.error;
+
+    resp = await supabase
+      .from('ordenes')
+      .select(baseSelect.replaceAll('idcomercio', 'idComercio'))
+      .eq('idComercio', idComercio)
+      .order('created_at', { ascending: true });
+    if (resp.error) throw resp.error;
+  }
+
   return (resp.data || []).map((row) => ({ ...row, idcomercio: row.idComercio }));
 }
 

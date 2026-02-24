@@ -109,36 +109,98 @@ async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
     status: "paid",
     updated_at: new Date().toISOString(),
   };
+  const activeLikeStatuses = ["pending", "sent", "open", "confirmed", "paid"];
 
-  let resp = await supabase
-    .from("ordenes")
-    .update(updatePayload)
-    .eq("idcomercio", idComercio)
-    .eq("clover_order_id", cloverOrderId)
-    .in("status", ["pending", "sent", "open", "confirmed", "paid"])
-    .select("id")
-    .limit(1);
+  const tryDirectUpdate = async (idCol: "idcomercio" | "idComercio") => {
+    const resp = await supabase
+      .from("ordenes")
+      .update(updatePayload)
+      .eq(idCol, idComercio)
+      .eq("clover_order_id", cloverOrderId)
+      .in("status", activeLikeStatuses)
+      .select("id")
+      .limit(1);
+    return resp;
+  };
 
-  if (!resp.error) return;
+  let resp = await tryDirectUpdate("idcomercio");
+  if (!resp.error && (resp.data?.length ?? 0) > 0) return;
 
-  const msg = (resp.error?.message || "").toLowerCase();
-  if (!(msg.includes("column") && msg.includes("idcomercio") && msg.includes("does not exist"))) {
-    console.warn("[clover-webhook] No se pudo actualizar orden local", resp.error);
+  const maybeMissingSnakeCase = (resp.error?.message || "").toLowerCase().includes("idcomercio") &&
+    (resp.error?.message || "").toLowerCase().includes("does not exist");
+  if (resp.error && !maybeMissingSnakeCase) {
+    console.warn("[clover-webhook] No se pudo actualizar orden local (directo snake_case)", resp.error);
+  }
+
+  resp = await tryDirectUpdate("idComercio");
+  if (!resp.error && (resp.data?.length ?? 0) > 0) return;
+
+  if (resp.error) {
+    console.warn("[clover-webhook] No se pudo actualizar orden local (directo camelCase)", resp.error);
+  }
+
+  // Fallback controlado:
+  // si no hubo match por clover_order_id, intentamos la orden pickup más reciente sin clover_order_id.
+  const selectRecent = async (idCol: "idcomercio" | "idComercio") =>
+    await supabase
+      .from("ordenes")
+      .select("id, clover_order_id, created_at, status")
+      .eq(idCol, idComercio)
+      .eq("order_type", "pickup")
+      .in("status", activeLikeStatuses)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+  let recent = await selectRecent("idcomercio");
+  if (recent.error) {
+    const msg = (recent.error.message || "").toLowerCase();
+    if (msg.includes("idcomercio") && msg.includes("does not exist")) {
+      recent = await selectRecent("idComercio");
+    }
+  }
+
+  if (recent.error) {
+    console.warn("[clover-webhook] No se pudieron leer ordenes recientes para fallback", recent.error);
     return;
   }
 
-  resp = await supabase
+  const now = Date.now();
+  const candidates = (recent.data || []).filter((row: any) => {
+    const createdAtMs = row?.created_at ? Date.parse(row.created_at) : NaN;
+    if (!Number.isFinite(createdAtMs)) return false;
+    const ageMinutes = (now - createdAtMs) / 60000;
+    const hasCloverId = Boolean(row?.clover_order_id);
+    return ageMinutes <= 90 && !hasCloverId;
+  });
+
+  if (candidates.length !== 1) {
+    console.warn("[clover-webhook] Fallback ambiguo o vacío; no se actualiza estado local", {
+      cloverOrderId,
+      candidates: candidates.length,
+    });
+    return;
+  }
+
+  const targetLocalId = candidates[0].id;
+  const patchPayload = {
+    ...updatePayload,
+    clover_order_id: cloverOrderId,
+  };
+  const patched = await supabase
     .from("ordenes")
-    .update(updatePayload)
-    .eq("idComercio", idComercio)
-    .eq("clover_order_id", cloverOrderId)
-    .in("status", ["pending", "sent", "open", "confirmed", "paid"])
+    .update(patchPayload)
+    .eq("id", targetLocalId)
     .select("id")
     .limit(1);
 
-  if (resp.error) {
-    console.warn("[clover-webhook] No se pudo actualizar orden local (fallback idComercio)", resp.error);
+  if (patched.error) {
+    console.warn("[clover-webhook] No se pudo actualizar fallback de orden local", patched.error);
+    return;
   }
+  console.log("[clover-webhook] Orden local actualizada por fallback", {
+    localOrderId: targetLocalId,
+    cloverOrderId,
+  });
 }
 
 class CloverApiError extends Error {
