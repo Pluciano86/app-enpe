@@ -141,13 +141,14 @@ async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
 
   // Fallback controlado:
   // si no hubo match por clover_order_id, intentamos la orden pickup más reciente sin clover_order_id.
+  const fallbackStatuses = ["pending", "sent", "open", "confirmed"];
   const selectRecent = async (idCol: "idcomercio" | "idComercio") =>
     await supabase
       .from("ordenes")
       .select("id, clover_order_id, created_at, status")
       .eq(idCol, idComercio)
       .eq("order_type", "pickup")
-      .in("status", activeLikeStatuses)
+      .in("status", fallbackStatuses)
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -173,12 +174,19 @@ async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
     return ageMinutes <= 90 && !hasCloverId;
   });
 
-  if (candidates.length !== 1) {
-    console.warn("[clover-webhook] Fallback ambiguo o vacío; no se actualiza estado local", {
+  if (candidates.length === 0) {
+    console.warn("[clover-webhook] Fallback sin candidatos; no se actualiza estado local", {
       cloverOrderId,
-      candidates: candidates.length,
     });
     return;
+  }
+
+  if (candidates.length > 1) {
+    console.warn("[clover-webhook] Fallback ambiguo; se tomará el más reciente", {
+      cloverOrderId,
+      candidates: candidates.length,
+      selectedId: candidates[0]?.id ?? null,
+    });
   }
 
   const targetLocalId = candidates[0].id;
