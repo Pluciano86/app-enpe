@@ -216,14 +216,21 @@ export async function renderEventosCarousel(containerId, filtros = {}) {
         <div class="swiper-wrapper">
           ${eventos
             .map(
-              (evento) => `
+              (evento) => {
+                const urlImagen = evento.imagen || "https://placehold.co/400x500?text=Sin+Imagen";
+                return `
             <div class="swiper-slide cursor-pointer" data-id="${evento.id}">
-              <div class="w-full aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 shadow">
-                <img src="${evento.imagen || "https://placehold.co/400x500?text=Sin+Imagen"}"
+              <div class="w-full aspect-[3/4] overflow-hidden rounded-lg bg-gray-200 relative shadow">
+                <img src="${urlImagen}"
+                     alt=""
+                     aria-hidden="true"
+                     class="absolute inset-0 w-full h-full object-cover blur-md scale-110" />
+                <img src="${urlImagen}"
                      alt="${evento.nombre || "Evento"}"
-                     class="w-full h-full object-cover" />
+                     class="relative z-10 w-full h-full object-contain" />
               </div>
-            </div>`
+            </div>`;
+              }
             )
             .join("")}
         </div>
