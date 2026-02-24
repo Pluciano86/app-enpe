@@ -104,6 +104,43 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
+  const updatePayload = {
+    status: "paid",
+    updated_at: new Date().toISOString(),
+  };
+
+  let resp = await supabase
+    .from("ordenes")
+    .update(updatePayload)
+    .eq("idcomercio", idComercio)
+    .eq("clover_order_id", cloverOrderId)
+    .in("status", ["pending", "sent", "open", "confirmed", "paid"])
+    .select("id")
+    .limit(1);
+
+  if (!resp.error) return;
+
+  const msg = (resp.error?.message || "").toLowerCase();
+  if (!(msg.includes("column") && msg.includes("idcomercio") && msg.includes("does not exist"))) {
+    console.warn("[clover-webhook] No se pudo actualizar orden local", resp.error);
+    return;
+  }
+
+  resp = await supabase
+    .from("ordenes")
+    .update(updatePayload)
+    .eq("idComercio", idComercio)
+    .eq("clover_order_id", cloverOrderId)
+    .in("status", ["pending", "sent", "open", "confirmed", "paid"])
+    .select("id")
+    .limit(1);
+
+  if (resp.error) {
+    console.warn("[clover-webhook] No se pudo actualizar orden local (fallback idComercio)", resp.error);
+  }
+}
+
 class CloverApiError extends Error {
   status: number;
   raw: string;
@@ -579,6 +616,8 @@ async function handler(req: Request): Promise<Response> {
       details: err instanceof Error ? err.message : String(err),
     }, 502);
   }
+
+  await setLocalOrderPaid(Number(conn.idComercio), targetOrderId);
 
   return jsonResponse({
     ok: true,
