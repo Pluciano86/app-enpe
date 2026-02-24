@@ -363,6 +363,7 @@ async function handler(req: Request): Promise<Response> {
     (merchantEvents[0]?.merchantId ?? null) ??
     (merchantCount === 1 ? merchantKeys[0] : null);
   if (!fallbackMerchantId) return jsonResponse({ error: "merchantId requerido" }, 400);
+  const merchantId = fallbackMerchantId;
 
   const objectId =
     body?.object_id ??

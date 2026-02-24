@@ -59,6 +59,7 @@ const corsHeaders = {
 
 const PICKUP_ORDER_TYPE_NAME = "Pickup (Findixi)";
 const PICKUP_ORDER_TYPE_NAME_ALT = "Pick Up (Findixi)";
+const PICKUP_ORDER_NOTE = "***** ORDEN FINDIXI PICKUP *****";
 
 function normalizeName(value: string) {
   return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -715,6 +716,7 @@ async function handler(req: Request): Promise<Response> {
       const taxRates = toCheckoutTaxRates(resolveTaxRates(item.idProducto));
       const modsNote = formatModifierNote(mods);
       const noteParts: string[] = [];
+      if (mode === "pickup") noteParts.push(PICKUP_ORDER_NOTE);
       if (modsNote) noteParts.push(modsNote);
       if (item.nota) noteParts.push(`Nota: ${item.nota}`);
       const note = noteParts.length ? noteParts.join("\n") : undefined;
@@ -807,6 +809,7 @@ async function handler(req: Request): Promise<Response> {
 
   let checkoutUrl: string | null = null;
   let checkoutSessionId: string | null = null;
+  let orderTypeWarning: string | null = null;
   if (mode === "pickup") {
     try {
       const checkoutPayload: Record<string, unknown> = {
@@ -831,18 +834,19 @@ async function handler(req: Request): Promise<Response> {
       checkoutSessionId = checkoutResp?.checkoutSessionId ?? checkoutResp?.id ?? null;
       cloverOrderId = checkoutResp?.orderId ?? checkoutResp?.order?.id ?? cloverOrderId;
 
-      if (pickupOrderType?.id && cloverOrderId) {
+      if (cloverOrderId) {
         try {
+          const updateBody: Record<string, unknown> = { note: PICKUP_ORDER_NOTE };
+          if (pickupOrderType?.id) {
+            updateBody.orderType = { id: pickupOrderType.id };
+          }
           await fetchCloverWithAutoRefresh(`/v3/merchants/${merchantId}/orders/${cloverOrderId}`, {
             method: "POST",
-            body: { orderType: { id: pickupOrderType.id } },
+            body: updateBody,
           });
         } catch (err) {
-          console.error("No se pudo asignar orderType Pickup", err);
-          return jsonResponse({
-            error: "No se pudo configurar Pickup en Clover. Reintenta Sincronizar o reconecta Clover.",
-            details: err instanceof Error ? err.message : String(err),
-          }, 502);
+          console.warn("No se pudo actualizar la orden con Pickup/nota", err);
+          orderTypeWarning = err instanceof Error ? err.message : String(err);
         }
       }
     } catch (err) {
@@ -949,6 +953,7 @@ async function handler(req: Request): Promise<Response> {
     clover_order_id: cloverOrderId,
     checkout_session_id: checkoutSessionId,
     order_link_token: orderLinkToken,
+    order_type_warning: orderTypeWarning,
   });
 }
 
