@@ -1128,7 +1128,7 @@ function renderListaCupones(lista, contenedor, mensajeEl, { esRedimido }) {
       mensajeEl.textContent = mensaje;
       mensajeEl.classList.remove('hidden');
     } else {
-      contenedor.innerHTML = `<p class="text-sm text-gray-500 text-center">${mensaje}</p>`;
+      contenedor.innerHTML = `<p class="text-sm font-medium text-gray-500 text-center">${mensaje}</p>`;
     }
     return;
   }
@@ -1165,14 +1165,14 @@ function renderListaCupones(lista, contenedor, mensajeEl, { esRedimido }) {
     textos.className = 'flex-1 text-left';
 
     const municipioTexto = registro.comercioMunicipioNombre
-      ? `<p class="text-xs text-gray-500">${registro.comercioMunicipioNombre}</p>`
+      ? `<p class="text-sm font-medium text-gray-500">${registro.comercioMunicipioNombre}</p>`
       : '';
     const categoriasTexto = registro.categorias?.length
-      ? `<p class="text-xs text-gray-400 mt-1">${registro.categorias.join(', ')}</p>`
+      ? `<p class="text-sm font-medium text-gray-400 mt-1">${registro.categorias.join(', ')}</p>`
       : '';
 
     textos.innerHTML = `
-      <p class="text-sm font-semibold text-gray-800">${registro.comercioNombre || 'Comercio'}</p>
+      <p class="text-base font-medium text-gray-800">${registro.comercioNombre || 'Comercio'}</p>
       ${municipioTexto}
       ${categoriasTexto}
     `;
@@ -1197,13 +1197,13 @@ function renderListaCupones(lista, contenedor, mensajeEl, { esRedimido }) {
       ? new Date(registro.cupon.fechaFin).toLocaleDateString('es-PR')
       : '--';
     const descripcionTexto = registro.cupon?.descripcion
-      ? `<p class="text-sm text-gray-600 mt-2 leading-snug">${registro.cupon.descripcion}</p>`
+      ? `<p class="text-sm font-medium text-gray-600 mt-2 leading-snug">${registro.cupon.descripcion}</p>`
       : '';
 
     textosCupon.innerHTML = `
       <p class="text-lg font-extrabold text-red-600">${registro.cupon?.titulo || 'Cupón'}</p>
       ${descripcionTexto}
-      <p class="text-xs text-gray-500 mt-2">Vence: ${venceTexto}</p>
+      <p class="text-sm font-medium text-gray-500 mt-2">Vence: ${venceTexto}</p>
     `;
 
     const imagenWrapper = document.createElement('div');
@@ -1303,10 +1303,21 @@ function renderCuponesModal(mensaje = '') {
 function actualizarTabsVisuales() {
   cuponesTabs?.forEach((btn) => {
     const esActivo = btn.dataset.cuponTab === cuponesTabActiva;
-    btn.classList.toggle('text-blue-600', esActivo);
-    btn.classList.toggle('border-blue-600', esActivo);
-    btn.classList.toggle('border-transparent', !esActivo);
+    btn.classList.toggle('bg-white', esActivo);
+    btn.classList.toggle('shadow-sm', esActivo);
+    btn.classList.toggle('border-gray-200', esActivo);
+    btn.classList.toggle('text-slate-900', esActivo);
+    btn.classList.toggle('bg-transparent', !esActivo);
     btn.classList.toggle('text-gray-500', !esActivo);
+    btn.classList.toggle('border-transparent', !esActivo);
+
+    const badge = btn.querySelector('span');
+    if (badge) {
+      badge.classList.toggle('bg-blue-100', esActivo);
+      badge.classList.toggle('text-blue-700', esActivo);
+      badge.classList.toggle('bg-gray-100', !esActivo);
+      badge.classList.toggle('text-gray-600', !esActivo);
+    }
   });
 
   cuponesPanels?.forEach((panel) => {

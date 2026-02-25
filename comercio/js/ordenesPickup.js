@@ -35,7 +35,7 @@ let currentItemsByOrder = new Map();
 let currentFilter = 'all';
 
 let audioCtx = null;
-let soundEnabled = false;
+let soundEnabled = true;
 let alarmInterval = null;
 
 function setLoading(isLoading) {
@@ -400,17 +400,34 @@ function updateLiveVisuals() {
   else if (activeWorstRank === 1) applyAlertClasses(boxActivas, 'yellow', stageAlerts.preparing.blink || stageAlerts.ready.blink);
 }
 
-async function unlockSound() {
+async function unlockSound(silent = false) {
   try {
     if (!audioCtx) audioCtx = new AudioContext();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
     soundEnabled = true;
-    btnEnableSound.innerHTML = '<i class="fa-solid fa-volume-high"></i> Sonido activo';
+    if (btnEnableSound) {
+      btnEnableSound.innerHTML = '<i class="fa-solid fa-volume-high"></i> Sonido activo';
+    }
     updateAlarmByOrders();
   } catch (err) {
     console.warn('No se pudo activar audio', err);
-    alert('No se pudo activar el sonido en este navegador.');
+    if (!silent) {
+      alert('No se pudo activar el sonido en este navegador.');
+    }
   }
+}
+
+function setupAudioAutoUnlock() {
+  const tryUnlock = () => unlockSound(true);
+  const options = { passive: true };
+
+  window.addEventListener('pointerdown', tryUnlock, options);
+  window.addEventListener('touchstart', tryUnlock, options);
+  window.addEventListener('keydown', tryUnlock);
+  window.addEventListener('focus', tryUnlock);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') tryUnlock();
+  });
 }
 
 async function validateAccessOrRedirect() {
@@ -684,6 +701,8 @@ async function init() {
   const access = await validateAccessOrRedirect();
   if (!access) return;
 
+  setupAudioAutoUnlock();
+  await unlockSound(true);
   bindEvents();
   await loadOrders();
   subscribeRealtime();

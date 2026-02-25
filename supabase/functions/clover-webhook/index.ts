@@ -104,6 +104,22 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function isFailedPaymentStatus(statusRaw: unknown) {
+  const status = String(statusRaw ?? "").toLowerCase();
+  if (!status) return false;
+  return (
+    status.includes("declin") ||
+    status.includes("fail") ||
+    status.includes("cancel") ||
+    status.includes("void") ||
+    status.includes("error")
+  );
+}
+
+function extractPaymentsArray(order: any) {
+  return toArray(order?.payments?.elements ?? order?.payments ?? []);
+}
+
 async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
   const updatePayload = {
     status: "paid",
@@ -652,24 +668,72 @@ async function handler(req: Request): Promise<Response> {
   }
 
   const paymentId = normalizeObjectId(objectId);
-  let orderId: string | null = null;
 
-  const eventTypeLower = String(eventType ?? merchantEvents[0]?.eventType ?? "").toLowerCase();
-  if (eventTypeLower.includes("order")) {
-    orderId = paymentId;
-  } else if (paymentId) {
+  let targetOrderId: string | null = null;
+  let paymentLookupStatus: string | null = null;
+  let resolvedFromPayment = false;
+
+  if (paymentId) {
     try {
       const payment = await fetchCloverWithAutoRefresh(
         `/v3/merchants/${fallbackMerchantId}/payments/${paymentId}?expand=order`,
       );
-      orderId = payment?.order?.id ?? payment?.orderId ?? payment?.order_id ?? null;
+      paymentLookupStatus = String(
+        payment?.result ?? payment?.status ?? payment?.state ?? payment?.paymentResult ?? "",
+      );
+
+      if (isFailedPaymentStatus(paymentLookupStatus)) {
+        return jsonResponse({
+          ok: true,
+          ignored: true,
+          reason: "Payment not successful",
+          paymentId,
+          paymentStatus: paymentLookupStatus,
+        });
+      }
+
+      targetOrderId = payment?.order?.id ?? payment?.orderId ?? payment?.order_id ?? null;
+      if (targetOrderId) resolvedFromPayment = true;
     } catch (err) {
-      if (err instanceof CloverApiError && err.status === 404) {
-        // En algunos webhooks, objectId es realmente orderId.
-        orderId = paymentId;
-      } else {
+      if (!(err instanceof CloverApiError && err.status === 404)) {
         console.warn("[clover-webhook] No se pudo leer payment", err);
       }
+    }
+  }
+
+  // Si no tenemos orderId por payment, intentamos tratar objectId como orderId,
+  // pero SOLO si la orden ya tiene al menos un pago registrado en Clover.
+  if (!targetOrderId && paymentId) {
+    try {
+      const order = await fetchCloverWithAutoRefresh(
+        `/v3/merchants/${fallbackMerchantId}/orders/${paymentId}?expand=payments`,
+      );
+      const orderIdCandidate = order?.id ?? paymentId;
+      const payments = extractPaymentsArray(order);
+      if (payments.length > 0) {
+        targetOrderId = orderIdCandidate;
+      } else {
+        return jsonResponse({
+          ok: true,
+          ignored: true,
+          reason: "Order has no payments yet",
+          orderId: orderIdCandidate,
+          paymentId,
+          eventType: eventType ?? merchantEvents[0]?.eventType ?? null,
+        });
+      }
+    } catch (err) {
+      if (err instanceof CloverApiError && err.status === 404) {
+        return jsonResponse({ ok: true, ignored: true, reason: "Object not found in Clover", paymentId });
+      }
+      console.warn("[clover-webhook] No se pudo leer order para fallback de payment/order id", err);
+      return jsonResponse({
+        ok: true,
+        ignored: true,
+        reason: "Cannot resolve paid order",
+        paymentId,
+        eventType: eventType ?? merchantEvents[0]?.eventType ?? null,
+      });
     }
   }
 
@@ -687,8 +751,6 @@ async function handler(req: Request): Promise<Response> {
     return jsonResponse({ ok: true, ignored: true, reason: "No pickup order type" });
   }
 
-  // Si no obtuvimos orderId desde payment, intentamos usar el objectId como orderId.
-  const targetOrderId = orderId ?? paymentId;
   if (!targetOrderId) {
     return jsonResponse({ ok: true, ignored: true, reason: "No orderId" });
   }
@@ -716,8 +778,9 @@ async function handler(req: Request): Promise<Response> {
     paymentId,
     orderId: targetOrderId,
     orderTypeId: pickupOrderType.id,
-    usedFallback: !orderId,
+    usedFallback: !resolvedFromPayment,
     eventType: eventType ?? merchantEvents[0]?.eventType ?? null,
+    paymentStatus: paymentLookupStatus,
     localUpdate,
   });
 }
