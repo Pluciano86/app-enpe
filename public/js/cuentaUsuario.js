@@ -51,6 +51,7 @@ const imagenActual = document.getElementById('imagenActual');
 const inputTelefono = document.getElementById('inputTelefono');
 const inputMunicipio = document.getElementById('inputMunicipio');
 
+const btnPedidos = document.getElementById('btnPedidos');
 const btnFavoritos = document.getElementById('btnFavoritos');
 const btnCerrarFavoritos = document.getElementById('btnCerrarFavoritos');
 const modalFavoritos = document.getElementById('modalFavoritos');
@@ -2073,6 +2074,10 @@ async function init() {
 btnFavoritos?.addEventListener('click', async () => {
   modalFavoritos?.classList.remove('hidden');
   await cargarYMostrarFavoritos();
+});
+
+btnPedidos?.addEventListener('click', () => {
+  window.location.href = `${basePath}/pedidos.html`;
 });
 
 btnCerrarFavoritos?.addEventListener('click', () => modalFavoritos?.classList.add('hidden'));

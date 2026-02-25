@@ -118,13 +118,14 @@ async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
       .eq(idCol, idComercio)
       .eq("clover_order_id", cloverOrderId)
       .in("status", activeLikeStatuses)
-      .select("id")
-      .limit(1);
+      .select("id");
     return resp;
   };
 
   let resp = await tryDirectUpdate("idcomercio");
-  if (!resp.error && (resp.data?.length ?? 0) > 0) return;
+  if (!resp.error && (resp.data?.length ?? 0) > 0) {
+    return { updated: true, method: "direct:idcomercio", localOrderId: resp.data?.[0]?.id ?? null };
+  }
 
   const maybeMissingSnakeCase = (resp.error?.message || "").toLowerCase().includes("idcomercio") &&
     (resp.error?.message || "").toLowerCase().includes("does not exist");
@@ -133,7 +134,9 @@ async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
   }
 
   resp = await tryDirectUpdate("idComercio");
-  if (!resp.error && (resp.data?.length ?? 0) > 0) return;
+  if (!resp.error && (resp.data?.length ?? 0) > 0) {
+    return { updated: true, method: "direct:idComercio", localOrderId: resp.data?.[0]?.id ?? null };
+  }
 
   if (resp.error) {
     console.warn("[clover-webhook] No se pudo actualizar orden local (directo camelCase)", resp.error);
@@ -162,7 +165,7 @@ async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
 
   if (recent.error) {
     console.warn("[clover-webhook] No se pudieron leer ordenes recientes para fallback", recent.error);
-    return;
+    return { updated: false, method: "fallback:error_recent", localOrderId: null };
   }
 
   const now = Date.now();
@@ -178,7 +181,7 @@ async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
     console.warn("[clover-webhook] Fallback sin candidatos; no se actualiza estado local", {
       cloverOrderId,
     });
-    return;
+    return { updated: false, method: "fallback:no_candidates", localOrderId: null };
   }
 
   if (candidates.length > 1) {
@@ -190,25 +193,43 @@ async function setLocalOrderPaid(idComercio: number, cloverOrderId: string) {
   }
 
   const targetLocalId = candidates[0].id;
-  const patchPayload = {
-    ...updatePayload,
-    clover_order_id: cloverOrderId,
-  };
   const patched = await supabase
     .from("ordenes")
-    .update(patchPayload)
+    .update(updatePayload)
     .eq("id", targetLocalId)
-    .select("id")
-    .limit(1);
+    .select("id");
 
   if (patched.error) {
     console.warn("[clover-webhook] No se pudo actualizar fallback de orden local", patched.error);
-    return;
+    return {
+      updated: false,
+      method: "fallback:patch_error",
+      localOrderId: targetLocalId,
+      error: patched.error?.message ?? null,
+    };
   }
+
+  // Intento best-effort de enlazar clover_order_id (si no viola constraints).
+  const bindCloverId = await supabase
+    .from("ordenes")
+    .update({ clover_order_id: cloverOrderId })
+    .eq("id", targetLocalId)
+    .is("clover_order_id", null)
+    .select("id");
+  if (bindCloverId.error) {
+    console.warn("[clover-webhook] No se pudo enlazar clover_order_id en fallback", bindCloverId.error);
+  }
+
   console.log("[clover-webhook] Orden local actualizada por fallback", {
     localOrderId: targetLocalId,
     cloverOrderId,
   });
+  return {
+    updated: true,
+    method: "fallback:recent_pending",
+    localOrderId: targetLocalId,
+    cloverIdBound: !bindCloverId.error,
+  };
 }
 
 class CloverApiError extends Error {
@@ -687,7 +708,7 @@ async function handler(req: Request): Promise<Response> {
     }, 502);
   }
 
-  await setLocalOrderPaid(Number(conn.idComercio), targetOrderId);
+  const localUpdate = await setLocalOrderPaid(Number(conn.idComercio), targetOrderId);
 
   return jsonResponse({
     ok: true,
@@ -697,6 +718,7 @@ async function handler(req: Request): Promise<Response> {
     orderTypeId: pickupOrderType.id,
     usedFallback: !orderId,
     eventType: eventType ?? merchantEvents[0]?.eventType ?? null,
+    localUpdate,
   });
 }
 

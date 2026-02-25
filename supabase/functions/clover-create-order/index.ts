@@ -142,6 +142,29 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function getBearerToken(req: Request) {
+  const authHeader = req.headers.get("authorization") ?? "";
+  if (!authHeader) return "";
+  if (authHeader.toLowerCase().startsWith("bearer ")) return authHeader.slice(7).trim();
+  return authHeader.trim();
+}
+
+async function getAuthUserId(req: Request): Promise<string | null> {
+  const token = getBearerToken(req);
+  if (!token) return null;
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error) {
+      console.warn("[clover-create-order] No se pudo resolver auth user:", error.message);
+      return null;
+    }
+    return data?.user?.id ?? null;
+  } catch (err) {
+    console.warn("[clover-create-order] Error resolviendo auth user:", err);
+    return null;
+  }
+}
+
 function needsReconnectResponse(message = "Clover token expirado, reconecta la cuenta") {
   return jsonResponse({ error: message, needs_reconnect: true }, 401);
 }
@@ -267,6 +290,7 @@ async function handler(req: Request): Promise<Response> {
   const mesa = typeof mesaVal === "string" || typeof mesaVal === "number" ? String(mesaVal).trim() : null;
   const sourceRaw = String(body?.source ?? (mode === "mesa" ? "qr" : "app")).toLowerCase();
   const source = sourceRaw === "qr" || sourceRaw === "app" ? sourceRaw : (mode === "mesa" ? "qr" : "app");
+  const authUserId = await getAuthUserId(req);
   const customer = body?.customer && typeof body.customer === "object" ? body.customer : null;
   const customerName = customer?.name || [customer?.firstName, customer?.lastName].filter(Boolean).join(" ").trim();
   const customerEmail = typeof customer?.email === "string" ? customer.email.trim() : null;
@@ -892,6 +916,7 @@ async function handler(req: Request): Promise<Response> {
     if (orderCols.has("customer_email")) orderInsert.customer_email = customerEmail;
     if (orderCols.has("customer_phone")) orderInsert.customer_phone = customerPhone;
     if (orderCols.has("customer_name")) orderInsert.customer_name = customerName || null;
+    if (orderCols.has("customer_user_id")) orderInsert.customer_user_id = authUserId;
     if (orderCols.has("order_link_token")) orderInsert.order_link_token = orderLinkToken;
     if (orderCols.has("order_link_expires_at")) orderInsert.order_link_expires_at = null;
   }

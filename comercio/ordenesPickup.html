@@ -13,6 +13,43 @@
     .ticket-border { border-left: 6px solid #ef4444; }
     .ticket-border-warm { border-left: 6px solid #f59e0b; }
     .ticket-border-cool { border-left: 6px solid #22c55e; }
+    .alert-yellow {
+      background: #fffbeb;
+      border-color: #f59e0b !important;
+    }
+    .alert-red {
+      background: #fef2f2;
+      border-color: #ef4444 !important;
+    }
+    .alert-green {
+      background: #ecfdf5;
+      border-color: #22c55e !important;
+    }
+    .blink-yellow {
+      animation: blinkYellow 1s linear infinite;
+    }
+    .blink-red {
+      animation: blinkRed 0.9s linear infinite;
+    }
+    .blink-green {
+      animation: blinkGreen 1s linear infinite;
+    }
+    @keyframes blinkYellow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
+      50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.15); }
+    }
+    @keyframes blinkRed {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+      50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.18); }
+    }
+    @keyframes blinkGreen {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+      50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.18); }
+    }
+    .filter-active {
+      border-color: #0f172a !important;
+      box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.18);
+    }
   </style>
 </head>
 <body class="min-h-screen bg-gray-100 text-gray-900">
@@ -46,9 +83,6 @@
           <button id="btnEnableSound" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
             <i class="fa-solid fa-volume-high"></i> Activar sonido
           </button>
-          <button id="btnMuteAlarm" class="px-3 py-2 rounded-lg bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 hidden">
-            <i class="fa-solid fa-bell-slash"></i> Silenciar alerta
-          </button>
           <button id="btnRefreshOrders" class="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm font-semibold hover:bg-slate-900">
             <i class="fa-solid fa-rotate"></i> Refrescar
           </button>
@@ -59,20 +93,20 @@
         Orden nueva recibida.
       </div>
       <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-        <div class="rounded-xl border border-gray-200 p-2">
+        <div id="boxActivas" data-filter="all" class="rounded-xl border border-gray-200 p-2 cursor-pointer">
           <p class="text-xs text-gray-500">Activas</p>
           <p id="statActivas" class="text-xl font-semibold">0</p>
         </div>
-        <div class="rounded-xl border border-gray-200 p-2">
-          <p class="text-xs text-gray-500">Nuevas</p>
+        <div id="boxEnviadas" data-filter="sent" class="rounded-xl border border-gray-200 p-2 cursor-pointer">
+          <p class="text-xs text-gray-500">Enviadas</p>
           <p id="statNuevas" class="text-xl font-semibold text-red-600">0</p>
         </div>
-        <div class="rounded-xl border border-gray-200 p-2">
+        <div id="boxPreparando" data-filter="preparing" class="rounded-xl border border-gray-200 p-2 cursor-pointer">
           <p class="text-xs text-gray-500">En preparación</p>
           <p id="statPreparando" class="text-xl font-semibold text-amber-600">0</p>
         </div>
-        <div class="rounded-xl border border-gray-200 p-2">
-          <p class="text-xs text-gray-500">Listas</p>
+        <div id="boxTerminadas" data-filter="ready" class="rounded-xl border border-gray-200 p-2 cursor-pointer">
+          <p class="text-xs text-gray-500">Terminadas</p>
           <p id="statListas" class="text-xl font-semibold text-emerald-600">0</p>
         </div>
       </div>

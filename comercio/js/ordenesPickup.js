@@ -1,44 +1,41 @@
 import { supabase } from '../shared/supabaseClient.js';
 
-const ACTIVE_STATUS = new Set(['confirmed', 'preparing', 'ready', 'paid']);
-const STATUS_LABELS = {
-  pending: 'Recibida',
-  sent: 'Recibida',
-  open: 'Recibida',
-  confirmed: 'Confirmada',
-  preparing: 'En preparación',
-  ready: 'Lista para recoger',
-  paid: 'Pagada',
-};
+const SENT_STATUSES = new Set(['paid', 'sent', 'confirmed']);
+const ACTIVE_STATUSES = new Set(['paid', 'sent', 'confirmed', 'preparing', 'ready']);
 
 const tituloComercio = document.getElementById('tituloComercio');
 const btnEnableSound = document.getElementById('btnEnableSound');
-const btnMuteAlarm = document.getElementById('btnMuteAlarm');
 const btnRefreshOrders = document.getElementById('btnRefreshOrders');
 const alarmBanner = document.getElementById('alarmBanner');
 const ordersContainer = document.getElementById('ordersContainer');
 const ordersEmpty = document.getElementById('ordersEmpty');
 const ordersLoading = document.getElementById('ordersLoading');
+
 const statActivas = document.getElementById('statActivas');
 const statNuevas = document.getElementById('statNuevas');
 const statPreparando = document.getElementById('statPreparando');
 const statListas = document.getElementById('statListas');
 
+const boxActivas = document.getElementById('boxActivas');
+const boxEnviadas = document.getElementById('boxEnviadas');
+const boxPreparando = document.getElementById('boxPreparando');
+const boxTerminadas = document.getElementById('boxTerminadas');
+
 const params = new URLSearchParams(window.location.search);
 const idComercio = Number(params.get('id') || params.get('idComercio') || 0);
 
 let realtimeChannel = null;
-let reloadTimer = null;
-let pollTimer = null;
 let timerInterval = null;
+let pollTimer = null;
+let reloadTimer = null;
+let actionInFlight = false;
 
-let hasLoadedOnce = false;
-let knownOrderIds = new Set();
-let newOrdersCount = 0;
+let currentOrders = [];
+let currentItemsByOrder = new Map();
+let currentFilter = 'all';
 
 let audioCtx = null;
 let soundEnabled = false;
-let soundMuted = false;
 let alarmInterval = null;
 
 function setLoading(isLoading) {
@@ -47,6 +44,13 @@ function setLoading(isLoading) {
 
 function setEmpty(isEmpty) {
   ordersEmpty?.classList.toggle('hidden', !isEmpty);
+}
+
+function getFilterLabel(filter) {
+  if (filter === 'sent') return 'enviadas';
+  if (filter === 'preparing') return 'en preparación';
+  if (filter === 'ready') return 'terminadas';
+  return 'activas';
 }
 
 function formatMoney(value) {
@@ -61,40 +65,93 @@ function formatDate(value) {
   return date.toLocaleString('es-PR', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+function elapsedSeconds(createdAt) {
+  const created = createdAt ? Date.parse(createdAt) : NaN;
+  if (!Number.isFinite(created)) return 0;
+  return Math.max(0, Math.floor((Date.now() - created) / 1000));
+}
+
 function formatElapsed(createdAt) {
-  const created = createdAt ? new Date(createdAt).getTime() : NaN;
-  if (!Number.isFinite(created)) return '00:00:00';
-  const diff = Math.max(0, Math.floor((Date.now() - created) / 1000));
-  const h = String(Math.floor(diff / 3600)).padStart(2, '0');
-  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-  const s = String(diff % 60).padStart(2, '0');
+  const total = elapsedSeconds(createdAt);
+  const h = String(Math.floor(total / 3600)).padStart(2, '0');
+  const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const s = String(total % 60).padStart(2, '0');
   return `${h}:${m}:${s}`;
 }
 
-function waitClass(createdAt) {
-  const created = createdAt ? new Date(createdAt).getTime() : NaN;
-  if (!Number.isFinite(created)) return 'text-gray-700';
-  const minutes = (Date.now() - created) / 60000;
-  if (minutes >= 25) return 'text-red-600';
-  if (minutes >= 12) return 'text-amber-600';
-  return 'text-emerald-600';
-}
-
-function statusClass(status) {
-  if (status === 'preparing') return 'ticket-border-warm';
-  if (status === 'ready' || status === 'paid') return 'ticket-border-cool';
-  return 'ticket-border';
-}
-
-function isActive(status) {
+function getStage(status) {
   const s = String(status || '').toLowerCase();
-  if (!s) return true;
-  return ACTIVE_STATUS.has(s);
+  if (s === 'ready') return 'ready';
+  if (s === 'preparing') return 'preparing';
+  if (s === 'delivered') return 'delivered';
+  if (SENT_STATUSES.has(s)) return 'sent';
+  return null;
 }
 
-function getStatusLabel(status) {
+function getStatusLabel(stage) {
+  if (stage === 'ready') return 'Terminada';
+  if (stage === 'preparing') return 'En preparación';
+  if (stage === 'sent') return 'Enviada';
+  if (stage === 'delivered') return 'Entregada';
+  return 'En proceso';
+}
+
+function getNextAction(stage) {
+  if (stage === 'sent') {
+    return {
+      nextStatus: 'preparing',
+      label: 'Orden Aceptada',
+      btnClass: 'bg-emerald-600 hover:bg-emerald-700',
+    };
+  }
+  if (stage === 'preparing') {
+    return {
+      nextStatus: 'ready',
+      label: 'Terminada',
+      btnClass: 'bg-amber-500 hover:bg-amber-600',
+    };
+  }
+  if (stage === 'ready') {
+    return {
+      nextStatus: 'delivered',
+      label: 'Orden Entregada',
+      btnClass: 'bg-slate-800 hover:bg-slate-900',
+    };
+  }
+  return null;
+}
+
+function getAlertConfig(stage, createdAt, updatedAt) {
+  if (stage === 'preparing') {
+    const mins = elapsedSeconds(createdAt) / 60;
+    if (mins >= 55) return { level: 'red', blink: true };
+    if (mins >= 30) return { level: 'yellow', blink: true };
+    return { level: null, blink: false };
+  }
+
+  if (stage === 'ready') {
+    const mins = elapsedSeconds(updatedAt || createdAt) / 60;
+    if (mins >= 20) return { level: 'green', blink: true };
+    return { level: null, blink: false };
+  }
+
+  return { level: null, blink: false };
+}
+
+function applyAlertClasses(el, level, blink) {
+  if (!el) return;
+  el.classList.remove('alert-yellow', 'alert-red', 'alert-green', 'blink-yellow', 'blink-red', 'blink-green');
+  if (level === 'yellow') el.classList.add('alert-yellow');
+  if (level === 'red') el.classList.add('alert-red');
+  if (level === 'green') el.classList.add('alert-green');
+  if (blink && level === 'yellow') el.classList.add('blink-yellow');
+  if (blink && level === 'red') el.classList.add('blink-red');
+  if (blink && level === 'green') el.classList.add('blink-green');
+}
+
+function isActiveStatus(status) {
   const s = String(status || '').toLowerCase();
-  return STATUS_LABELS[s] || 'En proceso';
+  return ACTIVE_STATUSES.has(s);
 }
 
 function parseOrderModifiers(raw) {
@@ -140,22 +197,38 @@ function renderOrderItem(item) {
 function renderOrders(orders, itemsByOrder) {
   ordersContainer.innerHTML = '';
   if (!orders.length) {
+    if (ordersEmpty) ordersEmpty.textContent = `No hay órdenes ${getFilterLabel(currentFilter)}.`;
     setEmpty(true);
     return;
   }
   setEmpty(false);
 
   orders.forEach((order) => {
-    const status = String(order.status || 'pending').toLowerCase();
-    const label = getStatusLabel(status);
+    const stage = getStage(order.status) || 'sent';
+    const label = getStatusLabel(stage);
+    const action = getNextAction(stage);
     const items = itemsByOrder.get(order.id) || [];
     const totalFromItems = items.reduce((acc, i) => acc + i.lineTotal, 0);
     const total = Number(order.total);
     const totalFinal = Number.isFinite(total) ? total : totalFromItems;
     const created = formatDate(order.created_at);
 
+    const actionHtml = action
+      ? `<button type="button"
+            data-action="change-status"
+            data-order-id="${order.id}"
+            data-next-status="${action.nextStatus}"
+            class="px-4 py-2 rounded-lg text-white text-sm font-semibold ${action.btnClass}">
+            ${action.label}
+         </button>`
+      : '';
+
     const card = document.createElement('article');
-    card.className = `bg-white border border-gray-200 rounded-2xl shadow-sm p-4 ${statusClass(status)}`;
+    card.className = 'bg-white border border-gray-200 rounded-2xl shadow-sm p-4 ticket-border';
+    card.dataset.orderId = String(order.id);
+    card.dataset.stage = stage;
+    card.dataset.createdAt = order.created_at || '';
+    card.dataset.updatedAt = order.updated_at || '';
     card.innerHTML = `
       <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
@@ -165,9 +238,9 @@ function renderOrders(orders, itemsByOrder) {
           <p class="text-xs text-gray-500">${order.clover_order_id ? `Clover: ${order.clover_order_id}` : 'Clover ID pendiente'}</p>
         </div>
         <div class="text-left sm:text-right">
-          <div class="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold">${label}</div>
-          <div class="mt-2 text-xs text-gray-500">Tiempo abierto</div>
-          <div class="text-2xl font-bold ${waitClass(order.created_at)}" data-elapsed="${order.created_at || ''}">${formatElapsed(order.created_at)}</div>
+          <div class="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-semibold" data-status-chip>${label}</div>
+          <div class="mt-2 text-xs text-gray-500">Tiempo activo</div>
+          <div class="text-2xl font-bold text-gray-800" data-elapsed>${formatElapsed(order.created_at)}</div>
         </div>
       </div>
       <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-600">
@@ -183,31 +256,33 @@ function renderOrders(orders, itemsByOrder) {
       <div class="mt-3">
         ${items.length ? items.map(renderOrderItem).join('') : '<div class="text-sm text-gray-500">Sin items cargados.</div>'}
       </div>
-      <div class="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-        <div class="text-sm font-semibold text-gray-700">Total</div>
-        <div class="text-xl font-bold text-gray-900">${formatMoney(totalFinal)}</div>
+      <div class="mt-3 pt-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <div class="text-sm font-semibold text-gray-700">Total</div>
+          <div class="text-xl font-bold text-gray-900">${formatMoney(totalFinal)}</div>
+        </div>
+        <div>${actionHtml}</div>
       </div>
     `;
     ordersContainer.appendChild(card);
   });
 }
 
-function updateElapsedTimers() {
-  document.querySelectorAll('[data-elapsed]').forEach((el) => {
-    const createdAt = el.getAttribute('data-elapsed');
-    el.textContent = formatElapsed(createdAt);
-    el.classList.remove('text-gray-700', 'text-emerald-600', 'text-amber-600', 'text-red-600');
-    el.classList.add(waitClass(createdAt));
-  });
+function stopAlarm() {
+  if (alarmInterval) {
+    clearInterval(alarmInterval);
+    alarmInterval = null;
+  }
+  alarmBanner?.classList.add('hidden');
 }
 
-function beep(duration = 220, frequency = 900) {
+function beep(duration = 220, frequency = 920) {
   if (!audioCtx) return;
   const oscillator = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
   oscillator.type = 'square';
   oscillator.frequency.value = frequency;
-  gainNode.gain.value = 0.06;
+  gainNode.gain.value = 0.08;
   oscillator.connect(gainNode);
   gainNode.connect(audioCtx.destination);
   oscillator.start();
@@ -215,33 +290,114 @@ function beep(duration = 220, frequency = 900) {
 }
 
 function playAlarmPulse() {
-  beep(180, 960);
-  setTimeout(() => beep(180, 760), 230);
+  beep(200, 980);
+  setTimeout(() => beep(200, 760), 240);
 }
 
-function startAlarm(message) {
-  if (message && alarmBanner) {
-    alarmBanner.textContent = message;
-  }
-  alarmBanner?.classList.remove('hidden');
-  btnMuteAlarm?.classList.remove('hidden');
-  if (!soundEnabled || soundMuted) return;
+function startAlarmLoop() {
   if (alarmInterval) return;
   playAlarmPulse();
   alarmInterval = setInterval(playAlarmPulse, 1800);
 }
 
-function stopAlarm(resetCount = false) {
-  if (alarmInterval) {
-    clearInterval(alarmInterval);
-    alarmInterval = null;
+function updateAlarmByOrders() {
+  const sentCount = currentOrders.filter((o) => getStage(o.status) === 'sent').length;
+  if (sentCount > 0) {
+    alarmBanner.textContent = `${sentCount} orden(es) enviada(s) sin aceptar.`;
+    alarmBanner.classList.remove('hidden');
+    if (soundEnabled) startAlarmLoop();
+  } else {
+    stopAlarm();
   }
-  if (resetCount) {
-    newOrdersCount = 0;
-    if (statNuevas) statNuevas.textContent = '0';
-    alarmBanner?.classList.add('hidden');
-    btnMuteAlarm?.classList.add('hidden');
-  }
+}
+
+function resetBoxStyles() {
+  [boxActivas, boxEnviadas, boxPreparando, boxTerminadas].forEach((box) => {
+    if (!box) return;
+    box.classList.remove('alert-yellow', 'alert-red', 'alert-green', 'blink-yellow', 'blink-red', 'blink-green');
+  });
+}
+
+function applyActiveFilterBox() {
+  [boxActivas, boxEnviadas, boxPreparando, boxTerminadas].forEach((box) => {
+    if (!box) return;
+    const boxFilter = box.dataset.filter || 'all';
+    box.classList.toggle('filter-active', boxFilter === currentFilter);
+  });
+}
+
+function getFilteredOrders() {
+  if (currentFilter === 'all') return currentOrders;
+  return currentOrders.filter((order) => getStage(order.status) === currentFilter);
+}
+
+function getSeverityRank(level) {
+  if (level === 'red') return 2;
+  if (level === 'yellow') return 1;
+  return 0;
+}
+
+function updateLiveVisuals() {
+  const stageCounters = {
+    sent: 0,
+    preparing: 0,
+    ready: 0,
+  };
+  const stageAlerts = {
+    sent: { level: null, blink: false },
+    preparing: { level: null, blink: false },
+    ready: { level: null, blink: false },
+  };
+
+  document.querySelectorAll('[data-order-id]').forEach((card) => {
+    const stage = card.dataset.stage || 'sent';
+    const createdAt = card.dataset.createdAt || '';
+    const updatedAt = card.dataset.updatedAt || '';
+    const elapsedEl = card.querySelector('[data-elapsed]');
+    if (elapsedEl) elapsedEl.textContent = formatElapsed(createdAt);
+
+    const alertCfg = getAlertConfig(stage, createdAt, updatedAt);
+    const blink = Boolean(alertCfg.blink);
+
+    card.classList.remove('ticket-border', 'ticket-border-warm', 'ticket-border-cool');
+    if (stage === 'preparing') card.classList.add('ticket-border-warm');
+    else if (stage === 'ready') card.classList.add('ticket-border-cool');
+    else card.classList.add('ticket-border');
+
+    applyAlertClasses(card, alertCfg.level, blink);
+    if (elapsedEl) applyAlertClasses(elapsedEl, alertCfg.level, blink);
+  });
+
+  currentOrders.forEach((order) => {
+    const stage = getStage(order.status);
+    if (!stage || stage === 'delivered') return;
+    stageCounters[stage] = (stageCounters[stage] || 0) + 1;
+
+    const alertCfg = getAlertConfig(stage, order.created_at || '', order.updated_at || '');
+    if (stage === 'preparing') {
+      const prevRank = getSeverityRank(stageAlerts.preparing.level);
+      const nextRank = getSeverityRank(alertCfg.level);
+      if (nextRank > prevRank) stageAlerts.preparing.level = alertCfg.level;
+      stageAlerts.preparing.blink = stageAlerts.preparing.blink || Boolean(alertCfg.blink);
+    } else if (stage === 'ready') {
+      if (alertCfg.level) stageAlerts.ready.level = alertCfg.level;
+      stageAlerts.ready.blink = stageAlerts.ready.blink || Boolean(alertCfg.blink);
+    }
+  });
+
+  if (statActivas) statActivas.textContent = String((stageCounters.sent || 0) + (stageCounters.preparing || 0) + (stageCounters.ready || 0));
+  if (statNuevas) statNuevas.textContent = String(stageCounters.sent || 0);
+  if (statPreparando) statPreparando.textContent = String(stageCounters.preparing || 0);
+  if (statListas) statListas.textContent = String(stageCounters.ready || 0);
+
+  resetBoxStyles();
+  applyActiveFilterBox();
+  applyAlertClasses(boxPreparando, stageAlerts.preparing.level, stageAlerts.preparing.blink);
+  applyAlertClasses(boxTerminadas, stageAlerts.ready.level, stageAlerts.ready.blink);
+
+  const activeWorstRank = Math.max(getSeverityRank(stageAlerts.preparing.level), getSeverityRank(stageAlerts.ready.level));
+  if (activeWorstRank === 2) applyAlertClasses(boxActivas, 'red', stageAlerts.preparing.blink || stageAlerts.ready.blink);
+  else if (activeWorstRank === 1) applyAlertClasses(boxActivas, 'yellow', stageAlerts.preparing.blink || stageAlerts.ready.blink);
 }
 
 async function unlockSound() {
@@ -249,9 +405,8 @@ async function unlockSound() {
     if (!audioCtx) audioCtx = new AudioContext();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
     soundEnabled = true;
-    soundMuted = false;
     btnEnableSound.innerHTML = '<i class="fa-solid fa-volume-high"></i> Sonido activo';
-    playAlarmPulse();
+    updateAlarmByOrders();
   } catch (err) {
     console.warn('No se pudo activar audio', err);
     alert('No se pudo activar el sonido en este navegador.');
@@ -307,59 +462,50 @@ async function validateAccessOrRedirect() {
 }
 
 async function fetchOrdersForComercio() {
-  const fullSelect = 'id,idcomercio,clover_order_id,total,status,created_at,order_type,mesa,source,customer_name,customer_email,customer_phone';
-  const baseSelect = 'id,idcomercio,clover_order_id,total,status,created_at,order_type,mesa,source';
+  const buildSelect = ({ camelCaseId = false, withCustomers = true, withUpdatedAt = true }) => {
+    const idCol = camelCaseId ? 'idComercio' : 'idcomercio';
+    const cols = ['id', idCol, 'clover_order_id', 'total', 'status', 'created_at'];
+    if (withUpdatedAt) cols.push('updated_at');
+    cols.push('order_type', 'mesa', 'source');
+    if (withCustomers) cols.push('customer_name', 'customer_email', 'customer_phone');
+    return cols.join(',');
+  };
 
-  let resp = await supabase
-    .from('ordenes')
-    .select(fullSelect)
-    .eq('idcomercio', idComercio)
-    .order('created_at', { ascending: true });
-  if (!resp.error) return resp.data || [];
+  const attempts = [
+    { camelCaseId: false, withCustomers: true, withUpdatedAt: true },
+    { camelCaseId: false, withCustomers: false, withUpdatedAt: true },
+    { camelCaseId: false, withCustomers: true, withUpdatedAt: false },
+    { camelCaseId: false, withCustomers: false, withUpdatedAt: false },
+    { camelCaseId: true, withCustomers: true, withUpdatedAt: true },
+    { camelCaseId: true, withCustomers: false, withUpdatedAt: true },
+    { camelCaseId: true, withCustomers: true, withUpdatedAt: false },
+    { camelCaseId: true, withCustomers: false, withUpdatedAt: false },
+  ];
 
-  const msg = String(resp.error?.message || '').toLowerCase();
-  const missingIdComercio = msg.includes('column') && msg.includes('idcomercio') && msg.includes('does not exist');
-  const missingCustomerCols =
-    msg.includes('column') &&
-    (msg.includes('customer_name') || msg.includes('customer_email') || msg.includes('customer_phone')) &&
-    msg.includes('does not exist');
+  let lastError = null;
 
-  if (missingCustomerCols) {
-    resp = await supabase
+  for (const attempt of attempts) {
+    const idCol = attempt.camelCaseId ? 'idComercio' : 'idcomercio';
+    const resp = await supabase
       .from('ordenes')
-      .select(baseSelect)
-      .eq('idcomercio', idComercio)
+      .select(buildSelect(attempt))
+      .eq(idCol, idComercio)
+      .eq('order_type', 'pickup')
       .order('created_at', { ascending: true });
-    if (!resp.error) return resp.data || [];
+
+    if (!resp.error) {
+      return (resp.data || []).map((row) => ({
+        ...row,
+        idcomercio: row.idcomercio ?? row.idComercio ?? null,
+      }));
+    }
+
+    lastError = resp.error;
+    const msg = String(resp.error?.message || '').toLowerCase();
+    if (!(msg.includes('column') && msg.includes('does not exist'))) break;
   }
 
-  if (!missingIdComercio) {
-    throw resp.error;
-  }
-
-  resp = await supabase
-    .from('ordenes')
-    .select(fullSelect.replaceAll('idcomercio', 'idComercio'))
-    .eq('idComercio', idComercio)
-    .order('created_at', { ascending: true });
-
-  if (resp.error) {
-    const msg2 = String(resp.error?.message || '').toLowerCase();
-    const missingCustomerCols2 =
-      msg2.includes('column') &&
-      (msg2.includes('customer_name') || msg2.includes('customer_email') || msg2.includes('customer_phone')) &&
-      msg2.includes('does not exist');
-    if (!missingCustomerCols2) throw resp.error;
-
-    resp = await supabase
-      .from('ordenes')
-      .select(baseSelect.replaceAll('idcomercio', 'idComercio'))
-      .eq('idComercio', idComercio)
-      .order('created_at', { ascending: true });
-    if (resp.error) throw resp.error;
-  }
-
-  return (resp.data || []).map((row) => ({ ...row, idcomercio: row.idComercio }));
+  throw lastError || new Error('No se pudo cargar órdenes.');
 }
 
 async function fetchOrderItemsMap(orderIds) {
@@ -399,36 +545,71 @@ async function fetchOrderItemsMap(orderIds) {
   return itemsByOrder;
 }
 
-function updateStats(orders) {
-  const preparing = orders.filter((o) => String(o.status || '').toLowerCase() === 'preparing').length;
-  const ready = orders.filter((o) => String(o.status || '').toLowerCase() === 'ready').length;
-  if (statActivas) statActivas.textContent = String(orders.length);
-  if (statPreparando) statPreparando.textContent = String(preparing);
-  if (statListas) statListas.textContent = String(ready);
-  if (statNuevas) statNuevas.textContent = String(newOrdersCount);
+async function updateOrderStatus(orderId, nextStatus) {
+  const payload = { status: nextStatus, updated_at: new Date().toISOString() };
+  let resp = await supabase
+    .from('ordenes')
+    .update(payload)
+    .eq('id', orderId)
+    .eq('idcomercio', idComercio)
+    .eq('order_type', 'pickup')
+    .select('id,status')
+    .maybeSingle();
+
+  if (!resp.error) return true;
+
+  const msg = String(resp.error?.message || '').toLowerCase();
+  const missingSnakeCase = msg.includes('idcomercio') && msg.includes('does not exist');
+  if (!missingSnakeCase) {
+    if (msg.includes('updated_at') && msg.includes('does not exist')) {
+      const retry = await supabase
+        .from('ordenes')
+        .update({ status: nextStatus })
+        .eq('id', orderId)
+        .select('id,status')
+        .maybeSingle();
+      if (!retry.error) return true;
+      throw retry.error;
+    }
+    throw resp.error;
+  }
+
+  resp = await supabase
+    .from('ordenes')
+    .update(payload)
+    .eq('id', orderId)
+    .eq('idComercio', idComercio)
+    .eq('order_type', 'pickup')
+    .select('id,status')
+    .maybeSingle();
+  if (!resp.error) return true;
+
+  const msg2 = String(resp.error?.message || '').toLowerCase();
+  if (msg2.includes('updated_at') && msg2.includes('does not exist')) {
+    const retry = await supabase
+      .from('ordenes')
+      .update({ status: nextStatus })
+      .eq('id', orderId)
+      .eq('idComercio', idComercio)
+      .eq('order_type', 'pickup')
+      .select('id,status')
+      .maybeSingle();
+    if (!retry.error) return true;
+    throw retry.error;
+  }
+
+  throw resp.error;
 }
 
-async function loadOrders(notifyNew = false) {
+async function loadOrders() {
   setLoading(true);
   try {
     const allOrders = await fetchOrdersForComercio();
-    const orders = allOrders.filter((o) => isActive(o.status));
-
-    const incomingIds = new Set(orders.map((o) => o.id));
-    if (notifyNew && hasLoadedOnce) {
-      const newOnes = orders.filter((o) => !knownOrderIds.has(o.id));
-      if (newOnes.length) {
-        newOrdersCount += newOnes.length;
-        const msg = `${newOnes.length} orden(es) nueva(s) recibida(s).`;
-        startAlarm(msg);
-      }
-    }
-    knownOrderIds = incomingIds;
-    hasLoadedOnce = true;
-
-    const itemsByOrder = await fetchOrderItemsMap(orders.map((o) => o.id));
-    renderOrders(orders, itemsByOrder);
-    updateStats(orders);
+    currentOrders = allOrders.filter((o) => isActiveStatus(o.status));
+    currentItemsByOrder = await fetchOrderItemsMap(currentOrders.map((o) => o.id));
+    renderOrders(getFilteredOrders(), currentItemsByOrder);
+    updateLiveVisuals();
+    updateAlarmByOrders();
   } catch (err) {
     console.error('Error cargando órdenes pickup', err);
     alert(`No se pudo cargar órdenes: ${err.message || err}`);
@@ -437,9 +618,16 @@ async function loadOrders(notifyNew = false) {
   }
 }
 
-function scheduleReload(notifyNew = true) {
+function setFilter(nextFilter) {
+  const normalized = ['all', 'sent', 'preparing', 'ready'].includes(nextFilter) ? nextFilter : 'all';
+  currentFilter = normalized;
+  renderOrders(getFilteredOrders(), currentItemsByOrder);
+  updateLiveVisuals();
+}
+
+function scheduleReload() {
   if (reloadTimer) clearTimeout(reloadTimer);
-  reloadTimer = setTimeout(() => loadOrders(notifyNew), 500);
+  reloadTimer = setTimeout(() => loadOrders(), 450);
 }
 
 function subscribeRealtime() {
@@ -449,27 +637,47 @@ function subscribeRealtime() {
       const row = payload?.new || payload?.old || {};
       const rowComercio = Number(row.idcomercio ?? row.idComercio ?? 0);
       if (rowComercio !== idComercio) return;
-      scheduleReload(true);
+      scheduleReload();
     })
     .subscribe();
 }
 
-function startPolling() {
-  pollTimer = setInterval(() => loadOrders(true), 15000);
-}
-
-function startTimers() {
-  timerInterval = setInterval(updateElapsedTimers, 1000);
-}
-
 function bindEvents() {
   btnEnableSound?.addEventListener('click', unlockSound);
-  btnMuteAlarm?.addEventListener('click', () => {
-    soundMuted = true;
-    stopAlarm(true);
-    btnEnableSound.innerHTML = '<i class="fa-solid fa-volume-xmark"></i> Reactivar sonido';
+  btnRefreshOrders?.addEventListener('click', () => loadOrders());
+  boxActivas?.addEventListener('click', () => setFilter('all'));
+  boxEnviadas?.addEventListener('click', () => setFilter('sent'));
+  boxPreparando?.addEventListener('click', () => setFilter('preparing'));
+  boxTerminadas?.addEventListener('click', () => setFilter('ready'));
+
+  ordersContainer?.addEventListener('click', async (event) => {
+    const target = event.target instanceof Element
+      ? event.target.closest('[data-action="change-status"]')
+      : null;
+    if (!target) return;
+    if (actionInFlight) return;
+
+    const orderId = Number(target.getAttribute('data-order-id') || 0);
+    const nextStatus = String(target.getAttribute('data-next-status') || '').trim();
+    if (!orderId || !nextStatus) return;
+
+    actionInFlight = true;
+    const originalText = target.textContent;
+    target.setAttribute('disabled', 'disabled');
+    target.textContent = 'Actualizando...';
+
+    try {
+      await updateOrderStatus(orderId, nextStatus);
+      await loadOrders();
+    } catch (err) {
+      console.error('No se pudo actualizar estado de orden', err);
+      alert(`No se pudo actualizar estado: ${err.message || err}`);
+      target.textContent = originalText || 'Reintentar';
+      target.removeAttribute('disabled');
+    } finally {
+      actionInFlight = false;
+    }
   });
-  btnRefreshOrders?.addEventListener('click', () => loadOrders(false));
 }
 
 async function init() {
@@ -477,17 +685,22 @@ async function init() {
   if (!access) return;
 
   bindEvents();
-  startTimers();
-  await loadOrders(false);
+  await loadOrders();
   subscribeRealtime();
-  startPolling();
+
+  timerInterval = setInterval(() => {
+    updateLiveVisuals();
+    updateAlarmByOrders();
+  }, 1000);
+  pollTimer = setInterval(() => loadOrders(), 15000);
 }
 
 window.addEventListener('beforeunload', () => {
-  stopAlarm(false);
   if (timerInterval) clearInterval(timerInterval);
   if (pollTimer) clearInterval(pollTimer);
+  if (reloadTimer) clearTimeout(reloadTimer);
   if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+  stopAlarm();
 });
 
 init();

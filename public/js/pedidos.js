@@ -90,6 +90,22 @@ async function fetchOrdersByEmail(email) {
   return data;
 }
 
+async function fetchOrdersByUserId(userId) {
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from('ordenes')
+    .select('id, idcomercio, clover_order_id, checkout_url, total, status, created_at, order_type, mesa, source')
+    .eq('customer_user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (!error && data) return data;
+
+  const msg = String(error?.message || '').toLowerCase();
+  const missingCol = msg.includes('customer_user_id') && msg.includes('does not exist');
+  if (missingCol) return [];
+  return [];
+}
+
 function setLoading(isLoading) {
   if (ordersLoading) {
     ordersLoading.classList.toggle('hidden', !isLoading);
@@ -312,8 +328,12 @@ async function loadOrders() {
 
   if (!orders.length) {
     const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || '';
     const userEmail = user?.email || '';
-    if (userEmail) {
+    if (userId) {
+      orders = await fetchOrdersByUserId(userId);
+    }
+    if (!orders.length && userEmail) {
       orders = await fetchOrdersByEmail(userEmail);
     }
   }
